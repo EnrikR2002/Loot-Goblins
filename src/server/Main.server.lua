@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Debris = game:GetService("Debris")
 
 local sharedFolder = ReplicatedStorage:WaitForChild("LootGoblins")
 local Config = require(sharedFolder:WaitForChild("Config"))
@@ -389,6 +390,138 @@ local function resetGuardian()
 	gRoot.AssemblyAngularVelocity = Vector3.zero
 end
 
+-- Sword ----------------------------------------------------------------------
+-- A pedestal on the home island hands each player one Sword tool. Click swings it.
+-- The server finds the targets, so the client never says who got hit.
+local GUARD_OFFSET = CFrame.new(0, 0, -1)
+local lastSwing = {}
+
+local function makeSwordParts(parent)
+	local handle = Instance.new("Part")
+	handle.Name = "Handle"
+	handle.Size = Vector3.new(0.5, 0.5, 4.5)
+	handle.Color = Color3.fromRGB(205, 210, 220)
+	handle.Material = Enum.Material.Metal
+	handle.Parent = parent
+
+	local guard = Instance.new("Part")
+	guard.Name = "Guard"
+	guard.Size = Vector3.new(2, 0.5, 0.5)
+	guard.Color = Color3.fromRGB(255, 200, 35)
+	guard.Material = Enum.Material.Metal
+	guard.Parent = parent
+	return handle, guard
+end
+
+local function swingSword(player, tool)
+	local _, humanoid, root = getCharacterParts(player)
+	if not root or humanoid.Health <= 0 then
+		return
+	end
+
+	local now = os.clock()
+	if now - (lastSwing[player] or 0) < Config.SWORD_COOLDOWN then
+		return
+	end
+	lastSwing[player] = now
+
+	-- Roblox's default animate script plays a slash when it sees this value.
+	local slash = Instance.new("StringValue")
+	slash.Name = "toolanim"
+	slash.Value = "Slash"
+	slash.Parent = tool
+	Debris:AddItem(slash, 1)
+
+	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
+	for _, other in ipairs(Players:GetPlayers()) do
+		local _, otherHumanoid, otherRoot = getCharacterParts(other)
+		if other ~= player and otherRoot and otherHumanoid.Health > 0 then
+			local offset = otherRoot.Position - root.Position
+			local flat = Vector3.new(offset.X, 0, offset.Z)
+			if
+				offset.Magnitude <= Config.SWORD_RANGE
+				and flat.Magnitude > 0.01
+				and flat.Unit:Dot(look) >= Config.SWORD_MIN_DOT
+			then
+				otherHumanoid:TakeDamage(Config.SWORD_DAMAGE)
+				otherRoot.AssemblyLinearVelocity += flat.Unit * Config.SWORD_KNOCKBACK + Vector3.new(0, 15, 0)
+			end
+		end
+	end
+end
+
+local function newSwordTool()
+	local tool = Instance.new("Tool")
+	tool.Name = "Sword"
+	tool.ToolTip = "Click to swing"
+	tool.CanBeDropped = false
+	tool.RequiresHandle = true
+	-- Same grip as Roblox's classic sword: the blade points forward from the fist.
+	tool.GripPos = Vector3.new(0, 0, -1.5)
+	tool.GripForward = Vector3.new(-1, 0, 0)
+	tool.GripRight = Vector3.new(0, 1, 0)
+	tool.GripUp = Vector3.new(0, 0, 1)
+
+	local handle, guard = makeSwordParts(tool)
+	handle.CanCollide = false
+	guard.CanCollide = false
+	guard.Massless = true
+	guard.CFrame = handle.CFrame * GUARD_OFFSET
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = handle
+	weld.Part1 = guard
+	weld.Parent = guard
+
+	tool.Activated:Connect(function()
+		local owner = Players:GetPlayerFromCharacter(tool.Parent)
+		if owner then
+			swingSword(owner, tool)
+		end
+	end)
+	return tool
+end
+
+local swordPedestal =
+	part("SwordPedestal", Vector3.new(5, 2, 5), Config.SWORD_PEDESTAL, Color3.fromRGB(60, 60, 68), Enum.Material.Slate)
+
+-- The display sword is just for show; the real one is built per player in newSwordTool.
+local swordDisplay = Instance.new("Model")
+swordDisplay.Name = "SwordPickup"
+swordDisplay.Parent = generated
+local displayHandle, displayGuard = makeSwordParts(swordDisplay)
+displayHandle.Anchored = true
+displayHandle.CanCollide = false
+displayHandle.CFrame = swordPedestal.CFrame * CFrame.new(0, 4, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+displayGuard.Anchored = true
+displayGuard.CanCollide = false
+displayGuard.CFrame = displayHandle.CFrame * GUARD_OFFSET
+
+local swordPrompt = Instance.new("ProximityPrompt")
+swordPrompt.Name = "GrabPrompt"
+swordPrompt.ActionText = "GRAB"
+swordPrompt.ObjectText = "Sword"
+swordPrompt.HoldDuration = 0.05
+swordPrompt.MaxActivationDistance = Config.PICKUP_DISTANCE
+swordPrompt.RequiresLineOfSight = false
+swordPrompt.Parent = displayHandle
+
+swordPrompt.Triggered:Connect(function(player)
+	local character, humanoid, root = getCharacterParts(player)
+	if not root or humanoid.Health <= 0 then
+		return
+	end
+	if (root.Position - displayHandle.Position).Magnitude > Config.PICKUP_DISTANCE + 3 then
+		return
+	end
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not backpack or backpack:FindFirstChild("Sword") or character:FindFirstChild("Sword") then
+		return
+	end
+	local tool = newSwordTool()
+	tool.Parent = backpack
+	humanoid:EquipTool(tool)
+end)
+
 -- Stats ----------------------------------------------------------------------
 local function setupPlayer(player)
 	local leaderstats = player:FindFirstChild("leaderstats") or Instance.new("Folder")
@@ -416,6 +549,7 @@ end
 Players.PlayerAdded:Connect(setupPlayer)
 Players.PlayerRemoving:Connect(function(player)
 	lastGrapple[player] = nil
+	lastSwing[player] = nil
 	if player == carrier then
 		detachIdol(idol.CFrame)
 	end
