@@ -44,6 +44,7 @@ Playtest/review the PR, then approve the AI to sync, check, and merge it. When s
 ## Controls
 
 - `E` — grab idol through Roblox's ProximityPrompt
+- `E` (no prompt showing) — Soul Unbound, Yone's E: dash out of your body as a faster spirit for 5 seconds, then snap back to it. Press `E` again after 0.5 seconds to return early. Sword hits as a spirit mark the target, and the mark repeats 35% of that damage when you return. 10 second cooldown.
 - `F` — grapple toward your mouse target; clicking idol/current carrier steals it
 - `Q` — drop idol
 - Sit in `Driver` seat — WASD drives the prototype boat
