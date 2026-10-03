@@ -1,0 +1,23 @@
+name: Project checks
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  check:
+    name: Formatting, lint, and Rojo build
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install pinned project tools
+        shell: pwsh
+        run: ./scripts/bootstrap.ps1 -Headless
+      - name: Check project
+        shell: pwsh
+        run: ./scripts/check.ps1

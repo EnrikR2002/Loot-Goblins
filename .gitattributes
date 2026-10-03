@@ -1,0 +1,19 @@
+* text=auto
+*.lua text eol=lf
+*.luau text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.ps1 text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.rbxl binary
+*.rbxm binary
+*.rbxlx text eol=lf
+*.rbxmx text eol=lf
+*.zip binary
+*.png binary
+*.jpg binary
