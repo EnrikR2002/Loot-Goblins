@@ -2,6 +2,8 @@
 
 One repository: https://github.com/EnrikR2002/Loot-Goblins. One task branch and PR at a time. One instruction file: `AGENTS.md`.
 
+For AI-led onboarding, paste the [teammate setup prompt](TEAM_SETUP_PROMPT.md) into Codex or Claude Code. The agent should use the existing helpers and only ask you for steps that require your account or GUI approval.
+
 ## First time (Windows x64)
 
 1. Install Git, GitHub CLI, Roblox Studio, and your chosen AI client if missing. Use the official installers. `winget install --id Git.Git --exact` and `winget install --id GitHub.cli --exact` install the Git tools. Studio: https://create.roblox.com/.
@@ -40,7 +42,7 @@ Rojo manages `src/shared` under `ReplicatedStorage.LootGoblins`, `src/server` un
 
 The AI should list Studio instances, select this local place's ID, inspect the mapped folders/scripts, and run a harmless Luau assertion. For relevant changes, start play mode, inspect the generated world/HUD and console output, then stop. To verify live Rojo sync without changing gameplay, temporarily add a comment to a mapped source file, confirm it arrives in Studio, and restore the file.
 
-Human fun test: **Test > Server & Clients > 3 clients > Start** (older layouts: **Test > Start**, 3 players). Check grab, carry slowdown, grapple/steal, Q drop, guardian, boat, bank, and reset with Ethan/Ninety. A build or single-client smoke test does not prove the three-player loop is fun.
+Human fun test: **top-left Test dropdown > Server & Clients > set player count to 3 > blue Play button** (older layouts: **Test > Start**, 3 players). Check grab, carry slowdown, grapple/steal, Q drop, guardian, boat, bank, and reset with Ethan/Ninety. A build or single-client smoke test does not prove the three-player loop is fun.
 
 ## Troubleshooting
 
@@ -50,4 +52,3 @@ Human fun test: **Test > Server & Clients > 3 clients > Start** (older layouts: 
 - Official MCP on Windows uses `cmd.exe /d /c %LOCALAPPDATA%\Roblox\mcp.bat`. Studio creates/manages this launcher. If it is missing, enable MCP in Studio and restart the client. Keep other MCP configurations intact.
 - Claude Code 2.1.281+ is recommended for direct `AGENTS.md` support across providers. Verify `/memory` or `/context` lists the root file. A project/ancestor `CLAUDE.md` can take precedence; do not add a competing one. [Official Claude memory documentation](https://code.claude.com/docs/en/memory).
 - MCP testing from a new client session requires Studio open and MCP enabled. [Official Roblox MCP instructions](https://create.roblox.com/docs/studio/mcp), [Codex MCP configuration](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
-- `main` must exist for PRs. The empty remote was initialized with the original, unchanged Test 001 distribution; all setup changes are reviewed separately on `chore/setup-verification`.
