@@ -37,7 +37,8 @@ help.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 help.TextColor3 = Color3.fromRGB(235, 235, 235)
 help.Font = Enum.Font.GothamMedium
 help.TextScaled = true
-help.Text = "E = grab idol  |  F = grapple/steal  |  Q = drop idol  |  Drive the ugly boat home"
+help.Text =
+	"E = grab idol/sword  |  Click = swing sword  |  F = grapple/steal  |  Q = drop idol  |  Drive the ugly boat home"
 help.Parent = gui
 
 local function flash(text, duration)
