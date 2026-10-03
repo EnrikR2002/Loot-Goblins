@@ -1,0 +1,29 @@
+# Generated development places, builds, and local reports
+/build/
+/.local/
+*.rbxl.lock
+*.rbxlx.lock
+*.rbxm.lock
+*.rbxmx.lock
+
+# Machine-specific AI settings and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*.json
+.claude/settings.local.json
+CLAUDE.local.md
+.codex/config.local.toml
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+*.tmp
+*.bak

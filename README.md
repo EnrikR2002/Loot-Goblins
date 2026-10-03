@@ -4,6 +4,18 @@ This is an intentionally ugly Roblox prototype that tests one thing:
 
 **Is stealing one valuable object, fighting over possession of it, and getting it home inherently fun?**
 
+## Team development
+
+Ethan, Ninety, and Enrik use [one shared repository](https://github.com/EnrikR2002/Loot-Goblins), [AGENTS.md](AGENTS.md), and pinned tools. See [the short workstation guide](docs/WORKSTATION.md).
+
+```powershell
+./scripts/bootstrap.ps1
+./scripts/dev.ps1 -OpenStudio
+./scripts/check.ps1
+```
+
+The development place in `build/` is generated from this repository. The server creates the prototype world when play starts. Permanent changes belong in shared source/content; the manual installation notes below describe the original prototype distribution.
+
 ## What it creates automatically
 
 - Home island + bank pad

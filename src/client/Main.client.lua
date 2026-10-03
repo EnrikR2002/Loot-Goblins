@@ -44,7 +44,7 @@ local function flash(text, duration)
 	status.Text = text
 	status.TextTransparency = 0
 	status.BackgroundTransparency = 0.12
-	local tween = TweenService:Create(status, TweenInfo.new(0.25), {BackgroundTransparency = 0.25})
+	local tween = TweenService:Create(status, TweenInfo.new(0.25), { BackgroundTransparency = 0.25 })
 	tween:Play()
 	if duration then
 		task.delay(duration, function()
@@ -57,7 +57,9 @@ end
 
 local function grappleLine(fromPos, toPos)
 	local distance = (toPos - fromPos).Magnitude
-	if distance <= 0.1 then return end
+	if distance <= 0.1 then
+		return
+	end
 	local beamPart = Instance.new("Part")
 	beamPart.Name = "GrappleFX"
 	beamPart.Anchored = true
@@ -73,7 +75,9 @@ local function grappleLine(fromPos, toPos)
 end
 
 UserInputService.InputBegan:Connect(function(input, processed)
-	if processed then return end
+	if processed then
+		return
+	end
 	if input.KeyCode == Enum.KeyCode.Q then
 		dropRemote:FireServer()
 	elseif input.KeyCode == Enum.KeyCode.F then
