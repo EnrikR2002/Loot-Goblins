@@ -1,0 +1,238 @@
+TL;DR
+We lock Concept 1.
+Working title: Loot Goblins.
+The game is a colorful social extraction sandbox where you sail between bizarre islands, steal increasingly stupid valuables, trigger escalating chaos, and desperately get the loot home before another player steals it from you.
+The emotional loop is the product:
+“I shouldn't do this” → steal → OH SHIT → chase gets worse → almost home → someone tries to rob me → barely make it → YESSS HAHAHA → put trophy in collection → go after something harder.
+Do not build the progression game yet. First prove that stealing one object and escaping with friends/enemies is hilarious.
+
+LOOT GOBLINS — Game Thesis v0.1
+The fantasy
+You are a tiny, greedy creature sailing around an enormous colorful archipelago filled with things that absolutely do not belong to you.
+Ancient treasure. Giant eggs. Royal crowns. Weird animals. Alien technology. Haunted furniture. Enormous gems. Entire statues.
+Your response to nearly everything is:
+Can I steal that?
+The world has the adventurous discovery of an ocean journey, the playful visual absurdity of a toybox platformer, and the emergent sandbox chaos of a physics-heavy multiplayer game.
+But it needs its own identity.
+Cute world. Criminal intentions.
+That contrast is strong.
+
+The core loop
+SAIL → DISCOVER → STEAL → CAUSE TROUBLE → ESCAPE → BANK → FLEX / SELL / TRADE → EVOLVE → STEAL SOMETHING WORSE
+The key difference from normal collection games:
+Acquiring the item does not end the challenge.
+It starts it.
+You finally pull the legendary crown off the sleeping king?
+Great.
+Now the castle alarm activates.
+Guards pour out.
+Another player sees the crown icon.
+Your boat is parked on the other side of the island.
+Ninety has stolen your boat.
+You're carrying the crown while chasing him.
+Enrik grapples onto the back.
+Someone accidentally blows up the dock.
+That is Loot Goblins.
+
+The rule that makes the whole game work
+Every valuable object has two attributes:
+Value determines why you want it.
+Trouble determines what happens once you take it.
+A cheap coconut might cause almost nothing.
+A massive golden egg might summon its mother.
+A cursed sword might possess whoever carries it.
+Alien technology might attract a UFO.
+A royal crown might put a giant bounty marker above your head.
+A sleeping monster's tooth might require you to physically yank it out without waking him.
+So rarity isn't merely:
+0.01% drop rate.
+Rarity can mean:
+This thing is fucking difficult to get home.
+Much better.
+
+The HEAT system
+Stealing important things increases Heat.
+At low Heat, maybe a few NPCs chase you.
+Then things escalate.
+More guards. More aggressive creatures. Doors locking. Cannons firing. Your position becoming visible. Bounty rewards for other players interfering. Island-wide hazards activating.
+And crucially:
+Heat follows the stolen item.
+Not necessarily the player.
+If Ethan drops the crown and Ninety grabs it:
+Congratulations Ninety.
+You're the problem now.
+That creates incredible physical comedy.
+
+Player theft without making people uninstall
+We need theft.
+But permanent destruction of hours of progress will turn the funny game into a rage-quit machine.
+So:
+Banked loot is safe.
+Once something reaches your hideout and gets deposited, ownership is secure.
+What can be stolen is unbanked loot currently being transported.
+That gives us all the:
+GIVE ME THAT
+GET THE FUCK AWAY FROM ME
+HE TOOK IT
+CATCH HIM
+without someone waking up tomorrow and discovering their three-week collection is gone.
+This is a very important floor-versus-ceiling decision.
+The ceiling of total theft is hilarious.
+The human floor is children quitting because someone erased their favorite pet.
+Keep the chaos. Remove the misery.
+
+Getting home should physically matter
+Don't make extraction:
+Stand inside green circle for 3 seconds.
+Your hideout is a physical location.
+You need to actually transport the object there.
+Small objects can be carried.
+Medium objects might require dragging.
+Huge objects could require boats, carts, balloons, cranes, friends, tow cables, or completely stupid improvised solutions.
+That means the treasure itself changes gameplay.
+Stealing a crown and stealing a grand piano shouldn't feel identical.
+Imagine four players trying to shove a giant golden statue onto a tiny sailboat while guards attack them.
+Now the treasure is also a physics toy.
+
+Your sandbox toys
+This is where the Halo 3 influence becomes valuable.
+Don't design hundreds of canned jokes.
+Design objects that create jokes.
+Your grappling hook pulls players, treasure and vehicles.
+Your spring trap launches anything standing on it.
+Your sticky rocket can attach to objects.
+Your magnet can yank metallic treasure toward you.
+Your decoy creates fake valuables.
+Your smoke bomb creates confusion.
+Your tow hook connects objects together.
+Now combinations emerge.
+Rocket + boat.
+Grapple + crown.
+Spring trap + giant chicken.
+Tow cable + enemy vehicle.
+Players produce the clips for us.
+
+Boats are your first major evolution fantasy
+I think this should be one of the game's signature progression systems.
+You begin with something pathetic.
+Tiny raft.
+Eventually players are cruising around in ridiculous ships that visibly communicate status.
+Not just:
++17% movement speed.
+Your ship physically changes.
+More storage.
+More tow capacity.
+Different traversal options.
+More gadget slots.
+Maybe eventually gliding, diving, ghost sailing, alien propulsion.
+Someone should enter the server and you immediately think:
+What the fuck is THAT boat?
+That's status.
+
+Your hideout is the trophy case
+Every player gets a small island hideout.
+This becomes the physical record of their career.
+Not a menu saying:
+73/200 collectibles.
+I want to walk through your shit.
+Your enormous stolen dragon skull is mounted above the entrance.
+Your legendary UFO is parked outside.
+Your rare creatures wander around.
+Your Crown of Whatever is inside a glass case.
+Your boat sits at the dock.
+Visitors should understand your accomplishments without opening a stats page.
+That's status + collection working together.
+
+Sell versus Keep becomes an actual decision
+You return with something extremely rare.
+Now:
+SELL IT
+Get lots of currency toward upgrades.
+Or:
+KEEP IT
+Add it permanently to your collection and flex it.
+Or:
+TRADE IT
+Maybe someone wants it badly enough to give you something better.
+That makes objects feel like objects rather than XP packets.
+
+The world
+The archipelago structure is perfect for Roblox because it gives us expandable content without rebuilding the game.
+Your starting sea might have:
+Goblin Cove as the safe home region.
+Royal Isle where players steal valuables from a pompous kingdom.
+Critter Island full of strange creatures and dangerous eggs.
+Ghost Graveyard with cursed treasure and abandoned ships.
+Skyfall Atoll containing mysterious high-tech ruins, vehicles and physics toys.
+Later we can get much stranger.
+Every island asks a slightly different question:
+How the hell do I steal THIS?
+That prevents the loop from becoming mechanically flat.
+
+The viral engine
+This game should naturally manufacture sentences kids want to tell their friends:
+BRO I STOLE THE KING'S CROWN.
+COME HELP ME MOVE THIS THING.
+HE FUCKING TOOK IT FROM ME.
+GET IN THE BOAT.
+DON'T TOUCH THAT.
+WHY IS THAT CHICKEN SO BIG?
+I'M ALMOST HOME.
+NO NO NO NO—
+YESSSSS.
+That's stronger than designing around “TikTok moments” artificially.
+The mechanic itself creates stories.
+
+The first prototype
+And now we show discipline.
+Your team's own operating system says the prototype's job is to answer the riskiest fun question cheaply, not build Game Version 0.1. How we build games v1 - Mickey …
+So Ninety should NOT build Loot Goblins.
+He should build:
+LOOT GOBLINS TEST 001
+Three players.
+One tiny island.
+One tiny home island.
+One shitty boat.
+One valuable golden idol.
+Basic physics carrying.
+Players can grab/drop the idol.
+Players can knock/grapple it away from each other.
+Stealing it wakes one giant NPC creature.
+Creature chases whoever possesses the idol.
+Get the idol physically onto your boat.
+Sail home.
+Cross your dock carrying it.
+BANKED.
+Round resets.
+That's fucking it.
+No XP.
+No shop.
+No pets.
+No rarity system.
+No trading.
+No elaborate UI.
+No huge map.
+No monetization.
+No thirty gadgets.
+We are answering one question:
+When three idiots fight over something valuable while being chased and try to get it home, do we start screaming and laughing?
+If the answer is yes, you've found the nucleus.
+Then Enrik turns that experiment into something structurally real, exactly as your workflow calls for after greenlight. How we build games v1 - Mickey …
+If the answer is no, we change the mechanic instead of spending three months explaining why it will eventually become fun.
+The greenlight test
+I want all three of you to play ten rounds.
+By the end, you should naturally be doing things we didn't explicitly tell you to do.
+Betraying each other.
+Blocking boats.
+Pretending to cooperate.
+Intercepting treasure.
+Laughing when somebody gets fucked over.
+Taking risky shortcuts.
+Trying stupid physics tricks.
+Wanting one more round.
+If that's happening, we've got something.
+Next Actions
+Ethan: lock this one-sentence thesis: “Steal ridiculous treasure from dangerous islands and other players, then somehow get it home.”
+Ninety: build Loot Goblins Test 001 exactly around steal → chase → player interference → extraction. Nothing else.
+Enrik: stay out of production architecture until the prototype proves the emotional loop. Explore first. Then we earn complexity.
+

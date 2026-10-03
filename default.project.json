@@ -1,0 +1,23 @@
+{
+  "name": "LootGoblinsTest001",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "LootGoblins": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "LootGoblinsServer": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "LootGoblinsClient": {
+          "$path": "src/client"
+        }
+      }
+    }
+  }
+}
