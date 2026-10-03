@@ -20,7 +20,7 @@ The guide assumes Windows x64 for automatic Rokit installation. Other systems us
 
 ```powershell
 ./scripts/bootstrap.ps1             # Safe to rerun; never changes Git history or gameplay
-./scripts/dev.ps1 -OpenStudio       # Build the local place, open Studio, serve on loopback
+./scripts/dev.ps1 -OpenStudio       # Build the place, open a visible Studio (only if none runs), serve on loopback
 ./scripts/dev.ps1                   # Build/serve without launching another Studio window
 ./scripts/check.ps1                 # Formatting, lint, Rojo build, whitespace
 ./scripts/check.ps1 -Fix            # Format with StyLua AST verification, then check
@@ -40,12 +40,13 @@ Rojo manages `src/shared` under `ReplicatedStorage.LootGoblins`, `src/server` un
 
 ## Studio verification
 
-The AI should list Studio instances, select this local place's ID, inspect the mapped folders/scripts, and run a harmless Luau assertion. For relevant changes, start play mode, inspect the generated world/HUD and console output, then stop. To verify live Rojo sync without changing gameplay, temporarily add a comment to a mapped source file, confirm it arrives in Studio, and restore the file.
+The AI should list Studio instances first and reuse the window you already have open; it must never open a second copy of the same place (see the "file is in use" entry under Troubleshooting). It then selects this local place's ID, inspects the mapped folders/scripts, and run a harmless Luau assertion. For relevant changes, start play mode, inspect the generated world/HUD and console output, then stop. To verify live Rojo sync without changing gameplay, temporarily add a comment to a mapped source file, confirm it arrives in Studio, and restore the file.
 
 Human fun test: **top-left Test dropdown > Server & Clients > set player count to 3 > blue Play button** (older layouts: **Test > Start**, 3 players). Check grab, carry slowdown, grapple/steal, Q drop, guardian, boat, bank, and reset with Ethan/Ninety. A build or single-client smoke test does not prove the three-player loop is fun.
 
 ## Troubleshooting
 
+- **"This file is currently in use by another Studio instance or is read-only"** means a second Studio copy has the place open. Earlier versions of `dev.ps1` opened Studio with a hidden window, so you could have a copy running that you never saw. Fix: close every Studio window, press Ctrl+Shift+Esc, open the **Details** tab, and end any leftover `RobloxStudioBeta.exe`. Then open `build\LootGoblinsTest001.rbxlx` once. Now `dev.ps1 -OpenStudio` opens a visible window and refuses to start a second copy. AI helpers must not force-kill Studio; they ask you to close it.
 - Run bootstrap again after missing prerequisites are installed. It reports sign-ins and Studio toggles that need you. `-Headless` installs only project tools for CI; it does not set up Studio or AI clients.
 - If Studio's newer registry layout prevents `rojo plugin install`, bootstrap downloads the matching official `Rojo.rbxm` release, verifies its SHA-256, and preserves an existing different local plugin in a `.bak` file.
 - Packaged Windows apps can redirect `AppData` writes into their own cache. If bootstrap reports a plugin but Studio's **Plugins > Plugins Folder** is empty, rerun bootstrap from a normal PowerShell terminal, then restart Studio. This occurred in Enrik's Codex app; the verified plugin was copied to Studio's actual folder and live sync was confirmed.

@@ -17,6 +17,20 @@ function Invoke-Checked {
     if ($LASTEXITCODE -ne 0) { throw "$Command failed (exit $LASTEXITCODE)." }
 }
 
+# Two Studio copies lock the same place file ("This file is currently in use by another
+# Studio instance"), so never start a second one. The window is always visible.
+function Start-StudioOnce {
+    param([string]$StudioPath, [string]$Place)
+    $running = @(Get-Process -Name RobloxStudioBeta -ErrorAction SilentlyContinue)
+    if ($running.Count -gt 0) {
+        Write-Warning ("Roblox Studio is already running (process $($running.Id -join ', ')), so I did not open a second copy. " +
+            "In that Studio use File > Open and choose $Place, or close every Studio window and run this again.")
+        return $false
+    }
+    Start-Process -FilePath $StudioPath -ArgumentList ('"' + $Place + '"')
+    return $true
+}
+
 function Assert-ProjectTools {
     foreach ($line in Get-Content -LiteralPath (Join-Path $ProjectRoot 'rokit.toml')) {
         if ($line -match '^\s*(\w+)\s*=\s*"[^"@]+@([^"]+)"') {
