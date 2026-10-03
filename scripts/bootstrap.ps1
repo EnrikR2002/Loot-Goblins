@@ -82,7 +82,7 @@ try {
             & gh auth status
             if ($LASTEXITCODE -ne 0) { Write-Warning 'Run: gh auth login --hostname github.com --git-protocol https --web' }
         } else { Write-Warning 'GitHub CLI missing: winget install --id GitHub.cli --exact; then gh auth login --web' }
-        Write-Host 'Studio: Assistant > ... > Manage MCP Servers > Enable Studio as MCP server. Restart the AI client after registration.'
+        Write-Host 'Studio: open a place > Assistant icon > ... > Settings > MCP Servers > Enable Studio as MCP server. Restart the AI client after registration.'
         Write-Host 'Next: ./scripts/dev.ps1 -OpenStudio; Plugins > Rojo > Connect (localhost:34872).'
     }
     Write-Host 'Project tools ready. Run ./scripts/check.ps1.'
