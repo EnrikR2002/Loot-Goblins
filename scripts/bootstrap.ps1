@@ -27,6 +27,7 @@ try {
     Assert-ProjectTools
 
     if (!$Headless) {
+        Write-Host 'Use a normal PowerShell terminal for Studio plugin installation; packaged app shells can redirect AppData writes.'
         # Use Rojo's official matching plugin release; this also handles new Studio
         # installs whose registry layout the CLI's plugin installer does not recognize.
         $plugin = Join-Path $env:LOCALAPPDATA 'Roblox\Plugins\RojoManagedPlugin.rbxm'
