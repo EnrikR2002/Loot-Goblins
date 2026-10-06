@@ -6,7 +6,7 @@
 | Request | Ninety's "first substantial playable foundation" prompt, run by Enrik |
 | Agent | Claude Code (cloud session, Linux container, no Roblox Studio) |
 | Branch | `claude/quirky-shannon-23gez5`, from `origin/main` at `8f9a888` |
-| Pull request | See the PR opened from this branch (number in the PR thread) |
+| Pull request | [#6 Build the vertical slice](https://github.com/EnrikR2002/Loot-Goblins/pull/6) |
 | Merge status | **Not merged.** Waiting for a Studio playtest and explicit approval. |
 
 ## 1. Summary
@@ -217,5 +217,11 @@ Everything that needs the real engine, the network or people:
 ## 12. Branch, commits, PR, status
 
 - Branch `claude/quirky-shannon-23gez5`, created by the session at `origin/main` `8f9a888`. The working tree was clean at the start.
-- Commits and the PR are listed in the PR on GitHub. Pushes are normal: no force-push, no history rewrite.
+- Commits:
+  - `2cd2e67`: the gameplay code.
+  - `322da9a`: the docs.
+  - A follow-up commit adds the PR number to the docs.
+
+  Pushes are normal: no force-push, no history rewrite.
+- PR #6 targets `main`.
 - **Not merged.** Per `AGENTS.md`, merging waits for a human playtest and explicit approval.
