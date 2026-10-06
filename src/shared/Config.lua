@@ -29,4 +29,14 @@ Config.SWORD_MIN_DOT = 0.3
 Config.SWORD_COOLDOWN = 0.6
 Config.SWORD_KNOCKBACK = 30
 
+-- Soul Unbound (Yone's E). Times are seconds. Cooldown and echo use League's max rank.
+Config.SOUL_DASH_DISTANCE = 14
+Config.SOUL_DASH_TIME = 0.16
+Config.SOUL_DURATION = 5
+Config.SOUL_RECAST_DELAY = 0.5
+Config.SOUL_COOLDOWN = 10 -- Starts on cast, like League.
+Config.SOUL_SPEED_BONUS_START = 0.1
+Config.SOUL_SPEED_BONUS_END = 0.3
+Config.SOUL_ECHO_FRACTION = 0.35
+
 return Config

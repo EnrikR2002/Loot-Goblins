@@ -24,6 +24,10 @@ local grappleRemote = Instance.new("RemoteEvent")
 grappleRemote.Name = "GrappleRequest"
 grappleRemote.Parent = remotes
 
+local soulRemote = Instance.new("RemoteEvent")
+soulRemote.Name = "SoulUnboundRequest"
+soulRemote.Parent = remotes
+
 local gameEvent = Instance.new("RemoteEvent")
 gameEvent.Name = "GameEvent"
 gameEvent.Parent = remotes
@@ -390,6 +394,280 @@ local function resetGuardian()
 	gRoot.AssemblyAngularVelocity = Vector3.zero
 end
 
+-- Soul Unbound (Yone's E) ----------------------------------------------------
+-- E dashes your spirit out of your body. For a few seconds the spirit runs faster
+-- and marks every player it hurts. Then it snaps back to the body (or press E again),
+-- and each mark repeats part of the damage. The server owns the timer, the body,
+-- the marks and the return. The client only plays its own dash.
+local SPIRIT_COLOR = Color3.fromRGB(110, 205, 255)
+local MARK_COLOR = Color3.fromRGB(255, 70, 150)
+local LETHAL_MARK_COLOR = Color3.fromRGB(255, 255, 255)
+local spirits = {}
+local soulReadyAt = {}
+
+local function walkSpeedFor(player)
+	local speed = player == carrier and Config.CARRY_WALK_SPEED or Config.NORMAL_WALK_SPEED
+	local spirit = spirits[player]
+	if spirit then
+		-- The bonus grows the longer the spirit is out, like League.
+		local progress = math.clamp((workspace:GetServerTimeNow() - spirit.startedAt) / Config.SOUL_DURATION, 0, 1)
+		local bonus = Config.SOUL_SPEED_BONUS_START
+			+ (Config.SOUL_SPEED_BONUS_END - Config.SOUL_SPEED_BONUS_START) * progress
+		-- Half-stud steps keep WalkSpeed from replicating every frame.
+		speed = math.floor(speed * (1 + bonus) * 2 + 0.5) / 2
+	end
+	return speed
+end
+
+-- The body left behind is a frozen, darkened copy of the character.
+local function makeSoulBody(character)
+	local archivable = character.Archivable
+	character.Archivable = true
+	local body = character:Clone()
+	character.Archivable = archivable
+	if not body then
+		return nil
+	end
+
+	body.Name = character.Name .. "Body"
+	for _, item in ipairs(body:GetDescendants()) do
+		-- BillboardGui catches a soul mark another spirit left on this player.
+		if item:IsA("BaseScript") or item:IsA("Tool") or item:IsA("ForceField") or item:IsA("BillboardGui") then
+			item:Destroy()
+		elseif item:IsA("BasePart") then
+			item.Anchored = true
+			item.CanCollide = false
+			item.CanTouch = false
+			item.CanQuery = false
+		elseif item:IsA("Humanoid") then
+			item.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+			item.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+			item.EvaluateStateMachine = false
+		end
+	end
+
+	local shell = Instance.new("Highlight")
+	shell.FillColor = Color3.fromRGB(25, 35, 70)
+	shell.FillTransparency = 0.5
+	shell.OutlineColor = SPIRIT_COLOR
+	shell.OutlineTransparency = 0.35
+	shell.DepthMode = Enum.HighlightDepthMode.Occluded
+	shell.Parent = body
+	body.Parent = generated
+	return body
+end
+
+local function startSoulUnbound(player)
+	local character, humanoid, root = getCharacterParts(player)
+	if not root or humanoid.Health <= 0 or humanoid.SeatPart then
+		return
+	end
+	local now = workspace:GetServerTimeNow()
+	if now < (soulReadyAt[player] or 0) then
+		return
+	end
+	soulReadyAt[player] = now + Config.SOUL_COOLDOWN
+
+	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+	if look.Magnitude < 0.01 then
+		look = Vector3.new(0, 0, -1)
+	end
+	local bodyCFrame = CFrame.lookAt(root.Position, root.Position + look)
+	local body = makeSoulBody(character)
+
+	-- A beam ties the spirit to the spot where the body stands.
+	local anchor = Instance.new("Attachment")
+	anchor.Name = "SoulBodyAnchor"
+	anchor.Position = bodyCFrame.Position
+	anchor.Parent = workspace.Terrain
+
+	local tetherEnd = Instance.new("Attachment")
+	tetherEnd.Name = "SoulTether"
+	tetherEnd.Parent = root
+
+	local tether = Instance.new("Beam")
+	tether.Attachment0 = anchor
+	tether.Attachment1 = tetherEnd
+	tether.Color = ColorSequence.new(SPIRIT_COLOR)
+	tether.LightEmission = 1
+	tether.FaceCamera = true
+	tether.Width0 = 0.5
+	tether.Width1 = 0.15
+	tether.Transparency = NumberSequence.new(0.15, 0.6)
+	tether.Parent = anchor
+
+	local trailTop = Instance.new("Attachment")
+	trailTop.Name = "SoulTrailTop"
+	trailTop.Position = Vector3.new(0, 1.2, 0)
+	trailTop.Parent = root
+	local trailBottom = Instance.new("Attachment")
+	trailBottom.Name = "SoulTrailBottom"
+	trailBottom.Position = Vector3.new(0, -1.2, 0)
+	trailBottom.Parent = root
+
+	local trail = Instance.new("Trail")
+	trail.Attachment0 = trailTop
+	trail.Attachment1 = trailBottom
+	trail.Color = ColorSequence.new(SPIRIT_COLOR)
+	trail.LightEmission = 1
+	trail.Lifetime = 0.35
+	trail.Transparency = NumberSequence.new(0.35, 1)
+	trail.Parent = trailTop
+
+	local glow = Instance.new("Highlight")
+	glow.Name = "SoulGlow"
+	glow.FillColor = SPIRIT_COLOR
+	glow.FillTransparency = 0.7
+	glow.OutlineColor = SPIRIT_COLOR
+	glow.OutlineTransparency = 0
+	glow.DepthMode = Enum.HighlightDepthMode.Occluded
+	glow.Parent = character
+
+	local visuals = { anchor, tetherEnd, trailTop, trailBottom, glow }
+	if body then
+		table.insert(visuals, body)
+	end
+	spirits[player] = {
+		character = character,
+		bodyCFrame = bodyCFrame,
+		startedAt = now,
+		endsAt = now + Config.SOUL_DURATION,
+		marks = {},
+		visuals = visuals,
+	}
+	-- The client reads these for its HUD and to predict its own dash.
+	player:SetAttribute("SoulUnboundReadyAt", soulReadyAt[player])
+	player:SetAttribute("SoulUnboundEndsAt", now + Config.SOUL_DURATION)
+	broadcast("SoulUnbound", { phase = "cast", from = bodyCFrame.Position })
+end
+
+-- Every attack that hurts a player calls this. Only a spirit's hits leave a mark.
+local function markSoulDamage(attacker, victimHumanoid, amount)
+	local spirit = spirits[attacker]
+	if not spirit or amount <= 0 then
+		return
+	end
+	local mark = spirit.marks[victimHumanoid]
+	if not mark then
+		local victimRoot = victimHumanoid.Parent and victimHumanoid.Parent:FindFirstChild("HumanoidRootPart")
+		if not victimRoot then
+			return
+		end
+		local gui = Instance.new("BillboardGui")
+		gui.Name = "SoulMark"
+		gui.Size = UDim2.fromOffset(44, 44)
+		gui.StudsOffsetWorldSpace = Vector3.new(0, 4.2, 0)
+		gui.AlwaysOnTop = true
+		gui.MaxDistance = 200
+
+		local diamond = Instance.new("Frame")
+		diamond.AnchorPoint = Vector2.new(0.5, 0.5)
+		diamond.Position = UDim2.fromScale(0.5, 0.5)
+		diamond.Size = UDim2.fromOffset(26, 26)
+		diamond.Rotation = 45
+		diamond.BackgroundColor3 = MARK_COLOR
+		diamond.BackgroundTransparency = 0.15
+		diamond.Parent = gui
+		local outline = Instance.new("UIStroke")
+		outline.Color = Color3.new(1, 1, 1)
+		outline.Thickness = 2
+		outline.Parent = diamond
+
+		-- The number is the damage the mark will repeat.
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.fromScale(1, 1)
+		label.Font = Enum.Font.GothamBlack
+		label.TextSize = 14
+		label.TextColor3 = Color3.new(1, 1, 1)
+		label.TextStrokeTransparency = 0.4
+		label.Parent = gui
+
+		gui.Parent = victimRoot
+		mark = { damage = 0, gui = gui, diamond = diamond, label = label }
+		spirit.marks[victimHumanoid] = mark
+	end
+	mark.damage += amount
+	mark.label.Text = tostring(math.floor(mark.damage * Config.SOUL_ECHO_FRACTION + 0.5))
+end
+
+-- outcome: "return" snaps back and repeats the marked damage, "death" only repeats
+-- it (League does both when Yone dies), and "cancel" just cleans up.
+local function endSoulUnbound(player, outcome)
+	local spirit = spirits[player]
+	if not spirit then
+		return
+	end
+	spirits[player] = nil
+	player:SetAttribute("SoulUnboundEndsAt", nil)
+	for _, item in ipairs(spirit.visuals) do
+		item:Destroy()
+	end
+
+	local character, humanoid, root = getCharacterParts(player)
+	local alive = character ~= nil and character == spirit.character and humanoid.Health > 0
+	if alive then
+		humanoid.WalkSpeed = walkSpeedFor(player)
+	end
+	if outcome == "return" and alive then
+		local seat = humanoid.SeatPart
+		if seat then
+			local seatWeld = seat:FindFirstChild("SeatWeld")
+			if seatWeld then
+				seatWeld:Destroy()
+			end
+			humanoid.Sit = false
+		end
+		-- The carried idol is welded to the root, so it comes back too.
+		local from = root.Position
+		root.CFrame = spirit.bodyCFrame
+		root.AssemblyLinearVelocity = Vector3.zero
+		broadcast("SoulUnbound", { phase = "return", from = from, to = spirit.bodyCFrame.Position })
+	end
+
+	local hits = {}
+	for victimHumanoid, mark in pairs(spirit.marks) do
+		mark.gui:Destroy()
+		local victimRoot = victimHumanoid.Parent and victimHumanoid.Parent:FindFirstChild("HumanoidRootPart")
+		if outcome ~= "cancel" and victimRoot and victimHumanoid.Health > 0 then
+			victimHumanoid:TakeDamage(mark.damage * Config.SOUL_ECHO_FRACTION)
+			table.insert(hits, victimRoot.Position)
+		end
+	end
+	if #hits > 0 then
+		broadcast("SoulUnbound", { phase = "echo", hits = hits })
+	end
+end
+
+soulRemote.OnServerEvent:Connect(function(player)
+	local spirit = spirits[player]
+	if not spirit then
+		startSoulUnbound(player)
+	elseif workspace:GetServerTimeNow() - spirit.startedAt >= Config.SOUL_RECAST_DELAY then
+		endSoulUnbound(player, "return")
+	end
+end)
+
+RunService.Heartbeat:Connect(function()
+	local now = workspace:GetServerTimeNow()
+	for player, spirit in pairs(spirits) do
+		if now >= spirit.endsAt then
+			endSoulUnbound(player, "return")
+		else
+			local _, humanoid = getCharacterParts(player)
+			if humanoid and humanoid.Health > 0 then
+				humanoid.WalkSpeed = walkSpeedFor(player)
+			end
+			-- Like League, a mark turns white once its echo would finish the target.
+			for victimHumanoid, mark in pairs(spirit.marks) do
+				local lethal = mark.damage * Config.SOUL_ECHO_FRACTION >= victimHumanoid.Health
+				mark.diamond.BackgroundColor3 = lethal and LETHAL_MARK_COLOR or MARK_COLOR
+				mark.label.TextColor3 = lethal and MARK_COLOR or Color3.new(1, 1, 1)
+			end
+		end
+	end
+end)
+
 -- Sword ----------------------------------------------------------------------
 -- A pedestal on the home island hands each player one Sword tool. Click swings it.
 -- The server finds the targets, so the client never says who got hit.
@@ -443,7 +721,9 @@ local function swingSword(player, tool)
 				and flat.Magnitude > 0.01
 				and flat.Unit:Dot(look) >= Config.SWORD_MIN_DOT
 			then
+				local healthBefore = otherHumanoid.Health
 				otherHumanoid:TakeDamage(Config.SWORD_DAMAGE)
+				markSoulDamage(player, otherHumanoid, healthBefore - otherHumanoid.Health)
 				otherRoot.AssemblyLinearVelocity += flat.Unit * Config.SWORD_KNOCKBACK + Vector3.new(0, 15, 0)
 			end
 		end
@@ -539,7 +819,11 @@ local function setupPlayer(player)
 				local root = character:FindFirstChild("HumanoidRootPart")
 				detachIdol(root and root.CFrame or idol.CFrame)
 			end
+			endSoulUnbound(player, "death")
 		end)
+	end)
+	player.CharacterRemoving:Connect(function()
+		endSoulUnbound(player, "cancel")
 	end)
 end
 
@@ -550,6 +834,8 @@ Players.PlayerAdded:Connect(setupPlayer)
 Players.PlayerRemoving:Connect(function(player)
 	lastGrapple[player] = nil
 	lastSwing[player] = nil
+	endSoulUnbound(player, "cancel")
+	soulReadyAt[player] = nil
 	if player == carrier then
 		detachIdol(idol.CFrame)
 	end
@@ -575,6 +861,9 @@ end
 
 local function resetRound()
 	resetting = true
+	for player in pairs(spirits) do
+		endSoulUnbound(player, "cancel")
+	end
 	if carryWeld then
 		carryWeld:Destroy()
 		carryWeld = nil
