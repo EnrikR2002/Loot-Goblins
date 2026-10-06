@@ -1,829 +1,147 @@
+-- Loot Goblins server entry point. Builds the world, wires the modules
+-- together and runs one Heartbeat. Each module's header explains its rules.
+--
+--   Net          remotes + the GameEvent broadcast channel
+--   World        the map (terrain, landmarks, routes) and named references
+--   Loot         the valuables: possession, throwing, banking, respawn
+--   Heat         the shared trouble meter
+--   Threats      Guardian, totems, item trouble, carrier reveal
+--   Combat       sword and grapple
+--   Poltergoblin the spirit ability (was Soul Unbound / Yone's E)
+--   Movement     WalkSpeed from carrying, water and spirit form
+--   Boats        the kinematic boats
+--   Raid         timer, scoring, intermission, world reset
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local StarterPlayer = game:GetService("StarterPlayer")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Debris = game:GetService("Debris")
 
-local sharedFolder = ReplicatedStorage:WaitForChild("LootGoblins")
-local Config = require(sharedFolder:WaitForChild("Config"))
+local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+local Net = require(script.Parent.Net)
+local Util = require(script.Parent.Util)
+local Movement = require(script.Parent.Movement)
+local World = require(script.Parent.World)
+local Boats = require(script.Parent.Boats)
+local Loot = require(script.Parent.Loot)
+local Heat = require(script.Parent.Heat)
+local Poltergoblin = require(script.Parent.Poltergoblin)
+local Combat = require(script.Parent.Combat)
+local Threats = require(script.Parent.Threats)
+local Raid = require(script.Parent.Raid)
 
--- Remotes --------------------------------------------------------------------
-local oldRemotes = ReplicatedStorage:FindFirstChild("LootGoblinsRemotes")
-if oldRemotes then
-	oldRemotes:Destroy()
+Players.RespawnTime = Config.RESPAWN_TIME
+StarterPlayer.CharacterWalkSpeed = Config.WALK_SPEED
+
+local refs = World.build()
+Boats.build(refs)
+Loot.build(refs)
+Poltergoblin.init(refs)
+Threats.build(refs)
+Combat.init(refs)
+Raid.init(refs)
+
+-- Spirits can't bank; the Hoard's ward also pulls them back before they reach it.
+Loot.canBank = function(player)
+	return not Poltergoblin.isSpirit(player)
 end
 
-local remotes = Instance.new("Folder")
-remotes.Name = "LootGoblinsRemotes"
-remotes.Parent = ReplicatedStorage
-
-local dropRemote = Instance.new("RemoteEvent")
-dropRemote.Name = "DropRequest"
-dropRemote.Parent = remotes
-
-local grappleRemote = Instance.new("RemoteEvent")
-grappleRemote.Name = "GrappleRequest"
-grappleRemote.Parent = remotes
-
-local soulRemote = Instance.new("RemoteEvent")
-soulRemote.Name = "SoulUnboundRequest"
-soulRemote.Parent = remotes
-
-local gameEvent = Instance.new("RemoteEvent")
-gameEvent.Name = "GameEvent"
-gameEvent.Parent = remotes
-
--- Helpers --------------------------------------------------------------------
-local generated = workspace:FindFirstChild("LootGoblinsGenerated")
-if generated then
-	generated:Destroy()
-end
-
-generated = Instance.new("Folder")
-generated.Name = "LootGoblinsGenerated"
-generated.Parent = workspace
-
-local function part(name, size, cframe, color, material, parent)
-	local p = Instance.new("Part")
-	p.Name = name
-	p.Size = size
-	p.CFrame = cframe
-	p.Color = color
-	p.Material = material or Enum.Material.SmoothPlastic
-	p.Anchored = true
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Parent = parent or generated
-	return p
-end
-
-local function broadcast(kind, payload)
-	gameEvent:FireAllClients(kind, payload)
-end
-
-local function getCharacterParts(player)
-	local character = player.Character
-	if not character then
-		return nil
-	end
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local root = character:FindFirstChild("HumanoidRootPart")
-	if not humanoid or not root then
-		return nil
-	end
-	return character, humanoid, root
-end
-
--- World ----------------------------------------------------------------------
-local water =
-	part("Water", Vector3.new(900, 2, 900), CFrame.new(0, 2, -140), Color3.fromRGB(48, 148, 196), Enum.Material.Glass)
-water.Transparency = 0.28
-water.CanCollide = true
-
--- Preserve the prototype's named world references without global lint exemptions.
--- selene: allow(unused_variable)
-local homeIsland = part(
-	"HomeIsland",
-	Vector3.new(115, 12, 115),
-	CFrame.new(Config.HOME_CENTER),
-	Color3.fromRGB(73, 173, 87),
-	Enum.Material.Grass
-)
--- selene: allow(unused_variable)
-local treasureIsland = part(
-	"TreasureIsland",
-	Vector3.new(125, 12, 125),
-	CFrame.new(Config.TREASURE_CENTER),
-	Color3.fromRGB(84, 166, 94),
-	Enum.Material.Grass
-)
-
--- Docks
-part("HomeDock", Vector3.new(24, 2, 65), CFrame.new(0, 8, -70), Color3.fromRGB(110, 75, 45), Enum.Material.WoodPlanks)
-part(
-	"TreasureDock",
-	Vector3.new(24, 2, 65),
-	CFrame.new(0, 8, -230),
-	Color3.fromRGB(110, 75, 45),
-	Enum.Material.WoodPlanks
-)
-
-local spawn = Instance.new("SpawnLocation")
-spawn.Name = "HomeSpawn"
-spawn.Size = Vector3.new(14, 1, 14)
-spawn.CFrame = CFrame.new(0, 14.5, 18)
-spawn.Anchored = true
-spawn.Neutral = true
-spawn.Color = Color3.fromRGB(220, 220, 220)
-spawn.Material = Enum.Material.SmoothPlastic
-spawn.Parent = generated
-
-local bankPad =
-	part("BANK", Vector3.new(26, 1, 26), CFrame.new(0, 14.5, -12), Color3.fromRGB(84, 255, 125), Enum.Material.Neon)
-bankPad.Transparency = 0.18
-
--- selene: allow(unused_variable)
-local altar = part(
-	"IdolAltar",
-	Vector3.new(14, 5, 14),
-	CFrame.new(0, 12.5, -300),
-	Color3.fromRGB(60, 60, 68),
-	Enum.Material.Slate
-)
-
--- Boat -----------------------------------------------------------------------
-local boat = Instance.new("Model")
-boat.Name = "ShittyBoat"
-boat.Parent = generated
-
-local hull =
-	part("Hull", Vector3.new(18, 3, 30), Config.BOAT_START, Color3.fromRGB(102, 67, 42), Enum.Material.WoodPlanks, boat)
-boat.PrimaryPart = hull
-
-local driver = Instance.new("VehicleSeat")
-driver.Name = "Driver"
-driver.Size = Vector3.new(4, 1, 4)
-driver.CFrame = Config.BOAT_START * CFrame.new(0, 2.2, 6)
-driver.Anchored = true
-driver.MaxSpeed = Config.BOAT_SPEED
-driver.Parent = boat
-
-for i, x in ipairs({ -4.8, 4.8 }) do
-	local seat = Instance.new("Seat")
-	seat.Name = "Passenger" .. i
-	seat.Size = Vector3.new(4, 1, 4)
-	seat.CFrame = Config.BOAT_START * CFrame.new(x, 2.2, -3)
-	seat.Anchored = true
-	seat.Parent = boat
-end
-
--- selene: allow(unused_variable)
-local mast = part(
-	"Mast",
-	Vector3.new(1, 12, 1),
-	Config.BOAT_START * CFrame.new(0, 7, 0),
-	Color3.fromRGB(90, 58, 35),
-	Enum.Material.Wood,
-	boat
-)
--- selene: allow(unused_variable)
-local flag = part(
-	"Flag",
-	Vector3.new(7, 4, 0.4),
-	Config.BOAT_START * CFrame.new(3.5, 10, 0),
-	Color3.fromRGB(255, 210, 75),
-	Enum.Material.Fabric,
-	boat
-)
-
-local boatCF = Config.BOAT_START
-
--- Idol -----------------------------------------------------------------------
-local idol = Instance.new("Part")
-idol.Name = "GoldenIdol"
-idol.Shape = Enum.PartType.Ball
-idol.Size = Vector3.new(5, 5, 5)
-idol.CFrame = Config.IDOL_SPAWN
-idol.Color = Color3.fromRGB(255, 200, 35)
-idol.Material = Enum.Material.Metal
-idol.Anchored = true
-idol.CanCollide = true
-idol.Parent = generated
-
-local prompt = Instance.new("ProximityPrompt")
-prompt.Name = "GrabPrompt"
-prompt.ActionText = "STEAL / GRAB"
-prompt.ObjectText = "Golden Idol"
-prompt.HoldDuration = 0.05
-prompt.MaxActivationDistance = Config.PICKUP_DISTANCE
-prompt.RequiresLineOfSight = false
-prompt.Parent = idol
-
-local carrier = nil
-local carryWeld = nil
-local roundActive = false
-local resetting = false
-local lastGrapple = {}
-
-local function restoreSpeed(player)
-	local _, humanoid = getCharacterParts(player)
-	if humanoid then
-		humanoid.WalkSpeed = Config.NORMAL_WALK_SPEED
-	end
-end
-
-local function detachIdol(dropCFrame)
-	if carryWeld then
-		carryWeld:Destroy()
-		carryWeld = nil
-	end
-	if carrier then
-		restoreSpeed(carrier)
-	end
-	carrier = nil
-	idol.Massless = false
-	idol.CanCollide = true
-	idol.Anchored = false
-	if dropCFrame then
-		idol.CFrame = dropCFrame
-	end
-	prompt.Enabled = true
-	broadcast("Carrier", {})
-end
-
-local function attachIdol(player)
-	if resetting then
-		return false
-	end
-	local _, humanoid, root = getCharacterParts(player)
-	if not root or humanoid.Health <= 0 then
-		return false
-	end
-
-	if carrier == player then
-		return true
-	end
-	if carrier then
-		restoreSpeed(carrier)
-	end
-	if carryWeld then
-		carryWeld:Destroy()
-	end
-
-	carrier = player
-	idol.Anchored = false
-	idol.CanCollide = false
-	idol.Massless = true
-	idol.CFrame = root.CFrame * CFrame.new(0, 0.2, -3.4)
-
-	carryWeld = Instance.new("WeldConstraint")
-	carryWeld.Name = "CarryWeld"
-	carryWeld.Part0 = root
-	carryWeld.Part1 = idol
-	carryWeld.Parent = idol
-
-	humanoid.WalkSpeed = Config.CARRY_WALK_SPEED
-	prompt.Enabled = false
-
-	if not roundActive then
-		roundActive = true
-		broadcast("Message", { text = "THE GUARDIAN WOKE UP — GET HOME!", duration = 2.5 })
-	end
-	broadcast("Carrier", { userId = player.UserId, name = player.DisplayName })
-	return true
-end
-
-prompt.Triggered:Connect(function(player)
-	if carrier or resetting then
-		return
-	end
-	local _, _, root = getCharacterParts(player)
-	if not root then
-		return
-	end
-	if (root.Position - idol.Position).Magnitude > Config.PICKUP_DISTANCE + 3 then
-		return
-	end
-	attachIdol(player)
-end)
-
-dropRemote.OnServerEvent:Connect(function(player)
-	if player ~= carrier or resetting then
-		return
-	end
-	local _, _, root = getCharacterParts(player)
-	local cf = root and (root.CFrame * CFrame.new(0, 0, -5)) or idol.CFrame
-	detachIdol(cf)
-end)
-
-grappleRemote.OnServerEvent:Connect(function(player, hitPosition, target)
-	if resetting then
-		return
-	end
-	if typeof(hitPosition) ~= "Vector3" then
-		return
-	end
-	local _, _, root = getCharacterParts(player)
-	if not root then
-		return
-	end
-
-	local now = os.clock()
-	if now - (lastGrapple[player] or 0) < Config.GRAPPLE_COOLDOWN then
-		return
-	end
-	lastGrapple[player] = now
-
-	local aim = hitPosition - root.Position
-	if aim.Magnitude > Config.GRAPPLE_RANGE then
-		hitPosition = root.Position + aim.Unit * Config.GRAPPLE_RANGE
-	end
-
-	local targetPos = hitPosition
-	local successfulSteal = false
-
-	-- Clicking the idol or the current carrier transfers possession.
-	if target == idol then
-		if (root.Position - idol.Position).Magnitude <= Config.GRAPPLE_RANGE then
-			targetPos = idol.Position
-			successfulSteal = attachIdol(player)
-		end
-	elseif target and target:IsA("BasePart") then
-		local model = target:FindFirstAncestorOfClass("Model")
-		local targetPlayer = model and Players:GetPlayerFromCharacter(model)
-		if targetPlayer and targetPlayer == carrier and targetPlayer ~= player then
-			local _, _, targetRoot = getCharacterParts(targetPlayer)
-			if targetRoot and (root.Position - targetRoot.Position).Magnitude <= Config.GRAPPLE_RANGE then
-				targetPos = targetRoot.Position
-				successfulSteal = attachIdol(player)
-			end
-		end
-	end
-
-	broadcast("GrappleFX", { from = root.Position + Vector3.new(0, 1.5, 0), to = targetPos })
-	if successfulSteal then
-		broadcast("Message", { text = player.DisplayName .. " GRAPPLED THE IDOL!", duration = 1.4 })
+-- What happened to the loot, told to everyone ----------------------------------------
+Loot.Taken:Connect(function(item, player, fromSpot, fromPlayer)
+	local def = item.def
+	if fromSpot then
+		Heat.add(def.heat)
+		Net.broadcast("Stolen", {
+			name = player.DisplayName,
+			userId = player.UserId,
+			item = item.id,
+			itemName = def.name,
+			value = def.value,
+			position = item.spot.Position,
+		})
+		Net.feed(player.DisplayName .. " stole the " .. def.name .. " (+" .. def.heat .. " heat)", def.color)
+		Threats.onTaken(item, player)
+	elseif fromPlayer then
+		Net.broadcast(
+			"Snatched",
+			{ name = player.DisplayName, userId = player.UserId, from = fromPlayer.DisplayName, itemName = def.name }
+		)
+		Net.feed(
+			player.DisplayName .. " grappled the " .. def.name .. " from " .. fromPlayer.DisplayName .. "!",
+			def.color
+		)
+	else
+		Net.broadcast("Grabbed", { name = player.DisplayName, userId = player.UserId, itemName = def.name })
+		Net.feed(player.DisplayName .. " grabbed the " .. def.name, def.color)
 	end
 end)
 
--- Guardian -------------------------------------------------------------------
-local guardian = Instance.new("Model")
-guardian.Name = "GiantGuardian"
-guardian.Parent = generated
+local LOOSE_TEXT = {
+	throw = "%s threw the %s",
+	sword = "%s smacked the %s out of %s's hands!",
+	guardian = "The Guardian smashed the %s out of %s's hands!",
+	boulder = "%s got flattened and dropped the %s!",
+	death = "%s died and dropped the %s",
+	shatter = "%s's spirit was shattered and dropped the %s",
+	left = "%s left and dropped the %s",
+}
 
-local gRoot = Instance.new("Part")
-gRoot.Name = "HumanoidRootPart"
-gRoot.Size = Vector3.new(5, 7, 4)
-gRoot.CFrame = Config.GUARDIAN_SPAWN
-gRoot.Color = Color3.fromRGB(145, 52, 55)
-gRoot.Material = Enum.Material.Slate
-gRoot.Anchored = false
-gRoot.Parent = guardian
-
-guardian.PrimaryPart = gRoot
-
-local gHead = Instance.new("Part")
-gHead.Name = "Head"
-gHead.Size = Vector3.new(5, 5, 5)
-gHead.CFrame = Config.GUARDIAN_SPAWN * CFrame.new(0, 6, 0)
-gHead.Color = Color3.fromRGB(180, 68, 55)
-gHead.Material = Enum.Material.Slate
-gHead.Anchored = false
-gHead.Parent = guardian
-
-local gWeld = Instance.new("WeldConstraint")
-gWeld.Part0 = gRoot
-gWeld.Part1 = gHead
-gWeld.Parent = gHead
-
-local gHum = Instance.new("Humanoid")
-gHum.Name = "Humanoid"
-gHum.WalkSpeed = Config.GUARDIAN_WALK_SPEED
-gHum.MaxHealth = 500
-gHum.Health = 500
-gHum.Parent = guardian
-
-pcall(function()
-	gRoot:SetNetworkOwner(nil)
+Loot.Loosened:Connect(function(item, reason, byPlayer, fromPlayer)
+	local def = item.def
+	local holder = fromPlayer and fromPlayer.DisplayName or "Someone"
+	local text
+	if reason == "throw" then
+		text = string.format(LOOSE_TEXT.throw, holder, def.name)
+	elseif reason == "sword" then
+		text = string.format(LOOSE_TEXT.sword, byPlayer and byPlayer.DisplayName or "Someone", def.name, holder)
+	elseif reason == "guardian" then
+		text = string.format(LOOSE_TEXT.guardian, def.name, holder)
+	else
+		text = string.format(LOOSE_TEXT[reason] or "%s dropped the %s", holder, def.name)
+	end
+	Net.feed(text, def.color)
+	Net.broadcast("LootLoose", { item = item.id, position = item.core.Position, reason = reason })
 end)
-local lastGuardianHit = 0
 
-local function resetGuardian()
-	gHum.Health = gHum.MaxHealth
-	guardian:PivotTo(Config.GUARDIAN_SPAWN)
-	gRoot.AssemblyLinearVelocity = Vector3.zero
-	gRoot.AssemblyAngularVelocity = Vector3.zero
-end
-
--- Soul Unbound (Yone's E) ----------------------------------------------------
--- E dashes your spirit out of your body. For a few seconds the spirit runs faster
--- and marks every player it hurts. Then it snaps back to the body (or press E again),
--- and each mark repeats part of the damage. The server owns the timer, the body,
--- the marks and the return. The client only plays its own dash.
-local SPIRIT_COLOR = Color3.fromRGB(110, 205, 255)
-local MARK_COLOR = Color3.fromRGB(255, 70, 150)
-local LETHAL_MARK_COLOR = Color3.fromRGB(255, 255, 255)
-local spirits = {}
-local soulReadyAt = {}
-
-local function walkSpeedFor(player)
-	local speed = player == carrier and Config.CARRY_WALK_SPEED or Config.NORMAL_WALK_SPEED
-	local spirit = spirits[player]
-	if spirit then
-		-- The bonus grows the longer the spirit is out, like League.
-		local progress = math.clamp((workspace:GetServerTimeNow() - spirit.startedAt) / Config.SOUL_DURATION, 0, 1)
-		local bonus = Config.SOUL_SPEED_BONUS_START
-			+ (Config.SOUL_SPEED_BONUS_END - Config.SOUL_SPEED_BONUS_START) * progress
-		-- Half-stud steps keep WalkSpeed from replicating every frame.
-		speed = math.floor(speed * (1 + bonus) * 2 + 0.5) / 2
-	end
-	return speed
-end
-
--- The body left behind is a frozen, darkened copy of the character.
-local function makeSoulBody(character)
-	local archivable = character.Archivable
-	character.Archivable = true
-	local body = character:Clone()
-	character.Archivable = archivable
-	if not body then
-		return nil
-	end
-
-	body.Name = character.Name .. "Body"
-	for _, item in ipairs(body:GetDescendants()) do
-		-- BillboardGui catches a soul mark another spirit left on this player.
-		if item:IsA("BaseScript") or item:IsA("Tool") or item:IsA("ForceField") or item:IsA("BillboardGui") then
-			item:Destroy()
-		elseif item:IsA("BasePart") then
-			item.Anchored = true
-			item.CanCollide = false
-			item.CanTouch = false
-			item.CanQuery = false
-		elseif item:IsA("Humanoid") then
-			item.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-			item.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
-			item.EvaluateStateMachine = false
-		end
-	end
-
-	local shell = Instance.new("Highlight")
-	shell.FillColor = Color3.fromRGB(25, 35, 70)
-	shell.FillTransparency = 0.5
-	shell.OutlineColor = SPIRIT_COLOR
-	shell.OutlineTransparency = 0.35
-	shell.DepthMode = Enum.HighlightDepthMode.Occluded
-	shell.Parent = body
-	body.Parent = generated
-	return body
-end
-
-local function startSoulUnbound(player)
-	local character, humanoid, root = getCharacterParts(player)
-	if not root or humanoid.Health <= 0 or humanoid.SeatPart then
-		return
-	end
-	local now = workspace:GetServerTimeNow()
-	if now < (soulReadyAt[player] or 0) then
-		return
-	end
-	soulReadyAt[player] = now + Config.SOUL_COOLDOWN
-
-	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
-	if look.Magnitude < 0.01 then
-		look = Vector3.new(0, 0, -1)
-	end
-	local bodyCFrame = CFrame.lookAt(root.Position, root.Position + look)
-	local body = makeSoulBody(character)
-
-	-- A beam ties the spirit to the spot where the body stands.
-	local anchor = Instance.new("Attachment")
-	anchor.Name = "SoulBodyAnchor"
-	anchor.Position = bodyCFrame.Position
-	anchor.Parent = workspace.Terrain
-
-	local tetherEnd = Instance.new("Attachment")
-	tetherEnd.Name = "SoulTether"
-	tetherEnd.Parent = root
-
-	local tether = Instance.new("Beam")
-	tether.Attachment0 = anchor
-	tether.Attachment1 = tetherEnd
-	tether.Color = ColorSequence.new(SPIRIT_COLOR)
-	tether.LightEmission = 1
-	tether.FaceCamera = true
-	tether.Width0 = 0.5
-	tether.Width1 = 0.15
-	tether.Transparency = NumberSequence.new(0.15, 0.6)
-	tether.Parent = anchor
-
-	local trailTop = Instance.new("Attachment")
-	trailTop.Name = "SoulTrailTop"
-	trailTop.Position = Vector3.new(0, 1.2, 0)
-	trailTop.Parent = root
-	local trailBottom = Instance.new("Attachment")
-	trailBottom.Name = "SoulTrailBottom"
-	trailBottom.Position = Vector3.new(0, -1.2, 0)
-	trailBottom.Parent = root
-
-	local trail = Instance.new("Trail")
-	trail.Attachment0 = trailTop
-	trail.Attachment1 = trailBottom
-	trail.Color = ColorSequence.new(SPIRIT_COLOR)
-	trail.LightEmission = 1
-	trail.Lifetime = 0.35
-	trail.Transparency = NumberSequence.new(0.35, 1)
-	trail.Parent = trailTop
-
-	local glow = Instance.new("Highlight")
-	glow.Name = "SoulGlow"
-	glow.FillColor = SPIRIT_COLOR
-	glow.FillTransparency = 0.7
-	glow.OutlineColor = SPIRIT_COLOR
-	glow.OutlineTransparency = 0
-	glow.DepthMode = Enum.HighlightDepthMode.Occluded
-	glow.Parent = character
-
-	local visuals = { anchor, tetherEnd, trailTop, trailBottom, glow }
-	if body then
-		table.insert(visuals, body)
-	end
-	spirits[player] = {
-		character = character,
-		bodyCFrame = bodyCFrame,
-		startedAt = now,
-		endsAt = now + Config.SOUL_DURATION,
-		marks = {},
-		visuals = visuals,
-	}
-	-- The client reads these for its HUD and to predict its own dash.
-	player:SetAttribute("SoulUnboundReadyAt", soulReadyAt[player])
-	player:SetAttribute("SoulUnboundEndsAt", now + Config.SOUL_DURATION)
-	broadcast("SoulUnbound", { phase = "cast", from = bodyCFrame.Position })
-end
-
--- Every attack that hurts a player calls this. Only a spirit's hits leave a mark.
-local function markSoulDamage(attacker, victimHumanoid, amount)
-	local spirit = spirits[attacker]
-	if not spirit or amount <= 0 then
-		return
-	end
-	local mark = spirit.marks[victimHumanoid]
-	if not mark then
-		local victimRoot = victimHumanoid.Parent and victimHumanoid.Parent:FindFirstChild("HumanoidRootPart")
-		if not victimRoot then
-			return
-		end
-		local gui = Instance.new("BillboardGui")
-		gui.Name = "SoulMark"
-		gui.Size = UDim2.fromOffset(44, 44)
-		gui.StudsOffsetWorldSpace = Vector3.new(0, 4.2, 0)
-		gui.AlwaysOnTop = true
-		gui.MaxDistance = 200
-
-		local diamond = Instance.new("Frame")
-		diamond.AnchorPoint = Vector2.new(0.5, 0.5)
-		diamond.Position = UDim2.fromScale(0.5, 0.5)
-		diamond.Size = UDim2.fromOffset(26, 26)
-		diamond.Rotation = 45
-		diamond.BackgroundColor3 = MARK_COLOR
-		diamond.BackgroundTransparency = 0.15
-		diamond.Parent = gui
-		local outline = Instance.new("UIStroke")
-		outline.Color = Color3.new(1, 1, 1)
-		outline.Thickness = 2
-		outline.Parent = diamond
-
-		-- The number is the damage the mark will repeat.
-		local label = Instance.new("TextLabel")
-		label.BackgroundTransparency = 1
-		label.Size = UDim2.fromScale(1, 1)
-		label.Font = Enum.Font.GothamBlack
-		label.TextSize = 14
-		label.TextColor3 = Color3.new(1, 1, 1)
-		label.TextStrokeTransparency = 0.4
-		label.Parent = gui
-
-		gui.Parent = victimRoot
-		mark = { damage = 0, gui = gui, diamond = diamond, label = label }
-		spirit.marks[victimHumanoid] = mark
-	end
-	mark.damage += amount
-	mark.label.Text = tostring(math.floor(mark.damage * Config.SOUL_ECHO_FRACTION + 0.5))
-end
-
--- outcome: "return" snaps back and repeats the marked damage, "death" only repeats
--- it (League does both when Yone dies), and "cancel" just cleans up.
-local function endSoulUnbound(player, outcome)
-	local spirit = spirits[player]
-	if not spirit then
-		return
-	end
-	spirits[player] = nil
-	player:SetAttribute("SoulUnboundEndsAt", nil)
-	for _, item in ipairs(spirit.visuals) do
-		item:Destroy()
-	end
-
-	local character, humanoid, root = getCharacterParts(player)
-	local alive = character ~= nil and character == spirit.character and humanoid.Health > 0
-	if alive then
-		humanoid.WalkSpeed = walkSpeedFor(player)
-	end
-	if outcome == "return" and alive then
-		local seat = humanoid.SeatPart
-		if seat then
-			local seatWeld = seat:FindFirstChild("SeatWeld")
-			if seatWeld then
-				seatWeld:Destroy()
-			end
-			humanoid.Sit = false
-		end
-		-- The carried idol is welded to the root, so it comes back too.
-		local from = root.Position
-		root.CFrame = spirit.bodyCFrame
-		root.AssemblyLinearVelocity = Vector3.zero
-		broadcast("SoulUnbound", { phase = "return", from = from, to = spirit.bodyCFrame.Position })
-	end
-
-	local hits = {}
-	for victimHumanoid, mark in pairs(spirit.marks) do
-		mark.gui:Destroy()
-		local victimRoot = victimHumanoid.Parent and victimHumanoid.Parent:FindFirstChild("HumanoidRootPart")
-		if outcome ~= "cancel" and victimRoot and victimHumanoid.Health > 0 then
-			victimHumanoid:TakeDamage(mark.damage * Config.SOUL_ECHO_FRACTION)
-			table.insert(hits, victimRoot.Position)
-		end
-	end
-	if #hits > 0 then
-		broadcast("SoulUnbound", { phase = "echo", hits = hits })
-	end
-end
-
-soulRemote.OnServerEvent:Connect(function(player)
-	local spirit = spirits[player]
-	if not spirit then
-		startSoulUnbound(player)
-	elseif workspace:GetServerTimeNow() - spirit.startedAt >= Config.SOUL_RECAST_DELAY then
-		endSoulUnbound(player, "return")
+Loot.Returned:Connect(function(item, reason)
+	local def = item.def
+	if reason == "respawn" then
+		Net.feed("The " .. def.name .. " is back at " .. def.place .. ".", def.color)
+	else
+		Net.feed("The " .. def.name .. " vanished back to " .. def.place .. ".", def.color)
 	end
 end)
 
-RunService.Heartbeat:Connect(function()
-	local now = workspace:GetServerTimeNow()
-	for player, spirit in pairs(spirits) do
-		if now >= spirit.endsAt then
-			endSoulUnbound(player, "return")
-		else
-			local _, humanoid = getCharacterParts(player)
-			if humanoid and humanoid.Health > 0 then
-				humanoid.WalkSpeed = walkSpeedFor(player)
-			end
-			-- Like League, a mark turns white once its echo would finish the target.
-			for victimHumanoid, mark in pairs(spirit.marks) do
-				local lethal = mark.damage * Config.SOUL_ECHO_FRACTION >= victimHumanoid.Health
-				mark.diamond.BackgroundColor3 = lethal and LETHAL_MARK_COLOR or MARK_COLOR
-				mark.label.TextColor3 = lethal and MARK_COLOR or Color3.new(1, 1, 1)
-			end
-		end
-	end
+Loot.Banked:Connect(function(item, player)
+	Raid.onBanked(item, player)
+	Net.feed(
+		player.DisplayName .. " banked the " .. item.def.name .. " (+" .. item.def.value .. " gold)",
+		item.def.color
+	)
 end)
 
--- Sword ----------------------------------------------------------------------
--- A pedestal on the home island hands each player one Sword tool. Click swings it.
--- The server finds the targets, so the client never says who got hit.
-local GUARD_OFFSET = CFrame.new(0, 0, -1)
-local lastSwing = {}
-
-local function makeSwordParts(parent)
-	local handle = Instance.new("Part")
-	handle.Name = "Handle"
-	handle.Size = Vector3.new(0.5, 0.5, 4.5)
-	handle.Color = Color3.fromRGB(205, 210, 220)
-	handle.Material = Enum.Material.Metal
-	handle.Parent = parent
-
-	local guard = Instance.new("Part")
-	guard.Name = "Guard"
-	guard.Size = Vector3.new(2, 0.5, 0.5)
-	guard.Color = Color3.fromRGB(255, 200, 35)
-	guard.Material = Enum.Material.Metal
-	guard.Parent = parent
-	return handle, guard
-end
-
-local function swingSword(player, tool)
-	local _, humanoid, root = getCharacterParts(player)
-	if not root or humanoid.Health <= 0 then
-		return
-	end
-
-	local now = os.clock()
-	if now - (lastSwing[player] or 0) < Config.SWORD_COOLDOWN then
-		return
-	end
-	lastSwing[player] = now
-
-	-- Roblox's default animate script plays a slash when it sees this value.
-	local slash = Instance.new("StringValue")
-	slash.Name = "toolanim"
-	slash.Value = "Slash"
-	slash.Parent = tool
-	Debris:AddItem(slash, 1)
-
-	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
-	for _, other in ipairs(Players:GetPlayers()) do
-		local _, otherHumanoid, otherRoot = getCharacterParts(other)
-		if other ~= player and otherRoot and otherHumanoid.Health > 0 then
-			local offset = otherRoot.Position - root.Position
-			local flat = Vector3.new(offset.X, 0, offset.Z)
-			if
-				offset.Magnitude <= Config.SWORD_RANGE
-				and flat.Magnitude > 0.01
-				and flat.Unit:Dot(look) >= Config.SWORD_MIN_DOT
-			then
-				local healthBefore = otherHumanoid.Health
-				otherHumanoid:TakeDamage(Config.SWORD_DAMAGE)
-				markSoulDamage(player, otherHumanoid, healthBefore - otherHumanoid.Health)
-				otherRoot.AssemblyLinearVelocity += flat.Unit * Config.SWORD_KNOCKBACK + Vector3.new(0, 15, 0)
-			end
-		end
-	end
-end
-
-local function newSwordTool()
-	local tool = Instance.new("Tool")
-	tool.Name = "Sword"
-	tool.ToolTip = "Click to swing"
-	tool.CanBeDropped = false
-	tool.RequiresHandle = true
-	-- Same grip as Roblox's classic sword: the blade points forward from the fist.
-	tool.GripPos = Vector3.new(0, 0, -1.5)
-	tool.GripForward = Vector3.new(-1, 0, 0)
-	tool.GripRight = Vector3.new(0, 1, 0)
-	tool.GripUp = Vector3.new(0, 0, 1)
-
-	local handle, guard = makeSwordParts(tool)
-	handle.CanCollide = false
-	guard.CanCollide = false
-	guard.Massless = true
-	guard.CFrame = handle.CFrame * GUARD_OFFSET
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = handle
-	weld.Part1 = guard
-	weld.Parent = guard
-
-	tool.Activated:Connect(function()
-		local owner = Players:GetPlayerFromCharacter(tool.Parent)
-		if owner then
-			swingSword(owner, tool)
-		end
+-- Players ----------------------------------------------------------------------------
+local function onCharacter(player, character)
+	local humanoid = character:WaitForChild("Humanoid")
+	humanoid.WalkSpeed = Config.WALK_SPEED
+	Combat.giveSword(player, character)
+	humanoid.Died:Connect(function()
+		Loot.dropFor(player, "death")
+		Poltergoblin.finish(player, "death")
 	end)
-	return tool
 end
 
-local swordPedestal =
-	part("SwordPedestal", Vector3.new(5, 2, 5), Config.SWORD_PEDESTAL, Color3.fromRGB(60, 60, 68), Enum.Material.Slate)
-
--- The display sword is just for show; the real one is built per player in newSwordTool.
-local swordDisplay = Instance.new("Model")
-swordDisplay.Name = "SwordPickup"
-swordDisplay.Parent = generated
-local displayHandle, displayGuard = makeSwordParts(swordDisplay)
-displayHandle.Anchored = true
-displayHandle.CanCollide = false
-displayHandle.CFrame = swordPedestal.CFrame * CFrame.new(0, 4, 0) * CFrame.Angles(math.rad(-90), 0, 0)
-displayGuard.Anchored = true
-displayGuard.CanCollide = false
-displayGuard.CFrame = displayHandle.CFrame * GUARD_OFFSET
-
-local swordPrompt = Instance.new("ProximityPrompt")
-swordPrompt.Name = "GrabPrompt"
-swordPrompt.ActionText = "GRAB"
-swordPrompt.ObjectText = "Sword"
-swordPrompt.HoldDuration = 0.05
-swordPrompt.MaxActivationDistance = Config.PICKUP_DISTANCE
-swordPrompt.RequiresLineOfSight = false
-swordPrompt.Parent = displayHandle
-
-swordPrompt.Triggered:Connect(function(player)
-	local character, humanoid, root = getCharacterParts(player)
-	if not root or humanoid.Health <= 0 then
-		return
-	end
-	if (root.Position - displayHandle.Position).Magnitude > Config.PICKUP_DISTANCE + 3 then
-		return
-	end
-	local backpack = player:FindFirstChildOfClass("Backpack")
-	if not backpack or backpack:FindFirstChild("Sword") or character:FindFirstChild("Sword") then
-		return
-	end
-	local tool = newSwordTool()
-	tool.Parent = backpack
-	humanoid:EquipTool(tool)
-end)
-
--- Stats ----------------------------------------------------------------------
 local function setupPlayer(player)
-	local leaderstats = player:FindFirstChild("leaderstats") or Instance.new("Folder")
-	leaderstats.Name = "leaderstats"
-	leaderstats.Parent = player
-	local banks = leaderstats:FindFirstChild("Banks") or Instance.new("IntValue")
-	banks.Name = "Banks"
-	banks.Parent = leaderstats
-
+	Raid.setupPlayer(player)
 	player.CharacterAdded:Connect(function(character)
-		local humanoid = character:WaitForChild("Humanoid")
-		humanoid.WalkSpeed = Config.NORMAL_WALK_SPEED
-		humanoid.Died:Connect(function()
-			if player == carrier then
-				local root = character:FindFirstChild("HumanoidRootPart")
-				detachIdol(root and root.CFrame or idol.CFrame)
-			end
-			endSoulUnbound(player, "death")
-		end)
+		onCharacter(player, character)
 	end)
+	-- The world takes a moment to build; someone may have spawned already.
+	if player.Character then
+		task.spawn(onCharacter, player, player.Character)
+	end
 	player.CharacterRemoving:Connect(function()
-		endSoulUnbound(player, "cancel")
+		Loot.dropFor(player, "death")
+		Poltergoblin.finish(player, "cancel")
 	end)
 end
 
@@ -832,130 +150,38 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 Players.PlayerAdded:Connect(setupPlayer)
 Players.PlayerRemoving:Connect(function(player)
-	lastGrapple[player] = nil
-	lastSwing[player] = nil
-	endSoulUnbound(player, "cancel")
-	soulReadyAt[player] = nil
-	if player == carrier then
-		detachIdol(idol.CFrame)
-	end
+	Loot.forget(player)
+	Poltergoblin.forget(player)
+	Movement.forget(player)
+	Combat.forget(player)
 end)
 
--- Reset / banking -------------------------------------------------------------
-local function teleportHome()
-	local offsets = {
-		Vector3.new(-8, 4, 20),
-		Vector3.new(0, 4, 22),
-		Vector3.new(8, 4, 20),
-		Vector3.new(-4, 4, 28),
-		Vector3.new(4, 4, 28),
-	}
-	for i, player in ipairs(Players:GetPlayers()) do
-		local _, humanoid, root = getCharacterParts(player)
-		if root and humanoid and humanoid.Health > 0 then
-			root.CFrame = CFrame.new(Config.HOME_CENTER + offsets[((i - 1) % #offsets) + 1])
-			humanoid.WalkSpeed = Config.NORMAL_WALK_SPEED
+Net.Throw.OnServerEvent:Connect(function(player)
+	Loot.throw(player)
+end)
+Net.Poltergoblin.OnServerEvent:Connect(function(player)
+	Poltergoblin.request(player)
+end)
+
+-- Main loop --------------------------------------------------------------------------
+local function carriersOutsideWard()
+	local count = 0
+	for _, carrier in ipairs(Loot.carriers()) do
+		if Util.flatDistance(carrier.root.Position, refs.hoard.position) > Config.WARD_RADIUS then
+			count += 1
 		end
 	end
+	return count
 end
 
-local function resetRound()
-	resetting = true
-	for player in pairs(spirits) do
-		endSoulUnbound(player, "cancel")
-	end
-	if carryWeld then
-		carryWeld:Destroy()
-		carryWeld = nil
-	end
-	if carrier then
-		restoreSpeed(carrier)
-	end
-	carrier = nil
-	roundActive = false
-	idol.Anchored = true
-	idol.CanCollide = true
-	idol.Massless = false
-	idol.CFrame = Config.IDOL_SPAWN
-	prompt.Enabled = true
-	boatCF = Config.BOAT_START
-	boat:PivotTo(boatCF)
-	resetGuardian()
-	teleportHome()
-	resetting = false
-	broadcast("Message", { text = "NEW ROUND — STEAL THE IDOL", duration = 2 })
-end
-
-local function bank(player)
-	if resetting or not roundActive or player ~= carrier then
-		return
-	end
-	resetting = true
-	local leaderstats = player:FindFirstChild("leaderstats")
-	local banks = leaderstats and leaderstats:FindFirstChild("Banks")
-	if banks then
-		banks.Value += 1
-	end
-	broadcast("Banked", { name = player.DisplayName, userId = player.UserId })
-	task.delay(Config.ROUND_RESET_DELAY, resetRound)
-end
-
--- Main loop ------------------------------------------------------------------
 RunService.Heartbeat:Connect(function(dt)
-	-- Kinematic prototype boat. Intentionally simple/ugly: we are testing the loop.
-	local throttle = driver.ThrottleFloat
-	local steer = driver.SteerFloat
-	if driver.Occupant then
-		local rotation = CFrame.Angles(0, -steer * Config.BOAT_TURN_RATE * dt, 0)
-		boatCF = boatCF * rotation
-		local forward = boatCF.LookVector
-		local delta = forward * throttle * Config.BOAT_SPEED * dt
-		boatCF = CFrame.new(boatCF.Position + Vector3.new(delta.X, 0, delta.Z)) * boatCF.Rotation
-		boat:PivotTo(boatCF)
+	Boats.tick(dt)
+	if Raid.isActive() then
+		Loot.tick()
+		Heat.tick(dt, carriersOutsideWard())
+		Threats.tick(dt)
 	end
-
-	if resetting then
-		return
-	end
-
-	-- Bank check follows the current carrier.
-	if carrier then
-		local _, _, root = getCharacterParts(carrier)
-		if root and (root.Position - bankPad.Position).Magnitude <= Config.BANK_RADIUS then
-			bank(carrier)
-			return
-		end
-	end
-
-	-- Guardian pressure follows possession. If loose, it moves toward the idol.
-	if roundActive then
-		local targetPos = idol.Position
-		if carrier then
-			local _, humanoid, root = getCharacterParts(carrier)
-			if root and humanoid and humanoid.Health > 0 then
-				targetPos = root.Position
-			end
-		end
-		gHum:MoveTo(targetPos)
-
-		if carrier and (gRoot.Position - targetPos).Magnitude <= Config.GUARDIAN_HIT_RANGE then
-			local now = os.clock()
-			if now - lastGuardianHit >= Config.GUARDIAN_HIT_COOLDOWN then
-				lastGuardianHit = now
-				local victim = carrier
-				local _, humanoid, root = getCharacterParts(victim)
-				if humanoid and root then
-					humanoid:TakeDamage(Config.GUARDIAN_DAMAGE)
-					local away = root.Position - gRoot.Position
-					if away.Magnitude > 0.1 then
-						root.AssemblyLinearVelocity += away.Unit * 42 + Vector3.new(0, 28, 0)
-					end
-					detachIdol(root.CFrame * CFrame.new(0, 0, -5))
-					broadcast("Message", { text = "GUARDIAN SMACKED THE IDOL LOOSE!", duration = 1.6 })
-				end
-			end
-		end
-	end
+	Poltergoblin.tick()
+	Movement.tick()
+	Raid.tick()
 end)
-
-resetRound()
