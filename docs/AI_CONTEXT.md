@@ -9,7 +9,7 @@ Master context for a Claude Code or Codex session that opens this repository wit
 | Where | What it contains |
 | --- | --- |
 | Shared `main` (as of `8f9a888`, 2026-10-04) | Test 001 prototype, the sword (PR #3), Soul Unbound (PR #5), team tooling. |
-| Unmerged: PR #6, branch `claude/quirky-shannon-23gez5` | **Vertical slice foundation**: raids, four loot pieces, Heat, Guardian/totems/trouble, Poltergoblin (Soul Unbound reworked), new archipelago map, HUD, module split. Report: `docs/reports/2026-10-06-vertical-slice-foundation.md`. Waiting for a Studio playtest and approval. |
+| Unmerged: branch `big-change-ninety-prompt` | **Vertical slice foundation**: raids, four loot pieces, Heat, Guardian/totems/trouble, Poltergoblin (Soul Unbound reworked), new archipelago map, HUD, module split. Report: `docs/reports/2026-10-06-vertical-slice-foundation.md`. Waiting for a Studio playtest and approval. |
 
 Check the real state before you trust this table: `git log --oneline origin/main` and the open PRs. Once the vertical slice merges, update this table.
 

@@ -5,8 +5,8 @@
 | Date | 2026-10-06 |
 | Request | Ninety's "first substantial playable foundation" prompt, run by Enrik |
 | Agent | Claude Code (cloud session, Linux container, no Roblox Studio) |
-| Branch | `claude/quirky-shannon-23gez5`, from `origin/main` at `8f9a888` |
-| Pull request | [#6 Build the vertical slice](https://github.com/EnrikR2002/Loot-Goblins/pull/6) |
+| Branch | `big-change-ninety-prompt` (name chosen by Enrik), from `origin/main` at `8f9a888` |
+| Pull request | Opened from `big-change-ninety-prompt` (it replaces PR #6, which was closed when the branch was renamed) |
 | Merge status | **Not merged.** Waiting for a Studio playtest and explicit approval. |
 
 ## 1. Summary
@@ -171,7 +171,7 @@ Everything that needs the real engine, the network or people:
 - Players standing in the Hoard ring bank anything they grab instantly, including a thrown pass. This is intended, but watch whether Hoard camping is too strong.
 - `workspace.StreamingEnabled = false` is carried over from the previous context and was not re-checked. The client assumes the whole map is replicated.
 - Abilities have no touch or gamepad controls.
-- Branch name: the cloud session was pinned to `claude/quirky-shannon-23gez5` rather than `AGENTS.md`'s `prototype/<task>` style.
+- Branch name: `big-change-ninety-prompt` was chosen by Enrik. It doesn't follow `AGENTS.md`'s `prototype/<task>` style.
 - `AGENTS.md` still describes the build as "Test 001 asks whether stealing one valuable object…". It's the rules file, so I didn't edit it. A human may want to update that line now the loop has grown.
 
 ## 10. Human playtest checklist
@@ -216,12 +216,12 @@ Everything that needs the real engine, the network or people:
 
 ## 12. Branch, commits, PR, status
 
-- Branch `claude/quirky-shannon-23gez5`, created by the session at `origin/main` `8f9a888`. The working tree was clean at the start.
+- The work started on the cloud session's branch `claude/quirky-shannon-23gez5` at `origin/main` `8f9a888`, with a clean working tree. At Enrik's request it was renamed to `big-change-ninety-prompt`. PR #6 (old branch name) was closed and replaced by a PR from the new branch with the same commits.
 - Commits:
   - `2cd2e67`: the gameplay code.
   - `322da9a`: the docs.
-  - A follow-up commit adds the PR number to the docs.
+  - Follow-up commits record the branch name and PR number in the docs.
 
   Pushes are normal: no force-push, no history rewrite.
-- PR #6 targets `main`.
+- The PR targets `main`.
 - **Not merged.** Per `AGENTS.md`, merging waits for a human playtest and explicit approval.
