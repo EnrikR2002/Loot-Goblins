@@ -6,7 +6,19 @@ An intentionally ugly Roblox prototype. It grew out of Test 001 (one idol, one b
 
 The question it answers: **is stealing valuable loot, fighting over it while the world hunts you, and getting it home fun enough that people want another raid?**
 
-## Get set up
+## Play it (no terminal needed)
+
+1. Open the Loot Goblins folder on your computer.
+2. Double-click **Play Loot Goblins** (the file ending in `.bat`).
+3. Wait. It gets the newest version, builds the game, and opens Roblox Studio. Close any other Studio window first.
+4. In Studio, press the blue **Play** button at the top. The sky stays blank until you press it.
+5. Press `H` in the game to read how to play.
+
+To test with friends on one computer: **Test tab > Server & Clients > 3 players > blue Play**.
+
+To try someone's new changes, ask your AI helper: **"Update me to the newest version of [the branch or PR name] and open the game."** The AI does the Git work and tells you what to try.
+
+## Get set up (once per computer)
 
 Ethan, Ninety, and Enrik use [one shared repository](https://github.com/EnrikR2002/Loot-Goblins), [AGENTS.md](AGENTS.md), and pinned tools.
 
@@ -20,7 +32,7 @@ These are the Windows helpers the AI operates:
 ./scripts/check.ps1
 ```
 
-The development place in `build/` is generated from this repository. Connect the official Rojo plugin to `localhost:34872` and keep the dev process running. The blank sky in Edit mode is expected: the server creates the whole world (terrain included) when Play starts. Permanent changes belong in shared source/content.
+The development place in `build/` is generated from this repository. Players only need `Play Loot Goblins.bat`. The AI uses `dev.ps1` and the official Rojo plugin (`localhost:34872`) when editing code. The blank sky in Edit mode is expected: the server creates the whole world (terrain included) when Play starts. Permanent changes belong in shared source/content.
 
 ## Daily workflow
 

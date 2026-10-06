@@ -143,6 +143,7 @@ Integration points new code must respect:
 | `docs/reports/2026-10-06-map.png` | Top-down render of the generated map (not a screenshot) |
 | `docs/WORKSTATION.md` | Setup, daily commands, Studio verification, troubleshooting |
 | `docs/DESIGN_THESIS.txt` | Long-term vision (not current scope) |
+| `Play Loot Goblins.bat`, `scripts/play.ps1` | One-click play for Ethan and Ninety: update, build, open Studio. No terminal, no Rojo |
 | `scripts/bootstrap.ps1`, `dev.ps1`, `check.ps1`, `common.ps1` | Tool install, Rojo build/serve, checks |
 | `.github/workflows/check.yml` | CI: `bootstrap.ps1 -Headless`, then `check.ps1` on Windows |
 | `rokit.toml` | Pinned Rojo 7.7.1, StyLua 2.5.2, Selene 0.32.0 (do not casually bump) |
@@ -151,6 +152,7 @@ Integration points new code must respect:
 
 `AGENTS.md` is the authority. In short: sync `main`, then work on one short-lived task branch. Run checks and Studio tests, open a PR, and **never merge without explicit human approval**. PR descriptions follow `.github/pull_request_template.md`. They use plain, short sentences and an honest **Not tested** list.
 
+- **Ethan and Ninety do not use terminals.** They double-click `Play Loot Goblins.bat`. When one asks to try new changes, you run the Git steps and `./scripts/play.ps1` for them and explain how to play in plain words. See the "Teammates who do not use terminals" section of `AGENTS.md`. Rojo is only needed when you edit code.
 - `./scripts/check.ps1 -Fix` runs StyLua (with AST verification), Selene, a Rojo build, and `git diff --check`. CI runs the same script. On Linux, the same pinned binaries can be run directly (`stylua --check src`, `selene src`, `rojo build`).
 - `check.ps1` and `dev.ps1` both rebuild `build/LootGoblinsTest001.rbxlx`, which is usually the place open in Studio. It is a disposable output. If a human might have saved Studio-only work into it, build to a temp path first and compare hashes.
 - CI can fail in **Install pinned project tools** with a rokit `403 Forbidden` from `api.github.com`. That is an unauthenticated rate limit, not your code. Read the log before changing anything; a rerun or new push retries it.

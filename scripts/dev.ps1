@@ -7,8 +7,7 @@ try {
     $place = Join-Path $ProjectRoot 'build\LootGoblinsTest001.rbxlx'
     Invoke-Checked (Join-Path $RokitBin 'rojo.exe') @('build', 'default.project.json', '--output', $place)
     if ($OpenStudio) {
-        $studio = Get-ChildItem -LiteralPath (Join-Path $env:LOCALAPPDATA 'Roblox\Versions') -Filter RobloxStudioBeta.exe -Recurse -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        $studio = Get-StudioExe
         if (!$studio) { throw 'Roblox Studio missing. Install/launch Studio, then rerun bootstrap.' }
         Start-StudioOnce $studio.FullName $place | Out-Null
     }
