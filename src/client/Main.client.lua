@@ -1,162 +1,59 @@
+-- Loot Goblins client: input, the bits of movement the client owns (the
+-- Poltergoblin dash, ziplines, launch pads), and turning server events into
+-- HUD messages and effects. The server decides everything that matters.
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local Debris = game:GetService("Debris")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
-local ProximityPromptService = game:GetService("ProximityPromptService")
+local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+local Hud = require(script.Parent.Hud)
+local Effects = require(script.Parent.Effects)
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
-local dropRemote = remotes:WaitForChild("DropRequest")
+local throwRemote = remotes:WaitForChild("ThrowRequest")
 local grappleRemote = remotes:WaitForChild("GrappleRequest")
-local soulRemote = remotes:WaitForChild("SoulUnboundRequest")
+local polterRemote = remotes:WaitForChild("PoltergoblinRequest")
 local eventRemote = remotes:WaitForChild("GameEvent")
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "LootGoblinsHUD"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
+local generated = workspace:WaitForChild("LootGoblinsGenerated")
+local hoardPart = generated:WaitForChild("Ground"):WaitForChild("Hoard")
 
-local status = Instance.new("TextLabel")
-status.Name = "Status"
-status.AnchorPoint = Vector2.new(0.5, 0)
-status.Position = UDim2.fromScale(0.5, 0.035)
-status.Size = UDim2.fromOffset(760, 54)
-status.BackgroundTransparency = 0.25
-status.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-status.TextColor3 = Color3.new(1, 1, 1)
-status.Font = Enum.Font.GothamBold
-status.TextScaled = true
-status.Text = "STEAL THE GOLDEN IDOL"
-status.Parent = gui
+local SPIRIT_COLOR = Color3.fromRGB(120, 255, 170)
+local MARK_COLOR = Color3.fromRGB(190, 90, 255)
+local GOLD = Color3.fromRGB(255, 205, 50)
+local DANGER = Color3.fromRGB(255, 80, 60)
 
-local help = Instance.new("TextLabel")
-help.AnchorPoint = Vector2.new(0.5, 1)
-help.Position = UDim2.fromScale(0.5, 0.97)
-help.Size = UDim2.fromOffset(760, 38)
-help.BackgroundTransparency = 0.35
-help.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-help.TextColor3 = Color3.fromRGB(235, 235, 235)
-help.Font = Enum.Font.GothamMedium
-help.TextScaled = true
-help.Text =
-	"E = grab / Soul Unbound  |  Click = swing sword  |  F = grapple/steal  |  Q = drop idol  |  Drive the ugly boat home"
-help.Parent = gui
-
-local function flash(text, duration)
-	status.Text = text
-	status.TextTransparency = 0
-	status.BackgroundTransparency = 0.12
-	local tween = TweenService:Create(status, TweenInfo.new(0.25), { BackgroundTransparency = 0.25 })
-	tween:Play()
-	if duration then
-		task.delay(duration, function()
-			if status.Text == text then
-				status.Text = "STEAL → ESCAPE → BANK"
-			end
-		end)
-	end
+local LOOT_COLORS = {}
+for _, def in ipairs(Config.LOOT) do
+	LOOT_COLORS[def.id] = def.color
 end
 
-local function grappleLine(fromPos, toPos)
-	local distance = (toPos - fromPos).Magnitude
-	if distance <= 0.1 then
-		return
-	end
-	local beamPart = Instance.new("Part")
-	beamPart.Name = "GrappleFX"
-	beamPart.Anchored = true
-	beamPart.CanCollide = false
-	beamPart.CanQuery = false
-	beamPart.CanTouch = false
-	beamPart.Material = Enum.Material.Neon
-	beamPart.Color = Color3.fromRGB(255, 245, 120)
-	beamPart.Size = Vector3.new(0.18, 0.18, distance)
-	beamPart.CFrame = CFrame.lookAt((fromPos + toPos) / 2, toPos)
-	beamPart.Parent = workspace
-	Debris:AddItem(beamPart, 0.18)
+Hud.init(hoardPart)
+Hud.showHelp(14)
+
+local function now()
+	return workspace:GetServerTimeNow()
 end
 
--- Soul Unbound (Yone's E) ----------------------------------------------------
--- The server owns the spirit and reports it through two player attributes. The
--- client only plays its own dash at once, so the key feels instant.
-local SPIRIT_COLOR = Color3.fromRGB(110, 205, 255)
-local MARK_COLOR = Color3.fromRGB(255, 70, 150)
-local camera = workspace.CurrentCamera
-local lastSoulCast = -math.huge
-
-local soulSlot = Instance.new("Frame")
-soulSlot.Name = "SoulUnbound"
-soulSlot.AnchorPoint = Vector2.new(0.5, 1)
-soulSlot.Position = UDim2.new(0.5, 0, 0.97, -46)
-soulSlot.Size = UDim2.fromOffset(260, 34)
-soulSlot.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-soulSlot.BackgroundTransparency = 0.25
-soulSlot.ClipsDescendants = true
-soulSlot.Parent = gui
-Instance.new("UICorner").Parent = soulSlot
-local soulStroke = Instance.new("UIStroke")
-soulStroke.Color = SPIRIT_COLOR
-soulStroke.Thickness = 2
-soulStroke.Parent = soulSlot
-
-local soulFill = Instance.new("Frame")
-soulFill.BorderSizePixel = 0
-soulFill.BackgroundColor3 = SPIRIT_COLOR
-soulFill.Size = UDim2.fromScale(1, 1)
-soulFill.Parent = soulSlot
-
-local soulText = Instance.new("TextLabel")
-soulText.BackgroundTransparency = 1
-soulText.Size = UDim2.fromScale(1, 1)
-soulText.Font = Enum.Font.GothamBold
-soulText.TextSize = 17
-soulText.TextColor3 = Color3.new(1, 1, 1)
-soulText.TextStrokeTransparency = 0.6
-soulText.ZIndex = 2
-soulText.Parent = soulSlot
-
--- The world turns cold and pale while you are a spirit. Lighting effects made here stay local.
-local spiritTint = Instance.new("ColorCorrectionEffect")
-spiritTint.Name = "SoulUnboundTint"
-spiritTint.Parent = Lighting
-
-player:GetAttributeChangedSignal("SoulUnboundEndsAt"):Connect(function()
-	local active = player:GetAttribute("SoulUnboundEndsAt") ~= nil
-	TweenService:Create(spiritTint, TweenInfo.new(active and 0.15 or 0.35), {
-		TintColor = active and Color3.fromRGB(200, 228, 255) or Color3.new(1, 1, 1),
-		Saturation = active and -0.45 or 0,
-	}):Play()
-end)
-
-local function updateSoulHud(now)
-	local endsAt = player:GetAttribute("SoulUnboundEndsAt")
-	local readyAt = player:GetAttribute("SoulUnboundReadyAt") or 0
-	if endsAt then
-		local left = math.max(endsAt - now, 0)
-		soulFill.Size = UDim2.fromScale(left / Config.SOUL_DURATION, 1)
-		soulFill.BackgroundTransparency = 0.35
-		soulStroke.Transparency = 0
-		soulText.Text = string.format("E  RETURN TO BODY  %.1f", left)
-	elseif now < readyAt then
-		local left = readyAt - now
-		soulFill.Size = UDim2.fromScale(1 - left / Config.SOUL_COOLDOWN, 1)
-		soulFill.BackgroundTransparency = 0.75
-		soulStroke.Transparency = 0.6
-		soulText.Text = string.format("SOUL UNBOUND  %.1f", left)
-	else
-		soulFill.Size = UDim2.fromScale(1, 1)
-		soulFill.BackgroundTransparency = 0.55
-		soulStroke.Transparency = 0
-		soulText.Text = "E  SOUL UNBOUND"
+local function getCharacter()
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not humanoid or not root or humanoid.Health <= 0 then
+		return nil
 	end
+	return character, humanoid, root
 end
 
--- E is also the ProximityPrompt key. A visible prompt (idol, sword) gets it first.
+local function inWard(position)
+	local hoard = hoardPart.Position
+	return Vector3.new(position.X - hoard.X, 0, position.Z - hoard.Z).Magnitude <= Config.WARD_RADIUS
+end
+
+-- E is shared: a visible prompt (loot, zipline) always gets it first ----------------------
 local shownPrompts = {}
 ProximityPromptService.PromptShown:Connect(function(prompt)
 	shownPrompts[prompt] = true
@@ -174,22 +71,109 @@ local function promptOwnsE()
 	return false
 end
 
--- Once you have a sword, its prompt would only eat E, so hide it for you.
-local function hideOwnedSwordPrompt()
-	local generated = workspace:FindFirstChild("LootGoblinsGenerated")
-	local pickup = generated and generated:FindFirstChild("SwordPickup")
-	local handle = pickup and pickup:FindFirstChild("Handle")
-	local swordPrompt = handle and handle:FindFirstChild("GrabPrompt")
-	if swordPrompt then
-		local backpack = player:FindFirstChildOfClass("Backpack")
-		local character = player.Character
-		local ownsSword = (backpack and backpack:FindFirstChild("Sword"))
-			or (character and character:FindFirstChild("Sword"))
-		swordPrompt.Enabled = not ownsSword
+-- Ziplines (client-driven ride; your own character is yours to move) ---------------------
+local ride = nil
+
+local function stopRide(fling)
+	if not ride then
+		return
+	end
+	local current = ride
+	ride = nil
+	local _, _, root = getCharacter()
+	if root and fling then
+		root.AssemblyLinearVelocity = current.direction * Config.ZIPLINE_SPEED * 0.5 + Vector3.new(0, 12, 0)
 	end
 end
 
-local function playSoulDash(root, humanoid)
+local function startRide(model)
+	local from = model:GetAttribute("ZipFrom")
+	local to = model:GetAttribute("ZipTo")
+	local _, humanoid, root = getCharacter()
+	if ride or not root or humanoid.SeatPart or typeof(from) ~= "Vector3" or typeof(to) ~= "Vector3" then
+		return
+	end
+	if (root.Position - from).Magnitude > 25 then
+		return
+	end
+	ride = {
+		from = from,
+		direction = (to - from).Unit,
+		length = (to - from).Magnitude,
+		travelled = 0,
+	}
+	Effects.sound("whoosh", { speed = 1.3, volume = 0.5 })
+end
+
+ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	if prompt.Name == "ZiplinePrompt" then
+		local model = prompt:FindFirstAncestorOfClass("Model")
+		if model then
+			startRide(model)
+		end
+	end
+end)
+
+UserInputService.JumpRequest:Connect(function()
+	-- Jump lets go of the zipline mid-ride.
+	if ride and ride.travelled > 4 then
+		stopRide(true)
+	end
+end)
+
+RunService.Heartbeat:Connect(function(dt)
+	if not ride then
+		return
+	end
+	local _, _, root = getCharacter()
+	if not root or player:GetAttribute("PolterEndsAt") then
+		stopRide(false)
+		return
+	end
+	ride.travelled = math.min(ride.travelled + Config.ZIPLINE_SPEED * dt, ride.length)
+	local position = ride.from + ride.direction * ride.travelled + Vector3.new(0, -3.4, 0)
+	local flat = Vector3.new(ride.direction.X, 0, ride.direction.Z)
+	root.CFrame = CFrame.lookAt(position, position + flat)
+	root.AssemblyLinearVelocity = ride.direction * Config.ZIPLINE_SPEED
+	if ride.travelled >= ride.length then
+		stopRide(true)
+	end
+end)
+
+-- Launch pads -------------------------------------------------------------------------
+local lastLaunch = 0
+local function hookPad(pad)
+	if not pad:IsA("BasePart") then
+		return
+	end
+	pad.Touched:Connect(function(hit)
+		local character, _, root = getCharacter()
+		if not character or not hit:IsDescendantOf(character) or os.clock() - lastLaunch < 0.8 then
+			return
+		end
+		local launch = pad:GetAttribute("Launch")
+		if typeof(launch) ~= "Vector3" then
+			return
+		end
+		lastLaunch = os.clock()
+		root.AssemblyLinearVelocity = launch
+		Effects.sound("whoosh", { speed = 0.7, volume = 0.8 })
+		Effects.burst(pad.Position, Color3.fromRGB(120, 255, 130), 25, 20)
+		Effects.punchFov(82)
+	end)
+end
+local pads = generated:WaitForChild("LaunchPads")
+for _, pad in ipairs(pads:GetChildren()) do
+	hookPad(pad)
+end
+pads.ChildAdded:Connect(hookPad)
+
+-- Poltergoblin --------------------------------------------------------------------------
+-- The server owns the spirit. The client only plays its own dash at once so the
+-- key feels instant; the server never trusts a position from here.
+local lastPolterCast = -math.huge
+
+local function playDash(root, humanoid)
 	-- Dash where you are walking, or where you face when standing still.
 	local direction = humanoid.MoveDirection
 	if direction.Magnitude < 0.1 then
@@ -203,15 +187,15 @@ local function playSoulDash(root, humanoid)
 	root.CFrame = CFrame.lookAt(root.Position, root.Position + direction)
 
 	local attachment = Instance.new("Attachment")
-	attachment.Name = "SoulDash"
+	attachment.Name = "PolterDash"
 	attachment.Parent = root
 	local push = Instance.new("LinearVelocity")
 	push.Attachment0 = attachment
 	push.ForceLimitMode = Enum.ForceLimitMode.PerAxis
 	push.MaxAxesForce = Vector3.new(1e6, 0, 1e6)
-	push.VectorVelocity = direction * (Config.SOUL_DASH_DISTANCE / Config.SOUL_DASH_TIME)
+	push.VectorVelocity = direction * (Config.POLTER_DASH_DISTANCE / Config.POLTER_DASH_TIME)
 	push.Parent = attachment
-	task.delay(Config.SOUL_DASH_TIME, function()
+	task.delay(Config.POLTER_DASH_TIME, function()
 		attachment:Destroy()
 		if root.Parent then
 			-- Leave the dash at running speed instead of sliding on.
@@ -219,134 +203,294 @@ local function playSoulDash(root, humanoid)
 				+ direction * humanoid.WalkSpeed
 		end
 	end)
-
-	camera.FieldOfView = 78
-	TweenService:Create(camera, TweenInfo.new(0.4, Enum.EasingStyle.Quint), { FieldOfView = 70 }):Play()
+	Effects.punchFov(80)
 end
 
-local function pressSoulUnbound()
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not humanoid or not root or humanoid.Health <= 0 or promptOwnsE() then
+local function pressPoltergoblin()
+	local _, humanoid, root = getCharacter()
+	if not root or promptOwnsE() then
 		return
 	end
-	local now = workspace:GetServerTimeNow()
-	local endsAt = player:GetAttribute("SoulUnboundEndsAt")
+	local t = now()
+	local endsAt = player:GetAttribute("PolterEndsAt")
 	if endsAt then
 		-- E again snaps back early once the recast delay has passed.
-		if now >= endsAt - Config.SOUL_DURATION + Config.SOUL_RECAST_DELAY then
-			soulRemote:FireServer()
+		if t >= endsAt - Config.POLTER_DURATION + Config.POLTER_RECAST_DELAY then
+			polterRemote:FireServer()
 		end
 		return
 	end
-	-- lastSoulCast covers the moment before the server's attributes arrive.
-	if
-		humanoid.SeatPart
-		or now - lastSoulCast < Config.SOUL_RECAST_DELAY
-		or now < (player:GetAttribute("SoulUnboundReadyAt") or 0)
-	then
+	if humanoid.SeatPart or t - lastPolterCast < Config.POLTER_RECAST_DELAY then
 		return
 	end
-	lastSoulCast = now
-	soulRemote:FireServer()
-	playSoulDash(root, humanoid)
-end
-
-local function fxPart(size, cframe, color)
-	local p = Instance.new("Part")
-	p.Name = "SoulFX"
-	p.Anchored = true
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.CastShadow = false
-	p.Material = Enum.Material.Neon
-	p.Color = color
-	p.Size = size
-	p.CFrame = cframe
-	p.Parent = workspace
-	return p
-end
-
-local function fadeOut(p, duration, goal)
-	goal.Transparency = 1
-	TweenService:Create(p, TweenInfo.new(duration, Enum.EasingStyle.Quad), goal):Play()
-	Debris:AddItem(p, duration)
-end
-
-local function soulRing(position, color, radius)
-	-- Cylinders run along X, so tip it up to lie flat on the ground.
-	local ring = fxPart(Vector3.new(0.2, 2, 2), CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90)), color)
-	ring.Shape = Enum.PartType.Cylinder
-	ring.Transparency = 0.2
-	fadeOut(ring, 0.45, { Size = Vector3.new(0.2, radius * 2, radius * 2) })
-end
-
-local function soulStreak(fromPos, toPos)
-	local distance = (toPos - fromPos).Magnitude
-	if distance < 0.5 then
+	if t < (player:GetAttribute("PolterReadyAt") or 0) then
+		Hud.toast("Poltergoblin is recharging")
 		return
 	end
-	local streak = fxPart(Vector3.new(0.6, 0.6, distance), CFrame.lookAt((fromPos + toPos) / 2, toPos), SPIRIT_COLOR)
-	streak.Transparency = 0.2
-	fadeOut(streak, 0.3, { Size = Vector3.new(0.05, 0.05, distance) })
+	if inWard(root.Position) then
+		Hud.toast("The Hoard's ward blocks Poltergoblin. Step outside the purple ring.")
+		return
+	end
+	stopRide(false)
+	lastPolterCast = t
+	polterRemote:FireServer()
+	playDash(root, humanoid)
 end
+
+-- Spirit form tints the screen for the spirit only.
+player:GetAttributeChangedSignal("PolterEndsAt"):Connect(function()
+	Effects.setSpirit(player:GetAttribute("PolterEndsAt") ~= nil)
+end)
 
 local function soulSlash(position)
-	-- An X that faces this player's camera.
+	local camera = workspace.CurrentCamera
 	for _, angle in ipairs({ 45, -45 }) do
 		local cframe = CFrame.lookAt(position, camera.CFrame.Position) * CFrame.Angles(0, 0, math.rad(angle))
-		local slash = fxPart(Vector3.new(0.3, 7, 0.3), cframe, MARK_COLOR)
-		fadeOut(slash, 0.4, { Size = Vector3.new(0.05, 9, 0.05) })
+		Effects.line(
+			cframe.Position - cframe.UpVector * 3.5,
+			cframe.Position + cframe.UpVector * 3.5,
+			MARK_COLOR,
+			0.3,
+			0.4
+		)
 	end
-	soulRing(position - Vector3.new(0, 2.5, 0), MARK_COLOR, 5)
+	Effects.ring(position - Vector3.new(0, 2.5, 0), MARK_COLOR, 5)
 end
 
-RunService.RenderStepped:Connect(function()
-	updateSoulHud(workspace:GetServerTimeNow())
-	hideOwnedSwordPrompt()
-end)
+-- Input ------------------------------------------------------------------------------------
+local mouse = player:GetMouse()
 
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.Q then
-		dropRemote:FireServer()
+		if player:GetAttribute("CarryingLoot") then
+			throwRemote:FireServer()
+		else
+			Hud.toast("Nothing to throw. Grab some loot first.")
+		end
 	elseif input.KeyCode == Enum.KeyCode.F then
-		local mouse = player:GetMouse()
+		if now() < (player:GetAttribute("GrappleReadyAt") or 0) then
+			Hud.toast("Grapple is recharging")
+			return
+		end
+		mouse.TargetFilter = player.Character
 		grappleRemote:FireServer(mouse.Hit.Position, mouse.Target)
 	elseif input.KeyCode == Enum.KeyCode.E then
-		pressSoulUnbound()
+		pressPoltergoblin()
+	elseif input.KeyCode == Enum.KeyCode.H then
+		Hud.toggleHelp()
 	end
 end)
 
+-- Screen tint follows Heat, including for players who join mid-raid.
+local function applyHeatTint()
+	Effects.setHeatTier(workspace:GetAttribute("HeatTier") or 1)
+end
+workspace:GetAttributeChangedSignal("HeatTier"):Connect(applyHeatTint)
+applyHeatTint()
+
+RunService.RenderStepped:Connect(function()
+	Hud.update(now())
+end)
+
+-- Server events --------------------------------------------------------------------------
+local function isMe(payload)
+	return payload.userId == player.UserId
+end
+
+local handlers = {}
+
+function handlers.Message(p)
+	Hud.banner(p.text or "", p.color, p.duration)
+end
+
+function handlers.Feed(p)
+	Hud.feed(p.text or "", p.color)
+end
+
+function handlers.Toast(p)
+	Hud.toast(p.text or "")
+end
+
+function handlers.Stolen(p)
+	local color = LOOT_COLORS[p.item] or GOLD
+	if isMe(p) then
+		Hud.banner("YOU STOLE THE " .. string.upper(p.itemName) .. "! RUN FOR THE HOARD!", color, 3)
+		Hud.flash(color, 0.3)
+	else
+		Hud.banner(string.upper(p.name) .. " STOLE THE " .. string.upper(p.itemName) .. "!", color, 3)
+	end
+	Effects.chime(Effects.CHIME_STEAL, 0.8)
+	Effects.burst(p.position, color, 40, 24)
+	Effects.ring(p.position, color, 16, 0.6)
+end
+
+function handlers.Snatched(p)
+	if isMe(p) then
+		Hud.banner("GOT IT! " .. string.upper(p.itemName) .. " IS YOURS", GOLD, 2)
+		Effects.chime(Effects.CHIME_GOOD, 0.6)
+	elseif p.from == player.DisplayName then
+		Hud.banner(string.upper(p.name) .. " GRAPPLED YOUR " .. string.upper(p.itemName) .. "!", DANGER, 2.5)
+		Hud.flash(DANGER, 0.35)
+		Effects.chime(Effects.CHIME_STEAL, 0.7)
+	else
+		Hud.banner(string.upper(p.name) .. " GRAPPLED THE " .. string.upper(p.itemName) .. "!", nil, 2)
+	end
+end
+
+function handlers.Grabbed(p)
+	if isMe(p) then
+		Hud.banner("YOU GRABBED THE " .. string.upper(p.itemName) .. "!", GOLD, 1.6)
+		Effects.chime({ 1, 1.5 }, 0.5)
+	end
+end
+
+function handlers.LootLoose(p)
+	local color = LOOT_COLORS[p.item] or GOLD
+	Effects.burst(p.position, color, 25, 16)
+	Effects.ring(p.position, color, 8, 0.4)
+	Effects.sound("thud", { position = p.position, volume = 0.9, speed = 0.8 })
+end
+
+function handlers.Banked(p)
+	local color = LOOT_COLORS[p.item] or GOLD
+	if isMe(p) then
+		Hud.banner(
+			string.format("BANKED THE %s! +%d GOLD (%d total)", string.upper(p.itemName), p.value, p.total),
+			GOLD,
+			3.5
+		)
+		Hud.flash(GOLD, 0.35)
+	else
+		Hud.banner(
+			string.format("%s BANKED THE %s (+%d)", string.upper(p.name), string.upper(p.itemName), p.value),
+			color,
+			3
+		)
+	end
+	Effects.chime(Effects.CHIME_GOOD, 0.9)
+	for i = 0, 2 do
+		task.delay(i * 0.18, function()
+			Effects.burst(p.position + Vector3.new(0, 3 + i * 3, 0), i == 1 and color or GOLD, 45, 28)
+		end)
+	end
+	Effects.ring(p.position, GOLD, 22, 0.8)
+	Effects.sound("boom", { position = p.position, volume = 0.5, speed = 1.4 })
+end
+
+function handlers.Trouble(p)
+	task.delay(1.1, function()
+		Hud.banner(p.text or "TROUBLE!", DANGER, 2.6)
+	end)
+	if p.kind == "Bell" then
+		for i = 0, 2 do
+			task.delay(i * 0.5, function()
+				Effects.sound("blip", { speed = 0.35, volume = 1 })
+			end)
+		end
+	elseif p.kind == "CaveIn" or p.kind == "Guardian" then
+		Effects.sound("boom", { position = p.position, speed = 0.45, volume = 1, range = 600 })
+	else
+		Effects.chime(Effects.CHIME_ALARM, 0.8)
+	end
+end
+
+function handlers.HeatTier(p)
+	local info = Config.HEAT_TIERS[p.tier]
+	local color = info and info.color or DANGER
+	Hud.heatHint("HEAT " .. (p.name or "") .. ": " .. (p.hint or ""), color)
+	Hud.flash(color, 0.2)
+	Effects.chime(Effects.CHIME_ALARM, 0.7)
+end
+
+function handlers.GuardianWake(p)
+	Effects.sound("boom", { position = p.position, speed = 0.35, volume = 1, range = 800 })
+	Effects.shakeAt(p.position, 1.2, 1, 300)
+	if p.reason == "heat" then
+		Hud.banner("HEAT IS TOO HIGH: THE GUARDIAN AWAKENS!", DANGER, 3)
+	end
+end
+
+function handlers.GuardianSmash(p)
+	Effects.ring(p.position + Vector3.new(0, 0.5, 0), Color3.fromRGB(200, 150, 110), 14, 0.5)
+	Effects.sound("boom", { position = p.position, speed = 0.6, volume = 1 })
+	Effects.shakeAt(p.position, 1.4, 0.4, 90)
+end
+
+function handlers.TotemCharge(p)
+	Effects.sound("blip", { position = p.position, speed = 2, volume = 1, range = 200 })
+end
+
+function handlers.TotemFire(p)
+	Effects.sound("whoosh", { position = p.position, speed = 1.6, volume = 0.9, range = 200 })
+	Effects.ball(p.position, Color3.fromRGB(255, 140, 60), 4, 0.25)
+end
+
+function handlers.Blast(p)
+	Effects.explosion(p.position, p.radius)
+	Effects.shakeAt(p.position, 1, 0.35, 60)
+end
+
+function handlers.CaveIn(p)
+	Effects.shakeAt(p.position, 1.5, 1.2, 160)
+	Effects.sound("boom", { position = p.position, speed = 0.5, volume = 1 })
+end
+
+function handlers.GrappleFX(p)
+	Effects.line(p.from, p.to, p.success and GOLD or Color3.fromRGB(255, 245, 140), 0.22, 0.25)
+	if p.success then
+		Effects.burst(p.to, GOLD, 15, 12)
+	end
+end
+
+function handlers.SwordHit(p)
+	for _, position in ipairs(p.hits or {}) do
+		Effects.ball(position, Color3.new(1, 1, 1), 4, 0.2)
+		Effects.sound("ouch", { position = position, volume = 0.7 })
+	end
+end
+
+function handlers.Polter(p)
+	if p.phase == "cast" then
+		Effects.ring(p.from - Vector3.new(0, 2.5, 0), SPIRIT_COLOR, 7)
+		Effects.sound("whoosh", { position = p.from, speed = 1.8, volume = 0.7 })
+	elseif p.phase == "return" or p.phase == "shatter" then
+		local color = p.phase == "shatter" and DANGER or SPIRIT_COLOR
+		Effects.line(p.from, p.to, color, 0.6, 0.3)
+		Effects.ring(p.to - Vector3.new(0, 2.5, 0), color, 9)
+		Effects.sound("rise", { position = p.to, speed = 1.5, volume = 0.8 })
+		if p.phase == "shatter" then
+			Effects.burst(p.to, color, 30, 20)
+		end
+	elseif p.phase == "echo" then
+		for _, position in ipairs(p.hits or {}) do
+			soulSlash(position)
+		end
+	end
+end
+
+function handlers.RaidStart()
+	Hud.hideResults()
+	Hud.banner("RAID START! STEAL LOOT, BRING IT TO THE HOARD", GOLD, 4)
+	Effects.chime(Effects.CHIME_GOOD, 0.9)
+end
+
+function handlers.RaidEnd(p)
+	Hud.showResults(p.results or {}, p.winners or {})
+	Hud.banner("RAID OVER!", GOLD, 3)
+	Effects.chime({ 2, 1.5, 1.26, 1, 1.5, 2 }, 0.8)
+end
+
+function handlers.LastCall(p)
+	Hud.banner(string.format("LAST CALL! %d SECONDS - BANK IT OR LOSE IT", p.seconds or 60), DANGER, 3.5)
+	Effects.chime(Effects.CHIME_ALARM, 0.9)
+end
+
 eventRemote.OnClientEvent:Connect(function(kind, payload)
-	if kind == "Message" then
-		flash(payload.text or "", payload.duration or 2)
-	elseif kind == "Carrier" then
-		if payload.userId == player.UserId then
-			flash("YOU HAVE THE IDOL — RUN!", 2)
-		elseif payload.name then
-			flash(string.upper(payload.name) .. " HAS THE IDOL", 2)
-		else
-			flash("THE IDOL IS LOOSE", 1.5)
-		end
-	elseif kind == "Banked" then
-		flash("BANKED BY " .. string.upper(payload.name) .. " — YESSS", 3.5)
-	elseif kind == "GrappleFX" then
-		grappleLine(payload.from, payload.to)
-	elseif kind == "SoulUnbound" then
-		if payload.phase == "cast" then
-			soulRing(payload.from - Vector3.new(0, 2.5, 0), SPIRIT_COLOR, 7)
-		elseif payload.phase == "return" then
-			soulStreak(payload.from, payload.to)
-			soulRing(payload.to - Vector3.new(0, 2.5, 0), SPIRIT_COLOR, 9)
-		elseif payload.phase == "echo" then
-			for _, position in ipairs(payload.hits) do
-				soulSlash(position)
-			end
-		end
+	local handler = handlers[kind]
+	if handler then
+		handler(payload or {})
 	end
 end)

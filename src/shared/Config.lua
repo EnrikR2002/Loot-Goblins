@@ -1,42 +1,183 @@
+-- Every tuning number lives here so a playtest can be rebalanced in one file.
+-- Times are seconds, distances are studs, speeds are studs per second.
 local Config = {}
 
-Config.NORMAL_WALK_SPEED = 16
-Config.CARRY_WALK_SPEED = 12
+-- Raid -----------------------------------------------------------------------
+-- A raid is one timed match. Bank the most gold before the timer runs out.
+Config.RAID_DURATION = 300
+Config.LAST_CALL = 60 -- The HUD turns red for the final stretch.
+Config.INTERMISSION = 12
+Config.FIRST_INTERMISSION = 6 -- Gives the first players time to load in.
+Config.RESPAWN_TIME = 3
+
+-- Movement -------------------------------------------------------------------
+Config.WALK_SPEED = 20
+Config.WATER_SPEED_MULT = 0.7 -- Wading or swimming. Carry and spirit speed stack with it.
+Config.WATER_ROOT_Y = 3 -- A root lower than this is standing or swimming in the sea.
+
+-- Loot -----------------------------------------------------------------------
+-- value: gold when banked. carrySpeed: replaces WALK_SPEED while held.
+-- place: where it spawns, for HUD and feed text.
+-- heat: added when taken from its spot. respawn: seconds after banking.
+-- trouble: what the world does the moment it leaves its spot (see Threats).
+Config.LOOT = {
+	{
+		id = "Lens",
+		name = "Lighthouse Lens",
+		place = "the Lighthouse",
+		value = 3,
+		carrySpeed = 16,
+		heat = 15,
+		respawn = 30,
+		trouble = "Bell",
+		color = Color3.fromRGB(255, 240, 140),
+	},
+	{
+		id = "Chest",
+		name = "Captain's Chest",
+		place = "the Shipwreck",
+		value = 4,
+		carrySpeed = 13,
+		heat = 20,
+		respawn = 40,
+		trouble = "Barrage",
+		color = Color3.fromRGB(255, 160, 70),
+	},
+	{
+		id = "Heart",
+		name = "Crystal Heart",
+		place = "Crystal Isle",
+		value = 5,
+		carrySpeed = 15,
+		heat = 25,
+		respawn = 45,
+		trouble = "CaveIn",
+		color = Color3.fromRGB(215, 110, 255),
+	},
+	{
+		id = "Idol",
+		name = "Golden Idol",
+		place = "the Sun Temple",
+		value = 10,
+		carrySpeed = 14,
+		heat = 40,
+		respawn = 70,
+		trouble = "Guardian",
+		color = Color3.fromRGB(255, 205, 40),
+	},
+}
+
 Config.PICKUP_DISTANCE = 10
-Config.GRAPPLE_RANGE = 70
-Config.GRAPPLE_COOLDOWN = 2.75
-Config.BANK_RADIUS = 13
-Config.ROUND_RESET_DELAY = 4
+Config.STEAL_HOLD = 0.6 -- Holding E to pry loot off its spot.
+Config.GRAB_HOLD = 0.15 -- Holding E to grab loose loot.
+Config.STEAL_IMMUNITY = 1.5 -- After loot changes hands, nobody can take it for this long.
+Config.THROW_SPEED = 55
+Config.THROW_UP_SPEED = 38
+Config.THROW_REGRAB_DELAY = 0.6 -- The thrower can't instantly catch their own throw.
+Config.THROWN_BANK_WINDOW = 8 -- Loose loot entering the Hoard banks for whoever last held it.
+Config.LOOSE_RETURN_TIME = 45 -- Loose loot nobody touches goes back to its spot.
+Config.KNOCK_LOOSE_SPEED = 26
 
-Config.HOME_CENTER = Vector3.new(0, 8, 0)
-Config.TREASURE_CENTER = Vector3.new(0, 8, -300)
-Config.BOAT_START = CFrame.new(0, 8.5, -55) * CFrame.Angles(0, math.rad(180), 0)
-Config.IDOL_SPAWN = CFrame.new(0, 17, -300)
-Config.GUARDIAN_SPAWN = CFrame.new(0, 12, -328)
+Config.BANK_RADIUS = 14
+Config.WARD_RADIUS = 55 -- Around the Hoard: no Poltergoblin, no Guardian.
 
-Config.BOAT_SPEED = 58
-Config.BOAT_TURN_RATE = math.rad(78)
+-- Out of bounds. Loot past these returns to its spot.
+Config.BOUNDS_MIN = Vector3.new(-300, -45, -440)
+Config.BOUNDS_MAX = Vector3.new(330, 400, 380)
 
-Config.GUARDIAN_DAMAGE = 12
-Config.GUARDIAN_HIT_RANGE = 7
-Config.GUARDIAN_HIT_COOLDOWN = 1.1
-Config.GUARDIAN_WALK_SPEED = 21
+-- Heat -----------------------------------------------------------------------
+-- One shared meter. Stealing and carrying raise it, quiet time lowers it.
+-- World threats only ever target players carrying loot.
+Config.HEAT_MAX = 100
+Config.HEAT_TIERS = {
+	{ name = "CALM", at = 0, color = Color3.fromRGB(120, 200, 255), hint = "Nobody's watching. Yet." },
+	{
+		name = "ALERT",
+		at = 25,
+		color = Color3.fromRGB(255, 210, 70),
+		hint = "Carriers glow through walls. Totems fire.",
+	},
+	{ name = "HUNTED", at = 50, color = Color3.fromRGB(255, 120, 40), hint = "The Guardian hunts carriers." },
+	{ name = "FRENZY", at = 80, color = Color3.fromRGB(255, 45, 60), hint = "The Guardian follows you anywhere." },
+}
+Config.HEAT_CARRY_RATE = 0.45 -- Per carrier outside the ward, per second.
+Config.HEAT_CARRY_RATE_CAP = 1.2
+Config.HEAT_DECAY_RATE = 0.8 -- Per second while nobody carries loot.
+Config.REVEAL_TIER = 2 -- ALERT and up: carriers are visible through walls.
 
-Config.SWORD_PEDESTAL = CFrame.new(12, 15, 14)
+-- Guardian -------------------------------------------------------------------
+-- Wakes when the Golden Idol is taken, or when Heat reaches GUARDIAN_WAKE_TIER.
+Config.GUARDIAN_WAKE_TIER = 3
+Config.GUARDIAN_SPEED = 16
+Config.GUARDIAN_FRENZY_SPEED = 19
+Config.GUARDIAN_WADE_MULT = 0.6
+Config.GUARDIAN_LEASH = 185 -- From the temple, until FRENZY.
+Config.GUARDIAN_HIT_RANGE = 9
+Config.GUARDIAN_DAMAGE = 20
+Config.GUARDIAN_KNOCKBACK = 60
+Config.GUARDIAN_HIT_COOLDOWN = 1.2
+Config.GUARDIAN_RECOVER = 1 -- It stands still this long after a smash.
+
+-- Totems ---------------------------------------------------------------------
+-- Stone watchers by the loot spots. They charge, then lob a blast at a carrier.
+Config.TOTEM_TIER = 2
+Config.TOTEM_RANGE = 90
+Config.TOTEM_TELEGRAPH = 0.9
+Config.TOTEM_INTERVAL = { [2] = 4.5, [3] = 3.2, [4] = 2.2 } -- By Heat tier.
+Config.TOTEM_LEAD = 0.25 -- Aims this many seconds ahead of the target.
+
+Config.BLAST_SPEED = 85
+Config.BLAST_MAX_TIME = 2
+Config.BLAST_RADIUS = 8
+Config.BLAST_DAMAGE = 15
+Config.BLAST_KNOCKBACK = 55
+
+-- Trouble (what each loot does when taken) -------------------------------------
+Config.BOULDER_SIZE = 11
+Config.BOULDER_SPEED = 30
+Config.BOULDER_DAMAGE = 35
+Config.BOULDER_KNOCKBACK = 70
+Config.BOULDER_LIFETIME = 10
+
+Config.CAVE_IN_BLOCK_TIME = 25
+Config.CAVE_IN_ROCKS = 7
+Config.CAVE_IN_DAMAGE = 15
+
+Config.BARRAGE_SHOTS = 4
+Config.BARRAGE_GAP = 0.9
+
+Config.BELL_REVEAL_TIME = 20
+
+-- Combat ---------------------------------------------------------------------
+-- Everyone spawns with a sword. Carriers can't swing (hands full).
 Config.SWORD_DAMAGE = 20
 Config.SWORD_RANGE = 8
 Config.SWORD_MIN_DOT = 0.3
-Config.SWORD_COOLDOWN = 0.6
-Config.SWORD_KNOCKBACK = 30
+Config.SWORD_COOLDOWN = 0.55
+Config.SWORD_KNOCKBACK = 34
 
--- Soul Unbound (Yone's E). Times are seconds. Cooldown and echo use League's max rank.
-Config.SOUL_DASH_DISTANCE = 14
-Config.SOUL_DASH_TIME = 0.16
-Config.SOUL_DURATION = 5
-Config.SOUL_RECAST_DELAY = 0.5
-Config.SOUL_COOLDOWN = 10 -- Starts on cast, like League.
-Config.SOUL_SPEED_BONUS_START = 0.1
-Config.SOUL_SPEED_BONUS_END = 0.3
-Config.SOUL_ECHO_FRACTION = 0.35
+-- F: steals from a carrier or grabs loose loot. Needs a clear line of sight.
+Config.GRAPPLE_RANGE = 55
+Config.GRAPPLE_COOLDOWN = 6
+
+-- Poltergoblin (was Soul Unbound, Yone's E) ----------------------------------------
+-- E leaves your body behind and sends your spirit out. Whatever loot the spirit
+-- holds rides the tether back to the body.
+Config.POLTER_DASH_DISTANCE = 14
+Config.POLTER_DASH_TIME = 0.16
+Config.POLTER_DURATION = 5
+Config.POLTER_RECAST_DELAY = 0.5
+Config.POLTER_COOLDOWN = 10 -- Starts on cast.
+Config.POLTER_SPEED_BONUS_START = 0.1
+Config.POLTER_SPEED_BONUS_END = 0.3
+Config.POLTER_ECHO_FRACTION = 0.35
+Config.POLTER_TETHER = 75 -- Straying farther from the body snaps you back.
+
+-- Boats ----------------------------------------------------------------------
+Config.BOAT_SPEED = 46
+Config.BOAT_TURN_RATE = math.rad(80)
+
+-- Traversal ------------------------------------------------------------------
+Config.ZIPLINE_SPEED = 58
 
 return Config
