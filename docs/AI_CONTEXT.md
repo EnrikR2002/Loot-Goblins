@@ -9,7 +9,7 @@ Master context for a Claude Code or Codex session that opens this repository wit
 | Where | What it contains |
 | --- | --- |
 | Shared `main` (as of `84b762a`, 2026-10-07) | The **vertical slice** (PR #7: raids, four loot pieces, Heat, Guardian/totems/trouble, Poltergoblin, HUD, module split) and the double-click launcher (PR #8). Report: `docs/reports/2026-10-06-vertical-slice-foundation.md`. |
-| Unmerged: branch `claude/sprinting-grapple-map-expansion-japzs8` | **Sprint + stamina**, the **grapple reworked into a hook that pulls you** (and steals with forgiving aim), and a **much bigger, taller map** with islands ~700 studs apart, 9 boats and 3 islets. Report: `docs/reports/2026-10-07-sprint-grapple-bigger-map.md`. Waiting for a Studio playtest and approval. |
+| Unmerged: PR #9, branch `claude/sprinting-grapple-map-expansion-japzs8` | **Sprint + stamina**, the **grapple reworked into a hook that pulls you** (and steals with forgiving aim), and a **much bigger, taller map** with islands ~700 studs apart, 9 boats and 3 islets. Report: `docs/reports/2026-10-07-sprint-grapple-bigger-map.md`. Waiting for a Studio playtest and approval. |
 
 Check the real state before you trust this table: `git log --oneline origin/main` and the open PRs. Update this table when a branch merges.
 

@@ -6,7 +6,7 @@
 | Request | Enrik: add sprinting with stamina, fix the grapple ("shoots a weird beam that does nothing"), and make the map way bigger, more vertical and spread out so boats matter |
 | Agent | Claude Code (cloud session, Linux container, no Roblox Studio) |
 | Branch | `claude/sprinting-grapple-map-expansion-japzs8` (named by the session), from `origin/main` at `84b762a` |
-| Pull request | Not opened yet. Ask the AI to open one when you want review. |
+| Pull request | [#9](https://github.com/EnrikR2002/Loot-Goblins/pull/9) |
 | Merge status | **Not merged.** Waiting for a Studio playtest and explicit approval. |
 
 ## 1. Summary
@@ -306,4 +306,4 @@ Everything that needs the real engine, the network or people:
 
 - Branch `claude/sprinting-grapple-map-expansion-japzs8`, from `origin/main` `84b762a`, with a clean working tree at the start. The session named the branch; it doesn't follow `AGENTS.md`'s `feature/<task>` style.
 - Pushes are normal: no force-push, no history rewrite.
-- **No PR yet, and not merged.** Per `AGENTS.md`, merging waits for a human playtest and explicit approval.
+- PR #9 targets `main`. **Not merged.** Per `AGENTS.md`, merging waits for a human playtest and explicit approval.
