@@ -8,12 +8,12 @@ Master context for a Claude Code or Codex session that opens this repository wit
 
 | Where | What it contains |
 | --- | --- |
-| Shared `main` (as of `8f9a888`, 2026-10-04) | Test 001 prototype, the sword (PR #3), Soul Unbound (PR #5), team tooling. |
-| Unmerged: branch `big-change-ninety-prompt` | **Vertical slice foundation**: raids, four loot pieces, Heat, Guardian/totems/trouble, Poltergoblin (Soul Unbound reworked), new archipelago map, HUD, module split. Report: `docs/reports/2026-10-06-vertical-slice-foundation.md`. Waiting for a Studio playtest and approval. |
+| Shared `main` (as of `84b762a`, 2026-10-07) | The **vertical slice** (PR #7: raids, four loot pieces, Heat, Guardian/totems/trouble, Poltergoblin, HUD, module split) and the double-click launcher (PR #8). Report: `docs/reports/2026-10-06-vertical-slice-foundation.md`. |
+| Unmerged: branch `claude/sprinting-grapple-map-expansion-japzs8` | **Sprint + stamina**, the **grapple reworked into a hook that pulls you** (and steals with forgiving aim), and a **much bigger, taller map** with islands ~700 studs apart, 9 boats and 3 islets. Report: `docs/reports/2026-10-07-sprint-grapple-bigger-map.md`. Waiting for a Studio playtest and approval. |
 
-Check the real state before you trust this table: `git log --oneline origin/main` and the open PRs. Once the vertical slice merges, update this table.
+Check the real state before you trust this table: `git log --oneline origin/main` and the open PRs. Update this table when a branch merges.
 
-Everything below describes the vertical slice branch.
+Everything below describes the sprint/grapple/bigger-map branch.
 
 ## Purpose
 
@@ -25,9 +25,10 @@ Test 001 (one idol, one boat, one guardian) proved the pieces work. The vertical
 
 ## Core loop
 
-1. Players spawn at **Goblin Cove** next to **the Hoard**. A raid lasts `Config.RAID_DURATION` (300 s), then a short intermission.
+1. Players spawn at **Goblin Cove** next to **the Hoard**. A raid lasts `Config.RAID_DURATION` (360 s), then a short intermission.
 2. Four loot items wait at spots around the map, each with a light pillar and a name tag visible from anywhere.
 3. Prying loot off its spot (hold E, 0.6 s) adds Heat and triggers that item's **trouble** (boulder, cave-in, cannon barrage, bell).
+   The islands are far apart: a run is usually a boat ride out, a climb, a steal, and a boat ride home.
 4. The carrier is slow, can't swing, and is hunted by the world: totems at ALERT, Guardian at HUNTED (temple only) or FRENZY (anywhere).
 5. Other players sword the loot loose, grapple it away, chase, or wait at chokepoints and the Hoard.
 6. Carrying loot into the Hoard ring banks its gold. A throw that lands in the ring counts for the thrower. Banked loot respawns later.
@@ -38,8 +39,9 @@ Test 001 (one idol, one boat, one guardian) proved the pieces work. The vertical
 | Input | Action | Where |
 | --- | --- | --- |
 | Hold `E` on loot | Steal from spot / grab loose loot (ProximityPrompt) | `Loot` |
+| Hold `Shift` (gamepad: click left stick) | Sprint (×1.45, carriers ×1.2). Uses stamina; none in water or seats. Shift lock is turned off. | `Movement`, client `Main` |
 | Click (sword) | Swing. Given on every spawn. Server picks targets. | `Combat` |
-| `F` | Grapple: steal from a carrier / yank loose loot. Range 55, needs line of sight. | `Combat` |
+| `F` | Grapple hook. Near loot or a carrier (within 60, aim assist 7 studs, line of sight): steal it. Anywhere else: hook the first solid thing within 130 and get pulled there. Carriers can't use it. A miss costs no cooldown. | `Combat`, client `Main` |
 | `Q` | Throw held loot | `Loot` |
 | `E` with no prompt showing | Poltergoblin (cast / early return) | `Poltergoblin` |
 | `E` at zipline start | Ride (client-driven), jump to let go | client `Main` |
@@ -52,19 +54,20 @@ Abilities are keyboard and mouse only. Prompts and the sword also work on touch 
 
 All tuning numbers live in `src/shared/Config.lua`. Gameplay modules never hardcode tuning.
 
-- **World** (`World.lua`). Built at runtime into `workspace.LootGoblinsGenerated` with Terrain (islands, tunnels, sandbars, sea) plus anchored parts. It returns `World.refs` (Hoard, spawn points, loot spots, totems, Guardian lair, boulder start, cave-in plug, boat spawns, folders). Folders:
+- **World** (`World.lua`). Built at runtime into `workspace.LootGoblinsGenerated` with Terrain (islands, cliffs, rock ramps, tunnels, sea) plus anchored parts. It returns `World.refs` (Hoard, spawn points, loot spots, totems, Guardian lair, boulder start, cave-in plug, boat spawns, folders). Folders:
   - `Ground`: walkable parts the Guardian may walk on.
   - `Structures`: walls and props, which block line of sight.
   - `Decor`: non-colliding props, `CanQuery` off.
   - `Loot`, `Threats`, `Effects`, `SpiritBodies`, `LaunchPads`, `Ziplines`.
-- **Map.** North is -Z. Five zones in a ring:
-  - **Goblin Cove** (home, Hoard, spawn, 2 boats).
-  - **Crossroads Ruins** (central hub, lighthouse with the Lens at the top of an exposed spiral, ruined sniper tower reached by a launch pad).
-  - **Sun Temple** (ziggurat with the Idol, rope-bridge chokepoint, hidden west sea cave, one-way zipline off the south-east cliff, Guardian lair).
-  - **Crystal Isle** (tunnel through the island, Heart chamber, launch shaft to the summit, ridge home with an 11-stud gap that loaded carriers can't jump).
-  - **Shipwreck Shoals** (wading sandbars, the wreck with the Chest).
+- **Map.** North is -Z. About 1,800 × 1,800 studs of islands inside 2,000 × 2,000 bounds. The five big islands sit ~700 studs apart center to center (280–650 studs of open sea between shores), so boats are the main way around and swimming is the slow fallback. Every island has a dock with one boat; home has four (9 total).
+  - **Goblin Cove** (home, z ≈ 650): Hoard, spawn, 4 boats, hideout hill with a hilltop lookout and crow's nest.
+  - **Crossroads Ruins** (hub, origin): a lower town (y 10) and the **acropolis** cliff (y 42) in the middle. Ways up: grand stairs (south), a rock ramp (east), a launch pad (west), the aqueduct from the west knoll, and the **undercroft** tunnel under it with a ladder shaft. The **lighthouse** stands on the acropolis rim (Lens at y ≈ 119). Watchtower knoll, harbor houses, sniper tower with a pad.
+  - **Sun Temple** (z ≈ −720): jungle (y 8) around a **mesa** (y 56) with the ziggurat on top (Idol at y ≈ 98). Ways up: the pilgrim rock ramp (south cliff), two ladders (east cliff), the **sea cave** (enters at the west waterline under a hill chain and climbs inside the mountain to the courtyard). Ways out: the **Sun Spire zipline** (572 studs, to the Crossroads acropolis), the south dock, the cave.
+  - **Crystal Isle** (x ≈ 720): a basalt spire of five shelves (y 20/50/85/115/135) linked by rock ramps spiralling up. A sea-level tunnel runs through it past the Heart chamber; a launch pad in the tunnel shoots up a shaft to the 115 shelf. **The Leap**: a broken bridge off the 85 shelf with a 15-stud gap (5 down) that only an empty-handed sprint jump clears; past it, the Needle has a zipline to Twin Stacks.
+  - **Shipwreck Shoals** (x ≈ −700): an atoll. Wadeable shallows ring a lagoon; a reef channel on the south-east lets boats in. A three-deck galleon sits on a sandbank in the middle (Chest in the hold; ladders between decks, climbable masts, crow's nests, cannon on the stern cabin). Three sea stacks with rope bridges; a zipline from the tallest drops onto the galleon.
+  - **Islets**: Gull Rock (ladder up a pinnacle, zipline down into Goblin Cove), Smuggler's Cove (spare boat, a rock arch boats sail under), Twin Stacks (two stacks, rope bridge, the Crystal zipline lands here).
 
-  Water is real terrain water; wading or swimming is slower (`WATER_SPEED_MULT`). Invisible walls sit at `Config.BOUNDS_*`.
+  Water is real terrain water; wading or swimming is slower (`WATER_SPEED_MULT`). Invisible walls sit at `Config.BOUNDS_*`. Floating island names (`islandSign`) are readable from across the sea.
 - **Loot** (`Loot.lua`). Items are defined in `Config.LOOT`. Each is a physics core part with welded decoration, a prompt, a tag and a light pillar. States: `spot`, `carried` (welded above the head), `loose` (server-owned physics; floats), `away` (banked, respawning).
   - Steal immunity (`STEAL_IMMUNITY`) after any change of hands.
   - Loose loot returns to its spot after `LOOSE_RETURN_TIME` or if it leaves the bounds.
@@ -78,19 +81,19 @@ All tuning numbers live in `src/shared/Config.lua`. Gameplay modules never hardc
   - **Reveal.** Carriers get an always-on-top `Highlight` named `CarrierReveal` at ALERT and above, or after the bell.
 - **Combat** (`Combat.lua`).
   - Sword: range 8, 20 damage, knockback. A hit on a carrier knocks the loot loose. Carriers can't swing. Swings also check spirit bodies.
-  - Grapple: the server checks type, range, cooldown and line of sight. The cooldown is exposed as the `GrappleReadyAt` player attribute.
+  - Grapple: the client sends only its aim (camera ray hit point and part). The server picks: (1) **steal** the clicked loot, or the loose/carried loot (or its carrier) nearest the aim line within `GRAPPLE_AIM_ASSIST`, if in `GRAPPLE_RANGE` with line of sight; a wall in the way turns it into (2) a **pull**: the server raycasts along the aim up to `GRAPPLE_PULL_RANGE` and broadcasts the anchor. Nothing in range (or only the sea floor) is a **miss** with no cooldown. Carriers can't grapple; seated players can steal but not pull. Cooldowns: steal 6 s, slip (steal immunity) 1 s, pull 2 s, exposed as `GrappleReadyAt` and `GrappleCooldown`.
 - **Poltergoblin** (`Poltergoblin.lua`; Soul Unbound / Yone's E, renamed and reworked). E dashes the spirit out and leaves a frozen, labeled clone body. The spirit lasts 5 s with +10→30% speed, then snaps back (E again after 0.5 s returns early). Spirit sword hits leave marks that echo 35% on return. The rules that make it an extraction decision:
   - Loot the spirit holds rides back to the body.
   - Tether length `POLTER_TETHER`: going past it snaps you back.
   - Striking the body shatters the spirit: snap back, take damage, no echo, and the spirit's loot drops where it stood.
   - Spirits can't cast inside, enter, or bank in the Hoard ward.
-- **Movement** (`Movement.lua`). The only writer of `WalkSpeed`: carry speed (per item) × water multiplier × spirit boost.
-- **Boats** (`Boats.lua`). Two kinematic boats. The server reads the Driver seat each Heartbeat and stops at land, docks and the bounds (short downward raycasts at the bow or stern).
+- **Movement** (`Movement.lua`). The only writer of `WalkSpeed`: carry speed (per item) × sprint × water multiplier × spirit boost. It also owns **stamina**: the client only reports "sprint key held"; the server sprints you only while you move, stand on foot (not seated), are out of the water and have stamina. Draining to 0 makes you **winded** until stamina refills to `STAMINA_RECOVER`. Published as player attributes `Stamina` (whole numbers), `Sprinting`, `Winded`.
+- **Boats** (`Boats.lua`). Kinematic boats, one per `refs.boatSpawns` entry (World's `dock()` adds them). The server reads the Driver seat each Heartbeat and stops at land, docks, shallows and the bounds (short downward raycasts at the bow or stern). Speed 62.
 - **Raid** (`Raid.lua`). Phases `raid` and `intermission`, published as `workspace` attributes `RaidPhase` and `PhaseEndsAt`. `start()` resets every system and teleports everyone home. `finish()` scores, awards `Wins`, broadcasts results and resets. Leaderstats are `Gold` (this raid) and `Wins`.
 - **Client.**
   - `Hud.lua`: timer, Heat bar, loot board, feed, banner, objective line, ability slots, Hoard waypoint, results, help.
   - `Effects.lua`: sounds from `rbxasset://sounds/*` client files, neon effects, particles, camera shake, Heat and spirit tint.
-  - `Main.client.lua`: input, Poltergoblin dash prediction, ziplines, launch pads, event handlers.
+  - `Main.client.lua`: input, sprint key, Poltergoblin dash prediction, ziplines, launch pads, the grapple pull (a `LinearVelocity` toward the server's anchor; jump lets go, it pops you up at the end, it stops if snagged), event handlers.
 
 ## Architecture
 
@@ -104,23 +107,23 @@ All tuning numbers live in `src/shared/Config.lua`. Gameplay modules never hardc
 
 - **Plain modules, no framework.** Each module is a table of functions with a header comment explaining its rules. They talk through direct calls and tiny `Util.signal()` events.
 - **Require order has no cycles.** `Net`/`Util` → `Movement` → `World`/`Boats` → `Loot` → `Heat` → `Poltergoblin` → `Combat`/`Threats` → `Raid` → `Main`. Main injects the one back-reference: `Loot.canBank = not Poltergoblin.isSpirit`.
-- **Remotes.** `ReplicatedStorage.LootGoblinsRemotes` is recreated at boot. Client → server: `ThrowRequest()`, `GrappleRequest(hitPosition, target)`, `PoltergoblinRequest()`.
+- **Remotes.** `ReplicatedStorage.LootGoblinsRemotes` is recreated at boot. Client → server: `ThrowRequest()`, `GrappleRequest(hitPosition, target)`, `PoltergoblinRequest()`, `SprintRequest(held)`.
 - **One broadcast channel.** `GameEvent(kind, payload)` from server to client. Kinds:
   - `Message`, `Feed`, `Toast`
   - `Stolen`, `Snatched`, `Grabbed`, `LootLoose`, `Banked`
   - `Trouble`, `HeatTier`
   - `GuardianWake`, `GuardianSmash`, `TotemCharge`, `TotemFire`, `Blast`, `CaveIn`
-  - `GrappleFX`, `SwordHit`, `Polter` (phase `cast`, `return`, `shatter` or `echo`)
+  - `GrappleFX` (kind `steal`, `pull` or `miss`; misses go only to the thrower), `SwordHit`, `Polter` (phase `cast`, `return`, `shatter` or `echo`)
   - `RaidStart`, `RaidEnd`, `LastCall`
 - **Replicated state lives in attributes**, with times in `workspace:GetServerTimeNow()` units.
-  - Player: `CarryingLoot`, `PolterEndsAt`, `PolterReadyAt`, `PolterBody`, `GrappleReadyAt`.
+  - Player: `CarryingLoot`, `PolterEndsAt`, `PolterReadyAt`, `PolterBody`, `GrappleReadyAt`, `GrappleCooldown`, `Stamina`, `Sprinting`, `Winded`.
   - `workspace`: `RaidPhase`, `PhaseEndsAt`, `Heat`, `HeatTier`, `GuardianState`.
   - `Loot` folder: per-item state.
-- **Place settings.** `workspace.StreamingEnabled` is false; the client relies on seeing the whole generated world.
+- **Place settings.** `workspace.StreamingEnabled` is false; the client relies on seeing the whole generated world. The server sets `StarterPlayer.EnableMouseLockOption = false` because Shift sprints.
 
 Integration points new code must respect:
 
-- **WalkSpeed:** go through `Movement` (`setCarrySpeed`, `setBoost`). Anything else gets overwritten every frame.
+- **WalkSpeed:** go through `Movement` (`setCarrySpeed`, `setBoost`, `setSprintHeld`). Anything else gets overwritten every frame.
 - **Player damage:** use `Util.damage` and pass the result to `Poltergoblin.markDamage(attacker, humanoid, dealt)` if a player caused it.
 - **Knocking loot loose:** `Loot.knockLoose` respects steal immunity. `Loot.dropFor` ignores it (death, leaving, shatter).
 - **Teleports and resets:** call `Poltergoblin.finish(player, "cancel")` or `Poltergoblin.cancelAll()` first, and unseat players.
@@ -130,8 +133,8 @@ Integration points new code must respect:
 ## Who decides what (server vs client)
 
 - **The server owns:** loot state and possession, steals and immunity, banking, scores, raid phases, Heat, Guardian, totems, trouble, all damage and hit detection, cooldowns, WalkSpeed, teleports, and the spirit timer, body, tether, marks and return.
-- **The client owns:** its own character physics (Roblox default). That covers walking, the Poltergoblin dash, zipline rides and launch-pad velocity, plus HUD, effects and its own prompt use.
-- **What clients send:** only intent ("throw", "Poltergoblin") and grapple aim, which the server checks for type, range, cooldown and line of sight. The client never says who it hit, how much damage it did, who holds loot, or where to teleport. Keep it that way.
+- **The client owns:** its own character physics (Roblox default). That covers walking, the Poltergoblin dash, zipline rides, launch-pad velocity and the grapple pull toward a server-chosen anchor, plus HUD, effects and its own prompt use.
+- **What clients send:** only intent ("throw", "Poltergoblin", "sprint key held") and grapple aim, which the server checks for type, range, cooldown and line of sight. Stamina and sprint speed are the server's. The client never says who it hit, how much damage it did, who holds loot, or where to teleport. Keep it that way.
 
 ## Important files
 
@@ -139,8 +142,9 @@ Integration points new code must respect:
 | --- | --- |
 | `AGENTS.md` | Rules for every AI session. Read it first. |
 | `README.md` | Player-facing summary, controls, guardrails, the playtest decision |
-| `docs/reports/2026-10-06-vertical-slice-foundation.md` | Design reasoning, testing and the human playtest checklist for this build |
-| `docs/reports/2026-10-06-map.png` | Top-down render of the generated map (not a screenshot) |
+| `docs/reports/2026-10-07-sprint-grapple-bigger-map.md` | Sprint, grapple and big-map reasoning, numbers, headless test results and the human playtest checklist for this branch |
+| `docs/reports/2026-10-07-map.png` | Top-down render of the current generated map (not a screenshot) |
+| `docs/reports/2026-10-06-vertical-slice-foundation.md` | Design reasoning for the vertical slice (raids, loot, Heat, threats, Poltergoblin). Its map section describes the old, smaller map |
 | `docs/WORKSTATION.md` | Setup, daily commands, Studio verification, troubleshooting |
 | `docs/DESIGN_THESIS.txt` | Long-term vision (not current scope) |
 | `Play Loot Goblins.bat`, `scripts/play.ps1` | One-click play for Ethan and Ninety: update, build, open Studio. No terminal, no Rojo |
@@ -189,7 +193,7 @@ Integration points new code must respect:
 
 - Serve the loop. Ugly and fast beats polished and slow. Primitive parts and terrain are fine.
 - Threats target carriers, not players. Holding loot is what makes you the problem.
-- Every mobility tool must leave carrying loot home a physical journey. Poltergoblin rewinds and never transports. Ziplines and pads are exposed and predictable. The ridge gap rejects carriers.
+- Every mobility tool must leave carrying loot home a physical journey. Poltergoblin rewinds and never transports. Ziplines and pads are exposed and predictable. The grapple pull is for empty hands only. Carriers sprint only a little (×1.2), so the Leap's sprint-jump gap rejects them. Boats are fast but have to be found, kept and docked.
 - Keep diffs small and local, reuse the existing patterns, and put numbers in `Config.lua`.
 - Visual feedback goes on the client. State changes go through the server.
 
@@ -206,14 +210,15 @@ Integration points new code must respect:
 ## Known limitations
 
 - Deliberate compromises: primitive art, kinematic boats and Guardian, pitched built-in sounds.
-- Grapple, throw and Poltergoblin have no touch or gamepad controls.
-- Boats pass through bridge pillars and dock posts, and masts clip under bridges (visual only).
-- The Guardian walks over the tops of buildings and through walls, and can't reach players in tunnels.
+- Grapple, throw and Poltergoblin have no touch or gamepad controls. Sprint has a gamepad toggle (left stick click) but no touch button.
+- Boats pass through dock posts (visual only).
+- The Guardian walks over the tops of buildings and through walls and cliffs (its feet follow a ray from the top of the map), and can't reach players in tunnels or the temple sea cave.
+- The grapple pull and the ziplines move the character on the client; other players see it through normal character replication.
 - Single-player MCP tests cannot cover player-vs-player features.
 
 ## Known bugs
 
-- None confirmed in the vertical slice yet. It has **not** been playtested in Studio (the build session had no Studio). Treat everything in the report's "not tested" list as unverified.
+- None confirmed yet. Neither the vertical slice nor this branch has been playtested in Studio (both build sessions had no Studio). Treat everything in the reports' "not tested" lists as unverified.
 - The Test 001 bug where the Guardian pushed a loose idol off the map is fixed by design: the kinematic Guardian has no collisions, and loot outside the bounds returns to its spot.
 - CI rokit `403` flake (see Development workflow).
 
