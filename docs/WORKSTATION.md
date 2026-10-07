@@ -16,9 +16,24 @@ For AI-led onboarding, paste the [teammate setup prompt](TEAM_SETUP_PROMPT.md) i
 
 The guide assumes Windows x64 for automatic Rokit installation. Other systems use the official [Rokit installer](https://github.com/rojo-rbx/rokit) and the same `rokit.toml` pins.
 
+## Playing without a terminal
+
+Ethan and Ninety play by double-clicking **`Play Loot Goblins.bat`** in the repository folder. It runs `scripts/play.ps1`:
+
+1. Refuses to continue if Studio is already open, and says to close it (two Studio copies lock the same place file).
+2. Fetches GitHub and fast-forwards the checked-out branch, only when there are no local changes. Otherwise it warns and plays what is on the computer.
+3. Installs the project tools if they are missing.
+4. Rebuilds `build/LootGoblinsTest001.rbxlx` and opens it in one visible Studio.
+5. Prints the next steps: press Play, press `H`.
+
+No Rojo connection is needed to play. The built place holds all scripts, and the server builds the world on Play. Rojo live sync is for the AI editing code.
+
+To try a teammate's changes, the human tells their AI which branch or PR. The AI follows the "Teammates who do not use terminals" section of `AGENTS.md`. It switches branches, runs `./scripts/play.ps1`, and explains how to play. `./scripts/play.ps1 -NoOpen` builds without opening Studio (for AI checks).
+
 ## Daily commands (the AI can run these)
 
 ```powershell
+./scripts/play.ps1                  # What the .bat runs: update, build, open Studio (refuses if Studio is open)
 ./scripts/bootstrap.ps1             # Safe to rerun; never changes Git history or gameplay
 ./scripts/dev.ps1 -OpenStudio       # Build the place, open a visible Studio (only if none runs), serve on loopback
 ./scripts/dev.ps1                   # Build/serve without launching another Studio window

@@ -31,6 +31,11 @@ function Start-StudioOnce {
     return $true
 }
 
+function Get-StudioExe {
+    Get-ChildItem -LiteralPath (Join-Path $env:LOCALAPPDATA 'Roblox\Versions') -Filter RobloxStudioBeta.exe -Recurse -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+}
+
 function Assert-ProjectTools {
     foreach ($line in Get-Content -LiteralPath (Join-Path $ProjectRoot 'rokit.toml')) {
         if ($line -match '^\s*(\w+)\s*=\s*"[^"@]+@([^"]+)"') {
