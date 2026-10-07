@@ -2,10 +2,15 @@
 --
 -- Sword (everyone spawns with one): click to swing. A hit on a carrier knocks
 -- their loot loose. Carriers can't swing; their hands are full.
--- Grapple (F): from range, steal loot from a carrier or yank loose loot to you.
--- It needs a clear line of sight, so cover and tunnels protect carriers.
+-- Grapple (F): one hook, two jobs.
+--   * Aimed at loot or near a carrier (aim is forgiving): steal it, if nothing
+--     solid is in the way. Cover and tunnels still protect carriers.
+--   * Aimed anywhere else: hook the first solid thing along your aim and the
+--     client reels you in. Great for cliffs, masts and getting off the beach.
+-- Carriers can't grapple at all (hands full), so it never carries loot home.
+-- A miss (nothing in range) costs no cooldown.
 --
--- The server picks every target. The client never says who it hit.
+-- The server picks every target and anchor. The client only sends its aim.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
@@ -25,6 +30,8 @@ local losParams = RaycastParams.new()
 losParams.FilterType = Enum.RaycastFilterType.Exclude
 losParams.RespectCanCollide = true
 losParams.IgnoreWater = true
+
+local HOOK_MIN_Y = -1 -- Hooks below this hit the sea floor, which is no use to anyone.
 
 -- Sword -----------------------------------------------------------------------
 local function swing(player, tool)
@@ -149,64 +156,143 @@ local function itemFromPart(part)
 	return nil
 end
 
--- Nothing solid between the two points (characters and loot don't count).
+-- Everything a hook or a line of sight passes through: people, loot, effects.
+local function ignoreList()
+	local ignore = { refs.folders.loot, refs.folders.bodies, refs.folders.fx, refs.folders.threats, refs.folders.decor }
+	for _, other in ipairs(Players:GetPlayers()) do
+		if other.Character then
+			table.insert(ignore, other.Character)
+		end
+	end
+	return ignore
+end
+
+-- Nothing solid between the two points.
 local function clearLine(from, to, ignore)
 	losParams.FilterDescendantsInstances = ignore
 	local hit = workspace:Raycast(from, to - from, losParams)
 	return hit == nil or (hit.Position - to).Magnitude < 2
 end
 
-local function grapple(player, hitPosition, target)
-	if typeof(hitPosition) ~= "Vector3" or (target ~= nil and typeof(target) ~= "Instance") then
-		return
-	end
-	local character, _, root = Util.getCharacterParts(player)
-	if not root or not Util.aliveRoot(player) then
-		return
-	end
-	local t = workspace:GetServerTimeNow()
-	if t < (player:GetAttribute("GrappleReadyAt") or 0) then
-		return
-	end
-	player:SetAttribute("GrappleReadyAt", t + Config.GRAPPLE_COOLDOWN)
+local function stealable(item, player)
+	return (item.state == "loose" or item.state == "carried") and item.carrier ~= player
+end
 
-	local origin = root.Position + Vector3.new(0, 1.5, 0)
-	local aim = hitPosition - origin
-	local missEnd = origin
-		+ (aim.Magnitude > 0.01 and aim.Unit or root.CFrame.LookVector)
-			* math.min(aim.Magnitude, Config.GRAPPLE_RANGE)
-
-	-- Aiming at loot (carried or loose) or at a carrier.
-	local item, holder = nil, nil
+-- The loot the hook goes for: what you clicked, else the loose or carried loot
+-- closest to your aim line (its carrier's body counts too).
+local function stealTarget(player, origin, aim, target)
 	if target and target:IsA("BasePart") then
-		item = itemFromPart(target)
+		local item = itemFromPart(target)
 		if not item then
 			local targetPlayer = Util.playerFromPart(target)
 			if targetPlayer and targetPlayer ~= player then
 				item = Loot.itemOf(targetPlayer)
 			end
 		end
-		holder = item and item.carrier
-	end
-
-	local success = false
-	local to = missEnd
-	if item and holder ~= player and (item.state == "loose" or item.state == "carried") then
-		local targetPos = item.core.Position
-		local ignore = { character, refs.folders.loot, refs.folders.bodies, refs.folders.fx, refs.folders.threats }
-		if holder and holder.Character then
-			table.insert(ignore, holder.Character)
+		if item and stealable(item, player) then
+			return item
 		end
-		if (targetPos - origin).Magnitude <= Config.GRAPPLE_RANGE then
-			to = targetPos
-			if clearLine(origin, targetPos, ignore) then
-				success = Loot.steal(item, player)
-			else
-				Net.toast(player, "No clear line - grapple blocked")
+	end
+	local best, bestOff = nil, Config.GRAPPLE_AIM_ASSIST
+	for _, item in ipairs(Loot.items) do
+		if stealable(item, player) then
+			local points = { item.core.Position }
+			local carrierRoot = item.carrier and Util.aliveRoot(item.carrier)
+			if carrierRoot then
+				table.insert(points, carrierRoot.Position)
+			end
+			for _, point in ipairs(points) do
+				local offset = point - origin
+				local along = offset:Dot(aim)
+				if along > 0 and offset.Magnitude <= Config.GRAPPLE_RANGE then
+					local off = (offset - aim * along).Magnitude
+					if off < bestOff then
+						best, bestOff = item, off
+					end
+				end
 			end
 		end
 	end
-	Net.broadcast("GrappleFX", { from = origin, to = to, success = success })
+	return best
+end
+
+local function setCooldown(player, seconds)
+	player:SetAttribute("GrappleReadyAt", workspace:GetServerTimeNow() + seconds)
+	player:SetAttribute("GrappleCooldown", seconds)
+end
+
+local function grapple(player, hitPosition, target)
+	if typeof(hitPosition) ~= "Vector3" or (target ~= nil and typeof(target) ~= "Instance") then
+		return
+	end
+	local _, humanoid, root = Util.getCharacterParts(player)
+	if not root or humanoid.Health <= 0 then
+		return
+	end
+	if workspace:GetServerTimeNow() < (player:GetAttribute("GrappleReadyAt") or 0) then
+		return
+	end
+	if Loot.itemOf(player) then
+		Net.toast(player, "HANDS FULL - Q to throw your loot, then grapple")
+		return
+	end
+	local origin = root.Position + Vector3.new(0, 1.5, 0)
+	local aim = hitPosition - origin
+	aim = aim.Magnitude > 0.01 and aim.Unit or root.CFrame.LookVector
+	local ignore = ignoreList()
+
+	-- 1. Steal: loot near the aim, in range, with nothing solid in between.
+	local item = stealTarget(player, origin, aim, target)
+	if item then
+		local targetPos = item.core.Position
+		if (targetPos - origin).Magnitude <= Config.GRAPPLE_RANGE and clearLine(origin, targetPos, ignore) then
+			local success = Loot.steal(item, player)
+			setCooldown(player, success and Config.GRAPPLE_COOLDOWN or Config.GRAPPLE_FAIL_COOLDOWN)
+			if not success then
+				Net.toast(player, "It slipped off - loot can't be grabbed right after it changes hands")
+			end
+			Net.broadcast("GrappleFX", {
+				kind = "steal",
+				from = origin,
+				to = targetPos,
+				success = success,
+				userId = player.UserId,
+			})
+			return
+		end
+		-- Blocked: the hook flies on and catches whatever is in the way.
+	end
+
+	-- 2. Pull: hook the first solid thing along the aim and reel in.
+	if humanoid.SeatPart then
+		Net.toast(player, "Stand up first - you can only grapple-pull on foot")
+		return
+	end
+	losParams.FilterDescendantsInstances = ignore
+	local hit = workspace:Raycast(origin, aim * Config.GRAPPLE_PULL_RANGE, losParams)
+	if not hit or hit.Position.Y < HOOK_MIN_Y then
+		local reach = hit and (hit.Position - origin).Magnitude or Config.GRAPPLE_PULL_RANGE
+		Net.send(
+			player,
+			"GrappleFX",
+			{ kind = "miss", from = origin, to = origin + aim * reach, userId = player.UserId }
+		)
+		Net.toast(
+			player,
+			string.format("Nothing to hook - aim at ground, walls or loot within %d studs", Config.GRAPPLE_PULL_RANGE)
+		)
+		return
+	end
+	setCooldown(player, Config.GRAPPLE_PULL_COOLDOWN)
+	local distance = (hit.Position - origin).Magnitude
+	Net.broadcast("GrappleFX", {
+		kind = "pull",
+		from = origin,
+		to = hit.Position,
+		normal = hit.Normal,
+		userId = player.UserId,
+		duration = distance / Config.GRAPPLE_PULL_SPEED + 0.6,
+	})
 end
 
 function Combat.init(worldRefs)

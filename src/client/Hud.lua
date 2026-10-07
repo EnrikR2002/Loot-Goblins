@@ -1,6 +1,6 @@
 -- The HUD. Everything it shows comes from replicated attributes (raid timer,
--- Heat, where each loot is, your cooldowns) plus one-off GameEvents (banner,
--- feed, toasts). Placement keeps clear of Roblox's own chat (top left),
+-- Heat, where each loot is, your cooldowns and stamina) plus one-off GameEvents
+-- (banner, feed, toasts). Placement keeps clear of Roblox's own chat (top left),
 -- player list (top right) and tool hotbar (bottom middle).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,6 +16,8 @@ local WHITE = Color3.new(1, 1, 1)
 local GOLD = Color3.fromRGB(255, 205, 50)
 local SPIRIT = Color3.fromRGB(120, 255, 170)
 local WARD = Color3.fromRGB(190, 110, 255)
+local STAMINA = Color3.fromRGB(120, 220, 255)
+local WINDED = Color3.fromRGB(255, 90, 80)
 
 local gui, scale
 local timer, heatFill, heatLabel, heatHint, banner, feedList, board, objective, toast, flash
@@ -25,6 +27,7 @@ local boardRows = {}
 local waypoint, waypointLabel
 local hoardPart
 local shownHeat = 0
+local shownStamina = Config.STAMINA_MAX
 local bannerToken, toastToken, hintToken = 0, 0, 0
 
 -- Construction helpers ---------------------------------------------------------------
@@ -200,17 +203,18 @@ local function makeSlot(key, name, color)
 		BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1),
 	}, slot)
+	local keyWidth = #key > 3 and 58 or 34
 	text(slot, {
 		Position = UDim2.fromOffset(6, 4),
-		Size = UDim2.fromOffset(34, 24),
+		Size = UDim2.fromOffset(keyWidth, 24),
 		Text = key,
 		Font = Enum.Font.GothamBlack,
 		TextColor3 = color,
 		ZIndex = 2,
 	})
 	text(slot, {
-		Position = UDim2.fromOffset(42, 4),
-		Size = UDim2.new(1, -46, 0, 22),
+		Position = UDim2.fromOffset(keyWidth + 8, 4),
+		Size = UDim2.new(1, -(keyWidth + 12), 0, 22),
 		Text = name,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 2,
@@ -247,6 +251,14 @@ local function buildAbilities()
 		slots[key].frame.LayoutOrder = i
 		slots[key].frame.Parent = row
 	end
+
+	-- Sprint sits bottom-left, clear of the hotbar and the objective line. Its fill is stamina.
+	slots.sprint = makeSlot("SHIFT", "SPRINT", STAMINA)
+	slots.sprint.frame.Name = "Sprint"
+	slots.sprint.frame.AnchorPoint = Vector2.new(0, 1)
+	slots.sprint.frame.Position = UDim2.new(0, 12, 1, -12)
+	slots.sprint.frame.Size = UDim2.fromOffset(200, 52)
+	slots.sprint.frame.Parent = gui
 end
 
 local function buildBottom()
@@ -318,9 +330,10 @@ end
 
 local HELP_LINES = {
 	{ "STEAL", "Hold E on glowing loot to pry it off its spot. That causes TROUBLE." },
-	{ "ESCAPE", "Carry it to THE HOARD (gold beam at Goblin Cove) to bank its gold." },
+	{ "ESCAPE", "Carry it to THE HOARD (gold beam at Goblin Cove). The islands are far apart: take a boat." },
+	{ "MOVE", "Hold SHIFT to sprint (uses stamina). F on a cliff, wall or mast hooks you up to it." },
 	{ "HEAT", "Stealing and carrying raise Heat. The world hunts carriers, not you." },
-	{ "FIGHT", "Sword hits knock loot loose. F grapples loot you can see. Q throws yours." },
+	{ "FIGHT", "Sword hits knock loot loose. F aimed at loot or a carrier steals it. Q throws yours." },
 	{ "POLTERGOBLIN", "E: leave your body, run as a spirit, snap back. Loot you grab comes back with you." },
 	{ "WIN", "Most gold when the raid timer ends wins. Loot not banked is lost." },
 }
@@ -330,7 +343,7 @@ local function buildHelp()
 		Name = "Help",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(640, 300),
+		Size = UDim2.fromOffset(640, 340),
 		BackgroundTransparency = 0.1,
 		Visible = false,
 		ZIndex = 8,
@@ -350,7 +363,7 @@ local function buildHelp()
 			Size = UDim2.fromOffset(140, 30),
 			Text = line[1],
 			Font = Enum.Font.GothamBlack,
-			TextColor3 = i == 5 and SPIRIT or GOLD,
+			TextColor3 = line[1] == "POLTERGOBLIN" and SPIRIT or GOLD,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 9,
 		})
@@ -640,10 +653,23 @@ local function updateAbilities(now, root, carrying)
 	local grappleReady = player:GetAttribute("GrappleReadyAt") or 0
 	if now < grappleReady then
 		local left = grappleReady - now
-		setSlot(slots.grapple, 1 - left / Config.GRAPPLE_COOLDOWN, string.format("%.1fs", left), false)
+		local length = player:GetAttribute("GrappleCooldown") or Config.GRAPPLE_COOLDOWN
+		setSlot(slots.grapple, 1 - left / length, string.format("%.1fs", left), false)
 	else
-		setSlot(slots.grapple, 1, carrying and "hands full" or "aim + F to steal", not carrying)
+		setSlot(slots.grapple, 1, carrying and "hands full" or "hook / steal", not carrying)
 	end
+
+	local winded = player:GetAttribute("Winded") == true
+	local sprinting = player:GetAttribute("Sprinting") == true
+	shownStamina += ((player:GetAttribute("Stamina") or Config.STAMINA_MAX) - shownStamina) * 0.3
+	setSlot(
+		slots.sprint,
+		shownStamina / Config.STAMINA_MAX,
+		winded and "OUT OF BREATH" or (sprinting and "sprinting!" or "hold to run"),
+		not winded
+	)
+	slots.sprint.fill.BackgroundColor3 = winded and WINDED or STAMINA
+	slots.sprint.stroke.Color = winded and WINDED or STAMINA
 
 	setSlot(slots.throw, carrying and 1 or 0, carrying and "throw your loot" or "nothing held", carrying)
 	setSlot(slots.sword, carrying and 0 or 1, carrying and "HANDS FULL" or "knocks loot loose", not carrying)

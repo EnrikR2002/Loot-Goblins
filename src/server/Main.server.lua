@@ -8,7 +8,7 @@
 --   Threats      Guardian, totems, item trouble, carrier reveal
 --   Combat       sword and grapple
 --   Poltergoblin the spirit ability (was Soul Unbound / Yone's E)
---   Movement     WalkSpeed from carrying, water and spirit form
+--   Movement     WalkSpeed from carrying, sprint + stamina, water and spirit form
 --   Boats        the kinematic boats
 --   Raid         timer, scoring, intermission, world reset
 local Players = game:GetService("Players")
@@ -31,6 +31,8 @@ local Raid = require(script.Parent.Raid)
 
 Players.RespawnTime = Config.RESPAWN_TIME
 StarterPlayer.CharacterWalkSpeed = Config.WALK_SPEED
+-- Shift sprints, so it can't also toggle Roblox's shift lock.
+StarterPlayer.EnableMouseLockOption = false
 
 local refs = World.build()
 Boats.build(refs)
@@ -123,6 +125,7 @@ end)
 local function onCharacter(player, character)
 	local humanoid = character:WaitForChild("Humanoid")
 	humanoid.WalkSpeed = Config.WALK_SPEED
+	Movement.refill(player)
 	Combat.giveSword(player, character)
 	humanoid.Died:Connect(function()
 		Loot.dropFor(player, "death")
@@ -162,6 +165,9 @@ end)
 Net.Poltergoblin.OnServerEvent:Connect(function(player)
 	Poltergoblin.request(player)
 end)
+Net.Sprint.OnServerEvent:Connect(function(player, held)
+	Movement.setSprintHeld(player, held == true)
+end)
 
 -- Main loop --------------------------------------------------------------------------
 local function carriersOutsideWard()
@@ -182,6 +188,6 @@ RunService.Heartbeat:Connect(function(dt)
 		Threats.tick(dt)
 	end
 	Poltergoblin.tick()
-	Movement.tick()
+	Movement.tick(dt)
 	Raid.tick()
 end)

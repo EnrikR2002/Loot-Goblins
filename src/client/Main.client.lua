@@ -1,6 +1,7 @@
 -- Loot Goblins client: input, the bits of movement the client owns (the
--- Poltergoblin dash, ziplines, launch pads), and turning server events into
--- HUD messages and effects. The server decides everything that matters.
+-- Poltergoblin dash, ziplines, launch pads, the grapple pull), and turning
+-- server events into HUD messages and effects. The server decides everything
+-- that matters, including sprint speed and stamina.
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,6 +17,7 @@ local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
 local throwRemote = remotes:WaitForChild("ThrowRequest")
 local grappleRemote = remotes:WaitForChild("GrappleRequest")
 local polterRemote = remotes:WaitForChild("PoltergoblinRequest")
+local sprintRemote = remotes:WaitForChild("SprintRequest")
 local eventRemote = remotes:WaitForChild("GameEvent")
 
 local generated = workspace:WaitForChild("LootGoblinsGenerated")
@@ -25,6 +27,7 @@ local SPIRIT_COLOR = Color3.fromRGB(120, 255, 170)
 local MARK_COLOR = Color3.fromRGB(190, 90, 255)
 local GOLD = Color3.fromRGB(255, 205, 50)
 local DANGER = Color3.fromRGB(255, 80, 60)
+local ROPE_COLOR = Color3.fromRGB(230, 200, 140)
 
 local LOOT_COLORS = {}
 for _, def in ipairs(Config.LOOT) do
@@ -168,6 +171,157 @@ for _, pad in ipairs(pads:GetChildren()) do
 end
 pads.ChildAdded:Connect(hookPad)
 
+-- Grapple ---------------------------------------------------------------------------------
+-- F sends where you aim. The server picks: steal loot near your aim, or hook the
+-- first solid thing and pull you to it. The pull runs here, because each client
+-- moves its own character (like ziplines and launch pads).
+local pull = nil
+local aimParams = RaycastParams.new()
+aimParams.FilterType = Enum.RaycastFilterType.Exclude
+aimParams.IgnoreWater = false
+
+local function aimPoint()
+	local camera = workspace.CurrentCamera
+	local mouseAt = UserInputService:GetMouseLocation()
+	local ray = camera:ViewportPointToRay(mouseAt.X, mouseAt.Y)
+	aimParams.FilterDescendantsInstances = { player.Character }
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 1000, aimParams)
+	if hit then
+		return hit.Position, hit.Instance
+	end
+	return ray.Origin + ray.Direction * 1000, nil
+end
+
+local function stopPull(pop)
+	if not pull then
+		return
+	end
+	local current = pull
+	pull = nil
+	current.holder:Destroy()
+	current.rope:Destroy()
+	local _, _, root = getCharacter()
+	if root and pop then
+		-- A hop at the end, so a hook on a ledge lifts you over its lip.
+		local v = root.AssemblyLinearVelocity
+		root.AssemblyLinearVelocity = Vector3.new(v.X * 0.35, Config.GRAPPLE_POP_SPEED, v.Z * 0.35)
+	end
+end
+
+local function startPull(to, normal)
+	local _, humanoid, root = getCharacter()
+	if not root or humanoid.SeatPart or player:GetAttribute("CarryingLoot") then
+		return
+	end
+	stopRide(false)
+	stopPull(false)
+	-- Aim a little off the surface: a floor lands you on it, a wall leaves you at it.
+	local goal = to + normal * 2 + Vector3.new(0, 2.5, 0)
+	local holder = Instance.new("Attachment")
+	holder.Name = "GrapplePull"
+	holder.Parent = root
+	local push = Instance.new("LinearVelocity")
+	push.Attachment0 = holder
+	push.MaxForce = 1e6
+	push.RelativeTo = Enum.ActuatorRelativeTo.World
+	push.VectorVelocity = (goal - root.Position).Unit * Config.GRAPPLE_PULL_SPEED
+	push.Parent = holder
+	local distance = (goal - root.Position).Magnitude
+	local t = os.clock()
+	pull = {
+		root = root,
+		goal = goal,
+		holder = holder,
+		push = push,
+		rope = Effects.rope(root, to, ROPE_COLOR, 5),
+		startedAt = t,
+		endsAt = t + distance / Config.GRAPPLE_PULL_SPEED + 0.6,
+		best = distance,
+		bestAt = t,
+	}
+	Effects.sound("whoosh", { speed = 1.5, volume = 0.6 })
+	Effects.punchFov(80)
+end
+
+RunService.Heartbeat:Connect(function()
+	if not pull then
+		return
+	end
+	local _, humanoid, root = getCharacter()
+	if root ~= pull.root or humanoid.SeatPart or player:GetAttribute("CarryingLoot") then
+		stopPull(false)
+		return
+	end
+	local offset = pull.goal - root.Position
+	local distance = offset.Magnitude
+	local t = os.clock()
+	if distance < 3 or t > pull.endsAt then
+		stopPull(true)
+		return
+	end
+	if distance < pull.best - 0.5 then
+		pull.best, pull.bestAt = distance, t
+	elseif t - pull.bestAt > 0.3 then
+		-- Snagged on something on the way.
+		stopPull(true)
+		return
+	end
+	-- Ease in over the last few studs instead of slamming into the wall.
+	pull.push.VectorVelocity = offset.Unit * math.min(Config.GRAPPLE_PULL_SPEED, 30 + distance * 6)
+end)
+
+UserInputService.JumpRequest:Connect(function()
+	-- Jump lets go of the rope mid-pull and keeps your swing.
+	if pull and os.clock() - pull.startedAt > 0.15 then
+		stopPull(false)
+	end
+end)
+
+local function pressGrapple()
+	local _, _, root = getCharacter()
+	if not root then
+		return
+	end
+	if player:GetAttribute("CarryingLoot") then
+		Hud.toast("HANDS FULL - Q to throw your loot, then grapple")
+		return
+	end
+	if now() < (player:GetAttribute("GrappleReadyAt") or 0) then
+		Hud.toast("Grapple is recharging")
+		return
+	end
+	local hitPosition, target = aimPoint()
+	grappleRemote:FireServer(hitPosition, target)
+	Effects.sound("whoosh", { speed = 2.2, volume = 0.35 })
+end
+
+-- Sprint ------------------------------------------------------------------------------
+-- Hold Shift (or click the left stick to toggle). The server owns speed and stamina.
+local sprintHeld = false
+local function setSprint(held)
+	if held ~= sprintHeld then
+		sprintHeld = held
+		sprintRemote:FireServer(held)
+	end
+end
+
+UserInputService.WindowFocusReleased:Connect(function()
+	setSprint(false)
+end)
+UserInputService.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.LeftShift then
+		setSprint(false)
+	end
+end)
+player:GetAttributeChangedSignal("Sprinting"):Connect(function()
+	Effects.setBaseFov(player:GetAttribute("Sprinting") and 78 or 70)
+end)
+player:GetAttributeChangedSignal("Winded"):Connect(function()
+	if player:GetAttribute("Winded") then
+		Hud.toast("Out of breath! Stamina has to refill before you can sprint.")
+	end
+end)
+
 -- Poltergoblin --------------------------------------------------------------------------
 -- The server owns the spirit. The client only plays its own dash at once so the
 -- key feels instant; the server never trusts a position from here.
@@ -232,14 +386,19 @@ local function pressPoltergoblin()
 		return
 	end
 	stopRide(false)
+	stopPull(false)
 	lastPolterCast = t
 	polterRemote:FireServer()
 	playDash(root, humanoid)
 end
 
--- Spirit form tints the screen for the spirit only.
+-- Spirit form tints the screen for the spirit only. Snapping back cuts a grapple.
 player:GetAttributeChangedSignal("PolterEndsAt"):Connect(function()
-	Effects.setSpirit(player:GetAttribute("PolterEndsAt") ~= nil)
+	local spirit = player:GetAttribute("PolterEndsAt") ~= nil
+	Effects.setSpirit(spirit)
+	if not spirit then
+		stopPull(false)
+	end
 end)
 
 local function soulSlash(position)
@@ -258,25 +417,22 @@ local function soulSlash(position)
 end
 
 -- Input ------------------------------------------------------------------------------------
-local mouse = player:GetMouse()
-
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
 	end
-	if input.KeyCode == Enum.KeyCode.Q then
+	if input.KeyCode == Enum.KeyCode.LeftShift then
+		setSprint(true)
+	elseif input.KeyCode == Enum.KeyCode.ButtonL3 then
+		setSprint(not sprintHeld)
+	elseif input.KeyCode == Enum.KeyCode.Q then
 		if player:GetAttribute("CarryingLoot") then
 			throwRemote:FireServer()
 		else
 			Hud.toast("Nothing to throw. Grab some loot first.")
 		end
 	elseif input.KeyCode == Enum.KeyCode.F then
-		if now() < (player:GetAttribute("GrappleReadyAt") or 0) then
-			Hud.toast("Grapple is recharging")
-			return
-		end
-		mouse.TargetFilter = player.Character
-		grappleRemote:FireServer(mouse.Hit.Position, mouse.Target)
+		pressGrapple()
 	elseif input.KeyCode == Enum.KeyCode.E then
 		pressPoltergoblin()
 	elseif input.KeyCode == Enum.KeyCode.H then
@@ -439,7 +595,23 @@ function handlers.CaveIn(p)
 end
 
 function handlers.GrappleFX(p)
-	Effects.line(p.from, p.to, p.success and GOLD or Color3.fromRGB(255, 245, 140), 0.22, 0.25)
+	if p.kind == "pull" then
+		if isMe(p) then
+			startPull(p.to, p.normal or Vector3.yAxis)
+		else
+			local other = Players:GetPlayerByUserId(p.userId or 0)
+			local root = other and other.Character and other.Character:FindFirstChild("HumanoidRootPart")
+			if root then
+				Effects.rope(root, p.to, ROPE_COLOR, p.duration)
+			end
+		end
+		Effects.ball(p.to, ROPE_COLOR, 2.5, 0.3)
+		Effects.sound("thud", { position = p.to, speed = 1.7, volume = 0.6 })
+		return
+	end
+	-- A steal, or a miss that only the thrower sees.
+	local color = p.success and GOLD or Color3.fromRGB(255, 245, 140)
+	Effects.line(p.from, p.to, color, p.kind == "miss" and 0.12 or 0.22, 0.25)
 	if p.success then
 		Effects.burst(p.to, GOLD, 15, 12)
 	end

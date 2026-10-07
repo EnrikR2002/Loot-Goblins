@@ -1,5 +1,6 @@
 -- Remotes and the one server -> client broadcast channel.
--- Clients only ever send intent ("throw", "grapple here", "Poltergoblin").
+-- Clients only ever send intent ("throw", "grapple here", "Poltergoblin",
+-- "Shift is held").
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Net = {}
@@ -22,6 +23,7 @@ end
 Net.Throw = remote("ThrowRequest")
 Net.Grapple = remote("GrappleRequest")
 Net.Poltergoblin = remote("PoltergoblinRequest")
+Net.Sprint = remote("SprintRequest")
 Net.GameEvent = remote("GameEvent")
 folder.Parent = ReplicatedStorage
 
