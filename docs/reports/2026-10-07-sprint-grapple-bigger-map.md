@@ -52,7 +52,7 @@ It wasn't crashing. It just almost never did anything:
 - **HUD.** A "SHIFT SPRINT" slot sits bottom-left, and its fill is your stamina. It turns red with "OUT OF BREATH" when you're winded.
 - **Feel.** The camera widens a little (FOV 70 → 78) while sprinting.
 - **Gamepad.** Clicking the left stick toggles sprint.
-- **Shift lock.** Roblox's shift lock uses the same key, so the server turns it off (`StarterPlayer.EnableMouseLockOption = false`). Tell me if you'd rather sprint on another key and keep shift lock.
+- **Shift lock.** Roblox's shift lock uses the same key, so the server turns it off: `StarterPlayer.EnableMouseLockOption = false`, plus `DevEnableMouseLock = false` on each player, because the StarterPlayer default only reaches players who join after it is set. Tell me if you'd rather sprint on another key and keep shift lock.
 
 ### The grapple hook (`Combat.lua`, client `Main`, `Effects.lua`)
 
@@ -66,7 +66,7 @@ The client sends only where it aims: a ray from the camera through the cursor. T
    - At the end you get a small hop up, so a hook on a ledge lifts you over the lip.
    - Jump lets go mid-pull and keeps your swing. If you snag on something, the pull stops.
    - Cooldown 2 s.
-3. **Miss.** Sky, too far, or only the sea floor: a faint line for you only, a toast saying why, and **no cooldown**.
+3. **Miss.** Sky, too far, or only the sea floor: a faint line for you only, a toast saying why, and **no cooldown**. Because misses are free, the server ignores requests sent less than 0.25 s apart, so a broken or cheating client can't spam it.
 
 Two rules:
 
@@ -83,7 +83,7 @@ The pull runs on the client, like ziplines and launch pads, because each client 
 | Main islands, center to center | about 200–250 studs | about 650–720 studs |
 | Sea between shores | 20–70 studs, bridged | 280–650 studs, no bridges |
 | Highest loot | Lens at y 77 | Lens at y 119, Idol at y 98 |
-| Highest walkable point | the Lens perch, about 77 | the Crystal Isle crown, 135 |
+| Highest walkable point | the lighthouse top, about 72 | the Crystal Isle crown, 135 |
 | Boats | 2, both at home | 9: 4 at home, 1 at every other island |
 | Ziplines / launch pads / ladders | 1 / 2 / 1 | 4 / 3 / 15 |
 
@@ -91,7 +91,7 @@ The pull runs on the client, like ziplines and launch pads, because each client 
 
 *Cross-sections from the same headless build: the Sun Temple, the Crossroads, Crystal Isle, and the old temple for scale.*
 
-**Goblin Cove (home).** The Hoard and the hideout hill are where they were, just bigger. There's a lookout on the hilltop, with a crow's nest above it, for scouting light pillars. Two docks on the north shore hold four boats.
+**Goblin Cove (home).** Same layout as before (the Hoard in front of the hideout hill, spawn just north of it) on a bigger island further south. There's a lookout on the hilltop, with a crow's nest above it, for scouting light pillars. Two docks on the north shore hold four boats.
 
 **Crossroads Ruins (hub).**
 
@@ -124,7 +124,7 @@ The pull runs on the client, like ziplines and launch pads, because each client 
 - A sea-level tunnel runs through it past the Heart's chamber. Taking the Heart still seals the west half, the side facing home.
 - A launch pad in the tunnel shoots you up a shaft onto the 115 shelf.
 - **The Leap.** A broken stone bridge off the 85 shelf ends in a **15-stud gap with a 5-stud drop**.
-  - Only an empty-handed sprint jump clears it: 18.1 studs. Jogging reaches 12.5, and a sprinting carrier at most 12.0.
+  - Only an empty-handed sprint jump clears it: 18.1 studs. Jogging reaches 12.5, and a sprinting carrier at most 12.0. These figures use Roblox's default `JumpHeight` of 7.2. With the legacy `JumpPower` of 50 they become 17.3, 11.9 and 11.4, so the gap still works.
   - Beyond it, the Needle has a zipline to Twin Stacks.
   - This replaces the old ridge gap that rejected carriers.
 - One boat at the west dock.
@@ -180,7 +180,7 @@ The pull runs on the client, like ziplines and launch pads, because each client 
 | --- | --- |
 | `src/shared/Config.lua` | Sprint/stamina and grapple knobs; raid length, bounds, boat, zipline, leash and totem numbers for the bigger map |
 | `src/server/Movement.lua` | Sprint and stamina |
-| `src/server/Net.lua`, `Main.server.lua` | `SprintRequest` remote, stamina refill on spawn, shift lock off, `Movement.tick(dt)` |
+| `src/server/Net.lua`, `Main.server.lua` | `SprintRequest` remote, stamina refill on spawn, shift lock off (StarterPlayer and per player), `Movement.tick(dt)` |
 | `src/server/Combat.lua` | The grapple: steal with aim assist, pull, miss |
 | `src/server/World.lua` | The new map (rewritten) |
 | `src/server/Threats.lua` | The Guardian's ground ray and cliff-edge settling |
@@ -199,9 +199,9 @@ There was no Studio, so none of this is a gameplay playtest.
 | --- | --- |
 | StyLua 2.5.2 `--check src`, Selene 0.32.0, Rojo 7.7.1 build, `git diff --check` (the pinned versions `check.ps1` runs) | Pass, 0 warnings |
 | luau-lsp 1.70.1 `analyze` with Roblox API definitions and the Rojo sourcemap | 0 errors |
-| **Headless world build.** Lune 0.10.4 runs the real `World.lua` and `Boats.lua`, and validates every property, enum and type against the Roblox API. | Builds: 1,188 parts, 99 terrain operations, 9 boats, 4 ziplines, 3 launch pads |
+| **Headless world build.** Lune 0.10.4 runs the real `World.lua` and `Boats.lua`, and validates every property, enum and type against the Roblox API. | Builds: 1,170 parts, 99 terrain operations, 9 boats, 4 ziplines, 3 launch pads |
 | **Geometry checks** on the recorded build (Python) | All pass. Details below the table. |
-| **Headless gameplay simulation.** The real server modules on the real map, with fake players and a fake clock. | 42 of 42 checks pass. Details below the table. |
+| **Headless gameplay simulation.** The real server modules on the real map, with fake players and a fake clock. | 43 of 43 checks pass. Details below the table. |
 | **Headless HUD boot.** The real `Hud.lua` builds (every UI property validated) and updates in four states. | The sprint slot reads "hold to run", "sprinting!", "OUT OF BREATH", "hold to run" |
 | Map render and side views | The two images above |
 
@@ -211,7 +211,8 @@ There was no Studio, so none of this is a gameplay playtest.
 - **Ziplines:** none of the 4 pass through terrain or solid parts, and each start and end is 6–9 studs above a floor.
 - **Spawns and loot:** every spawn point and loot spot is in open air with a floor under it.
 - **Totems and ladders:** every totem stands on ground, and every ladder top meets a floor.
-- **Ramps:** all 7 terrain ramps are 20–31°, have no step over 0.52 studs and have clear headroom. Each one's top connects flat onto its shelf.
+- **Ramps:** all 7 terrain ramps are 20–31°, have no step over 0.52 studs and have clear headroom across their full width. Each one's top connects flat onto its shelf.
+- **Paths:** no palm stands on a ramp, dock, stair or in the sea. Every dock walkway and zipline start platform is clear.
 - **Tunnels:** all 4 have a floor and 6 studs of headroom the whole way.
 - **Launch pads:** each one's apex clears its target ledge by 11–13 studs.
 - **The Leap:** jog and carrier jumps fall short; an empty sprint jump clears it.
@@ -221,12 +222,22 @@ There was no Studio, so none of this is a gameplay playtest.
 - **Sprint:** speed is 29; stamina drains at 20/s; you're winded at 0; there's no regen during the 0.8 s delay; you recover at 35; and the bar refills fully. There's no sprint while standing still or in water, and a sprinting Lens carrier runs at 19.
 - **Grapple:**
   - A hook on the temple cliff lands at the rim. The ramp in the way catches the hook.
-  - Sky, out-of-range and sea-floor aims are misses with no cooldown, and only the thrower sees them.
+  - Sky, out-of-range and sea-floor aims are misses with no cooldown, and only the thrower sees them. A second request right away is ignored.
   - A steal during immunity slips off (1 s). Aiming 3 studs beside a carrier steals the loot (6 s).
   - A carrier can't grapple. A wall between thief and carrier turns the steal into a pull onto the wall.
 - **Bank:** banking the Lens gives +3 gold.
 - **Guardian:** stealing the Idol wakes it. It follows the carrier off the mesa down to the jungle (no longer hovering at the cliff edge) and smashes the idol loose. It sank more than 3 studs into the ground in only 3 of 750 frames, while stepping up a ziggurat tier.
 - **Boat:** driven north from home, it crosses the sea and stops at the Crossroads beach.
+
+**Bugs the headless checks caught, all fixed in this branch:**
+
+- **The Guardian vs. the mesa.** Its ground ray started inside the cliff, and it hovered at cliff edges.
+- **Zipline riders.** On two ziplines they clipped the start deck.
+- **Ladder tops.** Two had nothing to step onto: the galleon's fore-mast and the undercroft ladder.
+- **Palms.** Three were planted on the sea floor off Crystal Isle.
+- **The temple ridge.** It first rendered as a straight log sticking into the sea, so it's now a chain of hills.
+- **The grapple pull.** A hook right at your feet could have produced a NaN velocity.
+- **Shift lock.** It could stay on for players who joined as the server booted.
 
 The harness (about 1,000 lines of Lune and Python) is **not in this PR**. Lune is a new tool, and `AGENTS.md` asks for approval first. I can add it under a tools folder if the team wants headless checks in cloud sessions. It also found two Lune quirks worth knowing: `CFrame.lookAt` returns wrong rotations in Lune 0.10.4, and Lune has no live `Part.Position`.
 

@@ -134,6 +134,8 @@ local function onCharacter(player, character)
 end
 
 local function setupPlayer(player)
+	-- EnableMouseLockOption only reaches players who join after it is set.
+	player.DevEnableMouseLock = false
 	Raid.setupPlayer(player)
 	player.CharacterAdded:Connect(function(character)
 		onCharacter(player, character)

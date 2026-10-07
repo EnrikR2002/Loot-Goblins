@@ -68,7 +68,7 @@ Playtest/review the PR, then approve the AI to sync, check, and merge it. When s
 | `Q` | Throw your loot. Pass it, toss it over a gap, or throw it into the Hoard. |
 | `E` (no prompt showing) | **Poltergoblin**: leave your body and run as a faster spirit for 5 s, then snap back (`E` again to return early). Loot the spirit holds comes back with you. Your body can be struck, and that drops your loot. Doesn't work inside the Hoard's ward. |
 | `E` at a zipline post | Ride the zipline. Jump to let go. |
-| Sit in `Driver` | WASD drives a boat. Two wait at the home docks. |
+| Sit in `Driver` | WASD drives a boat. Four wait at the home docks and one at every other island. |
 | `H` | Show or hide the how-to-play panel |
 
 Green pads launch you upward. Ladders, ramps and ziplines take you up and across the islands. On Crystal Isle, a gap called the Leap only clears with a sprint jump, and never while carrying loot.

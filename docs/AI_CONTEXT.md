@@ -48,7 +48,7 @@ Test 001 (one idol, one boat, one guardian) proved the pieces work. The vertical
 | Sit in `Driver` | WASD drives a boat | `Boats` |
 | `H` | Help panel | client `Hud` |
 
-Abilities are keyboard and mouse only. Prompts and the sword also work on touch and gamepad.
+Abilities are keyboard and mouse only. Prompts and the sword also work on touch and gamepad, and sprint toggles with a gamepad's left stick click.
 
 ## Systems
 
@@ -81,7 +81,7 @@ All tuning numbers live in `src/shared/Config.lua`. Gameplay modules never hardc
   - **Reveal.** Carriers get an always-on-top `Highlight` named `CarrierReveal` at ALERT and above, or after the bell.
 - **Combat** (`Combat.lua`).
   - Sword: range 8, 20 damage, knockback. A hit on a carrier knocks the loot loose. Carriers can't swing. Swings also check spirit bodies.
-  - Grapple: the client sends only its aim (camera ray hit point and part). The server picks: (1) **steal** the clicked loot, or the loose/carried loot (or its carrier) nearest the aim line within `GRAPPLE_AIM_ASSIST`, if in `GRAPPLE_RANGE` with line of sight; a wall in the way turns it into (2) a **pull**: the server raycasts along the aim up to `GRAPPLE_PULL_RANGE` and broadcasts the anchor. Nothing in range (or only the sea floor) is a **miss** with no cooldown. Carriers can't grapple; seated players can steal but not pull. Cooldowns: steal 6 s, slip (steal immunity) 1 s, pull 2 s, exposed as `GrappleReadyAt` and `GrappleCooldown`.
+  - Grapple: the client sends only its aim (camera ray hit point and part). The server picks: (1) **steal** the clicked loot, or the loose/carried loot (or its carrier) nearest the aim line within `GRAPPLE_AIM_ASSIST`, if in `GRAPPLE_RANGE` with line of sight; a wall in the way turns it into (2) a **pull**: the server raycasts along the aim up to `GRAPPLE_PULL_RANGE` and broadcasts the anchor. Nothing in range (or only the sea floor) is a **miss** with no cooldown; requests closer together than 0.25 s are ignored. Carriers can't grapple; seated players can steal but not pull. Cooldowns: steal 6 s, slip (steal immunity) 1 s, pull 2 s, exposed as `GrappleReadyAt` and `GrappleCooldown`.
 - **Poltergoblin** (`Poltergoblin.lua`; Soul Unbound / Yone's E, renamed and reworked). E dashes the spirit out and leaves a frozen, labeled clone body. The spirit lasts 5 s with +10→30% speed, then snaps back (E again after 0.5 s returns early). Spirit sword hits leave marks that echo 35% on return. The rules that make it an extraction decision:
   - Loot the spirit holds rides back to the body.
   - Tether length `POLTER_TETHER`: going past it snaps you back.
@@ -119,7 +119,7 @@ All tuning numbers live in `src/shared/Config.lua`. Gameplay modules never hardc
   - Player: `CarryingLoot`, `PolterEndsAt`, `PolterReadyAt`, `PolterBody`, `GrappleReadyAt`, `GrappleCooldown`, `Stamina`, `Sprinting`, `Winded`.
   - `workspace`: `RaidPhase`, `PhaseEndsAt`, `Heat`, `HeatTier`, `GuardianState`.
   - `Loot` folder: per-item state.
-- **Place settings.** `workspace.StreamingEnabled` is false; the client relies on seeing the whole generated world. The server sets `StarterPlayer.EnableMouseLockOption = false` because Shift sprints.
+- **Place settings.** `workspace.StreamingEnabled` is false; the client relies on seeing the whole generated world. Shift sprints, so the server turns shift lock off: `StarterPlayer.EnableMouseLockOption = false`, and `DevEnableMouseLock = false` on each player (the StarterPlayer default only reaches players who join after it is set).
 
 Integration points new code must respect:
 

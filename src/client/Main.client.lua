@@ -217,6 +217,10 @@ local function startPull(to, normal)
 	stopPull(false)
 	-- Aim a little off the surface: a floor lands you on it, a wall leaves you at it.
 	local goal = to + normal * 2 + Vector3.new(0, 2.5, 0)
+	local distance = (goal - root.Position).Magnitude
+	if distance < 3 then
+		return -- Already there (and .Unit of a zero vector is NaN).
+	end
 	local holder = Instance.new("Attachment")
 	holder.Name = "GrapplePull"
 	holder.Parent = root
@@ -226,7 +230,6 @@ local function startPull(to, normal)
 	push.RelativeTo = Enum.ActuatorRelativeTo.World
 	push.VectorVelocity = (goal - root.Position).Unit * Config.GRAPPLE_PULL_SPEED
 	push.Parent = holder
-	local distance = (goal - root.Position).Magnitude
 	local t = os.clock()
 	pull = {
 		root = root,

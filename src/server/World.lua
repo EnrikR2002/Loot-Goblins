@@ -211,7 +211,8 @@ local function palm(x, z, y, lean)
 	end
 end
 
--- Palms scattered around a ring, skipping any near the given keep-clear points.
+-- Palms scattered around a ring, skipping the sea and any spot near the given
+-- keep-clear points.
 local function palmRing(center, radius, count, startDegrees, keepClear)
 	for i = 0, count - 1 do
 		local out = compass(startDegrees + i * 360 / count + (i % 3) * 7)
@@ -223,8 +224,9 @@ local function palmRing(center, radius, count, startDegrees, keepClear)
 				clear = false
 			end
 		end
-		if clear then
-			palm(x, z)
+		local y = groundY(x, z, -100)
+		if clear and y > SEA_Y + 1 then
+			palm(x, z, y)
 		end
 	end
 end

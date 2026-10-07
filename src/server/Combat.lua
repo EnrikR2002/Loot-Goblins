@@ -24,7 +24,9 @@ local Poltergoblin = require(script.Parent.Poltergoblin)
 local Combat = {}
 local refs
 local lastSwing = {}
+local lastGrapple = {}
 local GUARD_OFFSET = CFrame.new(0, 0, -1)
+local GRAPPLE_SPAM_GAP = 0.25 -- Misses are free, so ignore requests faster than this.
 
 local losParams = RaycastParams.new()
 losParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -229,7 +231,12 @@ local function grapple(player, hitPosition, target)
 	if not root or humanoid.Health <= 0 then
 		return
 	end
-	if workspace:GetServerTimeNow() < (player:GetAttribute("GrappleReadyAt") or 0) then
+	local t = workspace:GetServerTimeNow()
+	if t - (lastGrapple[player] or -math.huge) < GRAPPLE_SPAM_GAP then
+		return
+	end
+	lastGrapple[player] = t
+	if t < (player:GetAttribute("GrappleReadyAt") or 0) then
 		return
 	end
 	if Loot.itemOf(player) then
@@ -302,6 +309,7 @@ end
 
 function Combat.forget(player)
 	lastSwing[player] = nil
+	lastGrapple[player] = nil
 end
 
 return Combat
