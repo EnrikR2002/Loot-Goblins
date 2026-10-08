@@ -10,7 +10,7 @@ The question it answers: **is stealing valuable loot, fighting over it while the
 
 1. Open the Loot Goblins folder on your computer.
 2. Double-click **Play Loot Goblins** (the file ending in `.bat`).
-3. Wait. It gets the newest version, builds the game, and opens Roblox Studio. Close any other Studio window first.
+3. Wait. It gets the newest version, builds the game, and opens Roblox Studio. If Loot Goblins is already open in Studio, close that window first (other games can stay open).
 4. In Studio, press the blue **Play** button at the top. The sky stays blank until you press it.
 5. Press `H` in the game to read how to play.
 

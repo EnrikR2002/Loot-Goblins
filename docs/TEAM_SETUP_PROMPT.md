@@ -9,7 +9,7 @@ Shared repository: https://github.com/EnrikR2002/Loot-Goblins
 
 The repository already contains our tooling and instructions. Reuse them and get me working; do not recreate the setup or redesign the game. Continue automatically with safe work. Keep updates short and only interrupt me for account approval, required GUI permissions, missing personal information, or a real blocker.
 
-1. Quickly inspect my OS, relevant installed tools, current folder, and likely existing project locations. Reuse the correct clone, preserving local changes and remotes. Otherwise clone the supplied repository into a sensible development folder. Fetch and safely sync clean local main. Never reset, force-push, discard work, or create another repository/experience.
+1. Quickly inspect my OS, relevant installed tools, current folder, and likely existing project locations. If this computer is already set up for another of our games, reuse everything and just get this repository. Reuse the correct clone, preserving local changes and remotes. Otherwise clone the supplied repository into a sensible development folder. Fetch and safely sync clean local main. Never reset, force-push, discard work, or create another repository/experience.
 
 2. Read AGENTS.md, README.md, and docs/WORKSTATION.md. Install only missing prerequisites from official sources: Git, GitHub CLI, Roblox Studio, Codex, and Claude Code; Node only if a chosen installation requires it. Preserve working versions and settings unless compatibility requires a change. Use my own GitHub account and Git identity, never Enrik's. Missing sign-in for the other AI must not block the AI I am using. Both agents must use the existing AGENTS.md; do not add CLAUDE.md or another instruction system.
 

@@ -163,7 +163,7 @@ Integration points new code must respect:
 
 ## Rojo and Studio MCP
 
-- Rojo serves on `127.0.0.1:34872`. **A server is often already running** (started together with Studio by `dev.ps1 -OpenStudio`). In that case a second `dev.ps1` fails with "address in use". Check with `curl http://127.0.0.1:34872/api/rojo` first.
+- Rojo serves on `127.0.0.1:34872` (`$RojoPort` in `scripts/common.ps1`; our other games use different ports, so with several games open set the plugin to the right one). **A server is often already running** (started together with Studio by `dev.ps1 -OpenStudio`). In that case a second `dev.ps1` fails with "address in use". Check with `curl http://127.0.0.1:34872/api/rojo` first.
 - **Confirm Studio has your edits:** in the Edit datamodel, compare `#Script.Source` with each file's byte size (`wc -c`). Rojo syncs saved files live. There are now many ModuleScripts; check the ones you changed.
 - **Use the official Studio MCP only.** Call `list_roblox_studios` at the start of every session. The `studio_id` changes whenever the place is reopened.
   - `get_studio_state` shows the mode.

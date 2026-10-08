@@ -26,7 +26,7 @@ Use the official built-in Roblox Studio MCP when relevant: list Studio instances
 ## Teammates who do not use terminals
 Ethan and Ninety do not use terminals. Never tell them to type a command, open PowerShell, or read Git output. The AI runs every command and explains the result in plain words.
 - **Playing:** a human double-clicks `Play Loot Goblins.bat` in the repository folder. It runs `scripts/play.ps1`: fast-forward the checked-out branch from GitHub (only when clean, never discarding work), rebuild the place, open one visible Studio. Rojo is not needed to play, because the built place holds every script. Rojo is only for the AI editing code.
-- **"Let me try the new changes" (or "update me"):** do the takeover steps, then fetch. If the human has unsaved changes, keep them and say so. Switch to the branch or PR they name. If unclear, ask which one in plain words. Fast-forward it. Run `./scripts/play.ps1` yourself when Studio is closed and say you opened it. If Studio is open, ask them to close it (File > Exit). Never force-kill Studio.
+- **"Let me try the new changes" (or "update me"):** do the takeover steps, then fetch. If the human has unsaved changes, keep them and say so. Switch to the branch or PR they name. If unclear, ask which one in plain words. Fast-forward it. Run `./scripts/play.ps1` yourself when Loot Goblins is not already open in Studio, and say you opened it. If Loot Goblins is already open in Studio, ask them to close that window (File > Exit). Never force-kill Studio.
 - **Then tell them how to play,** in short numbered steps with no jargon: press the blue Play button (the sky is blank until then), press `H` for the how-to-play panel, what to try from the PR's human test list, and how to report: say what felt bad, and send a screenshot of any red error.
 - First-time setup uses `docs/TEAM_SETUP_PROMPT.md`. `play.ps1` installs missing project tools by itself if they are gone.
 - Keep `README.md`'s "Play it" section and this section true whenever `scripts/play.ps1`, the controls, or the launcher change.
@@ -35,3 +35,6 @@ Ethan and Ninety do not use terminals. Never tell them to type a command, open P
 Never commit credentials, API keys, tokens, `.ROBLOSECURITY`, secrets, private environment files, or machine-specific account configuration. Ignore files are a convenience, not a substitute for diff review. Do not publish a Roblox experience or change repository ownership as routine setup.
 
 Before stopping mid-task, leave a concise handoff in the chat/PR: branch, completed changes, remaining TODOs, commands/test results, Studio state, and approval status. Both agents inspect the same files and branch when resuming.
+
+## Shared process with our other games
+Our other games start from `https://github.com/EnrikR2002/Roblox-Game-Template`, which packages this workflow (scripts, rules, docs). If you improve a script, rule, or doc here that every game would benefit from, finish the task here, then tell the human so it can go into the template too. Do not edit the template from this repository.
