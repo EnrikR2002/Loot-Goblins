@@ -238,8 +238,11 @@ function Threats.wakeGuardian(reason)
 	Net.broadcast("GuardianWake", { position = guardian.position, reason = reason })
 end
 
-local function groundAt(x, z, fromY)
-	local hit = workspace:Raycast(Vector3.new(x, fromY + 25, z), Vector3.new(0, -140, 0), groundParams)
+-- Cast from the top of the map, so a ray never starts inside a cliff (the
+-- mesa is taller than any step). The Guardian walks over the top of anything.
+local function groundAt(x, z)
+	local top = Config.BOUNDS_MAX.Y
+	local hit = workspace:Raycast(Vector3.new(x, top, z), Vector3.new(0, Config.BOUNDS_MIN.Y - top, 0), groundParams)
 	if not hit then
 		return -2, true
 	end
@@ -273,30 +276,33 @@ local function guardianTarget()
 	return nil, nil
 end
 
+-- Returns true while it is still walking. The feet follow the ground every
+-- step, even when it has stopped, so it never hangs off a cliff edge.
 local function stepGuardianToward(dt, goal, stopDistance)
 	local g = guardian
 	local flat = Vector3.new(goal.X - g.position.X, 0, goal.Z - g.position.Z)
 	local distance = flat.Magnitude
-	if distance <= stopDistance then
-		return false
+	local walking = distance > stopDistance
+	local nextPos = g.position
+	if walking then
+		local speed = (frenzy() and Config.GUARDIAN_FRENZY_SPEED or Config.GUARDIAN_SPEED)
+			* (g.wading and Config.GUARDIAN_WADE_MULT or 1)
+		local step = math.min(speed * dt, distance - stopDistance)
+		local direction = flat.Unit
+		nextPos = g.position + direction * step
+		if inWard(nextPos, 6) or not inLeash(nextPos) then
+			return false
+		end
+		g.yaw = math.atan2(-direction.X, -direction.Z)
+		g.phase += step * 0.28
 	end
-	local speed = (frenzy() and Config.GUARDIAN_FRENZY_SPEED or Config.GUARDIAN_SPEED)
-		* (g.wading and Config.GUARDIAN_WADE_MULT or 1)
-	local step = math.min(speed * dt, distance - stopDistance)
-	local direction = flat.Unit
-	local nextPos = g.position + direction * step
-	if inWard(nextPos, 6) or not inLeash(nextPos) then
-		return false
-	end
-	local groundY, water = groundAt(nextPos.X, nextPos.Z, g.position.Y)
+	local groundY, water = groundAt(nextPos.X, nextPos.Z)
 	g.wading = water
 	local targetY = water and groundY - 5 or groundY
 	local dy = targetY - g.position.Y
-	local y = g.position.Y + math.clamp(dy, -80 * dt, 40 * dt)
+	local y = g.position.Y + math.clamp(dy, -80 * dt, 60 * dt)
 	g.position = Vector3.new(nextPos.X, y, nextPos.Z)
-	g.yaw = math.atan2(-direction.X, -direction.Z)
-	g.phase += step * 0.28
-	return true
+	return walking
 end
 
 local function tickGuardian(dt)

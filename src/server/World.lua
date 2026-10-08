@@ -1,16 +1,20 @@
 -- Builds the whole map at runtime from Terrain and parts. The repository stays
 -- the only source of truth; Edit mode shows an empty sky until Play.
 --
--- Layout (north is -Z):
+-- Layout (north is -Z). The big islands sit about 700 studs apart across open
+-- sea, so boats are the way to travel and every escape is a real journey.
 --
---                    SUN TEMPLE (idol, guardian)
---                         | rope bridge   \ zipline
---   SHIPWRECK SHOALS -- CROSSROADS RUINS --- stepping stones -- CRYSTAL ISLE
---   (chest)    \         (lighthouse lens)                    (crystal heart)
---         sandbar \         | long bridge                    / ridge + sandbar
---                    GOBLIN COVE (spawn, the Hoard, boats)
+--                          SUN TEMPLE (mesa, idol, guardian)
+--                                 \ zipline
+--                                  \            TWIN STACKS
+--   SHIPWRECK SHOALS        CROSSROADS RUINS     (islet)       CRYSTAL ISLE
+--   (atoll, galleon, chest) (acropolis, lighthouse lens)       (spire, heart)
+--                 GULL ROCK                    SMUGGLER'S COVE
+--                 (islet) \ zipline             (islet)
+--                          GOBLIN COVE (spawn, the Hoard, 4 boats)
 --
--- Gameplay modules only use the references returned in World.refs.
+-- Every island has a dock with a boat. Gameplay modules only use the
+-- references returned in World.refs.
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -20,14 +24,21 @@ local Util = require(script.Parent.Util)
 local World = {}
 
 local SEA_Y = 0
-local HOME = Vector3.new(0, 6, 210)
-local CROSS = Vector3.new(0, 10, -20)
-local TEMPLE = Vector3.new(0, 14, -265)
-local CRYSTAL = Vector3.new(175, 20, 70)
-local SHOALS = Vector3.new(-150, 2, 90)
-local HOARD = Vector3.new(0, 6.75, 262)
-local LIGHTHOUSE = Vector3.new(58, 10, -28)
-local ZIGGURAT = Vector3.new(0, 14, -275)
+local HOME = Vector3.new(0, 6, 650)
+local HOARD = Vector3.new(0, 6.75, 730)
+local CROSS = Vector3.new(0, 10, 0) -- The lower ruins.
+local ACROPOLIS = Vector3.new(-20, 42, -20) -- The raised plateau in the middle of the ruins.
+local ACROPOLIS_R = 80
+local LIGHTHOUSE = Vector3.new(30, 42, -70)
+local TEMPLE = Vector3.new(0, 8, -720) -- The jungle around the mesa.
+local MESA_Y = 56
+local MESA_R = 115
+local ZIGGURAT = Vector3.new(0, MESA_Y, -740)
+local CRYSTAL = Vector3.new(720, 0, -40)
+local SHOALS = Vector3.new(-700, 0, 20)
+local GULL_ROCK = Vector3.new(-360, 0, 400)
+local SMUGGLER = Vector3.new(380, 4, 380)
+local TWIN_STACK = Vector3.new(370, 48, -320) -- The taller stack's top.
 
 local STONE = Color3.fromRGB(150, 145, 140)
 local DARK_STONE = Color3.fromRGB(85, 80, 90)
@@ -36,6 +47,8 @@ local WOOD = Color3.fromRGB(120, 80, 48)
 local DARK_WOOD = Color3.fromRGB(78, 52, 34)
 local GOLD = Color3.fromRGB(255, 200, 40)
 local WARD_COLOR = Color3.fromRGB(190, 110, 255)
+local CRYSTAL_COLORS = { Color3.fromRGB(215, 110, 255), Color3.fromRGB(110, 230, 255) }
+local CAVE_GLOW = Color3.fromRGB(120, 255, 200)
 
 local terrain = workspace.Terrain
 local folders: { [string]: Folder } = {}
@@ -100,6 +113,27 @@ local function flatDirection(from, to)
 	return d.Unit
 end
 
+-- Unit vector pointing out from an island center at a compass angle (degrees).
+-- 0 is east (+X), 90 is south (+Z), 180 is west, 270 is north.
+local function compass(degrees)
+	local a = math.rad(degrees)
+	return Vector3.new(math.cos(a), 0, math.sin(a))
+end
+
+-- A ladder you can climb (Roblox climbs TrussParts on its own).
+local function ladder(name, bottom, height)
+	local h = math.max(2, math.floor(height / 2 + 0.5) * 2)
+	local truss = Instance.new("TrussPart")
+	truss.Name = name
+	truss.Size = Vector3.new(2, h, 2)
+	truss.CFrame = CFrame.new(bottom + Vector3.new(0, h / 2, 0))
+	truss.Anchored = true
+	truss.Color = DARK_WOOD
+	truss.Material = Enum.Material.Wood
+	truss.Parent = folders.structures
+	return truss
+end
+
 -- Terrain shapes. Heights are absolute world Y.
 local function fillColumn(x, z, bottomY, topY, radius, material)
 	terrain:FillCylinder(CFrame.new(x, (bottomY + topY) / 2, z), topY - bottomY, radius, material)
@@ -112,13 +146,39 @@ local function island(center, beachRadius, topRadius, bodyMaterial, topMaterial)
 	fillColumn(center.X, center.Z, center.Y - 4, center.Y, topRadius - 1, topMaterial)
 end
 
--- A shallow sand path between two points. Its top sits 1 stud under the sea,
--- so it can be waded (slowly) instead of swum.
-local function sandbar(from, to, width)
-	local mid = (from + to) / 2
-	local length = Util.flatDistance(from, to) + 6
-	local cframe = CFrame.lookAt(Vector3.new(mid.X, -2.5, mid.Z), Vector3.new(to.X, -2.5, to.Z))
-	terrain:FillBlock(cframe, Vector3.new(width, 3, length), Enum.Material.Sand)
+-- A cliff-walled plateau: rock all the way up, a thin top layer.
+local function mesa(center, radius, bottomY, topY, material, topMaterial)
+	fillColumn(center.X, center.Z, bottomY, topY, radius, material)
+	fillColumn(center.X, center.Z, topY - 3, topY, radius - 1, topMaterial or material)
+end
+
+-- A natural rock ramp whose walking surface runs from a to b. It is a thick
+-- tilted block, so its underside stays buried in whatever it leans on.
+local function rockRamp(a, b, width, material)
+	local length = (b - a).Magnitude
+	local thickness = math.abs(b.Y - a.Y) + 8
+	local cframe = CFrame.lookAt((a + b) / 2, b) * CFrame.new(0, -thickness / 2, 0)
+	terrain:FillBlock(cframe, Vector3.new(width, thickness, length + 4), material or Enum.Material.Rock)
+end
+
+-- A rock ramp hugging the outside of a round cliff. It climbs `length` studs
+-- around the cliff from lowY and arrives at the cliff top (topY) at `degrees`,
+-- right beside the edge. turn (1 or -1) picks which way around it climbs.
+local function cliffRamp(center, radius, degrees, lowY, topY, length, turn, width, material)
+	width = width or 12
+	local out = compass(degrees)
+	local along = Vector3.new(-out.Z, 0, out.X) * turn
+	local r = radius + width / 2 - 1
+	local top = Vector3.new(center.X, topY, center.Z) + out * r
+	local foot = top - along * length
+	rockRamp(Vector3.new(foot.X, lowY, foot.Z), top, width, material)
+	return Vector3.new(foot.X, lowY, foot.Z), top
+end
+
+-- Carves a walkable tunnel whose floor runs from a to b.
+local function tunnel(a, b, width, height)
+	local cframe = CFrame.lookAt((a + b) / 2, b) * CFrame.new(0, height / 2, 0)
+	terrain:FillBlock(cframe, Vector3.new(width, height, (b - a).Magnitude + 2), Enum.Material.Air)
 end
 
 local terrainOnly = RaycastParams.new()
@@ -151,6 +211,26 @@ local function palm(x, z, y, lean)
 	end
 end
 
+-- Palms scattered around a ring, skipping the sea and any spot near the given
+-- keep-clear points.
+local function palmRing(center, radius, count, startDegrees, keepClear)
+	for i = 0, count - 1 do
+		local out = compass(startDegrees + i * 360 / count + (i % 3) * 7)
+		local r = radius + (i % 4) * 6
+		local x, z = center.X + out.X * r, center.Z + out.Z * r
+		local clear = true
+		for _, point in ipairs(keepClear or {}) do
+			if Util.flatDistance(Vector3.new(x, 0, z), point) < 22 then
+				clear = false
+			end
+		end
+		local y = groundY(x, z, -100)
+		if clear and y > SEA_Y + 1 then
+			palm(x, z, y)
+		end
+	end
+end
+
 local function rockPile(position, size)
 	structure(
 		"Rock",
@@ -159,6 +239,15 @@ local function rockPile(position, size)
 		DARK_STONE,
 		Enum.Material.Slate
 	)
+end
+
+local function pointLight(parent, color, range, brightness)
+	local light = Instance.new("PointLight")
+	light.Color = color
+	light.Range = range
+	light.Brightness = brightness or 1
+	light.Parent = parent
+	return light
 end
 
 local function brazier(position)
@@ -175,20 +264,14 @@ local function brazier(position)
 	fire.Size = 6
 	fire.Heat = 9
 	fire.Parent = flame
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(255, 170, 80)
-	light.Range = 18
-	light.Brightness = 1.5
-	light.Parent = flame
+	pointLight(flame, Color3.fromRGB(255, 170, 80), 18, 1.5)
 end
 
-local function pointLight(parent, color, range, brightness)
-	local light = Instance.new("PointLight")
-	light.Color = color
-	light.Range = range
-	light.Brightness = brightness or 1
-	light.Parent = parent
-	return light
+-- A small glowing gem on a wall or floor, so caves are readable.
+local function glow(position, color, range)
+	local gem = neon(decor("CaveGlow", Vector3.new(0.8, 0.8, 0.8), CFrame.new(position), color))
+	pointLight(gem, color, range or 16, 1.1)
+	return gem
 end
 
 -- A light pillar from a point up into the sky. Landmarks you can find from anywhere.
@@ -199,7 +282,7 @@ local function skyBeam(name, position, color, width)
 	bottom.Parent = terrain
 	local top = Instance.new("Attachment")
 	top.Name = name .. "Top"
-	top.Position = position + Vector3.new(0, 320, 0)
+	top.Position = position + Vector3.new(0, 500, 0)
 	top.Parent = terrain
 	local beam = Instance.new("Beam")
 	beam.Name = name
@@ -239,6 +322,13 @@ local function sign(parent, text, color, studsOffset, maxDistance)
 	return gui
 end
 
+-- A floating name over an island, readable from across the sea.
+local function islandSign(position, text, color)
+	local holder = decor("IslandSign", Vector3.new(0.4, 0.4, 0.4), CFrame.new(position), Color3.new(1, 1, 1), nil)
+	holder.Transparency = 1
+	sign(holder, text, color or Color3.fromRGB(255, 245, 220), Vector3.zero, 2600)
+end
+
 -- Stone watcher. Threats animates the eye and fires from it.
 local function totem(name, position, faceToward)
 	local model = Instance.new("Model")
@@ -263,6 +353,95 @@ local function totem(name, position, faceToward)
 	return model
 end
 
+-- A wooden dock from the shore out to sea, with boats moored alongside its
+-- outer end. sides: one entry per boat, -1 (left) or 1 (right) of the dock.
+local function dock(shore, sea, sides)
+	local a = Vector3.new(shore.X, 2, shore.Z)
+	local b = Vector3.new(sea.X, 2, sea.Z)
+	local direction = flatDirection(a, b)
+	local right = Vector3.new(-direction.Z, 0, direction.X)
+	local length = (b - a).Magnitude
+	ground("Dock", Vector3.new(8, 1, length), CFrame.lookAt((a + b) / 2, b), WOOD, Enum.Material.WoodPlanks)
+	for d = 8, length - 2, 14 do
+		for _, side in ipairs({ -3.5, 3.5 }) do
+			local p = a + direction * d + right * side
+			cylinder(
+				"DockPost",
+				0.6,
+				10,
+				Vector3.new(p.X, -2.5, p.Z),
+				DARK_WOOD,
+				Enum.Material.Wood,
+				folders.structures
+			)
+		end
+	end
+	for _, side in ipairs(sides) do
+		local p = a + direction * (length - 13) + right * side * 13
+		local at = Vector3.new(p.X, 0.8, p.Z)
+		table.insert(refs.boatSpawns, CFrame.lookAt(at, at + direction))
+	end
+end
+
+-- A sagging rope bridge between two points (walkable planks, decorative ropes).
+local function ropeBridge(name, a, b, sag, width)
+	width = width or 6
+	local pieces = math.max(8, math.floor((b - a).Magnitude / 4.5))
+	local function point(t)
+		return a:Lerp(b, t) - Vector3.new(0, sag * math.sin(math.pi * t), 0)
+	end
+	local side = Vector3.new(-(b - a).Z, 0, (b - a).X).Unit * (width / 2 + 0.2)
+	for i = 0, pieces - 1 do
+		plank(
+			name,
+			point(i / pieces),
+			point((i + 1) / pieces),
+			width,
+			0.6,
+			Color3.fromRGB(165, 125, 80),
+			Enum.Material.WoodPlanks,
+			folders.ground,
+			0.3
+		)
+		for _, s in ipairs({ side, -side }) do
+			local rope = plank(
+				"Rope",
+				point(i / pieces) + s + Vector3.new(0, 3, 0),
+				point((i + 1) / pieces) + s + Vector3.new(0, 3, 0),
+				0.25,
+				0.25,
+				Color3.fromRGB(200, 170, 110),
+				Enum.Material.Fabric,
+				folders.decor
+			)
+			rope.CanCollide = false
+			rope.CanQuery = false
+		end
+	end
+	for _, p in ipairs({ a, b }) do
+		for _, s in ipairs({ side, -side }) do
+			structure(
+				"RopePost",
+				Vector3.new(0.8, 4, 0.8),
+				CFrame.new(p + s + Vector3.new(0, 1.5, 0)),
+				DARK_WOOD,
+				Enum.Material.Wood
+			)
+		end
+	end
+end
+
+-- A flat wooden deck on top of something, so high perches read clearly.
+local function deck(name, center, size)
+	return ground(
+		name,
+		Vector3.new(size, 1, size),
+		CFrame.new(center + Vector3.new(0, 0.5, 0)),
+		WOOD,
+		Enum.Material.WoodPlanks
+	)
+end
+
 -- Ocean, sky and lighting -------------------------------------------------------
 local function buildEnvironment()
 	terrain:Clear()
@@ -281,27 +460,29 @@ local function buildEnvironment()
 	Lighting.Ambient = Color3.fromRGB(70, 70, 82)
 	Lighting.OutdoorAmbient = Color3.fromRGB(140, 140, 150)
 	Lighting.GlobalShadows = true
+	-- Thin enough haze that the next island is a silhouette on the horizon.
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-	atmosphere.Density = 0.28
+	atmosphere.Density = 0.22
 	atmosphere.Offset = 0.1
 	atmosphere.Color = Color3.fromRGB(199, 222, 255)
 	atmosphere.Decay = Color3.fromRGB(110, 140, 180)
 	atmosphere.Glare = 0.2
-	atmosphere.Haze = 1.2
+	atmosphere.Haze = 1
 	atmosphere.Parent = Lighting
 
-	-- Sea floor. The water itself is poured in last, into every gap below sea level.
-	terrain:FillBlock(CFrame.new(15, -34, -30), Vector3.new(840, 12, 1080), Enum.Material.Sand)
-
-	-- Invisible walls keep swimmers and thrown loot near the islands.
 	local min, max = Config.BOUNDS_MIN, Config.BOUNDS_MAX
 	local midX, midZ = (min.X + max.X) / 2, (min.Z + max.Z) / 2
 	local spanX, spanZ = max.X - min.X, max.Z - min.Z
+
+	-- Sea floor. The water itself is poured in last, into every gap below sea level.
+	terrain:FillBlock(CFrame.new(midX, -34, midZ), Vector3.new(spanX + 80, 12, spanZ + 80), Enum.Material.Sand)
+
+	-- Invisible walls keep swimmers, boats and thrown loot inside the map.
 	local walls = {
-		{ Vector3.new(4, 400, spanZ), Vector3.new(min.X, 150, midZ) },
-		{ Vector3.new(4, 400, spanZ), Vector3.new(max.X, 150, midZ) },
-		{ Vector3.new(spanX, 400, 4), Vector3.new(midX, 150, min.Z) },
-		{ Vector3.new(spanX, 400, 4), Vector3.new(midX, 150, max.Z) },
+		{ Vector3.new(4, 800, spanZ), Vector3.new(min.X, 300, midZ) },
+		{ Vector3.new(4, 800, spanZ), Vector3.new(max.X, 300, midZ) },
+		{ Vector3.new(spanX, 800, 4), Vector3.new(midX, 300, min.Z) },
+		{ Vector3.new(spanX, 800, 4), Vector3.new(midX, 300, max.Z) },
 	}
 	for _, wall in ipairs(walls) do
 		local p = Util.part("BoundaryWall", wall[1], CFrame.new(wall[2]), Color3.new(1, 1, 1), nil, folders.structures)
@@ -311,17 +492,24 @@ local function buildEnvironment()
 end
 
 local function pourSea()
-	local region = Region3.new(Vector3.new(-400, -28, -560), Vector3.new(440, SEA_Y, 520)):ExpandToGrid(4)
-	terrain:ReplaceMaterial(region, 4, Enum.Material.Air, Enum.Material.Water)
+	-- In tiles: one huge ReplaceMaterial region could pass the engine's size limit.
+	local min, max = Config.BOUNDS_MIN, Config.BOUNDS_MAX
+	local tile = 512
+	for x = min.X - 40, max.X + 40, tile do
+		for z = min.Z - 40, max.Z + 40, tile do
+			local region = Region3.new(Vector3.new(x, -28, z), Vector3.new(x + tile, SEA_Y, z + tile)):ExpandToGrid(4)
+			terrain:ReplaceMaterial(region, 4, Enum.Material.Air, Enum.Material.Water)
+		end
+	end
 end
 
 -- Goblin Cove (home) ---------------------------------------------------------------
 local function buildHome()
-	island(HOME, 100, 86, Enum.Material.Rock, Enum.Material.Grass)
-	-- The hideout hill behind the Hoard.
-	terrain:FillBall(Vector3.new(0, 0, 302), 26, Enum.Material.Rock)
-	terrain:FillBall(Vector3.new(-30, -4, 290), 16, Enum.Material.Rock)
-	terrain:FillBall(Vector3.new(32, -6, 288), 15, Enum.Material.Rock)
+	island(HOME, 175, 160, Enum.Material.Rock, Enum.Material.Grass)
+	-- The hideout hill behind the Hoard. Round hills are walkable all the way up.
+	terrain:FillBall(Vector3.new(0, 0, 792), 46, Enum.Material.Rock)
+	terrain:FillBall(Vector3.new(-48, -4, 772), 30, Enum.Material.Rock)
+	terrain:FillBall(Vector3.new(50, -6, 770), 28, Enum.Material.Rock)
 
 	-- The Hoard: carry loot into the gold ring to bank it.
 	local dais = cylinder(
@@ -361,14 +549,27 @@ local function buildHome()
 	end
 	pointLight(dais, GOLD, 30, 2)
 	sign(dais, "THE HOARD", GOLD, Vector3.new(0, 12, 6), 400)
-	skyBeam("HoardBeacon", HOARD, GOLD, 5)
+	skyBeam("HoardBeacon", HOARD, GOLD, 6)
 	refs.hoard = { position = HOARD, part = dais }
 
 	-- The hideout door and eyes, so the hill reads as home.
-	decor("HideoutDoor", Vector3.new(8, 10, 1), CFrame.new(0, 10, 277.5), DARK_WOOD, Enum.Material.WoodPlanks, true)
+	decor("HideoutDoor", Vector3.new(8, 10, 1), CFrame.new(0, 10, 747), DARK_WOOD, Enum.Material.WoodPlanks, true)
 	for _, x in ipairs({ -6, 6 }) do
-		neon(decor("HideoutEye", Vector3.new(3, 2, 1), CFrame.new(x, 20, 279), Color3.fromRGB(120, 255, 90)))
+		neon(decor("HideoutEye", Vector3.new(3, 2, 1), CFrame.new(x, 24, 752.5), Color3.fromRGB(120, 255, 90)))
 	end
+
+	-- A lookout on the hilltop with a crow's nest: scout the light pillars from home.
+	local top = Vector3.new(0, 46, 792)
+	deck("Lookout", top, 14)
+	structure(
+		"LookoutMast",
+		Vector3.new(1.5, 22, 1.5),
+		CFrame.new(top + Vector3.new(0, 12, 0)),
+		DARK_WOOD,
+		Enum.Material.Wood
+	)
+	deck("CrowsNest", top + Vector3.new(0, 21.5, 0), 8)
+	ladder("LookoutLadder", top + Vector3.new(0, 1, 5), 22)
 
 	-- The ward: no Poltergoblin and no Guardian inside this ring.
 	local segments = 48
@@ -393,7 +594,7 @@ local function buildHome()
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "HomeSpawn"
 	spawn.Size = Vector3.new(12, 1, 12)
-	spawn.CFrame = CFrame.new(0, 6.6, 222)
+	spawn.CFrame = CFrame.new(0, 6.6, 690)
 	spawn.Anchored = true
 	spawn.Neutral = true
 	spawn.Duration = 3
@@ -404,33 +605,23 @@ local function buildHome()
 	refs.homePoints = {}
 	for i = 0, 7 do
 		local a = i / 8 * math.pi * 2
-		table.insert(refs.homePoints, CFrame.new(0 + math.cos(a) * 9, 10, 222 + math.sin(a) * 9))
+		table.insert(refs.homePoints, CFrame.new(math.cos(a) * 9, 10, 690 + math.sin(a) * 9))
 	end
 
-	-- Docks and boats on the north shore.
-	for _, x in ipairs({ -22, 22 }) do
-		ground("Dock", Vector3.new(8, 1, 42), CFrame.new(x, 2, 104), WOOD, Enum.Material.WoodPlanks)
-		for _, z in ipairs({ 86, 100, 114 }) do
-			for _, side in ipairs({ -3.5, 3.5 }) do
-				cylinder(
-					"DockPost",
-					0.6,
-					10,
-					Vector3.new(x + side, -2.5, z),
-					DARK_WOOD,
-					Enum.Material.Wood,
-					folders.structures
-				)
-			end
-		end
+	-- Two docks on the north shore, four boats: one each, plus a spare to fight over.
+	for _, x in ipairs({ -30, 30 }) do
+		dock(Vector3.new(x, 0, 490), Vector3.new(x, 0, 428), { -1, 1 })
 	end
-	refs.boatSpawns = {
-		CFrame.new(-35, 0.8, 100),
-		CFrame.new(35, 0.8, 100),
-	}
 
 	-- Goblin huts for cover and character.
-	local huts = { { -46, 205, 20 }, { 46, 200, -25 }, { -42, 160, 60 }, { 40, 245, 10 } }
+	local huts = {
+		{ -70, 640, 20 },
+		{ 70, 628, -25 },
+		{ -60, 580, 60 },
+		{ 66, 700, 10 },
+		{ -96, 700, -10 },
+		{ 100, 590, 30 },
+	}
 	for _, h in ipairs(huts) do
 		local base = CFrame.new(h[1], 6, h[2]) * CFrame.Angles(0, math.rad(h[3]), 0)
 		structure(
@@ -449,95 +640,63 @@ local function buildHome()
 		)
 		decor("HutDoor", Vector3.new(4, 6, 0.4), base * CFrame.new(0, 3, -6.1), DARK_WOOD, Enum.Material.Wood)
 	end
-
-	for _, p in ipairs({ { -70, 190 }, { 72, 230 }, { -60, 262 }, { 64, 280 }, { -80, 236 }, { 20, 300 } }) do
-		palm(p[1], p[2])
-	end
+	palmRing(HOME, 128, 14, 200, { Vector3.new(-30, 0, 500), Vector3.new(30, 0, 500), Vector3.new(-115, 0, 612) })
 end
 
--- Long Bridge (home <-> crossroads) ------------------------------------------------
-local function buildLongBridge()
-	local a = Vector3.new(0, 6.6, 130)
-	local b = Vector3.new(0, 10.6, 48)
-	plank("LongBridge", a, b, 10, 1.2, WOOD, Enum.Material.WoodPlanks, folders.ground)
-	for _, side in ipairs({ -5.2, 5.2 }) do
-		plank(
-			"BridgeCurb",
-			a + Vector3.new(side, 0.6, 0),
-			b + Vector3.new(side, 0.6, 0),
-			0.6,
-			0.6,
-			DARK_WOOD,
-			Enum.Material.Wood,
-			folders.structures
-		)
-	end
-	for _, z in ipairs({ 112, 89, 66 }) do
-		local t = (z - a.Z) / (b.Z - a.Z)
-		local y = a.Y + (b.Y - a.Y) * t
-		for _, side in ipairs({ -4, 4 }) do
-			cylinder(
-				"BridgePillar",
-				1,
-				y + 12,
-				Vector3.new(side, (y - 12) / 2 - 1, z),
-				DARK_WOOD,
-				Enum.Material.Wood,
-				folders.structures
-			)
-		end
-	end
-end
-
--- Crossroads Ruins and the Lighthouse ----------------------------------------------
+-- Crossroads Ruins: lower town, the acropolis above it, the Lighthouse ----------------
 local function buildCrossroads()
-	island(CROSS, 84, 72, Enum.Material.Rock, Enum.Material.Grass)
+	island(CROSS, 195, 180, Enum.Material.Rock, Enum.Material.Grass)
+	mesa(ACROPOLIS, ACROPOLIS_R, 4, ACROPOLIS.Y, Enum.Material.Rock, Enum.Material.Grass)
+	islandSign(ACROPOLIS + Vector3.new(0, 40, 0), "CROSSROADS RUINS")
 
-	cylinder("Plaza", 18, 0.6, CROSS + Vector3.new(0, 0.2, 0), STONE, Enum.Material.Cobblestone, folders.ground)
-
-	-- Broken walls: cover from grapples and totems.
-	local walls = {
-		{ -30, -5, 2, 10, 22, 0 },
-		{ -22, -42, 18, 8, 2, 0 },
-		{ 26, 8, 16, 12, 2, 20 },
-		{ -8, 24, 14, 6, 2, 0 },
-		{ 16, -56, 2, 9, 16, 0 },
-		{ -48, -28, 2, 14, 12, -15 },
-		{ 30, -40, 12, 7, 2, 35 },
-	}
-	for _, w in ipairs(walls) do
-		local cf = CFrame.new(w[1], CROSS.Y + w[4] / 2 - 0.5, w[2]) * CFrame.Angles(0, math.rad(w[6]), 0)
-		structure("RuinWall", Vector3.new(w[3], w[4], w[5]), cf, STONE, Enum.Material.Brick)
-		-- A broken lump on top so it doesn't look like a box.
-		structure(
-			"RuinTop",
-			Vector3.new(math.max(w[3] * 0.5, 2), 2, math.max(w[5] * 0.5, 2)),
-			cf * CFrame.new(w[3] * 0.15, w[4] / 2 + 0.6, 0),
-			STONE,
-			Enum.Material.Brick
+	-- Grand stairs up the south cliff of the acropolis.
+	local stairFoot = Vector3.new(ACROPOLIS.X, CROSS.Y, 131)
+	local stairTop = Vector3.new(ACROPOLIS.X, ACROPOLIS.Y, ACROPOLIS.Z + ACROPOLIS_R + 1)
+	plank("GrandStairs", stairFoot, stairTop, 16, 2, STONE, Enum.Material.Cobblestone, folders.ground, 4)
+	local stairDirection = (stairTop - stairFoot).Unit
+	for i = 1, 17 do
+		local p = stairFoot:Lerp(stairTop, i / 18)
+		decor(
+			"StairStripe",
+			Vector3.new(16, 0.1, 0.6),
+			CFrame.lookAt(p, p + stairDirection) * CFrame.new(0, 0.06, 0),
+			DARK_STONE,
+			Enum.Material.Cobblestone
 		)
 	end
+	-- A rock ramp around the east side, and a launch pad at the foot of the west cliff.
+	cliffRamp(ACROPOLIS, ACROPOLIS_R, 330, CROSS.Y, ACROPOLIS.Y, 72, -1, 12)
+	World.launchPad(Vector3.new(ACROPOLIS.X - ACROPOLIS_R - 8, CROSS.Y + 0.2, ACROPOLIS.Z + 10), Vector3.new(0, 128, 0))
 
-	-- Columns around the plaza, a few broken or fallen.
-	for i = 0, 7 do
-		local a = i / 8 * math.pi * 2 + 0.2
-		local pos = CROSS + Vector3.new(math.cos(a) * 24, 0, math.sin(a) * 24)
-		local height = (i % 3 == 0) and 7 or 16
-		if i == 5 then
+	-- The undercroft: a tunnel right through the acropolis, with a ladder shaft up into it.
+	tunnel(Vector3.new(ACROPOLIS.X, CROSS.Y, 75), Vector3.new(ACROPOLIS.X, CROSS.Y, -115), 12, 11)
+	terrain:FillCylinder(CFrame.new(ACROPOLIS.X, 31, 20), 26, 4, Enum.Material.Air)
+	ladder("UndercroftLadder", Vector3.new(ACROPOLIS.X + 2.9, CROSS.Y, 20), 34)
+	for _, z in ipairs({ 50, 10, -30, -70 }) do
+		glow(Vector3.new(ACROPOLIS.X - 5.6, CROSS.Y + 5, z), CAVE_GLOW, 18)
+	end
+
+	-- The acropolis: a plaza ringed by columns, some broken.
+	cylinder("Plaza", 16, 0.6, ACROPOLIS + Vector3.new(0, 0.2, 0), STONE, Enum.Material.Cobblestone, folders.ground)
+	for i = 0, 9 do
+		local a = i / 10 * math.pi * 2 + 0.2
+		local pos = ACROPOLIS + Vector3.new(math.cos(a) * 30, 0, math.sin(a) * 30)
+		local height = (i % 3 == 0) and 7 or 18
+		if i == 6 then
 			local fallen = cylinder(
 				"FallenColumn",
-				1.6,
-				16,
-				pos + Vector3.new(0, 1.6, 0),
+				1.8,
+				18,
+				pos + Vector3.new(0, 1.8, 0),
 				STONE,
 				Enum.Material.Marble,
 				folders.structures
 			)
-			fallen.CFrame = CFrame.new(pos + Vector3.new(0, 1.4, 0)) * CFrame.Angles(0, a, 0)
+			fallen.CFrame = CFrame.new(pos + Vector3.new(0, 1.6, 0)) * CFrame.Angles(0, a, 0)
 		else
 			cylinder(
 				"Column",
-				1.6,
+				1.8,
 				height,
 				pos + Vector3.new(0, height / 2, 0),
 				STONE,
@@ -547,12 +706,83 @@ local function buildCrossroads()
 		end
 	end
 
-	-- Ruined tower: a sniper perch reached by a launch pad.
-	local towerPos = Vector3.new(-38, CROSS.Y, -60)
+	-- Broken walls on both levels: cover from grapples and totems.
+	local walls = {
+		-- x, z, width, height, depth, yaw, base y
+		{ 40, 70, 2, 10, 22, 0, CROSS.Y },
+		{ -70, 95, 18, 8, 2, 0, CROSS.Y },
+		{ 60, 135, 16, 12, 2, 20, CROSS.Y },
+		{ 20, 150, 14, 6, 2, 0, CROSS.Y },
+		{ 110, 40, 2, 9, 16, 0, CROSS.Y },
+		{ -110, -60, 2, 14, 12, -15, CROSS.Y },
+		{ 90, -90, 12, 7, 2, 35, CROSS.Y },
+		{ -60, -50, 14, 8, 2, 10, ACROPOLIS.Y },
+		{ 10, 20, 2, 10, 14, 0, ACROPOLIS.Y },
+		{ -70, 10, 2, 7, 12, 25, ACROPOLIS.Y },
+	}
+	for _, w in ipairs(walls) do
+		local cf = CFrame.new(w[1], w[7] + w[4] / 2 - 0.5, w[2]) * CFrame.Angles(0, math.rad(w[6]), 0)
+		structure("RuinWall", Vector3.new(w[3], w[4], w[5]), cf, STONE, Enum.Material.Brick)
+		structure(
+			"RuinTop",
+			Vector3.new(math.max(w[3] * 0.5, 2), 2, math.max(w[5] * 0.5, 2)),
+			cf * CFrame.new(w[3] * 0.15, w[4] / 2 + 0.6, 0),
+			STONE,
+			Enum.Material.Brick
+		)
+	end
+
+	-- A broken aqueduct: a narrow high walkway from the west knoll up to the acropolis rim.
+	local aqueductOut = compass(200)
+	local knoll = Vector3.new(ACROPOLIS.X, 0, ACROPOLIS.Z) + aqueductOut * 128
+	terrain:FillBall(Vector3.new(knoll.X, 6, knoll.Z), 24, Enum.Material.Rock)
+	local aqueductLow = Vector3.new(knoll.X, 30, knoll.Z) - aqueductOut * 4
+	local aqueductHigh = Vector3.new(ACROPOLIS.X, ACROPOLIS.Y, ACROPOLIS.Z) + aqueductOut * (ACROPOLIS_R - 2)
+	plank("Aqueduct", aqueductLow, aqueductHigh, 6, 3, STONE, Enum.Material.Brick, folders.ground)
+	for i = 1, 3 do
+		local p = aqueductLow:Lerp(aqueductHigh, i / 4)
+		structure(
+			"AqueductArch",
+			Vector3.new(5, p.Y - CROSS.Y - 3, 5),
+			CFrame.new(p.X, (p.Y + CROSS.Y - 3) / 2, p.Z),
+			STONE,
+			Enum.Material.Brick
+		)
+	end
+
+	-- The old harbor: roofless stone houses by the south dock, to duck into.
+	for _, house in ipairs({ { 85, 105, 15 }, { 115, 70, -20 }, { -40, 160, 30 } }) do
+		local base = CFrame.new(house[1], CROSS.Y, house[2]) * CFrame.Angles(0, math.rad(house[3]), 0)
+		local houseWalls = {
+			{ Vector3.new(16, 9, 1.5), CFrame.new(0, 4.5, -7.5) },
+			{ Vector3.new(1.5, 9, 16), CFrame.new(-7.5, 4.5, 0) },
+			{ Vector3.new(1.5, 6, 16), CFrame.new(7.5, 3, 0) },
+			{ Vector3.new(5, 9, 1.5), CFrame.new(-5.5, 4.5, 7.5) },
+			{ Vector3.new(5, 9, 1.5), CFrame.new(5.5, 4.5, 7.5) },
+		}
+		for _, w in ipairs(houseWalls) do
+			structure("HouseWall", w[1], base * w[2], STONE, Enum.Material.Brick)
+		end
+	end
+
+	-- East knoll with a ruined watchtower and a ladder.
+	local eastKnoll = Vector3.new(130, 0, -10)
+	terrain:FillBall(Vector3.new(eastKnoll.X, 2, eastKnoll.Z), 22, Enum.Material.Rock)
+	ground(
+		"Watchtower",
+		Vector3.new(9, 22, 9),
+		CFrame.new(eastKnoll.X, 24 + 11, eastKnoll.Z),
+		STONE,
+		Enum.Material.Brick
+	)
+	ladder("WatchtowerLadder", Vector3.new(eastKnoll.X - 5.5, 22, eastKnoll.Z), 26)
+
+	-- Ruined tower on the lower west side: a sniper perch reached by a launch pad.
+	local towerPos = Vector3.new(-120, CROSS.Y, 70)
 	ground(
 		"RuinTower",
-		Vector3.new(10, 26, 10),
-		CFrame.new(towerPos + Vector3.new(0, 13, 0)),
+		Vector3.new(10, 30, 10),
+		CFrame.new(towerPos + Vector3.new(0, 15, 0)),
 		STONE,
 		Enum.Material.Brick
 	)
@@ -565,16 +795,17 @@ local function buildCrossroads()
 		structure(
 			"Merlon",
 			Vector3.new(2, 2.5, 2),
-			CFrame.new(towerPos + offset + Vector3.new(0, 27.25, 0)),
+			CFrame.new(towerPos + offset + Vector3.new(0, 31.25, 0)),
 			STONE,
 			Enum.Material.Brick
 		)
 	end
-	World.launchPad(towerPos + Vector3.new(0, 0.2, 10.5), Vector3.new(0, 118, 0))
+	World.launchPad(towerPos + Vector3.new(0, 0.2, 10.5), Vector3.new(0, 125, 0))
 
-	-- Lighthouse: an exposed spiral climb to the Lens, with a long fall into the sea.
+	-- Lighthouse on the acropolis rim: an exposed spiral climb to the Lens, high over the sea.
 	local stripes = { Color3.fromRGB(240, 240, 240), Color3.fromRGB(210, 50, 50) }
-	for i = 0, 5 do
+	local segments = 7
+	for i = 0, segments - 1 do
 		cylinder(
 			"LighthouseTower",
 			8,
@@ -585,7 +816,7 @@ local function buildCrossroads()
 			folders.structures
 		)
 	end
-	local topY = LIGHTHOUSE.Y + 62
+	local topY = LIGHTHOUSE.Y + segments * 10 + 2
 	cylinder(
 		"LighthouseTop",
 		9,
@@ -623,7 +854,7 @@ local function buildCrossroads()
 		)
 	)
 	lamp.Shape = Enum.PartType.Ball
-	pointLight(lamp, Color3.fromRGB(255, 240, 160), 40, 2)
+	pointLight(lamp, Color3.fromRGB(255, 240, 160), 50, 2)
 	refs.lighthouseLamp = lamp
 	local bell = decor(
 		"Bell",
@@ -642,10 +873,10 @@ local function buildCrossroads()
 	)
 	refs.lootSpots.Lens = CFrame.new(LIGHTHOUSE.X, topY + 2.5 + 2.2, LIGHTHOUSE.Z)
 
-	-- Spiral ramp: 3 turns from the ground (facing the plaza) to the top.
-	local turns, perTurn, radius = 3, 24, 12
+	-- Spiral ramp: 4 turns from the acropolis (facing the plaza) to the top.
+	local turns, perTurn, radius = 4, 24, 12
 	local steps = turns * perTurn
-	local startY, endY = CROSS.Y + 0.5, topY
+	local startY, endY = LIGHTHOUSE.Y + 0.5, topY
 	local function spiralPoint(i)
 		local a = math.pi + i / perTurn * math.pi * 2
 		local y = startY + (endY - startY) * i / steps
@@ -665,14 +896,15 @@ local function buildCrossroads()
 		)
 	end
 
-	totem("LighthouseTotem", Vector3.new(36, CROSS.Y, -2), LIGHTHOUSE)
+	totem("LighthouseTotem", Vector3.new(5, ACROPOLIS.Y, -45), LIGHTHOUSE)
+	totem("RuinsTotem", Vector3.new(75, CROSS.Y, 150), Vector3.new(40, CROSS.Y, 200))
 
-	-- North gate to the rope bridge.
-	for _, x in ipairs({ -7, 7 }) do
+	-- The temple zipline lands at a gate on the north rim.
+	for _, x in ipairs({ -27, -13 }) do
 		structure(
 			"GatePillar",
 			Vector3.new(3, 15, 3),
-			CFrame.new(x, CROSS.Y + 7, -86),
+			CFrame.new(x, ACROPOLIS.Y + 7.5, -84),
 			SANDSTONE,
 			Enum.Material.Sandstone
 		)
@@ -680,88 +912,60 @@ local function buildCrossroads()
 	structure(
 		"GateLintel",
 		Vector3.new(17, 3, 3.4),
-		CFrame.new(0, CROSS.Y + 16, -86),
+		CFrame.new(-20, ACROPOLIS.Y + 16.5, -84),
 		SANDSTONE,
 		Enum.Material.Sandstone
 	)
 
-	for _, p in ipairs({ { -60, 10 }, { -20, 40 }, { 45, 30 }, { -55, -55 }, { 60, 20 } }) do
-		palm(p[1], p[2])
-	end
-	for _, p in ipairs({ { 10, 30, 4 }, { -50, 0, 6 }, { 50, -60, 5 } }) do
-		rockPile(Vector3.new(p[1], CROSS.Y + p[3] / 3, p[2]), Vector3.new(p[3], p[3] * 0.8, p[3] * 1.2))
-	end
-end
+	-- One boat waits at the south dock.
+	dock(Vector3.new(40, 0, 182), Vector3.new(40, 0, 245), { 1 })
 
--- Rope bridge (crossroads <-> temple). Narrow, no rails: easy to get knocked off.
-local function buildRopeBridge()
-	local a = Vector3.new(0, CROSS.Y + 0.6, -90)
-	local b = Vector3.new(0, TEMPLE.Y + 0.6, -182)
-	local pieces = 22
-	local function point(t)
-		local p = a:Lerp(b, t)
-		return p - Vector3.new(0, 3 * math.sin(math.pi * t), 0)
-	end
-	for i = 0, pieces - 1 do
-		plank(
-			"RopeBridge",
-			point(i / pieces),
-			point((i + 1) / pieces),
-			6,
-			0.6,
-			Color3.fromRGB(165, 125, 80),
-			Enum.Material.WoodPlanks,
-			folders.ground,
-			0.3
-		)
-	end
-	for _, side in ipairs({ -3.2, 3.2 }) do
-		for i = 0, pieces - 1 do
-			local p0 = point(i / pieces) + Vector3.new(side, 3, 0)
-			local p1 = point((i + 1) / pieces) + Vector3.new(side, 3, 0)
-			local rope =
-				plank("Rope", p0, p1, 0.25, 0.25, Color3.fromRGB(200, 170, 110), Enum.Material.Fabric, folders.decor)
-			rope.CanCollide = false
-			rope.CanQuery = false
-		end
-	end
-	for _, z in ipairs({ a.Z, b.Z }) do
-		for _, side in ipairs({ -3.2, 3.2 }) do
-			local y = z == a.Z and a.Y or b.Y
-			structure("RopePost", Vector3.new(0.8, 4, 0.8), CFrame.new(side, y + 1.5, z), DARK_WOOD, Enum.Material.Wood)
-		end
+	palmRing(CROSS, 150, 16, 10, {
+		Vector3.new(40, 0, 182),
+		Vector3.new(-20, 0, 131),
+		Vector3.new(-120, 0, 80),
+		Vector3.new(-40, 0, 160),
+		Vector3.new(85, 0, 105),
+		Vector3.new(115, 0, 70),
+		knoll,
+		eastKnoll,
+	})
+	for _, p in ipairs({ { 30, 100, 4 }, { -90, 30, 6 }, { 100, -60, 5 }, { -40, 150, 5 } }) do
+		rockPile(Vector3.new(p[1], CROSS.Y + p[3] / 3, p[2]), Vector3.new(p[3], p[3] * 0.8, p[3] * 1.2))
 	end
 end
 
 -- Sun Temple (Golden Idol, Guardian) ------------------------------------------------
 local function buildTemple()
-	fillColumn(TEMPLE.X, TEMPLE.Z, -30, TEMPLE.Y - 2, 92, Enum.Material.Rock)
-	fillColumn(TEMPLE.X, TEMPLE.Z, TEMPLE.Y - 4, TEMPLE.Y, 88, Enum.Material.Grass)
-	-- A rocky mound hides the sea cave that climbs into the courtyard from the west.
-	terrain:FillBall(Vector3.new(-62, 10, -250), 22, Enum.Material.Rock)
-	terrain:FillBall(Vector3.new(60, 8, -320), 18, Enum.Material.Rock)
-	local caveFrom = Vector3.new(-90, 4, -250)
-	local caveTo = Vector3.new(-36, 19, -250)
-	terrain:FillBlock(
-		CFrame.lookAt((caveFrom + caveTo) / 2, caveTo),
-		Vector3.new(12, 10, (caveTo - caveFrom).Magnitude + 6),
-		Enum.Material.Air
-	)
-	terrain:FillBlock(CFrame.new(-99, -1.5, -250), Vector3.new(14, 5, 18), Enum.Material.Sand)
-	for _, z in ipairs({ -256, -244 }) do
-		local torch = decor(
-			"CaveGlow",
-			Vector3.new(0.6, 0.6, 0.6),
-			CFrame.new(-70, 9, z),
-			Color3.fromRGB(120, 255, 200),
-			Enum.Material.Neon
-		)
-		pointLight(torch, Color3.fromRGB(120, 255, 200), 14, 1)
+	local c = TEMPLE
+	island(c, 215, 200, Enum.Material.Rock, Enum.Material.Grass)
+	-- The temple stands on a cliff-walled mesa high above the jungle.
+	mesa(c, MESA_R, 0, MESA_Y, Enum.Material.Rock, Enum.Material.Grass)
+	islandSign(Vector3.new(0, 130, -740), "SUN TEMPLE", Color3.fromRGB(255, 220, 120))
+
+	-- Serpent Ridge hides the sea cave: a tunnel from the west waterline that
+	-- climbs inside the mountain and comes out in the temple courtyard.
+	for _, hill in ipairs({ { -252, 26 }, { -228, 28 }, { -202, 32 }, { -174, 40 }, { -140, 48 }, { -105, 52 } }) do
+		terrain:FillBall(Vector3.new(hill[1], 0, -660), hill[2], Enum.Material.Rock)
+	end
+	terrain:FillBall(Vector3.new(-160, 16, -630), 26, Enum.Material.Rock)
+	terrain:FillBall(Vector3.new(-125, 20, -690), 30, Enum.Material.Rock)
+	tunnel(Vector3.new(-272, 1, -660), Vector3.new(-150, 1, -660), 12, 11)
+	tunnel(Vector3.new(-152, 1, -660), Vector3.new(-40, MESA_Y, -660), 12, 11)
+	for i, x in ipairs({ -240, -195, -150, -110, -75 }) do
+		local floorY = x < -150 and 1 or 1 + (x + 152) / 112 * (MESA_Y - 1)
+		glow(Vector3.new(x, floorY + 5, -660 + (i % 2 == 0 and 5.6 or -5.6)), CAVE_GLOW, 18)
+	end
+
+	-- The pilgrim ramp climbs the south cliff to the courtyard. The east cliff has ladders.
+	cliffRamp(c, MESA_R, 90, c.Y, MESA_Y, 110, 1, 12)
+	for _, z in ipairs({ -730, -712 }) do
+		ladder("CliffLadder", Vector3.new(math.sqrt(MESA_R ^ 2 - (z - c.Z) ^ 2) + 1.3, c.Y, z), MESA_Y - c.Y + 2)
 	end
 
 	-- The ziggurat.
-	local tiers = { { 64, 8 }, { 48, 8 }, { 32, 8 }, { 18, 6 } }
-	local y = TEMPLE.Y
+	local tiers = { { 80, 10 }, { 60, 10 }, { 42, 10 }, { 24, 8 } }
+	local y = MESA_Y
 	for i, tier in ipairs(tiers) do
 		ground(
 			"ZigguratTier" .. i,
@@ -772,29 +976,30 @@ local function buildTemple()
 		)
 		y += tier[2]
 	end
-	local topY = y -- 44
+	local topY = y -- 94
 	ground("Altar", Vector3.new(6, 2, 6), CFrame.new(ZIGGURAT.X, topY + 1, ZIGGURAT.Z), DARK_STONE, Enum.Material.Slate)
 	refs.lootSpots.Idol = CFrame.new(ZIGGURAT.X, topY + 2 + 2.3, ZIGGURAT.Z)
 
 	-- Grand stairs straight up the south face. The boulder rolls down these.
-	local stairBottom = Vector3.new(0, TEMPLE.Y + 0.2, -222)
-	local stairTop = Vector3.new(0, topY, -266)
+	local stairBottom = Vector3.new(0, MESA_Y + 0.2, ZIGGURAT.Z + 68)
+	local stairTop = Vector3.new(0, topY, ZIGGURAT.Z + tiers[4][1] / 2)
 	plank(
 		"TempleStairs",
 		stairBottom,
 		stairTop,
-		12,
+		14,
 		2,
 		Color3.fromRGB(205, 170, 105),
 		Enum.Material.Sandstone,
-		folders.ground
+		folders.ground,
+		2
 	)
 	local stairDirection = (stairTop - stairBottom).Unit
-	for i = 1, 14 do
-		local p = stairBottom:Lerp(stairTop, i / 15)
+	for i = 1, 20 do
+		local p = stairBottom:Lerp(stairTop, i / 21)
 		local stripe = decor(
 			"StairStripe",
-			Vector3.new(12, 0.1, 0.5),
+			Vector3.new(14, 0.1, 0.5),
 			CFrame.lookAt(p, p + stairDirection) * CFrame.new(0, 0.06, 0),
 			Color3.fromRGB(150, 120, 75),
 			Enum.Material.Sandstone
@@ -802,45 +1007,51 @@ local function buildTemple()
 		stripe.CanCollide = false
 	end
 	-- Just below the top of the stairs, so it misses the thief at the altar.
-	refs.boulderStart = CFrame.new(0, 46, -258)
+	refs.boulderStart = CFrame.new(0, topY, ZIGGURAT.Z + 22)
 	refs.boulderDirection = Vector3.new(0, 0, 1)
-	brazier(Vector3.new(-9, TEMPLE.Y, -221))
-	brazier(Vector3.new(9, TEMPLE.Y, -221))
+	brazier(Vector3.new(-10, MESA_Y, ZIGGURAT.Z + 70))
+	brazier(Vector3.new(10, MESA_Y, ZIGGURAT.Z + 70))
 
-	-- Side climbs: stepping blocks up the east and west faces.
-	local steps = { { 35, 16, 6, 4 }, { 26.5, 24, 5, 4 }, { 18.5, 32, 5, 4 }, { 11, 39.5, 4, 3 } }
+	-- Side climbs: one block per tier up the east and west faces (one jump each).
 	for _, sideSign in ipairs({ 1, -1 }) do
-		for _, s in ipairs(steps) do
+		local base = MESA_Y
+		for i, tier in ipairs(tiers) do
+			local stepTop = base + tier[2] - 4.5
+			if i > 1 then
+				stepTop = base + tier[2] - 4
+			end
+			local x = (tier[1] / 2 + 3) * sideSign
 			ground(
 				"ClimbStep",
-				Vector3.new(s[3], s[4], s[3]),
-				CFrame.new(s[1] * sideSign, s[2], -262),
+				Vector3.new(5, stepTop - base, 5),
+				CFrame.new(x, (base + stepTop) / 2, ZIGGURAT.Z),
 				Color3.fromRGB(190, 155, 95),
 				Enum.Material.Sandstone
 			)
+			base += tier[2]
 		end
 	end
 
-	-- South gate where the rope bridge arrives.
-	for _, x in ipairs({ -7, 7 }) do
+	-- The courtyard gate at the top of the pilgrim ramp.
+	for _, x in ipairs({ -9, 9 }) do
 		structure(
 			"TempleGate",
-			Vector3.new(3, 16, 3),
-			CFrame.new(x, TEMPLE.Y + 8, -188),
+			Vector3.new(3, 18, 3),
+			CFrame.new(x, MESA_Y + 9, c.Z + MESA_R - 10),
 			SANDSTONE,
 			Enum.Material.Sandstone
 		)
 	end
 	structure(
 		"TempleGateLintel",
-		Vector3.new(17, 3, 3.4),
-		CFrame.new(0, TEMPLE.Y + 17.5, -188),
+		Vector3.new(21, 3, 3.4),
+		CFrame.new(0, MESA_Y + 19.5, c.Z + MESA_R - 10),
 		SANDSTONE,
 		Enum.Material.Sandstone
 	)
 
-	-- The Guardian sleeps on the north side.
-	local lair = Vector3.new(0, TEMPLE.Y, -330)
+	-- The Guardian sleeps on the north side of the mesa.
+	local lair = Vector3.new(0, MESA_Y, -805)
 	for i = 0, 5 do
 		local a = i / 6 * math.pi * 2
 		structure(
@@ -851,22 +1062,17 @@ local function buildTemple()
 			Enum.Material.Slate
 		)
 	end
-	refs.guardianLair = CFrame.lookAt(lair, Vector3.new(ZIGGURAT.X, TEMPLE.Y, ZIGGURAT.Z))
-	refs.templeCenter = TEMPLE
+	refs.guardianLair = CFrame.lookAt(lair, Vector3.new(ZIGGURAT.X, MESA_Y, ZIGGURAT.Z))
+	refs.templeCenter = c
 
-	totem("TempleTotemWest", Vector3.new(-28, TEMPLE.Y, -222), Vector3.new(0, TEMPLE.Y, -195))
-	totem("TempleTotemEast", Vector3.new(28, TEMPLE.Y, -222), Vector3.new(0, TEMPLE.Y, -195))
+	totem("TempleTotemWest", Vector3.new(-32, MESA_Y, -668), Vector3.new(0, MESA_Y, -620))
+	totem("TempleTotemEast", Vector3.new(32, MESA_Y, -668), Vector3.new(0, MESA_Y, -620))
+	totem("JungleTotem", Vector3.new(130, c.Y, -578), Vector3.new(60, c.Y, -540))
 
-	-- Zipline tower on the south-east cliff: a fast, exposed way off the island.
-	local towerBase = Vector3.new(60, TEMPLE.Y, -205)
-	local deckY = TEMPLE.Y + 18
-	ground(
-		"ZipDeck",
-		Vector3.new(12, 1, 12),
-		CFrame.new(towerBase.X, deckY - 0.5, towerBase.Z),
-		WOOD,
-		Enum.Material.WoodPlanks
-	)
+	-- The Sun Spire on the south-east rim: a zipline all the way to the Crossroads.
+	local spire = Vector3.new(75, MESA_Y, -655)
+	local deckY = MESA_Y + 24
+	deck("SpireDeck", Vector3.new(spire.X, deckY - 1, spire.Z), 12)
 	for _, o in ipairs({
 		Vector3.new(5.5, 0, 5.5),
 		Vector3.new(-5.5, 0, 5.5),
@@ -874,184 +1080,257 @@ local function buildTemple()
 		Vector3.new(-5.5, 0, -5.5),
 	}) do
 		structure(
-			"ZipPost",
-			Vector3.new(1, deckY - TEMPLE.Y, 1),
-			CFrame.new(towerBase + o + Vector3.new(0, (deckY - TEMPLE.Y) / 2, 0)),
+			"SpirePost",
+			Vector3.new(1, deckY - MESA_Y, 1),
+			CFrame.new(spire + o + Vector3.new(0, (deckY - MESA_Y) / 2, 0)),
 			DARK_WOOD,
 			Enum.Material.Wood
 		)
 	end
-	local ladder = Instance.new("TrussPart")
-	ladder.Name = "ZipLadder"
-	ladder.Size = Vector3.new(2, deckY - TEMPLE.Y, 2)
-	ladder.CFrame = CFrame.new(towerBase.X - 7, (TEMPLE.Y + deckY) / 2, towerBase.Z)
-	ladder.Anchored = true
-	ladder.Color = DARK_WOOD
-	ladder.Parent = folders.structures
-	World.zipline("TempleZipline", Vector3.new(towerBase.X, deckY + 7, towerBase.Z), Vector3.new(38, CROSS.Y + 7, -62))
+	ladder("SpireLadder", spire + Vector3.new(-7, 0, 0), deckY - MESA_Y + 2)
+	World.zipline(
+		"TempleZipline",
+		Vector3.new(spire.X, deckY + 7, spire.Z),
+		Vector3.new(ACROPOLIS.X, ACROPOLIS.Y + 7, -92)
+	)
 
-	for _, p in ipairs({ { -55, -215 }, { 70, -250 }, { -60, -310 }, { 40, -338 }, { -40, -192 } }) do
-		palm(p[1], p[2])
+	-- A waterfall down the north-east cliff, just for looks.
+	local fallOut = compass(305)
+	local fallTop = Vector3.new(c.X, MESA_Y, c.Z) + fallOut * (MESA_R + 0.6)
+	local fall = decor(
+		"Waterfall",
+		Vector3.new(12, MESA_Y - c.Y, 1),
+		CFrame.lookAt(
+			fallTop - Vector3.new(0, (MESA_Y - c.Y) / 2, 0),
+			fallTop - Vector3.new(0, (MESA_Y - c.Y) / 2, 0) + fallOut
+		),
+		Color3.fromRGB(150, 215, 255),
+		Enum.Material.Glass
+	)
+	fall.Transparency = 0.35
+	decor(
+		"Stream",
+		Vector3.new(8, 0.2, 40),
+		CFrame.lookAt(fallTop - fallOut * 20 + Vector3.new(0, 0.1, 0), fallTop + Vector3.new(0, 0.1, 0)),
+		Color3.fromRGB(110, 190, 240),
+		Enum.Material.Glass
+	).Transparency =
+		0.3
+
+	-- One boat waits at the south dock.
+	dock(Vector3.new(25, 0, -512), Vector3.new(25, 0, -450), { 1 })
+
+	palmRing(c, 165, 22, 0, {
+		Vector3.new(25, 0, -512),
+		Vector3.new(110, 0, -600),
+		Vector3.new(55, 0, -600),
+		Vector3.new(-200, 0, -660),
+		Vector3.new(130, 0, -578),
+		Vector3.new(118, 0, -721),
+	})
+	for _, p in ipairs({ { -150, -760 }, { 140, -680 }, { -60, -880 }, { 90, -860 } }) do
+		structure(
+			"JungleRuin",
+			Vector3.new(4, 12, 4),
+			CFrame.new(p[1], c.Y + 5, p[2]) * CFrame.Angles(0, p[1] % 2, 0.15),
+			SANDSTONE,
+			Enum.Material.Sandstone
+		)
 	end
 end
 
 -- Crystal Isle (Crystal Heart) --------------------------------------------------------
+-- A terraced basalt spire. Ramps spiral up from shelf to shelf; a tunnel runs
+-- through the base past the Heart's chamber; a launch shaft shoots up the middle.
 local function buildCrystalIsle()
 	local c = CRYSTAL
-	fillColumn(c.X, c.Z, -30, 1.5, 66, Enum.Material.Sand)
-	fillColumn(c.X, c.Z, -30, c.Y, 56, Enum.Material.Basalt)
-	terrain:FillBall(Vector3.new(c.X, 8, c.Z), 36, Enum.Material.Basalt)
-	-- Tunnel straight through, a domed chamber in the middle, a shaft to the summit.
-	terrain:FillBlock(CFrame.new(c.X, 8, c.Z), Vector3.new(128, 12, 12), Enum.Material.Air)
-	terrain:FillBall(Vector3.new(c.X, 12, c.Z), 15, Enum.Material.Air)
-	terrain:FillBlock(CFrame.new(c.X, -1, c.Z), Vector3.new(34, 6, 34), Enum.Material.Basalt)
-	terrain:FillCylinder(CFrame.new(c.X, 36, c.Z), 22, 5, Enum.Material.Air)
+	fillColumn(c.X, c.Z, -30, 1.5, 175, Enum.Material.Sand)
+	local shelves = { { 150, 20 }, { 110, 50 }, { 80, 85 }, { 50, 115 }, { 25, 135 } }
+	for _, s in ipairs(shelves) do
+		fillColumn(c.X, c.Z, -30, s[2], s[1], Enum.Material.Basalt)
+	end
+	islandSign(Vector3.new(c.X, 160, c.Z), "CRYSTAL ISLE", CRYSTAL_COLORS[1])
 
-	local crystalColors = { Color3.fromRGB(215, 110, 255), Color3.fromRGB(110, 230, 255) }
-	-- Crystals in the chamber and along the tunnel.
-	for i = 0, 9 do
-		local a = i / 10 * math.pi * 2
-		local pos = Vector3.new(c.X + math.cos(a) * 11.5, 3.5 + (i % 3), c.Z + math.sin(a) * 11.5)
+	-- Ramps from each shelf to the next, working round the spire.
+	local ramps = {
+		-- arrives at (degrees), from shelf y, cliff radius, to y, length
+		{ 250, 1.5, 150, 20, 50 },
+		{ 300, 20, 110, 50, 75 },
+		{ 30, 50, 80, 85, 58 },
+		{ 120, 85, 50, 115, 50 },
+		{ 215, 115, 25, 135, 33 },
+	}
+	for _, r in ipairs(ramps) do
+		cliffRamp(c, r[3], r[1], r[2], r[4], r[5], -1, r[3] < 60 and 9 or 11, Enum.Material.Basalt)
+	end
+
+	-- The tunnel straight through, a domed chamber in the middle, a shaft to the 115 shelf.
+	tunnel(Vector3.new(c.X - 185, 2, c.Z), Vector3.new(c.X + 185, 2, c.Z), 12, 12)
+	terrain:FillBall(Vector3.new(c.X, 12, c.Z), 18, Enum.Material.Air)
+	terrain:FillBlock(CFrame.new(c.X, -2, c.Z), Vector3.new(44, 8, 44), Enum.Material.Basalt)
+	terrain:FillCylinder(CFrame.new(c.X + 35, 62, c.Z), 120, 6, Enum.Material.Air)
+	World.launchPad(Vector3.new(c.X + 35, 2.2, c.Z), Vector3.new(0, 218, 0))
+
+	for i = 0, 11 do
+		local a = i / 12 * math.pi * 2
+		local pos = Vector3.new(c.X + math.cos(a) * 14, 3.5 + (i % 3), c.Z + math.sin(a) * 14)
 		local shard = neon(
 			decor(
 				"Crystal",
-				Vector3.new(1.6, 6 + (i % 3) * 2, 1.6),
+				Vector3.new(1.8, 6 + (i % 3) * 2, 1.8),
 				CFrame.new(pos) * CFrame.Angles(math.cos(a) * 0.5, 0, math.sin(a) * 0.5),
-				crystalColors[i % 2 + 1]
+				CRYSTAL_COLORS[i % 2 + 1]
 			),
 			0.15
 		)
 		if i % 2 == 0 then
-			pointLight(shard, crystalColors[i % 2 + 1], 16, 1.2)
+			pointLight(shard, CRYSTAL_COLORS[i % 2 + 1], 18, 1.2)
 		end
 	end
-	for _, x in ipairs({ 128, 142, 208, 222 }) do
-		for _, z in ipairs({ c.Z - 5, c.Z + 5 }) do
+	for _, dx in ipairs({ -150, -110, -70, -40, 50, 80, 120, 150 }) do
+		for _, dz in ipairs({ -5, 5 }) do
 			local shard = neon(
 				decor(
 					"TunnelCrystal",
 					Vector3.new(1, 3, 1),
-					CFrame.new(x, 3, z) * CFrame.Angles(0, 0, 0.3),
-					crystalColors[1]
+					CFrame.new(c.X + dx, 3, c.Z + dz) * CFrame.Angles(0, 0, 0.3),
+					CRYSTAL_COLORS[1]
 				),
 				0.2
 			)
-			pointLight(shard, crystalColors[1], 12, 0.8)
+			pointLight(shard, CRYSTAL_COLORS[1], 12, 0.8)
 		end
 	end
-	-- Big crystals on the summit, around (not over) the shaft.
-	for i = 0, 4 do
-		local a = i / 5 * math.pi * 2
-		local pos = Vector3.new(c.X + math.cos(a) * 12, 42, c.Z + math.sin(a) * 12)
-		neon(
-			decor(
-				"SummitCrystal",
-				Vector3.new(3, 14, 3),
-				CFrame.new(pos) * CFrame.Angles(math.cos(a) * 0.4, 0, math.sin(a) * 0.4),
-				crystalColors[i % 2 + 1],
-				Enum.Material.Neon,
-				true
-			),
-			0.1
-		)
+	-- Big crystals along the shelf rims and on the crown.
+	for k, s in ipairs(shelves) do
+		local count = k == #shelves and 5 or 6
+		for i = 0, count - 1 do
+			local a = i / count * math.pi * 2 + k * 0.7
+			local r = k == #shelves and s[1] * 0.5 or s[1] - 4
+			local pos = Vector3.new(c.X + math.cos(a) * r, s[2] + 5, c.Z + math.sin(a) * r)
+			neon(
+				decor(
+					"ShelfCrystal",
+					Vector3.new(3, 12 + (i % 2) * 6, 3),
+					CFrame.new(pos) * CFrame.Angles(math.cos(a) * 0.35, 0, math.sin(a) * 0.35),
+					CRYSTAL_COLORS[(i + k) % 2 + 1],
+					Enum.Material.Neon,
+					true
+				),
+				0.1
+			)
+		end
 	end
 
 	ground("HeartPedestal", Vector3.new(3, 3, 3), CFrame.new(c.X, 3.5, c.Z + 8), DARK_STONE, Enum.Material.Slate)
 	refs.lootSpots.Heart = CFrame.new(c.X, 5 + 1.9, c.Z + 8)
-	World.launchPad(Vector3.new(c.X, 2.2, c.Z), Vector3.new(0, 140, 0))
 
-	-- Cave-in: a rock plug that seals the west half of the tunnel.
+	-- Cave-in: a rock plug that seals the west half of the tunnel (the side facing home).
 	refs.caveIn = {
-		plug = CFrame.new(c.X - 25, 8, c.Z),
+		plug = CFrame.new(c.X - 28, 8, c.Z),
 		plugSize = Vector3.new(10, 12.5, 12.5),
-		rockMin = Vector3.new(c.X - 45, 11, c.Z - 4),
-		rockMax = Vector3.new(c.X - 12, 12, c.Z + 4),
+		rockMin = Vector3.new(c.X - 48, 11, c.Z - 4),
+		rockMax = Vector3.new(c.X - 20, 12, c.Z + 4),
 	}
 
-	totem("CrystalTotemWest", Vector3.new(114, 1.5, 54), Vector3.new(80, 1.5, 40))
-	totem("CrystalTotemEast", Vector3.new(236, 1.5, 86), Vector3.new(260, 1.5, 120))
+	totem("CrystalTotemWest", Vector3.new(c.X - 168, 1.5, c.Z - 24), Vector3.new(c.X - 260, 1.5, c.Z))
+	totem("CrystalTotemEast", Vector3.new(c.X + 168, 1.5, c.Z + 24), Vector3.new(c.X + 260, 1.5, c.Z))
+	local shelfTotem = c + compass(150) * 96
+	totem("CrystalTotemShelf", Vector3.new(shelfTotem.X, 50, shelfTotem.Z), Vector3.new(c.X - 300, 50, c.Z + 200))
 
-	-- The ridge: a fast way home from the cliff top. Its gap is too wide to
-	-- jump while carrying loot, so carriers drop to the sandbar below.
-	local toHome = flatDirection(c, HOME)
-	local ridgeStart = Vector3.new(c.X, c.Y, c.Z) + toHome * 50
-	local gapStart = ridgeStart + toHome * 55 + Vector3.new(0, -8, 0)
-	local gapEnd = gapStart + toHome * 11 + Vector3.new(0, -5.5, 0)
-	local homeEdge = Vector3.new(HOME.X, HOME.Y, HOME.Z) - toHome * 84
-	plank("Ridge", ridgeStart, gapStart, 9, 3, Color3.fromRGB(110, 100, 120), Enum.Material.Slate, folders.ground)
-	plank("RidgeLanding", gapEnd, homeEdge, 9, 3, Color3.fromRGB(110, 100, 120), Enum.Material.Slate, folders.ground)
-	for i = 1, 3 do
-		local p = ridgeStart:Lerp(gapStart, i / 4)
-		structure(
-			"RidgePillar",
-			Vector3.new(4, p.Y + 6, 4),
-			CFrame.new(p.X, (p.Y - 6) / 2 - 1.6, p.Z),
-			Color3.fromRGB(90, 80, 100),
-			Enum.Material.Slate
-		)
-	end
-	local gapSign = decor(
-		"GapSign",
-		Vector3.new(0.4, 0.4, 0.4),
-		CFrame.new(gapStart + Vector3.new(0, 4, 0)),
-		Color3.new(1, 1, 1),
-		nil
+	-- The Leap: a broken stone bridge off the 85 shelf to the Needle, where a
+	-- zipline runs to Twin Stacks. The gap needs a sprint jump, so carriers can't make it.
+	local toTwin = flatDirection(c, TWIN_STACK)
+	local p0 = Vector3.new(c.X, 85, c.Z) + toTwin * 76
+	local p1 = Vector3.new(c.X, 80, c.Z) + toTwin * 120
+	local p2 = Vector3.new(c.X, 75, c.Z) + toTwin * 135
+	local p3 = Vector3.new(c.X, 75, c.Z) + toTwin * 150
+	local leapColor = Color3.fromRGB(110, 100, 120)
+	plank("Leap", p0, p1, 7, 2, leapColor, Enum.Material.Slate, folders.ground)
+	plank("LeapLanding", p2, p3, 7, 2, leapColor, Enum.Material.Slate, folders.ground)
+	local mid = p0:Lerp(p1, 0.55)
+	structure(
+		"LeapPillar",
+		Vector3.new(4, mid.Y - 52, 4),
+		CFrame.new(mid.X, (mid.Y + 50) / 2 - 1.5, mid.Z),
+		leapColor,
+		Enum.Material.Slate
 	)
+	local needle = Vector3.new(c.X, 0, c.Z) + toTwin * 154
+	fillColumn(needle.X, needle.Z, -30, 75, 8, Enum.Material.Basalt)
+	deck("NeedleDeck", Vector3.new(needle.X, 74.5, needle.Z), 12)
+	local gapSign =
+		decor("GapSign", Vector3.new(0.4, 0.4, 0.4), CFrame.new(p1 + Vector3.new(0, 4, 0)), Color3.new(1, 1, 1), nil)
 	gapSign.Transparency = 1
-	sign(gapSign, "GAP! (too heavy with loot)", Color3.fromRGB(255, 220, 120), Vector3.new(0, 2, 0), 120)
-	sandbar(Vector3.new(c.X, 0, c.Z) + toHome * 62, Vector3.new(HOME.X, 0, HOME.Z) - toHome * 96, 16)
+	sign(
+		gapSign,
+		"GAP! SPRINT TO CLEAR IT (too heavy with loot)",
+		Color3.fromRGB(255, 220, 120),
+		Vector3.new(0, 2, 0),
+		140
+	)
+	World.zipline("CrystalZipline", Vector3.new(needle.X, 82, needle.Z), TWIN_STACK + Vector3.new(0, 7, 0))
 
-	for _, p in ipairs({ { 120, 100 }, { 226, 34 }, { 150, 125 }, { 205, 120 } }) do
-		palm(p[1], p[2], 1.5, 14)
-	end
-end
+	-- One boat waits at the west-south-west dock.
+	local dockOut = compass(160)
+	dock(c + dockOut * 165, c + dockOut * 228, { -1 })
 
--- Stepping stones (crossroads <-> crystal isle) ----------------------------------------
-local function buildSteppingStones()
-	local mouth = Vector3.new(CRYSTAL.X - 66, 0, CRYSTAL.Z)
-	local dir = flatDirection(CROSS, mouth)
-	local start = Vector3.new(CROSS.X, 0, CROSS.Z) + dir * 84
-	for i = 0, 3 do
-		local center = start + dir * (9.5 + i * 13.5)
-		cylinder(
-			"SteppingStone",
-			3,
-			13,
-			Vector3.new(center.X, -3.5, center.Z),
-			Color3.fromRGB(110, 105, 100),
-			Enum.Material.Slate,
-			folders.ground
-		)
-	end
+	palmRing(c, 160, 14, 5, {
+		c + dockOut * 165,
+		c + compass(180) * 160,
+		c + compass(0) * 160,
+		c + compass(250) * 160,
+		needle,
+		c + compass(168) * 160,
+	})
 end
 
 -- Shipwreck Shoals (Captain's Chest) --------------------------------------------------
+-- An atoll: wadeable shallows in a ring, a lagoon in the middle, a galleon run
+-- aground on a sandbank, and sea stacks linked by rope bridges.
 local function buildShoals()
-	fillColumn(SHOALS.X, SHOALS.Z, -30, SHOALS.Y, 30, Enum.Material.Sand)
-	terrain:FillBall(Vector3.new(-175, -8, 60), 12, Enum.Material.Sand)
-	terrain:FillBall(Vector3.new(-120, -9, 130), 10, Enum.Material.Sand)
-	local toHome = flatDirection(SHOALS, HOME)
-	sandbar(Vector3.new(SHOALS.X, 0, SHOALS.Z) + toHome * 26, Vector3.new(HOME.X, 0, HOME.Z) - toHome * 96, 18)
-	local toCross = flatDirection(SHOALS, CROSS)
-	sandbar(Vector3.new(SHOALS.X, 0, SHOALS.Z) + toCross * 26, Vector3.new(CROSS.X, 0, CROSS.Z) - toCross * 80, 16)
+	local c = SHOALS
+	fillColumn(c.X, c.Z, -30, -1, 185, Enum.Material.Sand)
+	terrain:FillCylinder(CFrame.new(c.X - 10, -6, c.Z - 10), 10, 118, Enum.Material.Air)
+	-- A channel through the reef on the south-east, deep enough for boats.
+	local channelOut = compass(55)
+	local channelFrom = Vector3.new(c.X, -6, c.Z) + channelOut * 80
+	local channelTo = Vector3.new(c.X, -6, c.Z) + channelOut * 205
+	terrain:FillBlock(
+		CFrame.lookAt((channelFrom + channelTo) / 2, channelTo),
+		Vector3.new(36, 10, (channelTo - channelFrom).Magnitude),
+		Enum.Material.Air
+	)
+	fillColumn(c.X, c.Z, -30, 2, 42, Enum.Material.Sand)
+	islandSign(Vector3.new(c.X, 85, c.Z), "SHIPWRECK SHOALS", Color3.fromRGB(255, 190, 120))
 
-	-- The wreck: a tilted hull with a hole in its side and an open deck.
-	local hull = CFrame.new(-152, SHOALS.Y, 88) * CFrame.Angles(0, math.rad(30), 0) * CFrame.Angles(0, 0, math.rad(10))
+	-- The landing on the east shore, with the dock and a boat.
+	local landing = Vector3.new(-590, 5, 30)
+	island(landing, 48, 38, Enum.Material.Sand, Enum.Material.Grass)
+	dock(Vector3.new(-548, 0, 30), Vector3.new(-470, 0, 30), { 1 })
+
+	-- The galleon: three decks, a hole in the hull, climbable masts and a crow's nest.
+	local hull = CFrame.new(c.X, 2, c.Z) * CFrame.Angles(0, math.rad(25), 0) * CFrame.Angles(0, 0, math.rad(6))
 	local wood = Color3.fromRGB(95, 66, 44)
 	local pieces = {
-		{ "WreckFloor", Vector3.new(16, 1, 44), CFrame.new(0, 0.5, 0), true },
-		{ "WreckPort", Vector3.new(1, 10, 44), CFrame.new(-8, 5.5, 0) },
-		{ "WreckStarboard", Vector3.new(1, 10, 16), CFrame.new(8, 5.5, -14) },
-		{ "WreckStarboard", Vector3.new(1, 10, 16), CFrame.new(8, 5.5, 14) },
-		{ "WreckHoleTop", Vector3.new(1, 2.5, 12), CFrame.new(8, 9.25, 0) },
-		{ "WreckBow", Vector3.new(16, 10, 1), CFrame.new(0, 5.5, -22) },
-		{ "WreckStern", Vector3.new(16, 12, 1), CFrame.new(0, 6.5, 22) },
-		{ "WreckDeck", Vector3.new(16, 1, 12), CFrame.new(0, 10.5, -16), true },
-		{ "WreckDeck", Vector3.new(16, 1, 12), CFrame.new(0, 10.5, 16), true },
-		{ "WreckCabin", Vector3.new(16, 6, 10), CFrame.new(0, 14, 17), true },
+		-- name, size, offset, walkable
+		{ "WreckFloor", Vector3.new(22, 1, 70), CFrame.new(0, 0.5, 0), true },
+		{ "WreckPort", Vector3.new(1, 24, 70), CFrame.new(-11, 12.5, 0) },
+		{ "WreckStarboard", Vector3.new(1, 24, 28), CFrame.new(11, 12.5, -21) },
+		{ "WreckStarboard", Vector3.new(1, 24, 28), CFrame.new(11, 12.5, 21) },
+		{ "WreckHoleTop", Vector3.new(1, 16, 14), CFrame.new(11, 16.5, 0) },
+		{ "WreckBow", Vector3.new(22, 24, 1), CFrame.new(0, 12.5, -35) },
+		{ "WreckStern", Vector3.new(22, 32, 1), CFrame.new(0, 16.5, 35) },
+		{ "WreckGunDeck", Vector3.new(22, 1, 26), CFrame.new(0, 10.5, -22), true },
+		{ "WreckGunDeck", Vector3.new(22, 1, 26), CFrame.new(0, 10.5, 22), true },
+		{ "WreckTopDeck", Vector3.new(22, 1, 24), CFrame.new(0, 24.5, -23), true },
+		{ "WreckTopDeck", Vector3.new(22, 1, 24), CFrame.new(0, 24.5, 23), true },
+		{ "WreckCabin", Vector3.new(22, 8, 16), CFrame.new(0, 29, 27), true },
+		{ "WreckNest", Vector3.new(8, 1, 8), CFrame.new(0, 62.5, 10), true },
+		{ "WreckForeNest", Vector3.new(6, 1, 6), CFrame.new(0, 60.5, -10), true },
 	}
 	for _, piece in ipairs(pieces) do
-		local p = Util.part(
+		Util.part(
 			piece[1],
 			piece[2],
 			hull * piece[3],
@@ -1059,33 +1338,59 @@ local function buildShoals()
 			Enum.Material.WoodPlanks,
 			piece[4] and folders.ground or folders.structures
 		)
-		p.Color = wood
 	end
-	-- A broken mast leaning on the hull doubles as a ramp onto the deck.
+	-- Ladders between decks, and the masts (climb them like ladders).
+	local function hullLadder(name, offset, height)
+		local truss = ladder(name, Vector3.zero, height)
+		truss.CFrame = hull * CFrame.new(offset + Vector3.new(0, truss.Size.Y / 2, 0))
+	end
+	hullLadder("HoldLadder", Vector3.new(-8, 1, 10), 10)
+	hullLadder("DeckLadder", Vector3.new(8, 11, -12), 14)
+	hullLadder("CabinLadder", Vector3.new(-8, 25, 18), 8)
+	hullLadder("ForeMast", Vector3.new(0, 25, -14), 36)
+	hullLadder("MainMast", Vector3.new(0, 25, 6), 38)
+	for _, sail in ipairs({ { -14, 44, 14 }, { 6, 48, 18 } }) do
+		decor(
+			"Sail",
+			Vector3.new(16, sail[3], 0.3),
+			hull * CFrame.new(0, sail[2], sail[1] + 1.5),
+			Color3.fromRGB(220, 210, 190),
+			Enum.Material.Fabric
+		)
+	end
+	-- A broken mast leaning on the hull doubles as a ramp onto the top deck.
 	plank(
 		"WreckMast",
-		(hull * CFrame.new(-20, -1.5, -14)).Position,
-		(hull * CFrame.new(-7.5, 11, -14)).Position,
-		3,
+		(hull * CFrame.new(-34, 0, -20)).Position,
+		(hull * CFrame.new(-11.5, 24.8, -20)).Position,
+		3.5,
 		1,
 		Color3.fromRGB(80, 56, 38),
 		Enum.Material.Wood,
 		folders.ground
 	)
-	decor(
-		"WreckSail",
-		Vector3.new(0.3, 9, 12),
-		hull * CFrame.new(-14, 4, 6) * CFrame.Angles(0, 0, math.rad(-40)),
-		Color3.fromRGB(220, 210, 190),
-		Enum.Material.Fabric
+	-- A plank up from the sandbank into the hole in the hull.
+	plank(
+		"WreckStep",
+		(hull * CFrame.new(19, -1.5, 0)).Position,
+		(hull * CFrame.new(10.5, 1, 0)).Position,
+		8,
+		1,
+		Color3.fromRGB(80, 56, 38),
+		Enum.Material.WoodPlanks,
+		folders.ground
 	)
+	for _, z in ipairs({ -20, 20 }) do
+		local lantern = neon(decor("Lantern", Vector3.new(0.8, 1.2, 0.8), hull * CFrame.new(0, 8, z), GOLD))
+		pointLight(lantern, Color3.fromRGB(255, 190, 110), 20, 1.2)
+	end
 	refs.lootSpots.Chest = hull * CFrame.new(0, 1 + 1.6, 0)
 
-	-- The wreck's cannon: a totem that also fires the Chest's barrage.
-	local cannonBase = (hull * CFrame.new(0, 17, 17)).Position
+	-- The wreck's cannon on the stern cabin: a totem that also fires the Chest's barrage.
+	local cannonBase = (hull * CFrame.new(0, 33, 27)).Position
 	local model = Instance.new("Model")
 	model.Name = "WreckCannon"
-	local aim = CFrame.lookAt(cannonBase, Vector3.new(-100, cannonBase.Y, 130))
+	local aim = CFrame.lookAt(cannonBase, Vector3.new(-480, cannonBase.Y, 40))
 	Util.part("Carriage", Vector3.new(4, 2, 5), aim * CFrame.new(0, 1, 0), DARK_WOOD, Enum.Material.Wood, model)
 	local barrel = Util.part(
 		"Barrel",
@@ -1110,9 +1415,92 @@ local function buildShoals()
 	table.insert(refs.totems, { model = model, eye = muzzle, kind = "cannon" })
 	refs.wreckCannon = refs.totems[#refs.totems]
 
-	for _, p in ipairs({ { -170, 105 }, { -135, 70 }, { -160, 64 } }) do
-		palm(p[1], p[2], SHOALS.Y, 18)
+	-- Sea stacks on the far side of the lagoon, joined by rope bridges up high.
+	local stacks = {
+		{ Vector3.new(-790, 0, -70), 13, 50 },
+		{ Vector3.new(-835, 0, 15), 12, 66 },
+		{ Vector3.new(-790, 0, 110), 12, 46 },
+	}
+	for _, s in ipairs(stacks) do
+		local p, r, h = s[1], s[2], s[3]
+		fillColumn(p.X, p.Z, -30, 1.5, r + 10, Enum.Material.Sand)
+		fillColumn(p.X, p.Z, -30, h, r, Enum.Material.Rock)
+		deck("StackDeck", Vector3.new(p.X, h, p.Z), 14)
+		palm(p.X + r + 5, p.Z + 4, 1.5, 15)
 	end
+	local a, b, s3 = stacks[1], stacks[2], stacks[3]
+	ladder("StackLadder", a[1] + Vector3.new(a[2] + 1, 1.5, 0), a[3])
+	local function edge(from, to, r, h)
+		return Vector3.new(from.X, h + 1, from.Z) + flatDirection(from, to) * (r - 2)
+	end
+	ropeBridge("StackBridge", edge(a[1], b[1], a[2], a[3]), edge(b[1], a[1], b[2], b[3]), 4)
+	ropeBridge("StackBridge", edge(b[1], s3[1], b[2], b[3]), edge(s3[1], b[1], s3[2], s3[3]), 4)
+	World.zipline("WreckZipline", Vector3.new(b[1].X, b[3] + 10, b[1].Z), (hull * CFrame.new(0, 31, -22)).Position)
+	totem("LagoonTotem", Vector3.new(s3[1].X, s3[3] + 1, s3[1].Z), Vector3.new(c.X, s3[3], c.Z))
+
+	for _, p in ipairs({ { -600, 0 }, { -575, 60 }, { -615, 55 }, { -560, 5 } }) do
+		palm(p[1], p[2])
+	end
+end
+
+-- The islets: rest stops and landmarks between the big islands ----------------------
+local function buildIslets()
+	-- Gull Rock: a sea pinnacle with a ladder and a long zipline down to Goblin Cove.
+	local g = GULL_ROCK
+	fillColumn(g.X, g.Z, -30, 1.5, 34, Enum.Material.Sand)
+	fillColumn(g.X, g.Z, -30, 66, 16, Enum.Material.Rock)
+	terrain:FillBall(Vector3.new(g.X + 9, 18, g.Z + 7), 17, Enum.Material.Rock)
+	deck("GullDeck", Vector3.new(g.X, 66, g.Z), 14)
+	ladder("GullLadder", Vector3.new(g.X, 1.5, g.Z - 17), 66)
+	World.zipline("GullZipline", Vector3.new(g.X, 76, g.Z), Vector3.new(-115, 13, 612))
+	islandSign(Vector3.new(g.X, 92, g.Z), "GULL ROCK")
+	palm(g.X - 20, g.Z + 14, 1.5, 14)
+
+	-- Smuggler's Cove: a low islet with a spare boat and a rock arch boats can sail through.
+	local s = SMUGGLER
+	island(s, 46, 36, Enum.Material.Rock, Enum.Material.Grass)
+	for _, z in ipairs({ s.Z - 35, s.Z + 20 }) do
+		fillColumn(s.X - 58, z, -30, 32, 7, Enum.Material.Rock)
+	end
+	terrain:FillBlock(CFrame.new(s.X - 58, 29, s.Z - 7.5), Vector3.new(12, 8, 70), Enum.Material.Rock)
+	dock(Vector3.new(s.X, 0, s.Z - 40), Vector3.new(s.X, 0, s.Z - 102), { 1 })
+	local hut = CFrame.new(s.X + 8, s.Y, s.Z + 6) * CFrame.Angles(0, math.rad(15), 0)
+	structure(
+		"Hut",
+		Vector3.new(12, 9, 12),
+		hut * CFrame.new(0, 4.5, 0),
+		Color3.fromRGB(150, 110, 70),
+		Enum.Material.WoodPlanks
+	)
+	structure(
+		"HutRoof",
+		Vector3.new(15, 1.5, 15),
+		hut * CFrame.new(0, 9.75, 0),
+		Color3.fromRGB(60, 60, 70),
+		Enum.Material.Fabric
+	)
+	palm(s.X - 18, s.Z + 12)
+	palm(s.X + 22, s.Z - 14)
+	islandSign(Vector3.new(s.X, 34, s.Z), "SMUGGLER'S COVE")
+
+	-- Twin Stacks: two sea stacks and a rope bridge. The Crystal Isle zipline lands here.
+	local t = TWIN_STACK
+	local small = Vector3.new(t.X + 34, 36, t.Z - 32)
+	fillColumn(t.X + 15, t.Z - 15, -30, 1.5, 40, Enum.Material.Sand)
+	fillColumn(t.X, t.Z, -30, t.Y, 13, Enum.Material.Rock)
+	fillColumn(small.X, small.Z, -30, small.Y, 10, Enum.Material.Rock)
+	deck("TwinDeck", t, 14)
+	deck("TwinDeckSmall", small, 10)
+	ladder("TwinLadder", Vector3.new(t.X - 14, 1.5, t.Z), t.Y)
+	ladder("TwinLadderSmall", Vector3.new(small.X + 11, 1.5, small.Z), small.Y)
+	ropeBridge(
+		"TwinBridge",
+		Vector3.new(t.X, t.Y + 1, t.Z) + flatDirection(t, small) * 11,
+		Vector3.new(small.X, small.Y + 1, small.Z) + flatDirection(small, t) * 8,
+		3
+	)
+	islandSign(Vector3.new(t.X, 72, t.Z), "TWIN STACKS")
+	palm(t.X + 30, t.Z + 10, 1.5, 12)
 end
 
 -- Traversal toys (the client drives these) -------------------------------------------
@@ -1185,17 +1573,16 @@ function World.build()
 	refs.folders = folders
 	refs.totems = {}
 	refs.lootSpots = {}
+	refs.boatSpawns = {}
 	folders.root.Parent = workspace
 
 	buildEnvironment()
 	buildHome()
-	buildLongBridge()
 	buildCrossroads()
-	buildRopeBridge()
 	buildTemple()
 	buildCrystalIsle()
-	buildSteppingStones()
 	buildShoals()
+	buildIslets()
 	pourSea()
 	return refs
 end

@@ -209,9 +209,45 @@ function Effects.setSpirit(active)
 	}):Play()
 end
 
+-- Sprinting widens the resting field of view; punches settle back to it.
+local baseFov = 70
+
+function Effects.setBaseFov(fov)
+	baseFov = fov
+	TweenService:Create(camera, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { FieldOfView = fov }):Play()
+end
+
 function Effects.punchFov(fov)
 	camera.FieldOfView = fov
-	TweenService:Create(camera, TweenInfo.new(0.4, Enum.EasingStyle.Quint), { FieldOfView = 70 }):Play()
+	TweenService:Create(camera, TweenInfo.new(0.4, Enum.EasingStyle.Quint), { FieldOfView = baseFov }):Play()
+end
+
+-- A grapple rope from a moving part to a fixed point, for a few seconds.
+-- Returns the holder so the caller can cut it early.
+function Effects.rope(part, to, color, duration)
+	local holder = Instance.new("Attachment")
+	holder.Name = "GrappleRope"
+	holder.Parent = part
+	local anchor = Instance.new("Attachment")
+	anchor.Name = "GrappleHook"
+	anchor.Parent = workspace.Terrain
+	anchor.WorldPosition = to
+	local beam = Instance.new("Beam")
+	beam.Attachment0 = holder
+	beam.Attachment1 = anchor
+	beam.Color = ColorSequence.new(color)
+	beam.LightEmission = 0.6
+	beam.FaceCamera = true
+	beam.Width0 = 0.35
+	beam.Width1 = 0.2
+	beam.Segments = 1
+	beam.Parent = holder
+	-- The hook end lives in Terrain, so it goes with the holder.
+	holder.Destroying:Connect(function()
+		anchor:Destroy()
+	end)
+	Debris:AddItem(holder, duration or 2)
+	return holder
 end
 
 return Effects

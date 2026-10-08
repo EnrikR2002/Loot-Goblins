@@ -4,16 +4,25 @@ local Config = {}
 
 -- Raid -----------------------------------------------------------------------
 -- A raid is one timed match. Bank the most gold before the timer runs out.
-Config.RAID_DURATION = 300
+Config.RAID_DURATION = 360 -- The islands are far apart now; runs take longer.
 Config.LAST_CALL = 60 -- The HUD turns red for the final stretch.
 Config.INTERMISSION = 12
 Config.FIRST_INTERMISSION = 6 -- Gives the first players time to load in.
 Config.RESPAWN_TIME = 3
 
 -- Movement -------------------------------------------------------------------
-Config.WALK_SPEED = 20
+Config.WALK_SPEED = 20 -- Jogging.
 Config.WATER_SPEED_MULT = 0.7 -- Wading or swimming. Carry and spirit speed stack with it.
 Config.WATER_ROOT_Y = 3 -- A root lower than this is standing or swimming in the sea.
+
+-- Sprint (hold Shift). Costs stamina; no sprinting in the water or in a seat.
+Config.SPRINT_MULT = 1.45 -- 20 -> 29 empty-handed.
+Config.CARRY_SPRINT_MULT = 1.2 -- Loot is heavy: carriers only hustle a little (13-16 -> 16-19).
+Config.STAMINA_MAX = 100
+Config.STAMINA_DRAIN = 20 -- Per second of sprinting: a full bar lasts 5 s.
+Config.STAMINA_REGEN = 25 -- Per second, once you stop sprinting.
+Config.STAMINA_REGEN_DELAY = 0.8 -- Pause after sprinting before stamina comes back.
+Config.STAMINA_RECOVER = 35 -- Run it dry and you're winded until it refills this far.
 
 -- Loot -----------------------------------------------------------------------
 -- value: gold when banked. carrySpeed: replaces WALK_SPEED while held.
@@ -81,9 +90,10 @@ Config.KNOCK_LOOSE_SPEED = 26
 Config.BANK_RADIUS = 14
 Config.WARD_RADIUS = 55 -- Around the Hoard: no Poltergoblin, no Guardian.
 
--- Out of bounds. Loot past these returns to its spot.
-Config.BOUNDS_MIN = Vector3.new(-300, -45, -440)
-Config.BOUNDS_MAX = Vector3.new(330, 400, 380)
+-- Out of bounds. Loot past these returns to its spot. Invisible walls stand at
+-- the X/Z edges. Each span stays under 2048, the biggest a single part can be.
+Config.BOUNDS_MIN = Vector3.new(-1000, -45, -1020)
+Config.BOUNDS_MAX = Vector3.new(1000, 600, 980)
 
 -- Heat -----------------------------------------------------------------------
 -- One shared meter. Stealing and carrying raise it, quiet time lowers it.
@@ -111,7 +121,7 @@ Config.GUARDIAN_WAKE_TIER = 3
 Config.GUARDIAN_SPEED = 16
 Config.GUARDIAN_FRENZY_SPEED = 19
 Config.GUARDIAN_WADE_MULT = 0.6
-Config.GUARDIAN_LEASH = 185 -- From the temple, until FRENZY.
+Config.GUARDIAN_LEASH = 260 -- From the temple island's center, until FRENZY.
 Config.GUARDIAN_HIT_RANGE = 9
 Config.GUARDIAN_DAMAGE = 20
 Config.GUARDIAN_KNOCKBACK = 60
@@ -121,7 +131,7 @@ Config.GUARDIAN_RECOVER = 1 -- It stands still this long after a smash.
 -- Totems ---------------------------------------------------------------------
 -- Stone watchers by the loot spots. They charge, then lob a blast at a carrier.
 Config.TOTEM_TIER = 2
-Config.TOTEM_RANGE = 90
+Config.TOTEM_RANGE = 110
 Config.TOTEM_TELEGRAPH = 0.9
 Config.TOTEM_INTERVAL = { [2] = 4.5, [3] = 3.2, [4] = 2.2 } -- By Heat tier.
 Config.TOTEM_LEAD = 0.25 -- Aims this many seconds ahead of the target.
@@ -156,9 +166,17 @@ Config.SWORD_MIN_DOT = 0.3
 Config.SWORD_COOLDOWN = 0.55
 Config.SWORD_KNOCKBACK = 34
 
--- F: steals from a carrier or grabs loose loot. Needs a clear line of sight.
-Config.GRAPPLE_RANGE = 55
-Config.GRAPPLE_COOLDOWN = 6
+-- F: a grappling hook. Aimed at loot (or near a carrier) it steals it, with a
+-- clear line of sight. Aimed at ground, walls or cliffs it pulls you there.
+-- Carriers can't use it (hands full). A miss costs no cooldown.
+Config.GRAPPLE_RANGE = 60 -- Steal range.
+Config.GRAPPLE_AIM_ASSIST = 7 -- Loot or a carrier this far off your aim line still counts.
+Config.GRAPPLE_COOLDOWN = 6 -- After a successful steal.
+Config.GRAPPLE_FAIL_COOLDOWN = 1 -- After a steal that slipped off (steal immunity).
+Config.GRAPPLE_PULL_RANGE = 130
+Config.GRAPPLE_PULL_SPEED = 95
+Config.GRAPPLE_PULL_COOLDOWN = 2
+Config.GRAPPLE_POP_SPEED = 38 -- Upward hop at the end of a pull, to climb onto ledges.
 
 -- Poltergoblin (was Soul Unbound, Yone's E) ----------------------------------------
 -- E leaves your body behind and sends your spirit out. Whatever loot the spirit
@@ -174,10 +192,11 @@ Config.POLTER_ECHO_FRACTION = 0.35
 Config.POLTER_TETHER = 75 -- Straying farther from the body snaps you back.
 
 -- Boats ----------------------------------------------------------------------
-Config.BOAT_SPEED = 46
-Config.BOAT_TURN_RATE = math.rad(80)
+-- Every island has a dock with a boat; Goblin Cove has four.
+Config.BOAT_SPEED = 62
+Config.BOAT_TURN_RATE = math.rad(70)
 
 -- Traversal ------------------------------------------------------------------
-Config.ZIPLINE_SPEED = 58
+Config.ZIPLINE_SPEED = 70
 
 return Config

@@ -6,12 +6,14 @@ For AI-led onboarding, paste the [teammate setup prompt](TEAM_SETUP_PROMPT.md) i
 
 ## First time (Windows x64)
 
+If this computer already works on another of our games, Git, Studio, the AI clients, Rokit and the MCP setup are done: clone this repository, run `./scripts/bootstrap.ps1` (safe to rerun) and skip to step 6.
+
 1. Install Git, GitHub CLI, Roblox Studio, and your chosen AI client if missing. Use the official installers. `winget install --id Git.Git --exact` and `winget install --id GitHub.cli --exact` install the Git tools. Studio: https://create.roblox.com/.
 2. Clone the repository and open its folder in Codex or Claude Code.
 3. Run `./scripts/bootstrap.ps1` from a normal PowerShell terminal in the repository folder. It installs Rokit if missing, downloads the three pinned tools, prepares the matching Rojo plugin, and adds the official Studio MCP launcher to both installed AI clients. Existing same-name MCP configurations are preserved for inspection. Run it again after first launching/signing into Studio, or after a reviewed tool-pin update.
 4. Sign in to Studio and your AI client. Run `gh auth login --hostname github.com --git-protocol https --web` once for GitHub CLI. Configure your own Git name/email if missing. Enrik must grant Ethan/Ninety repository write access using their real GitHub usernames; public clone access does not grant push access.
 5. Open the generated development place first (the welcome screen has no Assistant controls). Click the **Assistant icon at the top right > ... beside the Assistant model name > Settings > MCP Servers > Enable Studio as MCP server**. Older Studio layouts call the menu item **Manage MCP Servers**. Bootstrap already registers both AI clients, so no API keys or additional quick-connect setup are needed. Restart Codex and your Claude Code session after enabling MCP. A green connected-client indicator confirms the connection. Never install an unofficial Roblox MCP server for this workflow.
-6. Run `./scripts/dev.ps1 -OpenStudio`. In the generated local place, click **Connect** on Rojo's detected-server notification, or **Plugins > Rojo > Connect**, using `localhost:34872`. Keep the terminal running. If prompted, allow the Rojo plugin to contact that localhost server, then review the initial sync. Restart Studio once if Rojo was just installed and its button is missing. The blank sky in Edit mode is expected: Test 001 creates its islands and objects when you press Play.
+6. Run `./scripts/dev.ps1 -OpenStudio`. In the generated local place, click **Connect** on Rojo's detected-server notification, or **Plugins > Rojo > Connect**, using `localhost:34872` (this game's port; other games of ours use different ports, so enter the right one when several are open). Keep the terminal running. If prompted, allow the Rojo plugin to contact that localhost server, then review the initial sync. Restart Studio once if Rojo was just installed and its button is missing. The blank sky in Edit mode is expected: Test 001 creates its islands and objects when you press Play.
 7. Tell the AI your task. It reads `AGENTS.md`, handles branch/sync/checks/push/PR, and waits for your playtest/review approval before merging.
 
 The guide assumes Windows x64 for automatic Rokit installation. Other systems use the official [Rokit installer](https://github.com/rojo-rbx/rokit) and the same `rokit.toml` pins.
@@ -20,7 +22,7 @@ The guide assumes Windows x64 for automatic Rokit installation. Other systems us
 
 Ethan and Ninety play by double-clicking **`Play Loot Goblins.bat`** in the repository folder. It runs `scripts/play.ps1`:
 
-1. Refuses to continue if Studio is already open, and says to close it (two Studio copies lock the same place file).
+1. Refuses to continue if Loot Goblins is already open in Studio, and says to close that window (two Studio copies lock the same place file). A Studio open on a different game does not matter.
 2. Fetches GitHub and fast-forwards the checked-out branch, only when there are no local changes. Otherwise it warns and plays what is on the computer.
 3. Installs the project tools if they are missing.
 4. Rebuilds `build/LootGoblinsTest001.rbxlx` and opens it in one visible Studio.
@@ -33,7 +35,7 @@ To try a teammate's changes, the human tells their AI which branch or PR. The AI
 ## Daily commands (the AI can run these)
 
 ```powershell
-./scripts/play.ps1                  # What the .bat runs: update, build, open Studio (refuses if Studio is open)
+./scripts/play.ps1                  # What the .bat runs: update, build, open Studio (refuses if Loot Goblins is already open)
 ./scripts/bootstrap.ps1             # Safe to rerun; never changes Git history or gameplay
 ./scripts/dev.ps1 -OpenStudio       # Build the place, open a visible Studio (only if none runs), serve on loopback
 ./scripts/dev.ps1                   # Build/serve without launching another Studio window
@@ -55,12 +57,13 @@ Rojo manages `src/shared` under `ReplicatedStorage.LootGoblins`, `src/server` un
 
 ## Studio verification
 
-The AI should list Studio instances first and reuse the window you already have open; it must never open a second copy of the same place (see the "file is in use" entry under Troubleshooting). It then selects this local place's ID, inspects the mapped folders/scripts, and run a harmless Luau assertion. For relevant changes, start play mode, inspect the generated world/HUD and console output, then stop. To verify live Rojo sync without changing gameplay, temporarily add a comment to a mapped source file, confirm it arrives in Studio, and restore the file.
+The AI should list Studio instances first and reuse the window you already have open; it must never open a second copy of the same place (see the "file is in use" entry under Troubleshooting). If another of our games is also open in Studio, it must pick the window whose place is `LootGoblinsTest001`. It then selects this local place's ID, inspects the mapped folders/scripts, and run a harmless Luau assertion. For relevant changes, start play mode, inspect the generated world/HUD and console output, then stop. To verify live Rojo sync without changing gameplay, temporarily add a comment to a mapped source file, confirm it arrives in Studio, and restore the file.
 
 Human fun test: **top-left Test dropdown > Server & Clients > set player count to 3 > blue Play button** (older layouts: **Test > Start**, 3 players). Check grab, carry slowdown, grapple/steal, Q drop, guardian, boat, bank, and reset with Ethan/Ninety. A build or single-client smoke test does not prove the three-player loop is fun.
 
 ## Troubleshooting
 
+- **Rojo says "address in use"** means a Rojo server for this game is already running (often started together with Studio). Use it, or stop it before starting another. Each of our games has its own port (`$RojoPort` in `scripts/common.ps1`; Loot Goblins uses the plugin default, 34872). If the Rojo plugin connects to the wrong game, enter the right port by hand.
 - **"This file is currently in use by another Studio instance or is read-only"** means a second Studio copy has the place open. Earlier versions of `dev.ps1` opened Studio with a hidden window, so you could have a copy running that you never saw. Fix: close every Studio window, press Ctrl+Shift+Esc, open the **Details** tab, and end any leftover `RobloxStudioBeta.exe`. Then open `build\LootGoblinsTest001.rbxlx` once. Now `dev.ps1 -OpenStudio` opens a visible window and refuses to start a second copy. AI helpers must not force-kill Studio; they ask you to close it.
 - Run bootstrap again after missing prerequisites are installed. It reports sign-ins and Studio toggles that need you. `-Headless` installs only project tools for CI; it does not set up Studio or AI clients.
 - If Studio's newer registry layout prevents `rojo plugin install`, bootstrap downloads the matching official `Rojo.rbxm` release, verifies its SHA-256, and preserves an existing different local plugin in a `.bak` file.

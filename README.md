@@ -10,7 +10,7 @@ The question it answers: **is stealing valuable loot, fighting over it while the
 
 1. Open the Loot Goblins folder on your computer.
 2. Double-click **Play Loot Goblins** (the file ending in `.bat`).
-3. Wait. It gets the newest version, builds the game, and opens Roblox Studio. Close any other Studio window first.
+3. Wait. It gets the newest version, builds the game, and opens Roblox Studio. If Loot Goblins is already open in Studio, close that window first (other games can stay open).
 4. In Studio, press the blue **Play** button at the top. The sky stays blank until you press it.
 5. Press `H` in the game to read how to play.
 
@@ -42,15 +42,16 @@ Playtest/review the PR, then approve the AI to sync, check, and merge it. When s
 
 ## How a raid plays
 
-- A **raid** lasts 5 minutes, then a short intermission. Most gold banked wins the raid (`Gold` and `Wins` leaderstats).
+- A **raid** lasts 6 minutes, then a short intermission. Most gold banked wins the raid (`Gold` and `Wins` leaderstats).
+- The islands are far apart across open sea. **Boats** are how you get around: four wait at Goblin Cove and one at every other island's dock. Swimming works, but it's slow.
 - Four pieces of loot glow at their spots, each with a light pillar you can see from anywhere:
 
   | Loot | Gold | Where | Trouble when taken |
   | --- | --- | --- | --- |
-  | Lighthouse Lens | 3 | Top of the lighthouse, Crossroads Ruins | The bell rings: the thief glows through walls for 20 s |
-  | Captain's Chest | 4 | Inside the shipwreck, Shipwreck Shoals | The wreck's cannon fires a barrage at the thief. Heavy (slowest carry). |
-  | Crystal Heart | 5 | Chamber inside Crystal Isle | Cave-in: rocks fall and the west tunnel is sealed for 25 s |
-  | Golden Idol | 10 | Top of the Sun Temple | The Guardian wakes, and a boulder rolls down the stairs |
+  | Lighthouse Lens | 3 | Top of the lighthouse on the Crossroads acropolis | The bell rings: the thief glows through walls for 20 s |
+  | Captain's Chest | 4 | In the hold of the galleon, Shipwreck Shoals lagoon | The wreck's cannon fires a barrage at the thief. Heavy (slowest carry). |
+  | Crystal Heart | 5 | Chamber in the tunnel under the Crystal Isle spire | Cave-in: rocks fall and the west tunnel is sealed for 25 s |
+  | Golden Idol | 10 | Top of the ziggurat on the Sun Temple mesa | The Guardian wakes, and a boulder rolls down the stairs |
 
 - Carry loot into **the Hoard** (gold ring and beam at Goblin Cove) to bank it. Banked loot respawns at its spot after a while. Loot still out when the raid ends is lost.
 - **Heat** is a shared meter. Stealing adds a chunk, carrying keeps adding, and it cools when nobody carries anything. At ALERT, carriers glow through walls and totems shoot them. At HUNTED, the Guardian hunts carriers near the temple. At FRENZY, it follows them anywhere. The world only ever targets **carriers**.
@@ -61,15 +62,16 @@ Playtest/review the PR, then approve the AI to sync, check, and merge it. When s
 | Input | Action |
 | --- | --- |
 | Hold `E` on loot | Steal it from its spot (0.6 s), or grab it when loose |
+| Hold `Shift` | Sprint. Uses stamina (the blue bar, bottom left). Run it dry and you're out of breath for a moment. Carriers only hustle a little. |
 | Click (sword) | Swing. Everyone spawns with a sword. Hits knock loot loose. Carriers can't swing. |
-| `F` | Grapple: steals loot from a carrier, or yanks loose loot to you. Needs a clear line of sight. |
+| `F` | Grappling hook. Aim at a cliff, wall, mast or the ground and it pulls you there (jump to let go). Aim at loose loot or at a carrier and it steals the loot instead (needs a clear line of sight; your aim doesn't have to be perfect). Not while you carry loot. |
 | `Q` | Throw your loot. Pass it, toss it over a gap, or throw it into the Hoard. |
 | `E` (no prompt showing) | **Poltergoblin**: leave your body and run as a faster spirit for 5 s, then snap back (`E` again to return early). Loot the spirit holds comes back with you. Your body can be struck, and that drops your loot. Doesn't work inside the Hoard's ward. |
 | `E` at a zipline post | Ride the zipline. Jump to let go. |
-| Sit in `Driver` | WASD drives a boat. Two wait at the home docks. |
+| Sit in `Driver` | WASD drives a boat. Four wait at the home docks and one at every other island. |
 | `H` | Show or hide the how-to-play panel |
 
-Green pads launch you upward.
+Green pads launch you upward. Ladders, ramps and ziplines take you up and across the islands. On Crystal Isle, a gap called the Leap only clears with a sprint jump, and never while carrying loot.
 
 ## What NOT to add yet
 
@@ -87,7 +89,8 @@ Afterward make one decision:
 
 - Boats are intentionally kinematic instead of production physics vehicles.
 - The Guardian is a kinematic stone golem that walks over terrain instead of using pathfinding. It cannot follow into tunnels.
-- Grapple, throw and Poltergoblin are keyboard and mouse only.
+- Grapple, throw and Poltergoblin are keyboard and mouse only (sprint also toggles with a gamepad's left stick click).
+- Shift sprints, so Roblox's shift lock is turned off.
 - Art is primitive geometry and terrain. Sounds are pitched versions of the few sounds built into the Roblox client.
 
 These are deliberate. Production architecture comes after the loop proves itself.

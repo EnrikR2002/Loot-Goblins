@@ -1,5 +1,6 @@
--- The ugly kinematic boats from Test 001, now two of them at the home docks.
--- Sit in Driver; WASD steers. The server moves the boat and stops it at land.
+-- The ugly kinematic boats from Test 001. Four wait at the home docks and one
+-- at every other island's dock (World.refs.boatSpawns). Sit in Driver; WASD
+-- steers. The server moves the boat and stops it at land.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
@@ -10,6 +11,13 @@ local boats = {}
 local refs
 
 local WOOD = Color3.fromRGB(102, 67, 42)
+local FLAG_COLORS = {
+	Color3.fromRGB(255, 210, 75),
+	Color3.fromRGB(110, 220, 255),
+	Color3.fromRGB(255, 110, 110),
+	Color3.fromRGB(140, 255, 120),
+	Color3.fromRGB(220, 140, 255),
+}
 local HULL_SIZE = Vector3.new(14, 3, 26)
 
 local landParams = RaycastParams.new()
@@ -56,7 +64,7 @@ local function buildBoat(index, spawnCFrame)
 		Enum.Material.Wood,
 		model
 	)
-	local flagColor = index == 1 and Color3.fromRGB(255, 210, 75) or Color3.fromRGB(110, 220, 255)
+	local flagColor = FLAG_COLORS[(index - 1) % #FLAG_COLORS + 1]
 	Util.part(
 		"Flag",
 		Vector3.new(0.4, 4, 7),
