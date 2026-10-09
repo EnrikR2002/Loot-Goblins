@@ -222,14 +222,15 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 
 -- Main loop --------------------------------------------------------------------------
-local function carriersOutsideWard()
-	local count = 0
+-- Heat per second from carriers outside the ward, weighted by how hot each treasure is.
+local function carryHeatRate()
+	local rate = 0
 	for _, carrier in ipairs(Loot.carriers()) do
 		if Util.flatDistance(carrier.root.Position, refs.hoard.position) > Config.WARD_RADIUS then
-			count += 1
+			rate += Config.HEAT_CARRY_RATE * math.clamp(carrier.item.def.heat / 25, 0.25, 2)
 		end
 	end
-	return count
+	return rate
 end
 
 RunService.Heartbeat:Connect(function(dt)
@@ -237,7 +238,7 @@ RunService.Heartbeat:Connect(function(dt)
 	Boats.tick(dt)
 	if active then
 		Loot.tick()
-		Heat.tick(dt, carriersOutsideWard())
+		Heat.tick(dt, carryHeatRate())
 		Threats.tick(dt)
 		Navy.tick()
 		Escalation.tick()

@@ -231,8 +231,10 @@ local function buildHomeToys()
 			WOOD,
 			Enum.Material.WoodPlanks
 		)
+		raft.CanCollide = false -- Boats sail through; cannonballs still splash beside it and score.
 		table.insert(refs.targets, raft)
-		local face = CFrame.new(spot[1], 6.4, spot[2]) * CFrame.Angles(0, 0, math.rad(90))
+		-- Discs stand upright, facing south toward the cannon.
+		local face = CFrame.new(spot[1], 6.4, spot[2] + 0.6) * CFrame.Angles(0, math.rad(90), 0)
 		for i, color in ipairs({
 			Color3.fromRGB(255, 255, 255),
 			Color3.fromRGB(220, 50, 50),
@@ -242,10 +244,10 @@ local function buildHomeToys()
 			local ring = decor(
 				"Bullseye",
 				Vector3.new(0.3 + i * 0.05, 10 - i * 2.3, 10 - i * 2.3),
-				face * CFrame.new(0, -i * 0.04, 0),
+				face * CFrame.new(-i * 0.04, 0, 0),
 				color,
 				Enum.Material.SmoothPlastic,
-				true
+				false
 			)
 			ring.Shape = Enum.PartType.Cylinder
 		end
@@ -405,10 +407,10 @@ local function buildHome()
 		table.insert(refs.homePoints, CFrame.new(math.cos(a) * 9, 10, 690 + math.sin(a) * 9))
 	end
 
-	-- Two docks on the north shore, four boats: one each, plus a spare to fight over.
-	for _, x in ipairs({ -30, 30 }) do
-		dock(Vector3.new(x, 0, 490), Vector3.new(x, 0, 428), { -1, 1 })
-	end
+	-- Two docks on the north shore, four boats: three skiffs and a Cutter (heavier, with a cannon and
+	-- room for three friends) to fight over.
+	dock(Vector3.new(-30, 0, 490), Vector3.new(-30, 0, 428), { -1, 1 })
+	dock(Vector3.new(30, 0, 490), Vector3.new(30, 0, 428), { -1, 1 }, { "cutter", "skiff" })
 
 	-- Goblin huts for cover and character.
 	local huts = {
@@ -716,7 +718,7 @@ local function buildCrossroads()
 	)
 
 	-- One boat waits at the south dock.
-	dock(Vector3.new(40, 0, 182), Vector3.new(40, 0, 245), { 1 })
+	dock(Vector3.new(40, 0, 182), Vector3.new(40, 0, 245), { 1 }, { "cutter" }) -- The hub keeps a gunboat.
 
 	palmRing(CROSS, 150, 16, 10, {
 		Vector3.new(40, 0, 182),

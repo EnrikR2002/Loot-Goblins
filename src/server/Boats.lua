@@ -76,6 +76,7 @@ local function makeSeat(model, hull, class, name, offset)
 	seat.Color = Color3.fromRGB(60, 60, 70)
 	seat.Material = Enum.Material.Fabric
 	seat.CanCollide = false
+	seat.CanTouch = false -- No sitting by accident: the boarding prompt (E) is the only way in.
 	seat.Massless = true
 	seat.TopSurface = Enum.SurfaceType.Smooth
 	seat.BottomSurface = Enum.SurfaceType.Smooth

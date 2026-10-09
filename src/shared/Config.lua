@@ -308,7 +308,7 @@ Config.HEAT_TIERS = {
 		hint = "The sea turns on the thief. A tempest is coming.",
 	},
 }
-Config.HEAT_CARRY_RATE = 0.45 -- Per carrier outside the ward, per second.
+Config.HEAT_CARRY_RATE = 0.5 -- Per carrier outside the ward, per second, for a 25-heat treasure (scaled by its heat).
 Config.HEAT_CARRY_RATE_CAP = 1.2
 Config.HEAT_DECAY_RATE = 0.8 -- Per second while nobody carries loot.
 Config.REVEAL_TIER = 2 -- ALERT and up: carriers are visible through walls.
