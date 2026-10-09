@@ -14,8 +14,11 @@ local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Loot = require(script.Parent.Loot)
 local Heat = require(script.Parent.Heat)
+local Blast = require(script.Parent.Blast)
 
 local Threats = {}
+Threats.handlers = {} -- trouble kind -> function(item, player), filled by Troubles.lua
+Threats.text = {} -- trouble kind -> banner text
 local refs
 
 local GUARDIAN_STONE = Color3.fromRGB(150, 70, 60)
@@ -83,6 +86,9 @@ local guardian = {
 	phase = 0,
 	wading = false,
 	hadTarget = false,
+	leap = nil,
+	nextLeapAt = 0,
+	nextThrowAt = 0,
 }
 
 local groundParams = RaycastParams.new()
@@ -194,6 +200,9 @@ local function poseGuardian()
 	local recovering = now() < g.recoverUntil
 	local swing = sleeping and 0 or math.sin(g.phase) * 0.6
 	local bob = sleeping and -3 or math.abs(math.sin(g.phase)) * 0.6
+	if g.leap and now() < g.leap.jumpAt then
+		bob = -4 -- Crouching for the leap.
+	end
 	local base = CFrame.new(g.position + Vector3.new(0, bob, 0)) * CFrame.Angles(0, g.yaw, 0)
 	if sleeping then
 		base *= CFrame.Angles(math.rad(12), 0, 0)
@@ -233,6 +242,9 @@ function Threats.wakeGuardian(reason)
 		return
 	end
 	guardian.state = "awake"
+	-- A grace period before its ranged moves, so the opening is a warning, not an ambush.
+	guardian.nextLeapAt = now() + 2.5
+	guardian.nextThrowAt = now() + 3.5
 	setGuardianLook()
 	poseGuardian()
 	Net.broadcast("GuardianWake", { position = guardian.position, reason = reason })
@@ -305,6 +317,64 @@ local function stepGuardianToward(dt, goal, stopDistance)
 	return walking
 end
 
+-- The Guardian's two answers to a carrier who keeps their distance. Both are announced first.
+--   LEAP   a marked circle where you will be; it crouches, then jumps and lands on it.
+--   THROW  a marked circle for a boulder from range, which is how it reaches boats and ledges.
+local function guardianAttacks(g, targetPlayer, t)
+	local root = Util.aliveRoot(targetPlayer)
+	if not root then
+		return
+	end
+	local flatDistance = Util.flatDistance(root.Position, g.position)
+	local v = root.AssemblyLinearVelocity
+	local velocity = Vector3.new(v.X, 0, v.Z)
+	if t >= g.nextLeapAt and flatDistance >= Config.GUARDIAN_LEAP_MIN and flatDistance <= Config.GUARDIAN_LEAP_MAX then
+		local aim = root.Position + velocity * (Config.GUARDIAN_LEAP_WINDUP + 0.3)
+		if not inWard(aim, 6) and inLeash(aim) then
+			local floorY, water = groundAt(aim.X, aim.Z)
+			if not water then
+				local to = Vector3.new(aim.X, floorY, aim.Z)
+				local total = Config.GUARDIAN_LEAP_WINDUP + 0.65
+				g.leap = { from = g.position, to = to, jumpAt = t + Config.GUARDIAN_LEAP_WINDUP, landAt = t + total }
+				g.yaw = math.atan2(-(to.X - g.position.X), -(to.Z - g.position.Z))
+				Net.broadcast("Marker", {
+					position = to,
+					radius = Config.GUARDIAN_LEAP_RADIUS,
+					duration = total,
+					color = Color3.fromRGB(255, 150, 60),
+					style = "stomp",
+				})
+				Net.broadcast("GuardianLeap", { position = g.position })
+				return
+			end
+		end
+	end
+	if
+		t >= g.nextThrowAt
+		and flatDistance >= Config.GUARDIAN_THROW_MIN
+		and flatDistance <= Config.GUARDIAN_THROW_MAX
+	then
+		g.nextThrowAt = t + (frenzy() and Config.GUARDIAN_THROW_GAP * 0.7 or Config.GUARDIAN_THROW_GAP)
+		local aim = root.Position + velocity * Config.GUARDIAN_THROW_DELAY * 0.9
+		local floorY, water = groundAt(aim.X, aim.Z)
+		local to = Vector3.new(aim.X, water and 0 or floorY, aim.Z)
+		local from = g.position + Vector3.new(0, 18, 0)
+		Net.broadcast("GuardianThrow", { from = from, to = to, duration = Config.GUARDIAN_THROW_DELAY })
+		Blast.strike(to, Config.GUARDIAN_THROW_DELAY, {
+			radius = Config.GUARDIAN_THROW_RADIUS,
+			damage = 24,
+			knockback = 72,
+			hullDamage = 65,
+			boatPush = 55,
+			lootReason = "guardian",
+			cause = "the Guardian",
+			markerColor = Color3.fromRGB(255, 110, 60),
+			style = "stomp",
+			color = Color3.fromRGB(190, 120, 80),
+		})
+	end
+end
+
 local function tickGuardian(dt)
 	local g = guardian
 	local t = now()
@@ -313,6 +383,34 @@ local function tickGuardian(dt)
 		if Heat.tier >= Config.GUARDIAN_WAKE_TIER then
 			Threats.wakeGuardian("heat")
 		end
+		return
+	end
+	if g.leap then
+		local leap = g.leap
+		if t < leap.jumpAt then
+			poseGuardian()
+			return
+		elseif t < leap.landAt then
+			local a = (t - leap.jumpAt) / (leap.landAt - leap.jumpAt)
+			local p = leap.from:Lerp(leap.to, a)
+			g.position = Vector3.new(p.X, p.Y + math.sin(math.pi * a) * 24, p.Z)
+			poseGuardian()
+			return
+		end
+		g.position = leap.to
+		g.leap = nil
+		g.recoverUntil = t + 1.1
+		g.nextLeapAt = t + (frenzy() and Config.GUARDIAN_LEAP_GAP * 0.7 or Config.GUARDIAN_LEAP_GAP)
+		hurtArea(
+			leap.to + Vector3.new(0, 5, 0),
+			Config.GUARDIAN_LEAP_RADIUS,
+			Config.GUARDIAN_LEAP_DAMAGE,
+			Config.GUARDIAN_LEAP_KNOCKBACK,
+			"guardian",
+			16
+		)
+		Net.broadcast("GuardianSmash", { position = g.position })
+		poseGuardian()
 		return
 	end
 	if t < g.recoverUntil then
@@ -324,6 +422,9 @@ local function tickGuardian(dt)
 	if goal then
 		g.hadTarget = targetPlayer ~= nil
 		stepGuardianToward(dt, goal, targetPlayer and 4 or 7)
+		if targetPlayer then
+			guardianAttacks(g, targetPlayer, t)
+		end
 		-- Smash anyone close enough while chasing a carrier.
 		if targetPlayer and t >= g.nextHitAt then
 			local chest = g.position + Vector3.new(0, 6, 0)
@@ -377,6 +478,9 @@ local function resetGuardian()
 	g.recoverUntil = 0
 	g.hadTarget = false
 	g.wading = false
+	g.leap = nil
+	g.nextLeapAt = 0
+	g.nextThrowAt = 0
 	setGuardianLook()
 	poseGuardian()
 end
@@ -750,8 +854,14 @@ function Threats.onTaken(item, player)
 		end
 	elseif trouble == "Bell" then
 		revealUntil[item] = now() + Config.BELL_REVEAL_TIME
+	elseif Threats.handlers[trouble] then
+		Threats.handlers[trouble](item, player)
 	end
-	Net.broadcast("Trouble", { kind = trouble, position = item.spot.Position, text = TROUBLE_TEXT[trouble] })
+	Net.broadcast("Trouble", {
+		kind = trouble,
+		position = item.spot.Position,
+		text = TROUBLE_TEXT[trouble] or Threats.text[trouble],
+	})
 end
 
 -- Lifecycle ------------------------------------------------------------------
@@ -826,5 +936,16 @@ function Threats.reset()
 		refs.lighthouseLamp.Color = Color3.fromRGB(255, 240, 160)
 	end
 end
+
+-- Hooks for Troubles.lua.
+function Threats.reveal(item, seconds)
+	revealUntil[item] = now() + seconds
+end
+
+function Threats.generation()
+	return generation
+end
+
+Threats.addRoller = addRoller
 
 return Threats

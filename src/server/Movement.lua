@@ -117,6 +117,19 @@ function Movement.tick(dt)
 	end
 end
 
+-- Spends stamina on an action (a heavy swing). False if there isn't enough. It also pauses regen,
+-- like sprinting does, so a carrier can't swing and recover at once.
+function Movement.spend(player, amount)
+	local s = staminaOf(player)
+	if s.value < amount then
+		return false
+	end
+	s.value -= amount
+	s.lastSprintAt = os.clock()
+	publish(player, s)
+	return true
+end
+
 -- A fresh character starts with full stamina.
 function Movement.refill(player)
 	local s = staminaOf(player)
