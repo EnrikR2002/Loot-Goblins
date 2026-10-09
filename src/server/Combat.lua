@@ -19,6 +19,7 @@ local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChil
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Loot = require(script.Parent.Loot)
+local Movement = require(script.Parent.Movement)
 local Poltergoblin = require(script.Parent.Poltergoblin)
 
 local Combat = {}
@@ -42,14 +43,20 @@ local function swing(player, tool)
 		return
 	end
 	local t = os.clock()
-	if t - (lastSwing[player] or 0) < Config.SWORD_COOLDOWN then
+	-- Loot-carrying hands swing too, but heavy: slower, shorter, weaker, and it costs stamina.
+	local carrying = Loot.itemOf(player) ~= nil
+	local cooldown = carrying and Config.CARRY_SWORD_COOLDOWN or Config.SWORD_COOLDOWN
+	if t - (lastSwing[player] or 0) < cooldown then
 		return
 	end
-	if Loot.itemOf(player) then
-		Net.toast(player, "HANDS FULL - Q to throw the loot, then fight")
+	if carrying and not Movement.spend(player, Config.CARRY_SWING_STAMINA) then
+		Net.toast(player, "Too winded to swing - heavy loot takes stamina")
 		return
 	end
 	lastSwing[player] = t
+	local range = carrying and Config.CARRY_SWORD_RANGE or Config.SWORD_RANGE
+	local damage = carrying and Config.CARRY_SWORD_DAMAGE or Config.SWORD_DAMAGE
+	local knockback = carrying and Config.CARRY_SWORD_KNOCKBACK or Config.SWORD_KNOCKBACK
 
 	-- Roblox's default animate script plays a slash when it sees this value.
 	local slash = Instance.new("StringValue")
@@ -65,20 +72,16 @@ local function swing(player, tool)
 		if other ~= player and otherRoot then
 			local offset = otherRoot.Position - root.Position
 			local flat = Vector3.new(offset.X, 0, offset.Z)
-			if
-				offset.Magnitude <= Config.SWORD_RANGE
-				and flat.Magnitude > 0.01
-				and flat.Unit:Dot(look) >= Config.SWORD_MIN_DOT
-			then
-				local dealt = Util.damage(otherHumanoid, Config.SWORD_DAMAGE)
+			if offset.Magnitude <= range and flat.Magnitude > 0.01 and flat.Unit:Dot(look) >= Config.SWORD_MIN_DOT then
+				local dealt = Util.damage(otherHumanoid, damage)
 				Poltergoblin.markDamage(player, otherHumanoid, dealt)
 				Loot.knockLoose(other, root.Position, "sword", player)
-				Util.knockback(otherRoot, flat.Unit * Config.SWORD_KNOCKBACK + Vector3.new(0, 15, 0))
+				Util.knockback(otherRoot, flat.Unit * knockback + Vector3.new(0, 15, 0))
 				table.insert(hits, otherRoot.Position)
 			end
 		end
 	end
-	Poltergoblin.strikeBodies(player, root.Position, look, Config.SWORD_DAMAGE)
+	Poltergoblin.strikeBodies(player, root.Position, look, damage)
 	if #hits > 0 then
 		Net.broadcast("SwordHit", { hits = hits })
 	end
@@ -104,7 +107,7 @@ end
 local function newSwordTool()
 	local tool = Instance.new("Tool")
 	tool.Name = "Sword"
-	tool.ToolTip = "Click to swing. Knocks loot loose."
+	tool.ToolTip = "Click to swing. Knocks loot loose. Carrying loot makes it a slow, tiring bash."
 	tool.CanBeDropped = false
 	tool.RequiresHandle = true
 	-- Same grip as Roblox's classic sword: the blade points forward from the fist.

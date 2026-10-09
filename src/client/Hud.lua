@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+local Map = require(script.Parent.Map)
 
 local Hud = {}
 
@@ -24,6 +25,7 @@ local timer, heatFill, heatLabel, heatHint, banner, feedList, board, objective, 
 local results, resultsTitle, resultsList, resultsFooter, help
 local slots = {}
 local boardRows = {}
+local boatPanel, boatSpeed, boatHull, boatHullFill, boatBoost, boatBoostFill, boatNote
 local waypoint, waypointLabel
 local hoardPart
 local shownHeat = 0
@@ -82,7 +84,7 @@ local function buildTop()
 	local top = make("Frame", {
 		Name = "Top",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 6),
+		Position = UDim2.new(0.5, 0, 0, 40),
 		Size = UDim2.fromOffset(380, 84),
 		BackgroundTransparency = 1,
 	}, gui)
@@ -121,7 +123,7 @@ local function buildBanner()
 	banner = text(gui, {
 		Name = "Banner",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 96),
+		Position = UDim2.new(0.5, 0, 0, 130),
 		Size = UDim2.fromOffset(780, 46),
 		Font = Enum.Font.GothamBlack,
 		BackgroundColor3 = DARK,
@@ -148,48 +150,60 @@ local function buildFeed()
 	feedList = feed
 end
 
+local BOARD_ROW = 21
+
 local function buildBoard()
+	local rowsCount = #Config.LOOT
 	board = panel(gui, {
 		Name = "LootBoard",
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -12, 0.45, 0),
-		Size = UDim2.fromOffset(290, 30 + #Config.LOOT * 34),
+		Position = UDim2.new(1, -10, 0.46, 0),
+		Size = UDim2.fromOffset(300, 26 + rowsCount * BOARD_ROW),
 	})
 	text(board, {
-		Position = UDim2.fromOffset(10, 4),
-		Size = UDim2.new(1, -20, 0, 22),
-		Text = "LOOT",
+		Position = UDim2.fromOffset(10, 3),
+		Size = UDim2.new(1, -20, 0, 20),
+		Text = "TREASURE  (gold value)",
 		Font = Enum.Font.GothamBlack,
 		TextColor3 = GOLD,
 		TextXAlignment = Enum.TextXAlignment.Left,
 	})
-	for i, def in ipairs(Config.LOOT) do
+	-- Highest value first: the board reads like the map, deepest at the top.
+	local sorted = table.clone(Config.LOOT)
+	table.sort(sorted, function(a, b)
+		return a.value > b.value
+	end)
+	for i, def in ipairs(sorted) do
 		local row = make("Frame", {
 			BackgroundTransparency = 1,
-			Position = UDim2.fromOffset(10, 28 + (i - 1) * 34),
-			Size = UDim2.new(1, -20, 0, 32),
+			Position = UDim2.fromOffset(8, 24 + (i - 1) * BOARD_ROW),
+			Size = UDim2.new(1, -16, 0, BOARD_ROW - 1),
 		}, board)
 		local dot = make("Frame", {
 			BackgroundColor3 = def.color,
 			BorderSizePixel = 0,
-			Position = UDim2.fromOffset(0, 9),
-			Size = UDim2.fromOffset(14, 14),
+			Position = UDim2.fromOffset(0, 5),
+			Size = UDim2.fromOffset(10, 10),
 		}, row)
-		corner(dot, 7)
-		text(row, {
-			Position = UDim2.fromOffset(22, 0),
-			Size = UDim2.new(1, -22, 0, 16),
+		corner(dot, 5)
+		local name = text(row, {
+			Position = UDim2.fromOffset(16, 0),
+			Size = UDim2.new(0.52, -16, 1, 0),
 			Text = string.format("%s  %dg", def.name, def.value),
 			TextColor3 = def.color,
 			TextXAlignment = Enum.TextXAlignment.Left,
+			TextScaled = false,
+			TextSize = 12,
 		})
 		local status = text(row, {
-			Position = UDim2.fromOffset(22, 16),
-			Size = UDim2.new(1, -22, 0, 15),
+			Position = UDim2.fromScale(0.52, 0),
+			Size = UDim2.fromScale(0.48, 1),
 			Font = Enum.Font.GothamMedium,
-			TextXAlignment = Enum.TextXAlignment.Left,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			TextScaled = false,
+			TextSize = 11,
 		})
-		boardRows[def.id] = { status = status, dot = dot, def = def }
+		boardRows[def.id] = { status = status, name = name, dot = dot, def = def }
 	end
 end
 
@@ -234,7 +248,7 @@ local function buildAbilities()
 		Name = "Abilities",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -12, 1, -12),
-		Size = UDim2.fromOffset(4 * 132 + 3 * 6, 52),
+		Size = UDim2.fromOffset(5 * 132 + 4 * 6, 52),
 		BackgroundTransparency = 1,
 	}, gui)
 	make("UIListLayout", {
@@ -247,7 +261,8 @@ local function buildAbilities()
 	slots.throw = makeSlot("Q", "THROW", GOLD)
 	slots.grapple = makeSlot("F", "GRAPPLE", Color3.fromRGB(255, 240, 120))
 	slots.polter = makeSlot("E", "POLTERGOBLIN", SPIRIT)
-	for i, key in ipairs({ "sword", "throw", "grapple", "polter" }) do
+	slots.keg = makeSlot("G", "KEG", Color3.fromRGB(255, 150, 90))
+	for i, key in ipairs({ "sword", "throw", "grapple", "keg", "polter" }) do
 		slots[key].frame.LayoutOrder = i
 		slots[key].frame.Parent = row
 	end
@@ -259,6 +274,55 @@ local function buildAbilities()
 	slots.sprint.frame.Position = UDim2.new(0, 12, 1, -12)
 	slots.sprint.frame.Size = UDim2.fromOffset(200, 52)
 	slots.sprint.frame.Parent = gui
+end
+
+-- Shown only while you sit in a boat: speed, hull health, boost, anchor and what the cargo costs you.
+local function buildBoatPanel()
+	boatPanel = panel(gui, {
+		Name = "BoatPanel",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -118),
+		Size = UDim2.fromOffset(420, 58),
+		Visible = false,
+	})
+	boatSpeed = text(boatPanel, {
+		Position = UDim2.fromOffset(10, 4),
+		Size = UDim2.fromOffset(150, 24),
+		Font = Enum.Font.GothamBlack,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "SKIFF  0",
+	})
+	boatNote = text(boatPanel, {
+		Position = UDim2.fromOffset(160, 4),
+		Size = UDim2.new(1, -170, 0, 24),
+		Font = Enum.Font.GothamMedium,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Text = "",
+	})
+	local hullBack = panel(boatPanel, {
+		Position = UDim2.fromOffset(10, 32),
+		Size = UDim2.fromOffset(196, 18),
+		BackgroundColor3 = Color3.fromRGB(40, 40, 52),
+	})
+	hullBack.ClipsDescendants = true
+	boatHullFill = make("Frame", {
+		BackgroundColor3 = Color3.fromRGB(120, 230, 120),
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+	}, hullBack)
+	boatHull = text(hullBack, { Text = "HULL", ZIndex = 3, TextStrokeTransparency = 0.2 })
+	local boostBack = panel(boatPanel, {
+		Position = UDim2.fromOffset(214, 32),
+		Size = UDim2.fromOffset(196, 18),
+		BackgroundColor3 = Color3.fromRGB(40, 40, 52),
+	})
+	boostBack.ClipsDescendants = true
+	boatBoostFill = make("Frame", {
+		BackgroundColor3 = Color3.fromRGB(255, 190, 70),
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+	}, boostBack)
+	boatBoost = text(boostBack, { Text = "SHIFT BOOST", ZIndex = 3, TextStrokeTransparency = 0.2 })
 end
 
 local function buildBottom()
@@ -329,13 +393,15 @@ local function buildResults()
 end
 
 local HELP_LINES = {
-	{ "STEAL", "Hold E on glowing loot to pry it off its spot. That causes TROUBLE." },
-	{ "ESCAPE", "Carry it to THE HOARD (gold beam at Goblin Cove). The islands are far apart: take a boat." },
-	{ "MOVE", "Hold SHIFT to sprint (uses stamina). F on a cliff, wall or mast hooks you up to it." },
-	{ "HEAT", "Stealing and carrying raise Heat. The world hunts carriers, not you." },
-	{ "FIGHT", "Sword hits knock loot loose. F aimed at loot or a carrier steals it. Q throws yours." },
+	{ "STEAL", "Hold E on a glowing treasure to pry it off its spot. That causes TROUBLE. M opens the map." },
+	{ "BANK", "Carry it to THE HOARD (gold beam at Goblin Cove). Deeper treasure is worth more." },
+	{ "BOATS", "E on a boat to board. W/A/S/D drives, SHIFT boosts, R drops anchor. Mind the waves and storms." },
+	{ "MOVE", "Hold SHIFT to sprint (stamina). F on a cliff, wall or mast hooks you up to it." },
+	{ "HEAT", "Stealing and carrying raise Heat. High Heat sends flares, the Navy and a tempest after the CARRIER." },
+	{ "FIGHT", "Sword hits knock loot loose (carriers swing slow and tired). F near loot or a carrier steals it." },
+	{ "TOYS", "G throws a powder keg (take one from keg crates). E at a cannon fires it where you aim." },
 	{ "POLTERGOBLIN", "E: leave your body, run as a spirit, snap back. Loot you grab comes back with you." },
-	{ "WIN", "Most gold when the raid timer ends wins. Loot not banked is lost." },
+	{ "WIN", "Most gold when the raid timer ends wins. Red rings on the ground = something lands there. Move!" },
 }
 
 local function buildHelp()
@@ -343,7 +409,7 @@ local function buildHelp()
 		Name = "Help",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(640, 340),
+		Size = UDim2.fromOffset(700, 408),
 		BackgroundTransparency = 0.1,
 		Visible = false,
 		ZIndex = 8,
@@ -416,10 +482,12 @@ function Hud.init(hoard)
 	buildFeed()
 	buildBoard()
 	buildAbilities()
+	buildBoatPanel()
 	buildBottom()
 	buildResults()
 	buildHelp()
 	buildWaypoint()
+	Map.build(gui, hoardPart.Position)
 	gui.Parent = player:WaitForChild("PlayerGui")
 end
 
@@ -560,6 +628,10 @@ function Hud.showHelp(seconds)
 	end
 end
 
+function Hud.toggleMap()
+	Map.toggle()
+end
+
 function Hud.toggleHelp()
 	help.Visible = not help.Visible
 end
@@ -599,27 +671,30 @@ end
 local function updateBoard(now, folder)
 	for id, row in pairs(boardRows) do
 		local state = folder and folder:GetAttribute(id .. "State") or "spot"
+		local bonus = folder and folder:GetAttribute(id .. "Bonus") or 0
 		local status
-		local color = WHITE
+		local color = Color3.fromRGB(200, 200, 210)
 		if state == "carried" then
 			local carrierId = folder:GetAttribute(id .. "CarrierId")
 			if carrierId == player.UserId then
-				status, color = "YOU HAVE IT - GET HOME!", GOLD
+				status, color = "YOU - GET HOME!", GOLD
 			else
-				status = "carried by " .. (folder:GetAttribute(id .. "Carrier") or "?")
+				status = (folder:GetAttribute(id .. "Carrier") or "?")
 				color = Color3.fromRGB(255, 170, 120)
 			end
 		elseif state == "loose" then
-			status, color = "LOOSE! up for grabs", Color3.fromRGB(255, 110, 110)
+			status, color = "LOOSE!", Color3.fromRGB(255, 110, 110)
 		elseif state == "away" then
 			local returnAt = folder:GetAttribute(id .. "ReturnAt") or now
-			status = string.format("banked, back in %ds", math.max(0, math.ceil(returnAt - now)))
-			color = Color3.fromRGB(150, 150, 160)
+			status = string.format("banked %ds", math.max(0, math.ceil(returnAt - now)))
+			color = Color3.fromRGB(130, 130, 140)
 		else
-			status = "waiting at " .. row.def.place
+			status = row.def.place
 		end
 		row.status.Text = status
 		row.status.TextColor3 = color
+		row.name.Text =
+			string.format("%s  %dg%s", row.def.name, row.def.value + bonus, bonus > 0 and ("+" .. bonus) or "")
 		row.dot.BackgroundTransparency = state == "away" and 0.7 or 0
 	end
 end
@@ -672,12 +747,66 @@ local function updateAbilities(now, root, carrying)
 	slots.sprint.stroke.Color = winded and WINDED or STAMINA
 
 	setSlot(slots.throw, carrying and 1 or 0, carrying and "throw your loot" or "nothing held", carrying)
-	setSlot(slots.sword, carrying and 0 or 1, carrying and "HANDS FULL" or "knocks loot loose", not carrying)
+	setSlot(slots.sword, 1, carrying and "heavy bash (tiring)" or "knocks loot loose", true)
+	local kegs = player:GetAttribute("Kegs") or 0
+	setSlot(
+		slots.keg,
+		kegs / Config.KEG_MAX,
+		kegs > 0 and string.format("%d kegs: throw", kegs) or "find a keg crate",
+		kegs > 0
+	)
 end
 
+local function updateBoatPanel(now)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local seat = humanoid and humanoid.SeatPart
+	local model = seat and seat.Parent
+	local boatType = model and model:GetAttribute("BoatType")
+	if not boatType then
+		boatPanel.Visible = false
+		return
+	end
+	boatPanel.Visible = true
+	local spec = Config.BOAT_TYPES[boatType]
+	local health = model:GetAttribute("Health") or spec.health
+	local maxHealth = model:GetAttribute("MaxHealth") or spec.health
+	local fraction = math.clamp(health / maxHealth, 0, 1)
+	boatSpeed.Text = string.format("%s  %d", string.upper(spec.name), model:GetAttribute("Speed") or 0)
+	boatHullFill.Size = UDim2.fromScale(fraction, 1)
+	boatHullFill.BackgroundColor3 = fraction > 0.5 and Color3.fromRGB(120, 230, 120)
+		or (fraction > 0.25 and Color3.fromRGB(255, 200, 70) or Color3.fromRGB(255, 80, 70))
+	boatHull.Text = string.format("HULL %d", math.floor(health))
+	local boostEnds = model:GetAttribute("BoostEndsAt") or 0
+	local boostReady = model:GetAttribute("BoostReadyAt") or 0
+	if now < boostEnds then
+		boatBoostFill.Size = UDim2.fromScale(1, 1)
+		boatBoost.Text = "BOOSTING!"
+	elseif now < boostReady then
+		boatBoostFill.Size = UDim2.fromScale(1 - (boostReady - now) / Config.BOAT_BOOST_COOLDOWN, 1)
+		boatBoost.Text = string.format("boost %.0fs", boostReady - now)
+	else
+		boatBoostFill.Size = UDim2.fromScale(1, 1)
+		boatBoost.Text = "SHIFT: BOOST"
+	end
+	local notes = {}
+	if model:GetAttribute("Moored") then
+		table.insert(notes, "ANCHORED (R)")
+	end
+	local payload = model:GetAttribute("Payload") or 0
+	if payload > 0 then
+		table.insert(
+			notes,
+			string.format("cargo -%d%% speed", math.floor(payload * Config.BOAT_PAYLOAD_DRAG * 100 + 0.5))
+		)
+	end
+	boatNote.Text = table.concat(notes, "   ")
+end
+
+-- One line that always says what to do next. While carrying, it also says what the world is doing about it.
 local function updateObjective(now, phase, root, carrying)
 	if phase ~= "raid" then
-		objective.Text = "Raid starting soon. Loot glows at its spot: steal it and bring it to THE HOARD."
+		objective.Text = "Raid starting soon. Treasure glows at its spot: steal it and bring it to THE HOARD. M: map"
 		objective.TextColor3 = WHITE
 		return
 	end
@@ -688,13 +817,28 @@ local function updateObjective(now, phase, root, carrying)
 		end
 	end
 	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local inBoat = humanoid and humanoid.SeatPart and humanoid.SeatPart.Parent:GetAttribute("BoatType") ~= nil
 	if def then
-		local revealed = character and character:FindFirstChild("CarrierReveal") ~= nil
+		local tier = workspace:GetAttribute("HeatTier") or 1
+		local distance = root and math.floor((root.Position - hoardPart.Position).Magnitude) or 0
+		local watchers = {}
+		if tier >= 2 then
+			table.insert(watchers, "you're lit up")
+		end
+		if tier >= 3 then
+			table.insert(watchers, "the Navy hunts")
+		end
+		if tier >= 4 then
+			table.insert(watchers, "a TEMPEST is coming")
+		end
 		objective.Text = string.format(
-			"YOU HAVE THE %s (%dg)! GET IT TO THE HOARD%s",
+			"YOU HAVE THE %s (%dg)! HOARD %d studs%s%s",
 			string.upper(def.name),
 			def.value,
-			revealed and "  -  YOU'RE REVEALED" or ""
+			distance,
+			#watchers > 0 and ("  -  " .. table.concat(watchers, ", ")) or "",
+			inBoat and "" or "  -  find a boat!"
 		)
 		local pulse = math.sin(now * 6) > 0
 		objective.TextColor3 = pulse and GOLD or WHITE
@@ -702,10 +846,14 @@ local function updateObjective(now, phase, root, carrying)
 		objective.Text = "SPIRIT FORM: grab loot and snap back with it. Guard your body!"
 		objective.TextColor3 = SPIRIT
 	elseif root and inWard(root.Position) then
-		objective.Text = "You're home. Head out, steal loot (follow the light pillars), bring it back here."
+		objective.Text =
+			"You're home. Take a boat (E), sail out, steal treasure (M map, compass up top), bring it back here."
 		objective.TextColor3 = WARD
+	elseif inBoat then
+		objective.Text = "Sailing: W/A/S/D steer, SHIFT boost, R anchor. Mind the storms and the shallows."
+		objective.TextColor3 = WHITE
 	else
-		objective.Text = "Steal loot (light pillars) or rob a carrier, then bring it to THE HOARD."
+		objective.Text = "Steal treasure (light pillars) or rob a carrier, then bring it to THE HOARD."
 		objective.TextColor3 = WHITE
 	end
 end
@@ -742,6 +890,8 @@ function Hud.update(now)
 	updateTop(now, phase, phaseEndsAt)
 	updateBoard(now, lootFolder())
 	updateAbilities(now, root, carrying)
+	updateBoatPanel(now)
+	Map.update(now)
 	updateObjective(now, phase, root, carrying)
 	updateWaypoint(root, carrying)
 	if results.Visible and phase == "intermission" then

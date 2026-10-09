@@ -12,6 +12,15 @@ local Heat = require(script.Parent.Heat)
 local Threats = require(script.Parent.Threats)
 local Poltergoblin = require(script.Parent.Poltergoblin)
 local Boats = require(script.Parent.Boats)
+local Blast = require(script.Parent.Blast)
+local Destructibles = require(script.Parent.Destructibles)
+local Mechanisms = require(script.Parent.Mechanisms)
+local Cannons = require(script.Parent.Cannons)
+local Kegs = require(script.Parent.Kegs)
+local Navy = require(script.Parent.Navy)
+local Storms = require(script.Parent.Storms)
+local Troubles = require(script.Parent.Troubles)
+local Escalation = require(script.Parent.Escalation)
 
 local Raid = {}
 Raid.phase = "intermission"
@@ -73,6 +82,15 @@ local function resetWorld()
 	Loot.resetAll()
 	Heat.reset()
 	Threats.reset()
+	Blast.reset()
+	Troubles.reset()
+	Navy.reset()
+	Storms.reset()
+	Escalation.reset()
+	Destructibles.reset()
+	Mechanisms.reset()
+	Cannons.reset()
+	Kegs.reset()
 	Boats.reset()
 end
 
@@ -128,9 +146,10 @@ function Raid.isActive()
 end
 
 function Raid.onBanked(item, player)
+	local value = item.bankedValue or item.def.value
 	local gold = stat(player, "Gold")
 	if gold then
-		gold.Value += item.def.value
+		gold.Value += value
 	end
 	Net.broadcast("Banked", {
 		name = player.DisplayName,

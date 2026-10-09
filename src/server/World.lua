@@ -50,397 +50,45 @@ local WARD_COLOR = Color3.fromRGB(190, 110, 255)
 local CRYSTAL_COLORS = { Color3.fromRGB(215, 110, 255), Color3.fromRGB(110, 230, 255) }
 local CAVE_GLOW = Color3.fromRGB(120, 255, 200)
 
-local terrain = workspace.Terrain
-local folders: { [string]: Folder } = {}
-local refs: { [string]: any } = {}
+local Kit = require(script.Parent.WorldKit)
+local Sea = require(script.Parent.Sea)
+local Islands = require(script.Parent.Islands)
+local IslandsFar = require(script.Parent.IslandsFar)
+local terrain = Kit.terrain
+local folders = Kit.folders
+local refs = Kit.refs
 World.refs = refs
 
--- Helpers --------------------------------------------------------------------
-local function folder(name, parent)
-	local f = Instance.new("Folder")
-	f.Name = name
-	f.Parent = parent
-	return f
-end
-
--- Walkable parts go in Ground (the Guardian walks on Ground and Terrain only).
-local function ground(name, size, cframe, color, material)
-	return Util.part(name, size, cframe, color, material, folders.ground)
-end
-
-local function structure(name, size, cframe, color, material)
-	return Util.part(name, size, cframe, color, material, folders.structures)
-end
-
--- Decoration never blocks shots or the mouse.
-local function decor(name, size, cframe, color, material, collide)
-	local p = Util.part(name, size, cframe, color, material, folders.decor)
-	p.CanCollide = collide == true
-	p.CanQuery = collide == true
-	p.CanTouch = false
-	return p
-end
-
-local function neon(p, transparency)
-	p.Material = Enum.Material.Neon
-	p.Transparency = transparency or 0
-	p.CastShadow = false
-	return p
-end
-
--- Cylinder parts run along X; this stands one upright.
-local function upright(position)
-	return CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
-end
-
-local function cylinder(name, radius, height, position, color, material, parent)
-	local p = Util.part(name, Vector3.new(height, radius * 2, radius * 2), upright(position), color, material, parent)
-	p.Shape = Enum.PartType.Cylinder
-	return p
-end
-
--- A straight plank whose top surface runs from a to b. Used for ramps, bridges
--- and the lighthouse spiral, so slopes never depend on wedge orientation.
-local function plank(name, a, b, width, thickness, color, material, parent, overlap)
-	local mid = (a + b) / 2
-	local length = (b - a).Magnitude + (overlap or 0)
-	local cframe = CFrame.lookAt(mid, b) * CFrame.new(0, -thickness / 2, 0)
-	return Util.part(name, Vector3.new(width, thickness, length), cframe, color, material, parent)
-end
-
-local function flatDirection(from, to)
-	local d = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
-	return d.Unit
-end
-
--- Unit vector pointing out from an island center at a compass angle (degrees).
--- 0 is east (+X), 90 is south (+Z), 180 is west, 270 is north.
-local function compass(degrees)
-	local a = math.rad(degrees)
-	return Vector3.new(math.cos(a), 0, math.sin(a))
-end
-
--- A ladder you can climb (Roblox climbs TrussParts on its own).
-local function ladder(name, bottom, height)
-	local h = math.max(2, math.floor(height / 2 + 0.5) * 2)
-	local truss = Instance.new("TrussPart")
-	truss.Name = name
-	truss.Size = Vector3.new(2, h, 2)
-	truss.CFrame = CFrame.new(bottom + Vector3.new(0, h / 2, 0))
-	truss.Anchored = true
-	truss.Color = DARK_WOOD
-	truss.Material = Enum.Material.Wood
-	truss.Parent = folders.structures
-	return truss
-end
-
--- Terrain shapes. Heights are absolute world Y.
-local function fillColumn(x, z, bottomY, topY, radius, material)
-	terrain:FillCylinder(CFrame.new(x, (bottomY + topY) / 2, z), topY - bottomY, radius, material)
-end
-
--- A flat-topped island: sand beach ring, body, and a top layer.
-local function island(center, beachRadius, topRadius, bodyMaterial, topMaterial)
-	fillColumn(center.X, center.Z, -30, 1.5, beachRadius, Enum.Material.Sand)
-	fillColumn(center.X, center.Z, -30, center.Y - 2, topRadius, bodyMaterial)
-	fillColumn(center.X, center.Z, center.Y - 4, center.Y, topRadius - 1, topMaterial)
-end
-
--- A cliff-walled plateau: rock all the way up, a thin top layer.
-local function mesa(center, radius, bottomY, topY, material, topMaterial)
-	fillColumn(center.X, center.Z, bottomY, topY, radius, material)
-	fillColumn(center.X, center.Z, topY - 3, topY, radius - 1, topMaterial or material)
-end
-
--- A natural rock ramp whose walking surface runs from a to b. It is a thick
--- tilted block, so its underside stays buried in whatever it leans on.
-local function rockRamp(a, b, width, material)
-	local length = (b - a).Magnitude
-	local thickness = math.abs(b.Y - a.Y) + 8
-	local cframe = CFrame.lookAt((a + b) / 2, b) * CFrame.new(0, -thickness / 2, 0)
-	terrain:FillBlock(cframe, Vector3.new(width, thickness, length + 4), material or Enum.Material.Rock)
-end
-
--- A rock ramp hugging the outside of a round cliff. It climbs `length` studs
--- around the cliff from lowY and arrives at the cliff top (topY) at `degrees`,
--- right beside the edge. turn (1 or -1) picks which way around it climbs.
-local function cliffRamp(center, radius, degrees, lowY, topY, length, turn, width, material)
-	width = width or 12
-	local out = compass(degrees)
-	local along = Vector3.new(-out.Z, 0, out.X) * turn
-	local r = radius + width / 2 - 1
-	local top = Vector3.new(center.X, topY, center.Z) + out * r
-	local foot = top - along * length
-	rockRamp(Vector3.new(foot.X, lowY, foot.Z), top, width, material)
-	return Vector3.new(foot.X, lowY, foot.Z), top
-end
-
--- Carves a walkable tunnel whose floor runs from a to b.
-local function tunnel(a, b, width, height)
-	local cframe = CFrame.lookAt((a + b) / 2, b) * CFrame.new(0, height / 2, 0)
-	terrain:FillBlock(cframe, Vector3.new(width, height, (b - a).Magnitude + 2), Enum.Material.Air)
-end
-
-local terrainOnly = RaycastParams.new()
-terrainOnly.FilterType = Enum.RaycastFilterType.Include
-terrainOnly.IgnoreWater = true
-
-local function groundY(x, z, default)
-	terrainOnly.FilterDescendantsInstances = { terrain, folders.ground }
-	local hit = workspace:Raycast(Vector3.new(x, 300, z), Vector3.new(0, -400, 0), terrainOnly)
-	return hit and hit.Position.Y or default
-end
-
-local function palm(x, z, y, lean)
-	y = y or groundY(x, z, 6)
-	local base = Vector3.new(x, y, z)
-	local tilt = CFrame.Angles(math.rad(lean or 8), math.rad((x * 7 + z * 3) % 360), 0)
-	local trunkTop = base + (CFrame.new(base) * tilt).UpVector * 14
-	local trunk = plank("PalmTrunk", base, trunkTop, 1.4, 1.4, Color3.fromRGB(140, 100, 60), Enum.Material.Wood)
-	trunk.Parent = folders.structures
-	for i = 0, 4 do
-		local yaw = math.rad(i * 72)
-		local frond = CFrame.new(trunkTop) * CFrame.Angles(0, yaw, 0) * CFrame.new(0, -0.6, -3.2)
-		decor(
-			"PalmFrond",
-			Vector3.new(2.4, 0.3, 7),
-			frond * CFrame.Angles(math.rad(-18), 0, 0),
-			Color3.fromRGB(60, 170, 70),
-			Enum.Material.Grass
-		)
-	end
-end
-
--- Palms scattered around a ring, skipping the sea and any spot near the given
--- keep-clear points.
-local function palmRing(center, radius, count, startDegrees, keepClear)
-	for i = 0, count - 1 do
-		local out = compass(startDegrees + i * 360 / count + (i % 3) * 7)
-		local r = radius + (i % 4) * 6
-		local x, z = center.X + out.X * r, center.Z + out.Z * r
-		local clear = true
-		for _, point in ipairs(keepClear or {}) do
-			if Util.flatDistance(Vector3.new(x, 0, z), point) < 22 then
-				clear = false
-			end
-		end
-		local y = groundY(x, z, -100)
-		if clear and y > SEA_Y + 1 then
-			palm(x, z, y)
-		end
-	end
-end
-
-local function rockPile(position, size)
-	structure(
-		"Rock",
-		size,
-		CFrame.new(position) * CFrame.Angles(0.3, position.X % 3, 0.2),
-		DARK_STONE,
-		Enum.Material.Slate
-	)
-end
-
-local function pointLight(parent, color, range, brightness)
-	local light = Instance.new("PointLight")
-	light.Color = color
-	light.Range = range
-	light.Brightness = brightness or 1
-	light.Parent = parent
-	return light
-end
-
-local function brazier(position)
-	cylinder("Brazier", 1.8, 3, position + Vector3.new(0, 1.5, 0), DARK_STONE, Enum.Material.Slate, folders.structures)
-	local flame = decor(
-		"BrazierFlame",
-		Vector3.new(1, 1, 1),
-		CFrame.new(position + Vector3.new(0, 3.5, 0)),
-		GOLD,
-		Enum.Material.Neon
-	)
-	flame.Transparency = 1
-	local fire = Instance.new("Fire")
-	fire.Size = 6
-	fire.Heat = 9
-	fire.Parent = flame
-	pointLight(flame, Color3.fromRGB(255, 170, 80), 18, 1.5)
-end
-
--- A small glowing gem on a wall or floor, so caves are readable.
-local function glow(position, color, range)
-	local gem = neon(decor("CaveGlow", Vector3.new(0.8, 0.8, 0.8), CFrame.new(position), color))
-	pointLight(gem, color, range or 16, 1.1)
-	return gem
-end
-
--- A light pillar from a point up into the sky. Landmarks you can find from anywhere.
-local function skyBeam(name, position, color, width)
-	local bottom = Instance.new("Attachment")
-	bottom.Name = name .. "Bottom"
-	bottom.Position = position
-	bottom.Parent = terrain
-	local top = Instance.new("Attachment")
-	top.Name = name .. "Top"
-	top.Position = position + Vector3.new(0, 500, 0)
-	top.Parent = terrain
-	local beam = Instance.new("Beam")
-	beam.Name = name
-	beam.Attachment0 = bottom
-	beam.Attachment1 = top
-	beam.Color = ColorSequence.new(color)
-	beam.Width0 = width
-	beam.Width1 = width
-	beam.LightEmission = 1
-	beam.FaceCamera = true
-	beam.Segments = 1
-	beam.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.35),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	beam.Parent = bottom
-	return beam
-end
-
-local function sign(parent, text, color, studsOffset, maxDistance)
-	local gui = Instance.new("BillboardGui")
-	gui.Name = "Sign"
-	gui.Size = UDim2.fromOffset(260, 46)
-	gui.StudsOffsetWorldSpace = studsOffset or Vector3.new(0, 6, 0)
-	gui.MaxDistance = maxDistance or 260
-	gui.LightInfluence = 0
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1, 1)
-	label.Font = Enum.Font.GothamBlack
-	label.TextScaled = true
-	label.Text = text
-	label.TextColor3 = color
-	label.TextStrokeTransparency = 0.2
-	label.Parent = gui
-	gui.Parent = parent
-	return gui
-end
-
--- A floating name over an island, readable from across the sea.
-local function islandSign(position, text, color)
-	local holder = decor("IslandSign", Vector3.new(0.4, 0.4, 0.4), CFrame.new(position), Color3.new(1, 1, 1), nil)
-	holder.Transparency = 1
-	sign(holder, text, color or Color3.fromRGB(255, 245, 220), Vector3.zero, 2600)
-end
-
--- Stone watcher. Threats animates the eye and fires from it.
-local function totem(name, position, faceToward)
-	local model = Instance.new("Model")
-	model.Name = name
-	local look = CFrame.lookAt(position, Vector3.new(faceToward.X, position.Y, faceToward.Z))
-	Util.part("Base", Vector3.new(5, 2, 5), look * CFrame.new(0, 1, 0), DARK_STONE, Enum.Material.Slate, model)
-	Util.part("Body", Vector3.new(3.4, 9, 3.4), look * CFrame.new(0, 6.5, 0), STONE, Enum.Material.Cobblestone, model)
-	Util.part("Brow", Vector3.new(4.4, 1, 4.4), look * CFrame.new(0, 9.4, 0), DARK_STONE, Enum.Material.Slate, model)
-	Util.part("Cap", Vector3.new(3, 1.6, 3), look * CFrame.new(0, 11.7, 0), DARK_STONE, Enum.Material.Slate, model)
-	local eye = Util.part(
-		"Eye",
-		Vector3.new(1.6, 1.2, 0.6),
-		look * CFrame.new(0, 8.3, -1.8),
-		Color3.fromRGB(90, 30, 30),
-		Enum.Material.Neon,
-		model
-	)
-	eye.CanCollide = false
-	model.PrimaryPart = eye
-	model.Parent = folders.structures
-	table.insert(refs.totems, { model = model, eye = eye, kind = "totem" })
-	return model
-end
-
--- A wooden dock from the shore out to sea, with boats moored alongside its
--- outer end. sides: one entry per boat, -1 (left) or 1 (right) of the dock.
-local function dock(shore, sea, sides)
-	local a = Vector3.new(shore.X, 2, shore.Z)
-	local b = Vector3.new(sea.X, 2, sea.Z)
-	local direction = flatDirection(a, b)
-	local right = Vector3.new(-direction.Z, 0, direction.X)
-	local length = (b - a).Magnitude
-	ground("Dock", Vector3.new(8, 1, length), CFrame.lookAt((a + b) / 2, b), WOOD, Enum.Material.WoodPlanks)
-	for d = 8, length - 2, 14 do
-		for _, side in ipairs({ -3.5, 3.5 }) do
-			local p = a + direction * d + right * side
-			cylinder(
-				"DockPost",
-				0.6,
-				10,
-				Vector3.new(p.X, -2.5, p.Z),
-				DARK_WOOD,
-				Enum.Material.Wood,
-				folders.structures
-			)
-		end
-	end
-	for _, side in ipairs(sides) do
-		local p = a + direction * (length - 13) + right * side * 13
-		local at = Vector3.new(p.X, 0.8, p.Z)
-		table.insert(refs.boatSpawns, CFrame.lookAt(at, at + direction))
-	end
-end
-
--- A sagging rope bridge between two points (walkable planks, decorative ropes).
-local function ropeBridge(name, a, b, sag, width)
-	width = width or 6
-	local pieces = math.max(8, math.floor((b - a).Magnitude / 4.5))
-	local function point(t)
-		return a:Lerp(b, t) - Vector3.new(0, sag * math.sin(math.pi * t), 0)
-	end
-	local side = Vector3.new(-(b - a).Z, 0, (b - a).X).Unit * (width / 2 + 0.2)
-	for i = 0, pieces - 1 do
-		plank(
-			name,
-			point(i / pieces),
-			point((i + 1) / pieces),
-			width,
-			0.6,
-			Color3.fromRGB(165, 125, 80),
-			Enum.Material.WoodPlanks,
-			folders.ground,
-			0.3
-		)
-		for _, s in ipairs({ side, -side }) do
-			local rope = plank(
-				"Rope",
-				point(i / pieces) + s + Vector3.new(0, 3, 0),
-				point((i + 1) / pieces) + s + Vector3.new(0, 3, 0),
-				0.25,
-				0.25,
-				Color3.fromRGB(200, 170, 110),
-				Enum.Material.Fabric,
-				folders.decor
-			)
-			rope.CanCollide = false
-			rope.CanQuery = false
-		end
-	end
-	for _, p in ipairs({ a, b }) do
-		for _, s in ipairs({ side, -side }) do
-			structure(
-				"RopePost",
-				Vector3.new(0.8, 4, 0.8),
-				CFrame.new(p + s + Vector3.new(0, 1.5, 0)),
-				DARK_WOOD,
-				Enum.Material.Wood
-			)
-		end
-	end
-end
-
--- A flat wooden deck on top of something, so high perches read clearly.
-local function deck(name, center, size)
-	return ground(
-		name,
-		Vector3.new(size, 1, size),
-		CFrame.new(center + Vector3.new(0, 0.5, 0)),
-		WOOD,
-		Enum.Material.WoodPlanks
-	)
-end
+-- Helpers live in WorldKit.lua; alias the ones this file uses.
+local folder = Kit.folder
+local ground = Kit.ground
+local structure = Kit.structure
+local decor = Kit.decor
+local neon = Kit.neon
+local cylinder = Kit.cylinder
+local plank = Kit.plank
+local flatDirection = Kit.flatDirection
+local compass = Kit.compass
+local ladder = Kit.ladder
+local fillColumn = Kit.fillColumn
+local island = Kit.island
+local mesa = Kit.mesa
+local cliffRamp = Kit.cliffRamp
+local tunnel = Kit.tunnel
+local groundY = Kit.groundY
+local palm = Kit.palm
+local palmRing = Kit.palmRing
+local rockPile = Kit.rockPile
+local pointLight = Kit.pointLight
+local brazier = Kit.brazier
+local glow = Kit.glow
+local skyBeam = Kit.skyBeam
+local sign = Kit.sign
+local islandSign = Kit.islandSign
+local totem = Kit.totem
+local dock = Kit.dock
+local ropeBridge = Kit.ropeBridge
+local deck = Kit.deck
 
 -- Ocean, sky and lighting -------------------------------------------------------
 local function buildEnvironment()
@@ -462,8 +110,8 @@ local function buildEnvironment()
 	Lighting.GlobalShadows = true
 	-- Thin enough haze that the next island is a silhouette on the horizon.
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-	atmosphere.Density = 0.22
-	atmosphere.Offset = 0.1
+	atmosphere.Density = 0.13
+	atmosphere.Offset = 0.25
 	atmosphere.Color = Color3.fromRGB(199, 222, 255)
 	atmosphere.Decay = Color3.fromRGB(110, 140, 180)
 	atmosphere.Glare = 0.2
@@ -477,18 +125,62 @@ local function buildEnvironment()
 	-- Sea floor. The water itself is poured in last, into every gap below sea level.
 	terrain:FillBlock(CFrame.new(midX, -34, midZ), Vector3.new(spanX + 80, 12, spanZ + 80), Enum.Material.Sand)
 
-	-- Invisible walls keep swimmers, boats and thrown loot inside the map.
-	local walls = {
-		{ Vector3.new(4, 800, spanZ), Vector3.new(min.X, 300, midZ) },
-		{ Vector3.new(4, 800, spanZ), Vector3.new(max.X, 300, midZ) },
-		{ Vector3.new(spanX, 800, 4), Vector3.new(midX, 300, min.Z) },
-		{ Vector3.new(spanX, 800, 4), Vector3.new(midX, 300, max.Z) },
-	}
-	for _, wall in ipairs(walls) do
-		local p = Util.part("BoundaryWall", wall[1], CFrame.new(wall[2]), Color3.new(1, 1, 1), nil, folders.structures)
+	-- Invisible walls keep swimmers, boats and thrown loot inside the map. A part can't
+	-- pass 2048 studs, so long walls are several parts.
+	local function wall(size, center)
+		local p = Util.part("BoundaryWall", size, CFrame.new(center), Color3.new(1, 1, 1), nil, folders.structures)
 		p.Transparency = 1
 		p.CanQuery = false
 	end
+	local function segments(length)
+		local count = math.ceil(length / 2000)
+		return count, length / count
+	end
+	local countZ, pieceZ = segments(spanZ)
+	for i = 0, countZ - 1 do
+		local z = min.Z + pieceZ * (i + 0.5)
+		wall(Vector3.new(4, 800, pieceZ + 2), Vector3.new(min.X, 300, z))
+		wall(Vector3.new(4, 800, pieceZ + 2), Vector3.new(max.X, 300, z))
+	end
+	local countX, pieceX = segments(spanX)
+	for i = 0, countX - 1 do
+		local x = min.X + pieceX * (i + 0.5)
+		wall(Vector3.new(pieceX + 2, 800, 4), Vector3.new(x, 300, min.Z))
+		wall(Vector3.new(pieceX + 2, 800, 4), Vector3.new(x, 300, max.Z))
+	end
+
+	-- The far sea: flat slabs around the playable map so the horizon is water, not sky.
+	-- (Only outside the walls; inside, the real Terrain water shows the sea floor.)
+	local reach = 4096
+	local tile = 2048
+	local function slab(cx, cz, sx, sz)
+		local p = Util.part(
+			"FarSea",
+			Vector3.new(sx, 1, sz),
+			CFrame.new(cx, -0.9, cz),
+			Color3.fromRGB(52, 150, 188),
+			Enum.Material.SmoothPlastic,
+			folders.decor
+		)
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Reflectance = 0.12
+	end
+	local function strip(x0, x1, z0, z1)
+		local nx, ny = math.ceil((x1 - x0) / tile), math.ceil((z1 - z0) / tile)
+		local w, h = (x1 - x0) / nx, (z1 - z0) / ny
+		for i = 0, nx - 1 do
+			for j = 0, ny - 1 do
+				slab(x0 + w * (i + 0.5), z0 + h * (j + 0.5), w, h)
+			end
+		end
+	end
+	strip(min.X - reach, min.X, min.Z - reach, max.Z + reach)
+	strip(max.X, max.X + reach, min.Z - reach, max.Z + reach)
+	strip(min.X, max.X, min.Z - reach, min.Z)
+	strip(min.X, max.X, max.Z, max.Z + reach)
 end
 
 local function pourSea()
@@ -501,6 +193,99 @@ local function pourSea()
 			terrain:ReplaceMaterial(region, 4, Enum.Material.Air, Enum.Material.Water)
 		end
 	end
+end
+
+-- Home is a playground: nothing to unlock, just things to bounce on, shoot at and launch off while you
+-- wait for friends or plan the next run. None of it can hurt anyone.
+local function buildHomeToys()
+	-- Bounce pads: a quick way up onto the hideout hill and a way to learn the launch feel.
+	for _, spot in ipairs({ { -40, 590 }, { 40, 590 }, { -112, 650 }, { 112, 650 } }) do
+		World.launchPad(Vector3.new(spot[1], 6.4, spot[2]), Vector3.new(0, 100, 0))
+	end
+
+	-- The practice range: a free cannon on the north-west shore and rafts to hit in the cove. Hold E
+	-- to fire where you aim. (Cannonballs are real, so don't point it at friends.)
+	local cannonAt = Vector3.new(-85, 6.2, 530)
+	ground(
+		"PracticeStand",
+		Vector3.new(12, 1, 12),
+		CFrame.new(cannonAt + Vector3.new(0, -0.3, 0)),
+		STONE,
+		Enum.Material.Cobblestone
+	)
+	Kit.cannon(cannonAt + Vector3.new(0, 0.2, 0), Vector3.new(-85, 0, 300), "Practice cannon")
+	local board = structure(
+		"PracticeSign",
+		Vector3.new(0.6, 5, 9),
+		CFrame.new(cannonAt + Vector3.new(-7, 2.5, 4)),
+		DARK_WOOD,
+		Enum.Material.Wood
+	)
+	sign(board, "TARGET PRACTICE: E to fire", GOLD, Vector3.new(0, 5, 0), 180)
+	refs.targets = {}
+	for _, spot in ipairs({ { -85, 430 }, { -48, 392 }, { -125, 398 } }) do
+		local raft = structure(
+			"TargetRaft",
+			Vector3.new(11, 1, 11),
+			CFrame.new(spot[1], 0.4, spot[2]),
+			WOOD,
+			Enum.Material.WoodPlanks
+		)
+		table.insert(refs.targets, raft)
+		local face = CFrame.new(spot[1], 6.4, spot[2]) * CFrame.Angles(0, 0, math.rad(90))
+		for i, color in ipairs({
+			Color3.fromRGB(255, 255, 255),
+			Color3.fromRGB(220, 50, 50),
+			Color3.fromRGB(255, 255, 255),
+			Color3.fromRGB(220, 50, 50),
+		}) do
+			local ring = decor(
+				"Bullseye",
+				Vector3.new(0.3 + i * 0.05, 10 - i * 2.3, 10 - i * 2.3),
+				face * CFrame.new(0, -i * 0.04, 0),
+				color,
+				Enum.Material.SmoothPlastic,
+				true
+			)
+			ring.Shape = Enum.PartType.Cylinder
+		end
+		structure(
+			"TargetPost",
+			Vector3.new(0.8, 6, 0.8),
+			CFrame.new(spot[1], 3.4, spot[2] + 0.3),
+			DARK_WOOD,
+			Enum.Material.Wood
+		)
+	end
+
+	-- Kegs and a couple of barrels by the docks.
+	table.insert(refs.kegCrates, Kit.kegCrate(Vector3.new(-52, 6, 522)))
+	table.insert(refs.kegCrates, Kit.kegCrate(Vector3.new(52, 6, 522)))
+	table.insert(refs.barrels, Kit.barrel(Vector3.new(-100, 6, 538)))
+	table.insert(refs.barrels, Kit.barrel(Vector3.new(-96, 6, 543)))
+
+	-- The harbor jump: a ramp in the channel between the docks. Hit it at speed.
+	-- The ramp starts below the hull's keel so a boat rides up it instead of hitting its edge.
+	local rampFoot, rampTop = Vector3.new(0, -3.2, 424), Vector3.new(0, 5.4, 388)
+	plank(
+		"HarborRamp",
+		rampFoot,
+		rampTop,
+		16,
+		2,
+		Color3.fromRGB(255, 170, 90),
+		Enum.Material.Slate,
+		folders.structures,
+		4
+	)
+	table.insert(
+		refs.boostGates,
+		{ position = Vector3.new(0, 2, 404), radius = 12, kind = "kick", direction = Vector3.new(0, 0, -1) }
+	)
+	neon(decor("JumpArrow", Vector3.new(10, 0.3, 2.4), CFrame.new(0, 5.8, 392), Color3.fromRGB(255, 220, 90)))
+	local jump = decor("JumpSign", Vector3.new(1, 1, 1), CFrame.new(0, 14, 400), Color3.new(1, 1, 1), nil)
+	jump.Transparency = 1
+	sign(jump, "HARBOR JUMP: go fast!", Color3.fromRGB(255, 220, 90), Vector3.zero, 260)
 end
 
 -- Goblin Cove (home) ---------------------------------------------------------------
@@ -551,6 +336,18 @@ local function buildHome()
 	sign(dais, "THE HOARD", GOLD, Vector3.new(0, 12, 6), 400)
 	skyBeam("HoardBeacon", HOARD, GOLD, 6)
 	refs.hoard = { position = HOARD, part = dais }
+	-- With streaming on, far parts come and go; this invisible persistent marker keeps the Hoard's
+	-- position (and the waypoint over it) available to every client at any distance.
+	local marker = Instance.new("Model")
+	marker.Name = "HoardMarker"
+	marker.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	local anchor = Util.part("Hoard", Vector3.new(1, 1, 1), CFrame.new(HOARD), GOLD, nil, marker)
+	anchor.Transparency = 1
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	marker.PrimaryPart = anchor
+	marker.Parent = folders.landmarks
 
 	-- The hideout door and eyes, so the hill reads as home.
 	decor("HideoutDoor", Vector3.new(8, 10, 1), CFrame.new(0, 10, 747), DARK_WOOD, Enum.Material.WoodPlanks, true)
@@ -641,6 +438,7 @@ local function buildHome()
 		decor("HutDoor", Vector3.new(4, 6, 0.4), base * CFrame.new(0, 3, -6.1), DARK_WOOD, Enum.Material.Wood)
 	end
 	palmRing(HOME, 128, 14, 200, { Vector3.new(-30, 0, 500), Vector3.new(30, 0, 500), Vector3.new(-115, 0, 612) })
+	buildHomeToys()
 end
 
 -- Crossroads Ruins: lower town, the acropolis above it, the Lighthouse ----------------
@@ -1504,54 +1302,49 @@ local function buildIslets()
 end
 
 -- Traversal toys (the client drives these) -------------------------------------------
--- A launch pad throws whoever touches it. Launch is a velocity; keep it mostly
--- vertical, because air control eats sideways speed.
-function World.launchPad(position, launch)
-	local pad = Util.part(
-		"LaunchPad",
-		Vector3.new(0.6, 7, 7),
-		upright(position),
-		Color3.fromRGB(110, 255, 120),
-		Enum.Material.Neon,
-		folders.launchPads
+World.launchPad = Kit.launchPad
+World.zipline = Kit.zipline
+
+-- Currents you can read: a river in the sea with chevrons pointing downstream. Boats carried along
+-- it gain speed; sailing against it costs. They are the sea's own shortcuts and traps.
+local function buildStream(name, a, b, halfWidth, speed)
+	Sea.addStream(name, a, b, halfWidth, speed)
+	local direction = flatDirection(a, b)
+	local length = (b - a).Magnitude
+	local right = Vector3.new(-direction.Z, 0, direction.X)
+	for d = 20, length - 10, 46 do
+		local center = a + direction * d
+		for _, side in ipairs({ -1, 1 }) do
+			local arm = center - direction * 5 + right * side * 6
+			local chevron = decor(
+				"StreamChevron",
+				Vector3.new(1.4, 0.2, 14),
+				CFrame.lookAt(Vector3.new(arm.X, 0.35, arm.Z), Vector3.new(center.X, 0.35, center.Z))
+					* CFrame.new(0, 0, 0),
+				Color3.fromRGB(235, 248, 255),
+				Enum.Material.Neon
+			)
+			chevron.Transparency = 0.5
+			chevron.CastShadow = false
+		end
+	end
+	local holder = decor(
+		"StreamSign",
+		Vector3.new(1, 1, 1),
+		CFrame.new(a:Lerp(b, 0.5) + Vector3.new(0, 18, 0)),
+		Color3.new(1, 1, 1),
+		nil
 	)
-	pad.Shape = Enum.PartType.Cylinder
-	pad:SetAttribute("Launch", launch)
-	local arrow = decor(
-		"PadArrow",
-		Vector3.new(1, 3, 1),
-		CFrame.new(position + Vector3.new(0, 2.5, 0)),
-		Color3.fromRGB(200, 255, 200),
-		Enum.Material.Neon
-	)
-	arrow.Transparency = 0.4
-	return pad
+	holder.Transparency = 1
+	sign(holder, name, Color3.fromRGB(190, 235, 255), Vector3.zero, 420)
 end
 
--- A one-way zipline. The prompt sits at the start; the client does the ride.
-function World.zipline(name, from, to)
-	local model = Instance.new("Model")
-	model.Name = name
-	model:SetAttribute("ZipFrom", from)
-	model:SetAttribute("ZipTo", to)
-	local startPost =
-		Util.part("Start", Vector3.new(1.2, 1.2, 1.2), CFrame.new(from), DARK_WOOD, Enum.Material.Wood, model)
-	startPost.CanCollide = false
-	Util.part("End", Vector3.new(1.2, 1.2, 1.2), CFrame.new(to), DARK_WOOD, Enum.Material.Wood, model).CanCollide =
-		false
-	local cable = plank("Cable", from, to, 0.2, 0.2, Color3.fromRGB(40, 40, 40), Enum.Material.Metal, model)
-	cable.CanCollide = false
-	cable.CanQuery = false
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "ZiplinePrompt"
-	prompt.ActionText = "RIDE"
-	prompt.ObjectText = "Zipline"
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = startPost
-	model.Parent = folders.ziplines
-	return model
+local function buildStreams()
+	-- The Rushing Strait: the channel between Shipwreck Shoals and Crossroads runs east, fast.
+	buildStream("RUSHING STRAIT >", Vector3.new(-505, 0, 90), Vector3.new(-215, 0, 90), 42, 24)
+	-- The Home Stream: the open water between Crossroads and Goblin Cove flows toward home. Treasure
+	-- runs ride it back; outbound boats fight it.
+	buildStream("HOME STREAM v", Vector3.new(-95, 0, 215), Vector3.new(-95, 0, 465), 40, 17)
 end
 
 -- Build ----------------------------------------------------------------------
@@ -1570,12 +1363,30 @@ function World.build()
 	folders.threats = folder("Threats", folders.root)
 	folders.fx = folder("Effects", folders.root)
 	folders.bodies = folder("SpiritBodies", folders.root)
+	folders.landmarks = folder("Landmarks", folders.root)
 	refs.folders = folders
 	refs.totems = {}
 	refs.lootSpots = {}
 	refs.boatSpawns = {}
+	-- Data for the mechanism modules: the builders only describe, they never run logic.
+	refs.spinners = {}
+	refs.breakables = {}
+	refs.barrels = {}
+	refs.kegCrates = {}
+	refs.cannons = {}
+	refs.levers = {}
+	refs.gates = {}
+	refs.geysers = {}
+	refs.lavaZones = {}
+	refs.boostGates = {}
+	refs.bounceFans = {}
+	refs.navyBases = {}
+	refs.troubleSites = {}
+	refs.targets = {}
 	folders.root.Parent = workspace
 
+	table.clear(Sea.streams)
+	table.clear(Sea.whirls)
 	buildEnvironment()
 	buildHome()
 	buildCrossroads()
@@ -1583,6 +1394,9 @@ function World.build()
 	buildCrystalIsle()
 	buildShoals()
 	buildIslets()
+	Islands.build()
+	IslandsFar.build()
+	buildStreams()
 	pourSea()
 	return refs
 end

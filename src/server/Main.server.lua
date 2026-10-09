@@ -2,31 +2,52 @@
 -- together and runs one Heartbeat. Each module's header explains its rules.
 --
 --   Net          remotes + the GameEvent broadcast channel
---   World        the map (terrain, landmarks, routes) and named references
---   Loot         the valuables: possession, throwing, banking, respawn
+--   World        the map: home, the old islands (World.lua, WorldKit.lua) and the new ones
+--                (Islands.lua, IslandsFar.lua); it only DESCRIBES mechanisms in `refs`
+--   Sea          waves, currents and storm influence as pure functions
+--   SeaNav       the sea grid: shelter from coasts, and routes for ships
+--   Boats        physics boats floating on the Sea functions
+--   Loot         the valuables: possession, throwing, banking, respawn, interest
 --   Heat         the shared trouble meter
+--   Escalation   what each Heat tier does to the world
 --   Threats      Guardian, totems, item trouble, carrier reveal
+--   Troubles     what each treasure does when it is taken
+--   Navy         AI patrol ships that hunt carriers
+--   Storms       weather cells and lightning
+--   Blast        every explosion goes through here
+--   Destructibles, Cannons, Kegs, Mechanisms   the interactive island pieces
 --   Combat       sword and grapple
 --   Poltergoblin the spirit ability (was Soul Unbound / Yone's E)
 --   Movement     WalkSpeed from carrying, sprint + stamina, water and spirit form
---   Boats        the kinematic boats
 --   Raid         timer, scoring, intermission, world reset
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+-- Nobody spawns until the world exists; the map takes a moment to build.
+Players.CharacterAutoLoads = false
+
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Net = require(script.Parent.Net)
 local Util = require(script.Parent.Util)
 local Movement = require(script.Parent.Movement)
 local World = require(script.Parent.World)
+local SeaNav = require(script.Parent.SeaNav)
 local Boats = require(script.Parent.Boats)
 local Loot = require(script.Parent.Loot)
 local Heat = require(script.Parent.Heat)
 local Poltergoblin = require(script.Parent.Poltergoblin)
 local Combat = require(script.Parent.Combat)
+local Destructibles = require(script.Parent.Destructibles)
+local Cannons = require(script.Parent.Cannons)
+local Kegs = require(script.Parent.Kegs)
+local Mechanisms = require(script.Parent.Mechanisms)
 local Threats = require(script.Parent.Threats)
+local Storms = require(script.Parent.Storms)
+local Navy = require(script.Parent.Navy)
+local Troubles = require(script.Parent.Troubles)
+local Escalation = require(script.Parent.Escalation)
 local Raid = require(script.Parent.Raid)
 
 Players.RespawnTime = Config.RESPAWN_TIME
@@ -35,12 +56,21 @@ StarterPlayer.CharacterWalkSpeed = Config.WALK_SPEED
 StarterPlayer.EnableMouseLockOption = false
 
 local refs = World.build()
+SeaNav.build(refs)
 Boats.build(refs)
 Loot.build(refs)
 Poltergoblin.init(refs)
+Destructibles.build(refs)
+Cannons.build(refs)
+Kegs.build(refs)
+Mechanisms.build(refs)
 Threats.build(refs)
+Navy.build(refs)
+Troubles.build(refs)
+Escalation.build(refs)
 Combat.init(refs)
 Raid.init(refs)
+Storms.reset()
 
 -- Spirits can't bank; the Hoard's ward also pulls them back before they reach it.
 Loot.canBank = function(player)
@@ -57,7 +87,7 @@ Loot.Taken:Connect(function(item, player, fromSpot, fromPlayer)
 			userId = player.UserId,
 			item = item.id,
 			itemName = def.name,
-			value = def.value,
+			value = Loot.valueOf(item),
 			position = item.spot.Position,
 		})
 		Net.feed(player.DisplayName .. " stole the " .. def.name .. " (+" .. def.heat .. " heat)", def.color)
@@ -82,6 +112,10 @@ local LOOSE_TEXT = {
 	sword = "%s smacked the %s out of %s's hands!",
 	guardian = "The Guardian smashed the %s out of %s's hands!",
 	boulder = "%s got flattened and dropped the %s!",
+	cannon = "%s was blasted and dropped the %s!",
+	keg = "%s got kegged and dropped the %s!",
+	lava = "%s burned and dropped the %s!",
+	lightning = "%s was struck by lightning and dropped the %s!",
 	death = "%s died and dropped the %s",
 	shatter = "%s's spirit was shattered and dropped the %s",
 	left = "%s left and dropped the %s",
@@ -116,7 +150,12 @@ end)
 Loot.Banked:Connect(function(item, player)
 	Raid.onBanked(item, player)
 	Net.feed(
-		player.DisplayName .. " banked the " .. item.def.name .. " (+" .. item.def.value .. " gold)",
+		player.DisplayName
+			.. " banked the "
+			.. item.def.name
+			.. " (+"
+			.. (item.bankedValue or item.def.value)
+			.. " gold)",
 		item.def.color
 	)
 end)
@@ -126,6 +165,7 @@ local function onCharacter(player, character)
 	local humanoid = character:WaitForChild("Humanoid")
 	humanoid.WalkSpeed = Config.WALK_SPEED
 	Movement.refill(player)
+	Kegs.refill(player)
 	Combat.giveSword(player, character)
 	humanoid.Died:Connect(function()
 		Loot.dropFor(player, "death")
@@ -140,7 +180,6 @@ local function setupPlayer(player)
 	player.CharacterAdded:Connect(function(character)
 		onCharacter(player, character)
 	end)
-	-- The world takes a moment to build; someone may have spawned already.
 	if player.Character then
 		task.spawn(onCharacter, player, player.Character)
 	end
@@ -159,6 +198,8 @@ Players.PlayerRemoving:Connect(function(player)
 	Poltergoblin.forget(player)
 	Movement.forget(player)
 	Combat.forget(player)
+	Kegs.forget(player)
+	Mechanisms.forget(player)
 end)
 
 Net.Throw.OnServerEvent:Connect(function(player)
@@ -170,6 +211,15 @@ end)
 Net.Sprint.OnServerEvent:Connect(function(player, held)
 	Movement.setSprintHeld(player, held == true)
 end)
+Net.BoatBoost.OnServerEvent:Connect(function(player)
+	Boats.boost(player)
+end)
+
+-- The world is ready: let everyone in (and put anyone who joined early at the spawn).
+Players.CharacterAutoLoads = true
+for _, player in ipairs(Players:GetPlayers()) do
+	player:LoadCharacter()
+end
 
 -- Main loop --------------------------------------------------------------------------
 local function carriersOutsideWard()
@@ -183,12 +233,19 @@ local function carriersOutsideWard()
 end
 
 RunService.Heartbeat:Connect(function(dt)
+	local active = Raid.isActive()
 	Boats.tick(dt)
-	if Raid.isActive() then
+	if active then
 		Loot.tick()
 		Heat.tick(dt, carriersOutsideWard())
 		Threats.tick(dt)
+		Navy.tick()
+		Escalation.tick()
 	end
+	Storms.tick(dt, active)
+	Cannons.tick(dt)
+	Kegs.tick()
+	Mechanisms.tick(dt)
 	Poltergoblin.tick()
 	Movement.tick(dt)
 	Raid.tick()

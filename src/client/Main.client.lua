@@ -11,6 +11,7 @@ local UserInputService = game:GetService("UserInputService")
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Hud = require(script.Parent.Hud)
 local Effects = require(script.Parent.Effects)
+local Weather = require(script.Parent.Weather)
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
@@ -18,10 +19,13 @@ local throwRemote = remotes:WaitForChild("ThrowRequest")
 local grappleRemote = remotes:WaitForChild("GrappleRequest")
 local polterRemote = remotes:WaitForChild("PoltergoblinRequest")
 local sprintRemote = remotes:WaitForChild("SprintRequest")
+local boatBoostRemote = remotes:WaitForChild("BoatBoostRequest")
+local cannonRemote = remotes:WaitForChild("CannonRequest")
+local kegRemote = remotes:WaitForChild("KegRequest")
 local eventRemote = remotes:WaitForChild("GameEvent")
 
 local generated = workspace:WaitForChild("LootGoblinsGenerated")
-local hoardPart = generated:WaitForChild("Ground"):WaitForChild("Hoard")
+local hoardPart = generated:WaitForChild("Landmarks"):WaitForChild("HoardMarker"):WaitForChild("Hoard")
 
 local SPIRIT_COLOR = Color3.fromRGB(120, 255, 170)
 local MARK_COLOR = Color3.fromRGB(190, 90, 255)
@@ -35,6 +39,18 @@ for _, def in ipairs(Config.LOOT) do
 end
 
 Hud.init(hoardPart)
+
+-- Storm warnings: name the heading so the player can steer around it.
+local COMPASS_NAMES = { "NORTH", "NORTH-EAST", "EAST", "SOUTH-EAST", "SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST" }
+Weather.init(function(dx, dz, distance)
+	local degrees = math.deg(math.atan2(dx, -dz)) % 360
+	local name = COMPASS_NAMES[math.floor((degrees + 22.5) / 45) % 8 + 1]
+	Hud.banner(
+		string.format("STORM TO THE %s - %d STUDS. SAIL AROUND IT!", name, distance),
+		Color3.fromRGB(170, 190, 255),
+		3.5
+	)
+end)
 Hud.showHelp(14)
 
 local function now()
@@ -146,7 +162,7 @@ end)
 -- Launch pads -------------------------------------------------------------------------
 local lastLaunch = 0
 local function hookPad(pad)
-	if not pad:IsA("BasePart") then
+	if not pad:IsA("BasePart") or pad.Name == "GeyserVent" then
 		return
 	end
 	pad.Touched:Connect(function(hit)
@@ -170,6 +186,59 @@ for _, pad in ipairs(pads:GetChildren()) do
 	hookPad(pad)
 end
 pads.ChildAdded:Connect(hookPad)
+
+-- Geysers: a steam vent that fires on a timer anyone can read. Quiet puffs warn a second ahead; then
+-- a jet launches whoever stands on it. The server does nothing per frame (the numbers are attributes).
+local geyserEmitters = {}
+RunService.Heartbeat:Connect(function()
+	local t = now()
+	local _, _, root = getCharacter()
+	for _, vent in ipairs(pads:GetChildren()) do
+		if vent.Name == "GeyserVent" then
+			local period = vent:GetAttribute("GeyserPeriod") or 8
+			local activeTime = vent:GetAttribute("GeyserActive") or 1.8
+			local phase = vent:GetAttribute("GeyserPhase") or 0
+			local cycle = (t + phase) % period
+			local emitter = geyserEmitters[vent]
+			if not emitter then
+				emitter = Instance.new("ParticleEmitter")
+				emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
+				emitter.Color = ColorSequence.new(Color3.fromRGB(235, 240, 245))
+				emitter.Size =
+					NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(1, 12) })
+				emitter.Transparency =
+					NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+				emitter.Lifetime = NumberRange.new(0.9, 1.5)
+				emitter.Speed = NumberRange.new(40, 70)
+				emitter.EmissionDirection = Enum.NormalId.Top
+				emitter.SpreadAngle = Vector2.new(6, 6)
+				emitter.Rate = 0
+				emitter.Parent = vent
+				geyserEmitters[vent] = emitter
+			end
+			local active = cycle < activeTime
+			emitter.Rate = active and 70 or (cycle > period - 1 and 10 or 0)
+			if active and root then
+				local launch = vent:GetAttribute("Launch")
+				local offset = root.Position - vent.Position
+				if
+					typeof(launch) == "Vector3"
+					and Vector3.new(offset.X, 0, offset.Z).Magnitude < 5.5
+					and offset.Y > -3
+					and offset.Y < 9
+					and os.clock() - lastLaunch > 0.8
+				then
+					lastLaunch = os.clock()
+					root.AssemblyLinearVelocity =
+						Vector3.new(root.AssemblyLinearVelocity.X * 0.5, launch.Y, root.AssemblyLinearVelocity.Z * 0.5)
+					Effects.sound("whoosh", { speed = 0.6, volume = 0.9 })
+					Effects.burst(vent.Position, Color3.fromRGB(240, 245, 255), 35, 26)
+					Effects.punchFov(84)
+				end
+			end
+		end
+	end
+end)
 
 -- Grapple ---------------------------------------------------------------------------------
 -- F sends where you aim. The server picks: steal loot near your aim, or hook the
@@ -296,6 +365,34 @@ local function pressGrapple()
 	local hitPosition, target = aimPoint()
 	grappleRemote:FireServer(hitPosition, target)
 	Effects.sound("whoosh", { speed = 2.2, volume = 0.35 })
+end
+
+-- Cannons: E at a cannon's prompt fires it where you aim; the server checks everything.
+ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	if prompt.Name == "CannonPrompt" then
+		local hitPosition = aimPoint()
+		cannonRemote:FireServer(prompt.Parent, hitPosition)
+	end
+end)
+
+-- G throws a powder keg where you aim.
+local function pressKeg()
+	local _, _, root = getCharacter()
+	if not root then
+		return
+	end
+	if (player:GetAttribute("Kegs") or 0) <= 0 then
+		Hud.toast("No kegs. Find a keg crate (hold E).")
+		return
+	end
+	kegRemote:FireServer((aimPoint()))
+end
+
+-- In a boat's driver seat, Shift boosts the boat instead of sprinting.
+local function seatedInBoat()
+	local _, humanoid = getCharacter()
+	local seat = humanoid and humanoid.SeatPart
+	return seat ~= nil and seat:IsA("VehicleSeat")
 end
 
 -- Sprint ------------------------------------------------------------------------------
@@ -425,7 +522,15 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.LeftShift then
-		setSprint(true)
+		if seatedInBoat() then
+			boatBoostRemote:FireServer()
+		else
+			setSprint(true)
+		end
+	elseif input.KeyCode == Enum.KeyCode.G then
+		pressKeg()
+	elseif input.KeyCode == Enum.KeyCode.M then
+		Hud.toggleMap()
 	elseif input.KeyCode == Enum.KeyCode.ButtonL3 then
 		setSprint(not sprintHeld)
 	elseif input.KeyCode == Enum.KeyCode.Q then
@@ -536,6 +641,11 @@ function handlers.Banked(p)
 		end)
 	end
 	Effects.ring(p.position, GOLD, 22, 0.8)
+	for i = 1, 6 do
+		task.delay(0.3 + i * 0.28, function()
+			Effects.firework(p.position, (i % 2 == 0) and color or GOLD)
+		end)
+	end
 	Effects.sound("boom", { position = p.position, volume = 0.5, speed = 1.4 })
 end
 
@@ -644,6 +754,126 @@ function handlers.Polter(p)
 			soulSlash(position)
 		end
 	end
+end
+
+-- The new world: telegraphs, weather, boats, mechanisms ---------------------------------------
+function handlers.Marker(p)
+	Effects.marker(p.position, p.radius or 12, p.duration or 1.5, p.color, p.style)
+end
+
+function handlers.Bolt(p)
+	Effects.bolt(p.position)
+end
+
+function handlers.Flare(p)
+	local own = isMe(p)
+	Effects.flare(p.position, p.color or GOLD, own and 3 or 4.5)
+	if not own then
+		Hud.feed(string.format("FLARE: %s is carrying!", p.name or "a thief"), p.color)
+	end
+end
+
+function handlers.Shell(p)
+	Effects.shell(p.from, p.to, p.duration or 1.5)
+end
+
+function handlers.Tentacle(p)
+	Effects.tentacle(p.position, p.delay or 1.5)
+end
+
+function handlers.Gulls(p)
+	Effects.gulls(p.position)
+end
+
+function handlers.NavySpawn(p)
+	Effects.sound("boom", { position = p.position, speed = 0.5, volume = 1, range = 1200 })
+	Effects.chime(Effects.CHIME_ALARM, 0.8)
+end
+
+function handlers.Frenzy()
+	Hud.flash(DANGER, 0.3)
+	Effects.chime(Effects.CHIME_ALARM, 0.9)
+end
+
+function handlers.GuardianLeap(p)
+	Effects.sound("boom", { position = p.position, speed = 0.4, volume = 1, range = 700 })
+end
+
+function handlers.GuardianThrow(p)
+	Effects.shell(p.from, p.to, p.duration or 1.6)
+end
+
+function handlers.CannonFire(p)
+	Effects.burst(p.position, Color3.fromRGB(255, 200, 120), 30, 28)
+	Effects.ball(p.position, Color3.fromRGB(255, 190, 90), 6, 0.2)
+	Effects.sound("boom", { position = p.position, speed = 0.9, volume = 1, range = 700 })
+	Effects.shakeAt(p.position, 0.7, 0.25, 60)
+end
+
+function handlers.KegLit(p)
+	Effects.sound("blip", { position = p.position, speed = 0.8, volume = 0.7, range = 200 })
+end
+
+function handlers.TargetHit(p)
+	Effects.ring(p.position, GOLD, 12, 0.6)
+	Effects.chime(Effects.CHIME_GOOD, 0.6)
+end
+
+function handlers.Broke(p)
+	Effects.burst(p.position, Color3.fromRGB(190, 170, 140), 40, 28)
+	Effects.sound("boom", { position = p.position, speed = 0.6, volume = 0.9, range = 500 })
+	Effects.shakeAt(p.position, 0.9, 0.5, 120)
+end
+
+function handlers.GateMove(p)
+	Effects.sound("thud", { position = p.position, speed = 0.5, volume = 1, range = 300 })
+	Effects.shakeAt(p.position, 0.5, 0.8, 80)
+end
+
+function handlers.GatePass(p)
+	if p.kind == "boost" then
+		Effects.burst(p.position, Color3.fromRGB(120, 255, 230), 40, 30)
+		Effects.sound("rise", { position = p.position, speed = 1.8, volume = 0.8, range = 300 })
+		Effects.punchFov(88)
+	else
+		Effects.burst(p.position, Color3.fromRGB(255, 220, 90), 50, 34)
+		Effects.sound("whoosh", { position = p.position, speed = 0.8, volume = 1, range = 300 })
+		Effects.punchFov(90)
+	end
+end
+
+function handlers.BoatImpact(p)
+	Effects.spray(p.position, p.power or 0.3)
+end
+
+function handlers.BoatSunk(p)
+	Effects.spray(p.position, 1)
+	Effects.sound("boom", { position = p.position, speed = 0.7, volume = 1, range = 500 })
+end
+
+function handlers.BoatBoost(p)
+	Effects.burst(p.position, Color3.fromRGB(255, 200, 120), 30, 30)
+	Effects.sound("whoosh", { position = p.position, speed = 1.2, volume = 0.9, range = 300 })
+end
+
+function handlers.Quake(p)
+	Effects.shakeAt(p.position, 1.8, 2.2, 600)
+	Effects.sound("boom", { position = p.position, speed = 0.4, volume = 1, range = 900 })
+end
+
+function handlers.Rumble(p)
+	Effects.shakeAt(p.position, 0.7, 0.8, 300)
+	Effects.sound("boom", { position = p.position, speed = 0.45, volume = 0.8, range = 700 })
+end
+
+function handlers.Flood(p)
+	Effects.sound("splash", { position = p.position, speed = 0.5, volume = 1, range = 300 })
+	Effects.shakeAt(p.position, 0.8, 1, 120)
+end
+
+function handlers.Burn()
+	Hud.flash(Color3.fromRGB(255, 110, 40), 0.4)
+	Effects.sound("ouch", { volume = 0.9 })
 end
 
 function handlers.RaidStart()

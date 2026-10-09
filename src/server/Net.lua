@@ -24,6 +24,9 @@ Net.Throw = remote("ThrowRequest")
 Net.Grapple = remote("GrappleRequest")
 Net.Poltergoblin = remote("PoltergoblinRequest")
 Net.Sprint = remote("SprintRequest")
+Net.BoatBoost = remote("BoatBoostRequest")
+Net.Cannon = remote("CannonRequest")
+Net.Keg = remote("KegRequest")
 Net.GameEvent = remote("GameEvent")
 folder.Parent = ReplicatedStorage
 

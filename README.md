@@ -1,10 +1,10 @@
-# Loot Goblins — vertical slice prototype
+# Loot Goblins — V2 archipelago prototype
 
-An intentionally ugly Roblox prototype. It grew out of Test 001 (one idol, one boat) into the first playable foundation of the whole loop:
+An intentionally ugly Roblox prototype. It grew from Test 001 (one idol, one boat) into a **big physical sea**: a 19-island archipelago to explore, boats that float on real waves, storms and currents to read, and treasure that fights back on the way home.
 
-**Go somewhere dangerous → steal loot → the world reacts → players fight over it → physically escape → bank it at home → go again.**
+**Explore the sea → steal valuable treasure → the world reacts → escape across dangerous water → bank it at home → go again.**
 
-The question it answers: **is stealing valuable loot, fighting over it while the world hunts you, and getting it home fun enough that people want another raid?**
+The question it answers: **is going out into a huge sea, stealing something valuable, and desperately getting it home fun enough that people want another raid?**
 
 ## Play it (no terminal needed)
 
@@ -42,36 +42,54 @@ Playtest/review the PR, then approve the AI to sync, check, and merge it. When s
 
 ## How a raid plays
 
-- A **raid** lasts 6 minutes, then a short intermission. Most gold banked wins the raid (`Gold` and `Wins` leaderstats).
-- The islands are far apart across open sea. **Boats** are how you get around: four wait at Goblin Cove and one at every other island's dock. Swimming works, but it's slow.
-- Four pieces of loot glow at their spots, each with a light pillar you can see from anywhere:
+- A **raid** lasts 8 minutes, then a short intermission. Most gold banked wins the raid (`Gold` and `Wins` leaderstats).
+- Goblin Cove is home. **Boats** (press `E` on one) are how you travel: four wait at the home docks, and most mid-ring islands have one. Open `M` for the map; the compass strip along the top shows the Hoard and treasure.
+- **Sixteen treasures**, and the deeper the island, the more it is worth and the nastier the trouble:
 
-  | Loot | Gold | Where | Trouble when taken |
+  | Treasure | Gold | Where | Trouble when taken |
   | --- | --- | --- | --- |
-  | Lighthouse Lens | 3 | Top of the lighthouse on the Crossroads acropolis | The bell rings: the thief glows through walls for 20 s |
-  | Captain's Chest | 4 | In the hold of the galleon, Shipwreck Shoals lagoon | The wreck's cannon fires a barrage at the thief. Heavy (slowest carry). |
-  | Crystal Heart | 5 | Chamber in the tunnel under the Crystal Isle spire | Cave-in: rocks fall and the west tunnel is sealed for 25 s |
-  | Golden Idol | 10 | Top of the ziggurat on the Sun Temple mesa | The Guardian wakes, and a boulder rolls down the stairs |
+  | Lost Compass | 1 | Pebble Isle (near home) | Gulls reveal you for 10 s |
+  | Giant Pearl | 2 | Coral Atoll | Gulls; the reef and a harbor-style jump to try |
+  | Smuggler's Stash | 2 | Smuggler's Cove (behind a cracked wall: use a keg) | The bell reveals you |
+  | Golden Gear | 3 | Windmill Hills (on a balcony the sails sweep) | The mill runs wild |
+  | Lighthouse Lens | 3 | Top of the Crossroads lighthouse | The bell reveals you |
+  | Captain's Chest | 4 | Shipwreck Shoals | The wreck's cannon barrage |
+  | Crystal Heart | 5 | Crystal Isle tunnel | Cave-in |
+  | Jade Frog | 5 | Tangle Isle shrine | Quake: the rope bridges snap |
+  | Pearl of the Deep | 6 | Tide Vault (lever-gated; drain tunnel back door) | Gate slams, chamber floods |
+  | Tempest Trident | 6 | Maelstrom Rock (in a whirlpool) | A squall settles on it |
+  | Admiral's Strongbox | 7 | Fort Barnacle keep | Patrol ships launch |
+  | Ember Crown | 8 | Volcano crater (stepping stones over lava) | Lava bombs rain |
+  | Golden Idol | 10 | Sun Temple ziggurat | The Guardian wakes |
+  | Aurora Gem | 12 | Frost Spire summit | Avalanche |
+  | Leviathan Tooth | 13 | Skull of Leviathan's Rest | Tentacles |
+  | Skull Chalice | 14 | Skull Rock's cranium | Fog and ghost ships |
 
-- Carry loot into **the Hoard** (gold ring and beam at Goblin Cove) to bank it. Banked loot respawns at its spot after a while. Loot still out when the raid ends is lost.
-- **Heat** is a shared meter. Stealing adds a chunk, carrying keeps adding, and it cools when nobody carries anything. At ALERT, carriers glow through walls and totems shoot them. At HUNTED, the Guardian hunts carriers near the temple. At FRENZY, it follows them anywhere. The world only ever targets **carriers**.
-- Carriers are slow, can't swing the sword, and one sword hit knocks their loot loose.
+  Treasure nobody takes grows more valuable (+1 gold per 80 s, up to +3).
+- Carry treasure into **the Hoard** (gold ring and beam at Goblin Cove) to bank it. Heavy treasure slows boats.
+- **Heat** is a shared meter. Stealing adds a chunk, carrying keeps adding, and it cools when nobody carries. At **ALERT** carriers fire flares everyone can see. At **HUNTED** the Navy sails out after the carrier. At **FRENZY** a tempest comes for the thief. The world only ever targets **carriers**, every strike is marked with a closing ring on the ground, and everything can be outrun, out-steered or hidden from.
+- The **sea has weather**: storm cells cross it (dark clouds on the horizon, rough water, marked lightning), currents carry boats (the Rushing Strait, the Home Stream, the Maelstrom), and calm water hugs the coasts.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
-| Hold `E` on loot | Steal it from its spot (0.6 s), or grab it when loose |
-| Hold `Shift` | Sprint. Uses stamina (the blue bar, bottom left). Run it dry and you're out of breath for a moment. Carriers only hustle a little. |
-| Click (sword) | Swing. Everyone spawns with a sword. Hits knock loot loose. Carriers can't swing. |
-| `F` | Grappling hook. Aim at a cliff, wall, mast or the ground and it pulls you there (jump to let go). Aim at loose loot or at a carrier and it steals the loot instead (needs a clear line of sight; your aim doesn't have to be perfect). Not while you carry loot. |
-| `Q` | Throw your loot. Pass it, toss it over a gap, or throw it into the Hoard. |
-| `E` (no prompt showing) | **Poltergoblin**: leave your body and run as a faster spirit for 5 s, then snap back (`E` again to return early). Loot the spirit holds comes back with you. Your body can be struck, and that drops your loot. Doesn't work inside the Hoard's ward. |
-| `E` at a zipline post | Ride the zipline. Jump to let go. |
-| Sit in `Driver` | WASD drives a boat. Four wait at the home docks and one at every other island. |
+| Hold `E` on treasure | Steal it from its spot (0.6 s), or grab it when loose |
+| `E` on a boat | Board it. `W A S D` drives from the driver seat |
+| `Shift` in the driver seat | Boost (2.2 s, 7 s cooldown) |
+| `R` near a boat's winch | Drop or raise the anchor |
+| `E` at a cannon | Fire it where you aim |
+| `G` | Throw a powder keg (take kegs from keg crates with `E`) |
+| Hold `Shift` on foot | Sprint. Uses stamina; none in water or seats |
+| Click (sword) | Swing. Hits knock treasure loose. Carriers swing too, but slow, short and tiring |
+| `F` | Grappling hook: pulls you to a surface, or steals treasure from a carrier. Not while you carry |
+| `Q` | Throw your treasure |
+| `E` (no prompt showing) | **Poltergoblin**: leave your body and run as a faster spirit for 5 s, then snap back |
+| `E` at a zipline post | Ride the zipline. Jump to let go |
+| `M` | World map |
 | `H` | Show or hide the how-to-play panel |
 
-Green pads launch you upward. Ladders, ramps and ziplines take you up and across the islands. On Crystal Isle, a gap called the Leap only clears with a sprint jump, and never while carrying loot.
+Green pads and timed steam geysers launch you. Ladders, ramps and ziplines take you up and across the islands. Home has bounce pads, a practice cannon with floating targets, keg crates and a harbor jump.
 
 ## What NOT to add yet
 
@@ -87,9 +105,10 @@ Afterward make one decision:
 
 ## Known prototype compromises
 
-- Boats are intentionally kinematic instead of production physics vehicles.
+- Not played by real people yet: V2 was tested by an AI in Studio on one client. Multiplayer fun, mobile performance and balance are unknown. The report lists what to test.
 - The Guardian is a kinematic stone golem that walks over terrain instead of using pathfinding. It cannot follow into tunnels.
-- Grapple, throw and Poltergoblin are keyboard and mouse only (sprint also toggles with a gamepad's left stick click).
+- Grapple, throw, keg, cannon and Poltergoblin are keyboard and mouse only (sprint also toggles with a gamepad's left stick click).
+- Boats beach hard against vertical sand edges and pass through dock posts.
 - Shift sprints, so Roblox's shift lock is turned off.
 - Art is primitive geometry and terrain. Sounds are pitched versions of the few sounds built into the Roblox client.
 
