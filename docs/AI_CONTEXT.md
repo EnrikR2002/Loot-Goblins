@@ -10,7 +10,7 @@ Master context for a Claude Code or Codex session that opens this repository wit
 | --- | --- |
 | Shared `main` (as of `84b762a`, 2026-10-07) | The **vertical slice** (PR #7: raids, loot, Heat, Guardian/totems/trouble, Poltergoblin, HUD, module split) and the double-click launcher (PR #8). |
 | Unmerged: PR #9, branch `claude/sprinting-grapple-map-expansion-japzs8` | **Sprint + stamina**, the **grapple hook**, and a bigger map. Waiting for a Studio playtest and approval. |
-| Unmerged: branch `feature/v2-archipelago` (stacked on PR #9) | **V2**: a 19-island archipelago, a physical sea (waves, currents, storms), physics boats, Navy pursuit, per-treasure troubles, Heat that changes the world, cannons, kegs, destructibles. Report: `docs/reports/2026-10-08-v2-archipelago.md`. Studio-tested by one AI on one client; **no human or multiplayer playtest yet**. |
+| Unmerged: PR #10, branch `feature/v2-archipelago` (stacked on PR #9; merge #9 first) | **V2**: a 19-island archipelago, a physical sea (waves, currents, storms), physics boats, Navy pursuit, per-treasure troubles, Heat that changes the world, cannons, kegs, destructibles. Report: `docs/reports/2026-10-08-v2-archipelago.md`. Studio-tested by one AI on one client; **no human or multiplayer playtest yet**. |
 
 Check the real state before you trust this table: `git log --oneline origin/main` and the open PRs. Update this table when a branch merges.
 

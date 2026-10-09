@@ -6,7 +6,7 @@
 | Request | Ninety's "V2 One-Shot Development" prompt, run by Claude Code on Enrik's machine because Ninety ran out of usage |
 | Agent | Claude Code (Sonnet 5.5), local session with Roblox Studio MCP |
 | Branch | `feature/v2-archipelago`, **stacked on** PR #9's branch `claude/sprinting-grapple-map-expansion-japzs8` |
-| Pull request | See the PR for this branch (number is in the PR title/link, not yet merged anywhere) |
+| Pull request | [#10](https://github.com/EnrikR2002/Loot-Goblins/pull/10), base branch is PR #9's |
 | Merge status | **Not merged.** Needs a human multiplayer playtest and explicit approval. |
 
 ## 1. Summary
