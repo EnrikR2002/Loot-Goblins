@@ -12,6 +12,7 @@ local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChil
 local Hud = require(script.Parent.Hud)
 local Effects = require(script.Parent.Effects)
 local Weather = require(script.Parent.Weather)
+local BoatDrive = require(script.Parent.BoatDrive)
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
@@ -20,7 +21,6 @@ local grappleRemote = remotes:WaitForChild("GrappleRequest")
 local polterRemote = remotes:WaitForChild("PoltergoblinRequest")
 local sprintRemote = remotes:WaitForChild("SprintRequest")
 local moveRemote = remotes:WaitForChild("MoveRequest")
-local boatBoostRemote = remotes:WaitForChild("BoatBoostRequest")
 local cannonRemote = remotes:WaitForChild("CannonRequest")
 local kegRemote = remotes:WaitForChild("KegRequest")
 local eventRemote = remotes:WaitForChild("GameEvent")
@@ -443,6 +443,8 @@ end)
 UserInputService.InputEnded:Connect(function(input)
 	if input.KeyCode == Enum.KeyCode.LeftShift then
 		setSprint(false)
+	elseif input.KeyCode == Enum.KeyCode.C or input.KeyCode == Enum.KeyCode.ButtonB then
+		BoatDrive.setDrift(false)
 	end
 end)
 player:GetAttributeChangedSignal("Winded"):Connect(function()
@@ -663,12 +665,17 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	end
 	if input.KeyCode == Enum.KeyCode.LeftShift then
 		if seatedInBoat() then
-			boatBoostRemote:FireServer()
+			BoatDrive.boost()
 		else
 			setSprint(true)
 		end
 	elseif input.KeyCode == Enum.KeyCode.C or input.KeyCode == Enum.KeyCode.ButtonB then
-		pressDash()
+		-- One key, two jobs: a dash on foot, a drift at the wheel.
+		if seatedInBoat() then
+			BoatDrive.setDrift(true)
+		else
+			pressDash()
+		end
 	elseif input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.ButtonA then
 		tryAirJump()
 	elseif input.KeyCode == Enum.KeyCode.G then
@@ -991,16 +998,66 @@ function handlers.GateMove(p)
 	Effects.shakeAt(p.position, 0.5, 0.8, 80)
 end
 
-function handlers.GatePass(p)
-	if p.kind == "boost" then
-		Effects.burst(p.position, Color3.fromRGB(120, 255, 230), 40, 30)
-		Effects.sound("rise", { position = p.position, speed = 1.8, volume = 0.8, range = 300 })
-		Effects.punchFov(88)
-	else
-		Effects.burst(p.position, Color3.fromRGB(255, 220, 90), 50, 34)
-		Effects.sound("whoosh", { position = p.position, speed = 0.8, volume = 1, range = 300 })
-		Effects.punchFov(90)
+-- What a boat just did, drawn where it happened. mine: this client is driving that boat, so the
+-- camera kicks too. Your own boat reports through BoatDrive the frame it happens; other
+-- players' boats arrive from the server.
+local MINI_COLORS = { mini1 = Color3.fromRGB(120, 220, 255), mini2 = Color3.fromRGB(255, 170, 70) }
+
+local function boatFx(kind, position, mine)
+	if kind == "mini1" or kind == "mini2" then
+		local strong = kind == "mini2"
+		Effects.burst(position, MINI_COLORS[kind], strong and 60 or 35, strong and 40 or 28)
+		Effects.ring(position, MINI_COLORS[kind], strong and 22 or 14, 0.4)
+		Effects.sound("rise", { position = position, speed = strong and 1.5 or 1.9, volume = 0.8, range = 300 })
+		if mine then
+			Effects.punchFov(strong and 96 or 90)
+		end
+	elseif kind == "landing" then
+		Effects.spray(position, 0.5)
+		Effects.ring(position, Color3.fromRGB(190, 255, 220), 16, 0.4)
+		if mine then
+			Effects.punchFov(88)
+			Hud.toast("Clean landing! Speed burst.")
+		end
+	elseif kind == "splash" then
+		Effects.spray(position, 0.35)
+	elseif kind == "hoop" or kind == "boost" then
+		Effects.burst(position, Color3.fromRGB(120, 255, 230), 40, 30)
+		Effects.sound("rise", { position = position, speed = 1.8, volume = 0.8, range = 300 })
+		if mine then
+			Effects.punchFov(92)
+		end
+	elseif kind == "kick" then
+		Effects.burst(position, Color3.fromRGB(255, 220, 90), 50, 34)
+		Effects.sound("whoosh", { position = position, speed = 0.8, volume = 1, range = 300 })
+		if mine then
+			Effects.punchFov(94)
+		end
 	end
+end
+
+BoatDrive.onEvent(function(kind, position)
+	boatFx(kind, position, true)
+end)
+
+function handlers.GatePass(p)
+	-- Our own boat's gate was already drawn by BoatDrive, unless the server is simulating it.
+	if isMe(p) then
+		return
+	end
+	local _, _, root = getCharacter()
+	local mine = BoatDrive.isDriving() and root ~= nil and (p.position - root.Position).Magnitude < 30
+	boatFx(p.kind, p.position, mine)
+end
+
+function handlers.BoatFx(p)
+	if not isMe(p) then
+		boatFx(p.kind, p.position, false)
+	end
+end
+
+function handlers.BoatPush(p)
+	BoatDrive.push(p)
 end
 
 function handlers.BoatImpact(p)
@@ -1015,6 +1072,9 @@ end
 function handlers.BoatBoost(p)
 	Effects.burst(p.position, Color3.fromRGB(255, 200, 120), 30, 30)
 	Effects.sound("whoosh", { position = p.position, speed = 1.2, volume = 0.9, range = 300 })
+	if isMe(p) then
+		Effects.punchFov(94)
+	end
 end
 
 function handlers.Quake(p)

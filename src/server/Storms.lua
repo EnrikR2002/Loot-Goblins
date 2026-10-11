@@ -219,6 +219,10 @@ local function publish(t)
 		)
 	end
 	workspace:SetAttribute("StormData", table.concat(parts, ";"))
+	-- A driver's client floats its own boat, so it needs the global roughness too.
+	if workspace:GetAttribute("SeaRough") ~= Sea.rough then
+		workspace:SetAttribute("SeaRough", Sea.rough)
+	end
 end
 
 function Storms.tick(dt, raidActive)
@@ -276,6 +280,7 @@ function Storms.reset()
 	Sea.reset()
 	nextAmbientAt = now() + Config.STORM_FIRST_DELAY
 	workspace:SetAttribute("StormData", "")
+	workspace:SetAttribute("SeaRough", 0)
 end
 
 return Storms

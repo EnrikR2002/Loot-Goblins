@@ -422,23 +422,33 @@ Config.SEA_WIND = Vector3.new(-0.6, 0, 0.8) -- Direction the wind blows toward.
 Config.SEA_WIND_DRIFT = 1.4 -- Studs/s of drift in calm weather (storms push harder).
 
 -- Boats ----------------------------------------------------------------------
--- Real physics hulls floating on the Sea functions. The server owns them, so
--- every player sees the same boat. Skiffs are quick and twitchy, the cutter is
--- heavy and carries a cannon, Navy patrol ships sit deep and can't cross shallows.
--- size: hull box. draft: studs below the surface at rest. accel/maxSpeed in
--- studs/s. turn: rad/s at speed. grip: how hard the keel resists sliding sideways.
+-- Real physics hulls floating on the Sea functions (BoatSim.lua). Arcade, not maritime: quick
+-- to launch, sharp to steer, and happy to slide. Each type is good at something different:
+--   skiff   the fastest and the best drifter; outruns anything, but two bad crashes sink it
+--   cutter  slower than a patrol ship, so it cannot simply run: it carries a cannon and three
+--           passengers, shrugs off crashes and hits hard when it rams
+--   navy    AI patrol ship: fast in a straight line, wide in a turn, too deep for shallows
+-- size: hull box. draft: studs below the surface at rest. accel/maxSpeed in studs/s.
+-- turn: rad/s when slow; turnFade: speed at which the turn rate has halved. grip: how hard the
+-- keel resists sliding sideways; driftGrip/driftTurn multiply grip and turn while drifting.
+-- crashTaken/ramPower scale the hull damage it takes and deals in a collision.
 Config.BOAT_TYPES = {
 	skiff = {
 		name = "Skiff",
 		size = Vector3.new(9, 3, 20),
 		draft = 1.3,
 		density = 0.75,
-		accel = 44,
-		maxSpeed = 72,
-		turn = 1.7,
-		grip = 3.0,
-		lean = 38,
-		health = 150,
+		accel = 84, -- (V2: 44)
+		maxSpeed = 108, -- (V2: 72)
+		turn = 2.1,
+		turnFade = 150,
+		grip = 3.4,
+		driftGrip = 0.35,
+		driftTurn = 1.65,
+		lean = 40,
+		health = 160,
+		crashTaken = 1,
+		ramPower = 1,
 		passengers = 1,
 	},
 	cutter = {
@@ -446,12 +456,17 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(14, 4, 34),
 		draft = 2.1,
 		density = 0.8,
-		accel = 28,
-		maxSpeed = 56,
-		turn = 1.1,
-		grip = 2.5,
-		lean = 22,
-		health = 380,
+		accel = 56, -- (V2: 28)
+		maxSpeed = 86, -- (V2: 56)
+		turn = 1.45,
+		turnFade = 130,
+		grip = 2.7,
+		driftGrip = 0.45,
+		driftTurn = 1.4,
+		lean = 24,
+		health = 420,
+		crashTaken = 0.6,
+		ramPower = 1.8,
 		passengers = 3,
 		cannons = true,
 	},
@@ -460,28 +475,81 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(16, 6, 42),
 		draft = 3.8,
 		density = 0.85,
-		accel = 27,
-		maxSpeed = 54,
-		turn = 0.9,
-		grip = 2.2,
+		accel = 58, -- (V2: 27)
+		maxSpeed = 92, -- (V2: 54) Slower than an empty skiff, faster than a cutter or a laden skiff.
+		turn = 1.15,
+		turnFade = 120,
+		grip = 2.4,
+		driftGrip = 1,
+		driftTurn = 1,
 		lean = 14,
-		health = 460,
+		health = 480,
+		crashTaken = 0.5,
+		ramPower = 2.2,
 		passengers = 0,
 	},
 }
-Config.BOAT_BOOST_MULT = 1.45 -- Top speed while boosting.
-Config.BOAT_BOOST_THRUST = 1.9
+Config.BOAT_BOOST_MULT = 1.4 -- Top speed while boosting (a skiff: 151).
+Config.BOAT_BOOST_THRUST = 2.1
 Config.BOAT_BOOST_TIME = 2.2
-Config.BOAT_BOOST_COOLDOWN = 7
+Config.BOAT_BOOST_COOLDOWN = 5.5 -- (V2: 7)
+Config.BOAT_LAUNCH_PUNCH = 0.9 -- Extra thrust from a standstill, fading out by half speed.
+Config.BOAT_BRAKE = 1.7 -- Thrust against the way you are moving: S is a brake, not a slow reverse.
 Config.BOAT_REVERSE = 0.5 -- Reverse thrust relative to forward.
-Config.BOAT_PAYLOAD_DRAG = 0.035 -- Each unit of loot weight aboard cuts thrust by this much.
-Config.BOAT_IMPACT_MIN = 14 -- A sudden speed change bigger than this is a crash.
-Config.BOAT_IMPACT_DAMAGE = 1.7 -- Hull damage per stud/s above the minimum.
-Config.BOAT_IMPACT_CAP = 0.5 -- One crash never takes more than this fraction of a hull.
-Config.BOAT_IMPACT_GRACE = 0.8 -- Seconds after a crash when further bumps don't count.
+Config.BOAT_BEACH_SHOVE = 1.6 -- Thrust (as a share of accel) for shoving a beached hull along...
+Config.BOAT_BEACH_SPEED = 12 -- ...which only works below this speed: boats do not drive on land.
+Config.BOAT_YAW_SNAP = 8 -- How quickly the hull reaches the turn rate you ask for (V2: 5).
+Config.BOAT_SLIP_LOSS = 0.15 -- Speed shed by sliding sideways in an ordinary turn (V2: 0.5).
+Config.BOAT_COAST_DRAG = 0.35 -- Share of the engine-on drag that remains off the throttle: boats coast.
+Config.BOAT_WATER_DRAG = 0.166 -- Measured: Terrain water slows a hull by this share of its speed per second.
+Config.BOAT_BUOY_DAMPING = 1.1 -- How quickly a hull stops bouncing on its springs (V2: 0.85).
+Config.BOAT_AIR_CONTROL = 0.35 -- Share of the steering you keep while airborne.
+Config.BOAT_AIR_MIN = 0.4 -- Seconds off the water before a touchdown counts as a landing.
+Config.BOAT_LANDING_KICK = 12 -- Speed added by a clean landing.
+Config.BOAT_PAYLOAD_DRAG = 0.03 -- Each unit of loot weight aboard cuts thrust and top speed by this much.
+
+-- Drift (hold C in a turn, at speed): the keel lets go and the boat swings round. Holding the
+-- slide charges a burst that fires when you let go, in two levels.
+Config.BOAT_DRIFT_MIN_SPEED = 0.38 -- Fraction of top speed needed to break the keel loose.
+Config.BOAT_DRIFT_ANGLE = { math.rad(38), math.rad(58) } -- The hull swings out freely to the first angle and holds by the second.
+Config.BOAT_DRIFT_SLIP_LOSS = 0.05 -- Speed shed while drifting and during the burst after (an ordinary slide sheds BOAT_SLIP_LOSS).
+Config.BOAT_DRIFT_CHARGE = { 0.75, 1.7 } -- Charge needed for each level (about 0.6 s and 1.4 s of sliding).
+Config.BOAT_MINI_KICK = { 16, 28 } -- Speed added at once.
+Config.BOAT_MINI_TIME = { 1.0, 1.6 } -- Seconds the raised top speed lasts.
+Config.BOAT_MINI_MULT = 1.16 -- Top speed while a burst runs.
+
+-- Hoops and kickers.
+Config.BOAT_HOOP_KICK = 30 -- Speed a boost hoop adds along its arrow.
+Config.BOAT_HOOP_TIME = 2 -- A hoop also boosts for this long.
+Config.BOAT_KICK_SPEED = 76 -- Upward speed a kicker ramp gives a fast boat.
+Config.BOAT_KICK_MIN_SPEED = 34 -- Slower than this and a kicker is only a bump.
+
+-- Crashes. The server watches each hull's velocity; a change the boat's own forces cannot
+-- explain is a collision. Harder hits cost more, one hit never sinks a healthy boat, and a
+-- hull left alone patches itself slowly, so a mistake is something you recover from.
+Config.BOAT_IMPACT_WINDOW = 0.05 -- Seconds a crash is measured over (a collision lands in a frame or two).
+Config.BOAT_IMPACT_MIN = 12 -- Unexplained speed change (studs/s) below this is only a bump.
+Config.BOAT_IMPACT_DAMAGE = 1.5 -- Hull damage per stud/s above the minimum.
+Config.BOAT_IMPACT_CAP = 0.45 -- One crash never takes more than this fraction of a hull.
+Config.BOAT_IMPACT_GRACE = 0.7 -- Seconds after a crash when further bumps don't count.
+Config.BOAT_SCRAPE_DAMAGE = 16 -- Hull damage per second while dragging fast over sand or rock.
+Config.BOAT_SCRAPE_SPEED = 24 -- Slower than this, running aground costs nothing.
+Config.BOAT_REPAIR_DELAY = 9 -- Seconds without damage before a hull starts patching itself.
+Config.BOAT_REPAIR_RATE = 4 -- Hull points per second after that.
 Config.BOAT_SINK_TIME = 7 -- Seconds a wreck takes to go under.
-Config.BOAT_RESPAWN_TIME = 22 -- A sunk boat comes back at its dock after this long.
+Config.BOAT_RESPAWN_TIME = 16 -- A sunk boat comes back at its dock after this long (V2: 22).
 Config.BOAT_SLEEP_DISTANCE = 650 -- Empty boats farther than this from every player are frozen.
+
+-- Who simulates a driven boat. true: the driver's own client runs BoatSim on the hull, so the
+-- wheel answers at once; the server watches it and takes the boat back for a few seconds if it
+-- moves in a way the physics could not (too fast, flying, teleporting). false: the server
+-- simulates every boat, as V2 did; steering then lags by the driver's ping.
+Config.BOAT_CLIENT_PHYSICS = true
+Config.BOAT_SPEED_SLACK = 1.15 -- A driven boat may exceed its modelled top speed by this factor...
+Config.BOAT_SPEED_MARGIN = 40 -- ...plus this (currents, waves, hoops), before it counts as cheating.
+Config.BOAT_MAX_ALTITUDE = 80 -- Studs above the sea a hull can be (kickers reach about 15).
+Config.BOAT_STRIKE_TIME = 1.2 -- Seconds over a limit before the server takes the boat back.
+Config.BOAT_RECLAIM_TIME = 5 -- Seconds the server then drives it before handing it back.
 
 -- Carrying and fighting ---------------------------------------------------------
 -- A carrier can swing, but it is a slow, short, tiring bash: the sword stays a way to contest loot
@@ -517,7 +585,6 @@ Config.KEG_BOAT_PUSH = 55
 Config.GATE_OPEN_TIME = 28 -- A pulled lever holds its gate open this long.
 Config.WINDMILL_DAMAGE = 14
 Config.WINDMILL_RAGE_TIME = 25
-Config.BOAT_KICK_SPEED = 72 -- Upward speed a kicker ramp gives a fast boat.
 
 -- Storms and lightning ---------------------------------------------------------------------------------
 Config.STORM_FIRST_DELAY = 50 -- Quiet time at the start of a raid.

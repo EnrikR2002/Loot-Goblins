@@ -223,6 +223,14 @@ end)
 Net.BoatBoost.OnServerEvent:Connect(function(player)
 	Boats.boost(player)
 end)
+Net.BoatDrift.OnServerEvent:Connect(function(player, held)
+	Boats.setDrift(player, held == true)
+end)
+Net.BoatFx.OnServerEvent:Connect(function(player, kind)
+	if kind == "mini1" or kind == "mini2" or kind == "landing" then
+		Boats.relayFx(player, kind)
+	end
+end)
 
 -- The world is ready: let everyone in (and put anyone who joined early at the spawn).
 Players.CharacterAutoLoads = true

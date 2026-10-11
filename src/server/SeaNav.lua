@@ -124,6 +124,16 @@ function SeaNav.build(refs)
 	return { cells = cols * rows, land = landCount }
 end
 
+-- The shelter map as one digit (0-9) per cell, for clients (Sea.import): the driver's client
+-- floats its own boat and needs the same calm water beside the coasts.
+function SeaNav.shelterGrid()
+	local digits = table.create(cols * rows)
+	for i = 1, cols * rows do
+		digits[i] = tostring(math.floor((shelter[i] or 0) * 9 + 0.5))
+	end
+	return { minX = minX, minZ = minZ, cols = cols, rows = rows, cell = CELL, data = table.concat(digits) }
+end
+
 -- Is this point open water a ship with this draft can sit in?
 function SeaNav.passable(x, z, draft)
 	if not ready then

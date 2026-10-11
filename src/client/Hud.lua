@@ -8,6 +8,7 @@ local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Map = require(script.Parent.Map)
+local BoatDrive = require(script.Parent.BoatDrive)
 
 local Hud = {}
 
@@ -25,7 +26,13 @@ local timer, heatFill, heatLabel, heatHint, banner, feedList, board, objective, 
 local results, resultsTitle, resultsList, resultsFooter, help
 local slots = {}
 local boardRows = {}
-local boatPanel, boatSpeed, boatHull, boatHullFill, boatBoost, boatBoostFill, boatNote
+local boatPanel, boatSpeed, boatHull, boatHullFill, boatBoost, boatBoostFill, boatDrift, boatDriftFill, boatNote
+-- The drift meter's colour says which burst releasing now would give: none, small, big.
+local DRIFT_COLORS = {
+	[0] = Color3.fromRGB(150, 160, 180),
+	[1] = Color3.fromRGB(120, 220, 255),
+	[2] = Color3.fromRGB(255, 170, 70),
+}
 local waypoint, waypointLabel
 local hoardPart
 local shownHeat = 0
@@ -299,30 +306,24 @@ local function buildBoatPanel()
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Text = "",
 	})
-	local hullBack = panel(boatPanel, {
-		Position = UDim2.fromOffset(10, 32),
-		Size = UDim2.fromOffset(196, 18),
-		BackgroundColor3 = Color3.fromRGB(40, 40, 52),
-	})
-	hullBack.ClipsDescendants = true
-	boatHullFill = make("Frame", {
-		BackgroundColor3 = Color3.fromRGB(120, 230, 120),
-		BorderSizePixel = 0,
-		Size = UDim2.fromScale(1, 1),
-	}, hullBack)
-	boatHull = text(hullBack, { Text = "HULL", ZIndex = 3, TextStrokeTransparency = 0.2 })
-	local boostBack = panel(boatPanel, {
-		Position = UDim2.fromOffset(214, 32),
-		Size = UDim2.fromOffset(196, 18),
-		BackgroundColor3 = Color3.fromRGB(40, 40, 52),
-	})
-	boostBack.ClipsDescendants = true
-	boatBoostFill = make("Frame", {
-		BackgroundColor3 = Color3.fromRGB(255, 190, 70),
-		BorderSizePixel = 0,
-		Size = UDim2.fromScale(1, 1),
-	}, boostBack)
-	boatBoost = text(boostBack, { Text = "SHIFT BOOST", ZIndex = 3, TextStrokeTransparency = 0.2 })
+	-- Three meters in a row: hull, boost, drift charge.
+	local function meter(x, color, label)
+		local back = panel(boatPanel, {
+			Position = UDim2.fromOffset(x, 32),
+			Size = UDim2.fromOffset(128, 18),
+			BackgroundColor3 = Color3.fromRGB(40, 40, 52),
+		})
+		back.ClipsDescendants = true
+		local fill = make("Frame", {
+			BackgroundColor3 = color,
+			BorderSizePixel = 0,
+			Size = UDim2.fromScale(1, 1),
+		}, back)
+		return fill, text(back, { Text = label, ZIndex = 3, TextStrokeTransparency = 0.2 })
+	end
+	boatHullFill, boatHull = meter(10, Color3.fromRGB(120, 230, 120), "HULL")
+	boatBoostFill, boatBoost = meter(146, Color3.fromRGB(255, 190, 70), "SHIFT BOOST")
+	boatDriftFill, boatDrift = meter(282, DRIFT_COLORS[0], "C DRIFT")
 end
 
 local function buildBottom()
@@ -772,7 +773,14 @@ local function updateBoatPanel(now)
 	local health = model:GetAttribute("Health") or spec.health
 	local maxHealth = model:GetAttribute("MaxHealth") or spec.health
 	local fraction = math.clamp(health / maxHealth, 0, 1)
-	boatSpeed.Text = string.format("%s  %d", string.upper(spec.name), model:GetAttribute("Speed") or 0)
+	local drive = BoatDrive.info()
+	boatSpeed.Text = string.format("%s  %d", string.upper(spec.name), math.floor(drive.speed + 0.5))
+	-- Drift: the meter fills while you slide; its colour is the burst you get for letting go.
+	local full = Config.BOAT_DRIFT_CHARGE[2]
+	boatDriftFill.Size = UDim2.fromScale(math.clamp(drive.charge / full, 0, 1), 1)
+	boatDriftFill.BackgroundColor3 = DRIFT_COLORS[drive.level] or DRIFT_COLORS[0]
+	boatDrift.Text = drive.level == 2 and "LET GO: BIG BURST"
+		or (drive.level == 1 and "LET GO: BURST" or (drive.drifting and "DRIFTING..." or "C: DRIFT"))
 	boatHullFill.Size = UDim2.fromScale(fraction, 1)
 	boatHullFill.BackgroundColor3 = fraction > 0.5 and Color3.fromRGB(120, 230, 120)
 		or (fraction > 0.25 and Color3.fromRGB(255, 200, 70) or Color3.fromRGB(255, 80, 70))
