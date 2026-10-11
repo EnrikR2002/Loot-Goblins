@@ -24,6 +24,7 @@ Net.Throw = remote("ThrowRequest")
 Net.Grapple = remote("GrappleRequest")
 Net.Poltergoblin = remote("PoltergoblinRequest")
 Net.Sprint = remote("SprintRequest")
+Net.Move = remote("MoveRequest") -- "dash" | "airjump": pay stamina for a move the client played.
 Net.BoatBoost = remote("BoatBoostRequest")
 Net.Cannon = remote("CannonRequest")
 Net.Keg = remote("KegRequest")

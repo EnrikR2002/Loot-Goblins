@@ -209,29 +209,43 @@ function Effects.setSpirit(active)
 	}):Play()
 end
 
--- Sprinting widens the resting field of view; punches settle back to it.
-local baseFov = 70
+-- Speed widens the field of view (running, sprinting, a boat at full tilt); punches (a dash, a
+-- launch) kick it wider for a moment and settle back. One writer, every frame, so the two
+-- never fight.
+local BASE_FOV = 70
+local speedFov, shownFov, punch = BASE_FOV, BASE_FOV, 0
 
-function Effects.setBaseFov(fov)
-	baseFov = fov
-	TweenService:Create(camera, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { FieldOfView = fov }):Play()
+-- speed: how fast the local character is travelling, in studs/s.
+function Effects.setSpeed(speed)
+	speedFov = BASE_FOV + 24 * (1 - math.exp(-math.max(0, speed - 22) / 70))
 end
 
 function Effects.punchFov(fov)
-	camera.FieldOfView = fov
-	TweenService:Create(camera, TweenInfo.new(0.4, Enum.EasingStyle.Quint), { FieldOfView = baseFov }):Play()
+	punch = math.max(punch, fov - shownFov)
 end
 
--- A grapple rope from a moving part to a fixed point, for a few seconds.
--- Returns the holder so the caller can cut it early.
-function Effects.rope(part, to, color, duration)
+RunService.RenderStepped:Connect(function(dt)
+	shownFov += (speedFov - shownFov) * (1 - math.exp(-dt * 5))
+	punch *= math.exp(-dt * 4.5)
+	camera.FieldOfView = shownFov + punch
+end)
+
+-- A grapple rope from a moving part to a point, for a few seconds. The point can ride another
+-- part (a boat): pass that part and the hook's position in its space. Returns the holder so
+-- the caller can cut it early.
+function Effects.rope(part, to, color, duration, hookPart, hookOffset)
 	local holder = Instance.new("Attachment")
 	holder.Name = "GrappleRope"
 	holder.Parent = part
 	local anchor = Instance.new("Attachment")
 	anchor.Name = "GrappleHook"
-	anchor.Parent = workspace.Terrain
-	anchor.WorldPosition = to
+	if hookPart and hookPart.Parent then
+		anchor.Parent = hookPart
+		anchor.Position = hookOffset or Vector3.zero
+	else
+		anchor.Parent = workspace.Terrain
+		anchor.WorldPosition = to
+	end
 	local beam = Instance.new("Beam")
 	beam.Attachment0 = holder
 	beam.Attachment1 = anchor
@@ -248,6 +262,28 @@ function Effects.rope(part, to, color, duration)
 	end)
 	Debris:AddItem(holder, duration or 2)
 	return holder
+end
+
+-- A dash: streaks trailing back from where it started. direction is nil for another player's
+-- dash (we only know where it began), which draws a puff instead.
+function Effects.dash(position, direction)
+	local color = Color3.fromRGB(190, 235, 255)
+	if direction then
+		local side = Vector3.new(-direction.Z, 0, direction.X)
+		for _, offset in ipairs({ -1.4, 0, 1.4 }) do
+			local from = position + side * offset + Vector3.new(0, offset == 0 and 1 or -0.5, 0)
+			Effects.line(from - direction * 7, from + direction * 5, color, 0.35, 0.22)
+		end
+	else
+		Effects.ring(position - Vector3.new(0, 2.5, 0), color, 7, 0.3)
+	end
+	Effects.sound("whoosh", { position = position, speed = 1.9, volume = 0.55, range = 120 })
+end
+
+-- An air jump: a ring kicked off under the feet.
+function Effects.airJump(position)
+	Effects.ring(position - Vector3.new(0, 2.8, 0), Color3.fromRGB(190, 235, 255), 6, 0.3)
+	Effects.sound("whoosh", { position = position, speed = 1.3, volume = 0.45, range = 100 })
 end
 
 -- Danger markers ------------------------------------------------------------------------------

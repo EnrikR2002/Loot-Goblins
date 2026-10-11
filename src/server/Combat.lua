@@ -242,17 +242,14 @@ local function grapple(player, hitPosition, target)
 	if t < (player:GetAttribute("GrappleReadyAt") or 0) then
 		return
 	end
-	if Loot.itemOf(player) then
-		Net.toast(player, "HANDS FULL - Q to throw your loot, then grapple")
-		return
-	end
+	local carrying = Loot.itemOf(player) ~= nil
 	local origin = root.Position + Vector3.new(0, 1.5, 0)
 	local aim = hitPosition - origin
 	aim = aim.Magnitude > 0.01 and aim.Unit or root.CFrame.LookVector
 	local ignore = ignoreList()
 
-	-- 1. Steal: loot near the aim, in range, with nothing solid in between.
-	local item = stealTarget(player, origin, aim, target)
+	-- 1. Steal: loot near the aim, in range, with nothing solid in between. Full hands can't.
+	local item = not carrying and stealTarget(player, origin, aim, target) or nil
 	if item then
 		local targetPos = item.core.Position
 		if (targetPos - origin).Magnitude <= Config.GRAPPLE_RANGE and clearLine(origin, targetPos, ignore) then
@@ -273,10 +270,11 @@ local function grapple(player, hitPosition, target)
 		-- Blocked: the hook flies on and catches whatever is in the way.
 	end
 
-	-- 2. Pull: hook the first solid thing along the aim and reel in.
-	if humanoid.SeatPart then
-		Net.toast(player, "Stand up first - you can only grapple-pull on foot")
-		return
+	-- 2. Pull: hook the first solid thing along the aim and reel in. From a boat seat the hook
+	-- yanks you out of it, so never hook the boat you are sitting in.
+	local seat = humanoid.SeatPart
+	if seat then
+		table.insert(ignore, seat:FindFirstAncestorOfClass("Model") or seat)
 	end
 	losParams.FilterDescendantsInstances = ignore
 	local hit = workspace:Raycast(origin, aim * Config.GRAPPLE_PULL_RANGE, losParams)
@@ -293,13 +291,24 @@ local function grapple(player, hitPosition, target)
 		)
 		return
 	end
-	setCooldown(player, Config.GRAPPLE_PULL_COOLDOWN)
+	setCooldown(player, carrying and Config.GRAPPLE_CARRY_COOLDOWN or Config.GRAPPLE_PULL_COOLDOWN)
+	if seat then
+		local seatWeld = seat:FindFirstChild("SeatWeld")
+		if seatWeld then
+			seatWeld:Destroy()
+		end
+		humanoid.Sit = false
+	end
 	local distance = (hit.Position - origin).Magnitude
+	-- Something that moves (a boat): the client keeps the rope on the part, not on the spot.
+	local moving = not hit.Instance.Anchored and hit.Instance ~= workspace.Terrain
 	Net.broadcast("GrappleFX", {
 		kind = "pull",
 		from = origin,
 		to = hit.Position,
 		normal = hit.Normal,
+		part = moving and hit.Instance or nil,
+		offset = moving and hit.Instance.CFrame:PointToObjectSpace(hit.Position) or nil,
 		userId = player.UserId,
 		duration = distance / Config.GRAPPLE_PULL_SPEED + 0.6,
 	})

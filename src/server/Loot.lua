@@ -490,7 +490,7 @@ local function clearCarrier(item)
 	local carrier = item.carrier
 	if carrier then
 		carrying[carrier] = nil
-		Movement.setCarrySpeed(carrier, nil)
+		Movement.setCarry(carrier, nil)
 		carrier:SetAttribute("CarryingLoot", nil)
 	end
 	item.carrier = nil
@@ -522,7 +522,7 @@ local function attach(item, player, root)
 	carrying[player] = item
 	-- The carrier doesn't need their own tag floating over their head.
 	item.tag.PlayerToHideFrom = player
-	Movement.setCarrySpeed(player, item.def.carrySpeed)
+	Movement.setCarry(player, item.def.carrySpeed, item.def.weight)
 	player:SetAttribute("CarryingLoot", item.id)
 	setState(item, "carried")
 end

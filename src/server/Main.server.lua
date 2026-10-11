@@ -52,6 +52,8 @@ local Raid = require(script.Parent.Raid)
 
 Players.RespawnTime = Config.RESPAWN_TIME
 StarterPlayer.CharacterWalkSpeed = Config.WALK_SPEED
+StarterPlayer.CharacterUseJumpPower = true
+StarterPlayer.CharacterJumpPower = Config.JUMP_POWER
 -- Shift sprints, so it can't also toggle Roblox's shift lock.
 StarterPlayer.EnableMouseLockOption = false
 
@@ -164,6 +166,8 @@ end)
 local function onCharacter(player, character)
 	local humanoid = character:WaitForChild("Humanoid")
 	humanoid.WalkSpeed = Config.WALK_SPEED
+	humanoid.UseJumpPower = true
+	humanoid.JumpPower = Config.JUMP_POWER
 	Movement.refill(player)
 	Kegs.refill(player)
 	Combat.giveSword(player, character)
@@ -210,6 +214,11 @@ Net.Poltergoblin.OnServerEvent:Connect(function(player)
 end)
 Net.Sprint.OnServerEvent:Connect(function(player, held)
 	Movement.setSprintHeld(player, held == true)
+end)
+Net.Move.OnServerEvent:Connect(function(player, kind)
+	if kind == "dash" or kind == "airjump" then
+		Movement.request(player, kind)
+	end
 end)
 Net.BoatBoost.OnServerEvent:Connect(function(player)
 	Boats.boost(player)

@@ -11,22 +11,41 @@ Config.FIRST_INTERMISSION = 6 -- Gives the first players time to load in.
 Config.RESPAWN_TIME = 3
 
 -- Movement -------------------------------------------------------------------
-Config.WALK_SPEED = 20 -- Jogging.
-Config.WATER_SPEED_MULT = 0.7 -- Wading or swimming. Carry and spirit speed stack with it.
+-- Running is fast and free. Stamina never slows a normal run: it pays for the exceptional
+-- moves (sprint, dash, air jump, a carrier's sword swing).
+Config.WALK_SPEED = 28 -- Running. (V2 jogged at 20.)
+Config.JUMP_POWER = 56 -- Roblox's default is 50: a little higher and longer.
+Config.WATER_SPEED_MULT = 0.85 -- Wading or swimming. Carry and spirit speed stack with it.
 Config.WATER_ROOT_Y = 3 -- A root lower than this is standing or swimming in the sea.
 
--- Sprint (hold Shift). Costs stamina; no sprinting in the water or in a seat.
-Config.SPRINT_MULT = 1.45 -- 20 -> 29 empty-handed.
-Config.CARRY_SPRINT_MULT = 1.2 -- Loot is heavy: carriers only hustle a little (13-16 -> 16-19).
+-- Sprint (hold Shift): a burst on top of the run, on land or in the water. Not in a seat.
+Config.SPRINT_MULT = 1.36 -- 28 -> 38 empty-handed.
+Config.CARRY_SPRINT_MULT = 1.25 -- Carriers run at 21-27 and sprint at 27-34.
 Config.STAMINA_MAX = 100
-Config.STAMINA_DRAIN = 20 -- Per second of sprinting: a full bar lasts 5 s.
-Config.STAMINA_REGEN = 25 -- Per second, once you stop sprinting.
-Config.STAMINA_REGEN_DELAY = 0.8 -- Pause after sprinting before stamina comes back.
-Config.STAMINA_RECOVER = 35 -- Run it dry and you're winded until it refills this far.
+Config.STAMINA_DRAIN = 11 -- Per second of sprinting: a full bar lasts 9 s.
+Config.STAMINA_REGEN = 32 -- Per second, once you stop spending.
+Config.STAMINA_REGEN_DELAY = 0.6 -- Pause after spending before stamina comes back.
+Config.STAMINA_RECOVER = 25 -- Run it dry and you're winded (no sprint) until it refills this far.
+-- Loot makes every stamina cost bigger instead of making you slow: each unit of the treasure's
+-- weight adds this much to sprint drain and to the cost of a dash, an air jump or a swing.
+Config.CARRY_STAMINA_PER_WEIGHT = 0.12 -- Leviathan Tooth (weight 6): everything costs 1.72x.
+
+-- Dash (C): a short burst the way you are moving, on the ground or in the air. It is the dodge:
+-- out of a marked circle, across a gap, away from a sword.
+Config.DASH_COST = 20
+Config.DASH_COOLDOWN = 0.9
+Config.DASH_SPEED = 85
+Config.DASH_TIME = 0.17 -- 85 * 0.17 is about 14 studs.
+Config.DASH_AIR_LIFT = 6 -- An air dash cancels your fall and floats a touch.
+
+-- Air jump (Space in the air): one extra jump per flight.
+Config.AIR_JUMP_COST = 14
+Config.AIR_JUMP_POWER = 52
 
 -- Loot -----------------------------------------------------------------------
 -- Value is gold when banked (it grows a little while nobody takes it: see LOOT_INTEREST).
--- weight slows boats carrying it. carrySpeed replaces WALK_SPEED while held.
+-- weight slows boats carrying it and makes every stamina cost bigger. carrySpeed replaces
+-- WALK_SPEED while held (a carrier is a little slower, not crippled: 21.5-27 against 28).
 -- heat is added when it is taken from its spot. respawn is seconds after banking.
 -- trouble is what the world does the moment it leaves its spot (Threats / Troubles).
 -- island is the Archipelago id. visual picks the model (Loot.lua).
@@ -40,9 +59,9 @@ Config.LOOT = {
 		visual = "disc",
 		value = 1,
 		weight = 1,
-		carrySpeed = 19,
+		carrySpeed = 27,
 		heat = 4,
-		respawn = 25,
+		respawn = 20,
 		trouble = "Gulls",
 		color = Color3.fromRGB(255, 225, 150),
 	},
@@ -54,9 +73,9 @@ Config.LOOT = {
 		visual = "orb",
 		value = 2,
 		weight = 1,
-		carrySpeed = 18,
+		carrySpeed = 26.5,
 		heat = 6,
-		respawn = 30,
+		respawn = 25,
 		trouble = "Gulls",
 		color = Color3.fromRGB(255, 190, 220),
 	},
@@ -68,9 +87,9 @@ Config.LOOT = {
 		visual = "chest",
 		value = 2,
 		weight = 2,
-		carrySpeed = 17,
+		carrySpeed = 26,
 		heat = 8,
-		respawn = 30,
+		respawn = 25,
 		trouble = "Bell",
 		color = Color3.fromRGB(190, 150, 100),
 	},
@@ -82,9 +101,9 @@ Config.LOOT = {
 		visual = "gear",
 		value = 3,
 		weight = 2,
-		carrySpeed = 17,
+		carrySpeed = 26,
 		heat = 10,
-		respawn = 35,
+		respawn = 30,
 		trouble = "Windmill",
 		color = Color3.fromRGB(255, 205, 60),
 	},
@@ -96,9 +115,9 @@ Config.LOOT = {
 		visual = "disc",
 		value = 3,
 		weight = 2,
-		carrySpeed = 16,
+		carrySpeed = 25.5,
 		heat = 15,
-		respawn = 30,
+		respawn = 25,
 		trouble = "Bell",
 		color = Color3.fromRGB(255, 240, 140),
 	},
@@ -110,9 +129,9 @@ Config.LOOT = {
 		visual = "chest",
 		value = 4,
 		weight = 4,
-		carrySpeed = 13,
+		carrySpeed = 23.5,
 		heat = 20,
-		respawn = 40,
+		respawn = 35,
 		trouble = "Barrage",
 		color = Color3.fromRGB(255, 160, 70),
 	},
@@ -124,9 +143,9 @@ Config.LOOT = {
 		visual = "orb",
 		value = 5,
 		weight = 3,
-		carrySpeed = 15,
+		carrySpeed = 24.5,
 		heat = 25,
-		respawn = 45,
+		respawn = 40,
 		trouble = "CaveIn",
 		color = Color3.fromRGB(215, 110, 255),
 	},
@@ -138,9 +157,9 @@ Config.LOOT = {
 		visual = "idol",
 		value = 5,
 		weight = 2,
-		carrySpeed = 15,
+		carrySpeed = 25,
 		heat = 22,
-		respawn = 45,
+		respawn = 40,
 		trouble = "Quake",
 		color = Color3.fromRGB(110, 235, 130),
 	},
@@ -152,9 +171,9 @@ Config.LOOT = {
 		visual = "orb",
 		value = 6,
 		weight = 3,
-		carrySpeed = 15,
+		carrySpeed = 24.5,
 		heat = 26,
-		respawn = 50,
+		respawn = 45,
 		trouble = "Flood",
 		color = Color3.fromRGB(110, 230, 255),
 	},
@@ -166,9 +185,9 @@ Config.LOOT = {
 		visual = "gem",
 		value = 6,
 		weight = 3,
-		carrySpeed = 15,
+		carrySpeed = 24.5,
 		heat = 24,
-		respawn = 50,
+		respawn = 45,
 		trouble = "Squall",
 		color = Color3.fromRGB(150, 190, 255),
 	},
@@ -180,9 +199,9 @@ Config.LOOT = {
 		visual = "chest",
 		value = 7,
 		weight = 5,
-		carrySpeed = 13,
+		carrySpeed = 22.5,
 		heat = 30,
-		respawn = 55,
+		respawn = 50,
 		trouble = "Navy",
 		color = Color3.fromRGB(255, 110, 100),
 	},
@@ -194,9 +213,9 @@ Config.LOOT = {
 		visual = "crown",
 		value = 8,
 		weight = 3,
-		carrySpeed = 14,
+		carrySpeed = 24,
 		heat = 32,
-		respawn = 55,
+		respawn = 50,
 		trouble = "Eruption",
 		color = Color3.fromRGB(255, 130, 50),
 	},
@@ -208,9 +227,9 @@ Config.LOOT = {
 		visual = "idol",
 		value = 10,
 		weight = 4,
-		carrySpeed = 14,
+		carrySpeed = 23.5,
 		heat = 40,
-		respawn = 70,
+		respawn = 60,
 		trouble = "Guardian",
 		color = Color3.fromRGB(255, 205, 40),
 	},
@@ -222,9 +241,9 @@ Config.LOOT = {
 		visual = "gem",
 		value = 12,
 		weight = 4,
-		carrySpeed = 13,
+		carrySpeed = 23.5,
 		heat = 38,
-		respawn = 75,
+		respawn = 65,
 		trouble = "Avalanche",
 		color = Color3.fromRGB(150, 245, 255),
 	},
@@ -236,9 +255,9 @@ Config.LOOT = {
 		visual = "tooth",
 		value = 13,
 		weight = 6,
-		carrySpeed = 12,
+		carrySpeed = 21.5,
 		heat = 42,
-		respawn = 80,
+		respawn = 70,
 		trouble = "Kraken",
 		color = Color3.fromRGB(245, 240, 215),
 	},
@@ -250,9 +269,9 @@ Config.LOOT = {
 		visual = "chalice",
 		value = 14,
 		weight = 5,
-		carrySpeed = 12,
+		carrySpeed = 22.5,
 		heat = 45,
-		respawn = 85,
+		respawn = 75,
 		trouble = "GhostFleet",
 		color = Color3.fromRGB(130, 255, 180),
 	},
@@ -365,16 +384,19 @@ Config.SWORD_COOLDOWN = 0.55
 Config.SWORD_KNOCKBACK = 34
 
 -- F: a grappling hook. Aimed at loot (or near a carrier) it steals it, with a
--- clear line of sight. Aimed at ground, walls or cliffs it pulls you there.
--- Carriers can't use it (hands full). A miss costs no cooldown.
-Config.GRAPPLE_RANGE = 60 -- Steal range.
-Config.GRAPPLE_AIM_ASSIST = 7 -- Loot or a carrier this far off your aim line still counts.
+-- clear line of sight. Aimed at ground, walls, cliffs or a boat it pulls you there (a boat
+-- keeps moving: the rope follows it). Carriers can't steal with it, but they can still pull
+-- themselves around, on a longer cooldown. A miss costs no cooldown.
+Config.GRAPPLE_RANGE = 70 -- Steal range.
+Config.GRAPPLE_AIM_ASSIST = 8 -- Loot or a carrier this far off your aim line still counts.
 Config.GRAPPLE_COOLDOWN = 6 -- After a successful steal.
 Config.GRAPPLE_FAIL_COOLDOWN = 1 -- After a steal that slipped off (steal immunity).
-Config.GRAPPLE_PULL_RANGE = 130
-Config.GRAPPLE_PULL_SPEED = 95
-Config.GRAPPLE_PULL_COOLDOWN = 2
-Config.GRAPPLE_POP_SPEED = 38 -- Upward hop at the end of a pull, to climb onto ledges.
+Config.GRAPPLE_PULL_RANGE = 170
+Config.GRAPPLE_PULL_SPEED = 135
+Config.GRAPPLE_PULL_COOLDOWN = 1.4
+Config.GRAPPLE_CARRY_COOLDOWN = 5 -- A carrier's pull: usable, but not spammable.
+Config.GRAPPLE_POP_SPEED = 42 -- Upward hop at the end of a pull, to climb onto ledges.
+Config.GRAPPLE_KEEP_SPEED = 0.6 -- How much of the pull's sideways speed you keep when it ends.
 
 -- Poltergoblin (was Soul Unbound, Yone's E) ----------------------------------------
 -- E leaves your body behind and sends your spirit out. Whatever loot the spirit
@@ -468,7 +490,7 @@ Config.CARRY_SWORD_COOLDOWN = 1.15
 Config.CARRY_SWORD_RANGE = 6
 Config.CARRY_SWORD_DAMAGE = 12
 Config.CARRY_SWORD_KNOCKBACK = 22
-Config.CARRY_SWING_STAMINA = 22
+Config.CARRY_SWING_STAMINA = 15 -- Before the loot's weight is added (CARRY_STAMINA_PER_WEIGHT): 17-26.
 
 -- Cannons (island emplacements, the Cutter, practice range) -------------------------------------
 Config.CANNON_SPEED = 220 -- Muzzle speed, studs/s. Balls use their own, lighter gravity.

@@ -19,6 +19,7 @@ local throwRemote = remotes:WaitForChild("ThrowRequest")
 local grappleRemote = remotes:WaitForChild("GrappleRequest")
 local polterRemote = remotes:WaitForChild("PoltergoblinRequest")
 local sprintRemote = remotes:WaitForChild("SprintRequest")
+local moveRemote = remotes:WaitForChild("MoveRequest")
 local boatBoostRemote = remotes:WaitForChild("BoatBoostRequest")
 local cannonRemote = remotes:WaitForChild("CannonRequest")
 local kegRemote = remotes:WaitForChild("KegRequest")
@@ -34,8 +35,10 @@ local DANGER = Color3.fromRGB(255, 80, 60)
 local ROPE_COLOR = Color3.fromRGB(230, 200, 140)
 
 local LOOT_COLORS = {}
+local LOOT_WEIGHT = {}
 for _, def in ipairs(Config.LOOT) do
 	LOOT_COLORS[def.id] = def.color
+	LOOT_WEIGHT[def.id] = def.weight or 1
 end
 
 Hud.init(hoardPart)
@@ -253,13 +256,18 @@ local function aimPoint()
 	local camera = workspace.CurrentCamera
 	local mouseAt = UserInputService:GetMouseLocation()
 	local ray = camera:ViewportPointToRay(mouseAt.X, mouseAt.Y)
-	aimParams.FilterDescendantsInstances = { player.Character }
+	-- Never aim at yourself or at the boat you are sitting in.
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	local seat = humanoid and humanoid.SeatPart
+	aimParams.FilterDescendantsInstances = { player.Character, seat and seat.Parent }
 	local hit = workspace:Raycast(ray.Origin, ray.Direction * 1000, aimParams)
 	if hit then
 		return hit.Position, hit.Instance
 	end
 	return ray.Origin + ray.Direction * 1000, nil
 end
+
+local airJumpUsed = false -- One air jump per flight; a pull hands it back (see the moves below).
 
 local function stopPull(pop)
 	if not pull then
@@ -271,21 +279,47 @@ local function stopPull(pop)
 	current.rope:Destroy()
 	local _, _, root = getCharacter()
 	if root and pop then
-		-- A hop at the end, so a hook on a ledge lifts you over its lip.
+		-- A hop at the end, so a hook on a ledge lifts you over its lip. You keep most of the
+		-- swing, so a pull flows straight into a run, a jump or a dash.
 		local v = root.AssemblyLinearVelocity
-		root.AssemblyLinearVelocity = Vector3.new(v.X * 0.35, Config.GRAPPLE_POP_SPEED, v.Z * 0.35)
+		local keep = Config.GRAPPLE_KEEP_SPEED
+		root.AssemblyLinearVelocity = Vector3.new(v.X * keep, Config.GRAPPLE_POP_SPEED, v.Z * keep)
 	end
 end
 
-local function startPull(to, normal)
+-- Where the hook is right now. A hook on a boat rides the boat.
+local function pullGoal(current)
+	if not current.part then
+		return current.goal
+	end
+	if not current.part.Parent then
+		return nil
+	end
+	return current.part.CFrame:PointToWorldSpace(current.offset) + Vector3.new(0, 4, 0)
+end
+
+-- to, normal: the hook point. part, offset: set when the hook is on something that moves.
+local function startPull(to, normal, part, offset, tries)
 	local _, humanoid, root = getCharacter()
-	if not root or humanoid.SeatPart or player:GetAttribute("CarryingLoot") then
+	if not root then
+		return
+	end
+	if humanoid.SeatPart then
+		-- Hooked from a boat seat: the server lets go of the seat; wait for that to arrive.
+		humanoid.Sit = false
+		if (tries or 0) < 8 then
+			task.delay(0.05, startPull, to, normal, part, offset, (tries or 0) + 1)
+		end
 		return
 	end
 	stopRide(false)
 	stopPull(false)
 	-- Aim a little off the surface: a floor lands you on it, a wall leaves you at it.
-	local goal = to + normal * 2 + Vector3.new(0, 2.5, 0)
+	local current = { part = part, offset = offset, goal = to + normal * 2 + Vector3.new(0, 2.5, 0) }
+	local goal = pullGoal(current)
+	if not goal then
+		return
+	end
 	local distance = (goal - root.Position).Magnitude
 	if distance < 3 then
 		return -- Already there (and .Unit of a zero vector is NaN).
@@ -300,19 +334,18 @@ local function startPull(to, normal)
 	push.VectorVelocity = (goal - root.Position).Unit * Config.GRAPPLE_PULL_SPEED
 	push.Parent = holder
 	local t = os.clock()
-	pull = {
-		root = root,
-		goal = goal,
-		holder = holder,
-		push = push,
-		rope = Effects.rope(root, to, ROPE_COLOR, 5),
-		startedAt = t,
-		endsAt = t + distance / Config.GRAPPLE_PULL_SPEED + 0.6,
-		best = distance,
-		bestAt = t,
-	}
+	current.root = root
+	current.holder = holder
+	current.push = push
+	current.rope = Effects.rope(root, to, ROPE_COLOR, 5, part, offset)
+	current.startedAt = t
+	current.endsAt = t + distance / Config.GRAPPLE_PULL_SPEED + 0.6
+	current.best = distance
+	current.bestAt = t
+	pull = current
+	airJumpUsed = false
 	Effects.sound("whoosh", { speed = 1.5, volume = 0.6 })
-	Effects.punchFov(80)
+	Effects.punchFov(84)
 end
 
 RunService.Heartbeat:Connect(function()
@@ -320,11 +353,12 @@ RunService.Heartbeat:Connect(function()
 		return
 	end
 	local _, humanoid, root = getCharacter()
-	if root ~= pull.root or humanoid.SeatPart or player:GetAttribute("CarryingLoot") then
+	local goal = pullGoal(pull)
+	if root ~= pull.root or humanoid.SeatPart or not goal then
 		stopPull(false)
 		return
 	end
-	local offset = pull.goal - root.Position
+	local offset = goal - root.Position
 	local distance = offset.Magnitude
 	local t = os.clock()
 	if distance < 3 or t > pull.endsAt then
@@ -338,8 +372,10 @@ RunService.Heartbeat:Connect(function()
 		stopPull(true)
 		return
 	end
-	-- Ease in over the last few studs instead of slamming into the wall.
-	pull.push.VectorVelocity = offset.Unit * math.min(Config.GRAPPLE_PULL_SPEED, 30 + distance * 6)
+	-- Ease in over the last few studs instead of slamming into the wall. A moving hook adds
+	-- its own speed, so you close on a fleeing boat as fast as on a cliff.
+	local carry = pull.part and pull.part.AssemblyLinearVelocity or Vector3.zero
+	pull.push.VectorVelocity = offset.Unit * math.min(Config.GRAPPLE_PULL_SPEED, 30 + distance * 6) + carry
 end)
 
 UserInputService.JumpRequest:Connect(function()
@@ -352,10 +388,6 @@ end)
 local function pressGrapple()
 	local _, _, root = getCharacter()
 	if not root then
-		return
-	end
-	if player:GetAttribute("CarryingLoot") then
-		Hud.toast("HANDS FULL - Q to throw your loot, then grapple")
 		return
 	end
 	if now() < (player:GetAttribute("GrappleReadyAt") or 0) then
@@ -413,12 +445,120 @@ UserInputService.InputEnded:Connect(function(input)
 		setSprint(false)
 	end
 end)
-player:GetAttributeChangedSignal("Sprinting"):Connect(function()
-	Effects.setBaseFov(player:GetAttribute("Sprinting") and 78 or 70)
-end)
 player:GetAttributeChangedSignal("Winded"):Connect(function()
 	if player:GetAttribute("Winded") then
-		Hud.toast("Out of breath! Stamina has to refill before you can sprint.")
+		Hud.toast("Out of breath! You still run - sprint comes back when stamina refills.")
+	end
+end)
+
+-- Dash and air jump --------------------------------------------------------------------
+-- Both are played here at once, on your own character, so the key feels instant. The server
+-- takes the stamina and keeps the cooldown (Movement.request).
+local lastDash = -math.huge
+local lastGroundedAt = os.clock()
+
+-- What a move costs right now: loot makes every stamina cost bigger, by its weight.
+local function staminaCost(base)
+	local held = player:GetAttribute("CarryingLoot")
+	return base * (1 + (held and LOOT_WEIGHT[held] or 0) * Config.CARRY_STAMINA_PER_WEIGHT)
+end
+
+local function hasStamina(cost)
+	return (player:GetAttribute("Stamina") or Config.STAMINA_MAX) >= cost
+end
+
+local function airborne(humanoid)
+	return humanoid.FloorMaterial == Enum.Material.Air and humanoid:GetState() ~= Enum.HumanoidStateType.Swimming
+end
+
+local function pressDash()
+	local _, humanoid, root = getCharacter()
+	if not root or humanoid.SeatPart or ride or pull then
+		return
+	end
+	local t = os.clock()
+	if t - lastDash < Config.DASH_COOLDOWN then
+		return
+	end
+	if not hasStamina(staminaCost(Config.DASH_COST)) then
+		Hud.toast("Not enough stamina to dash")
+		return
+	end
+	-- Dash where you are steering, or where you face when standing still.
+	local direction = humanoid.MoveDirection
+	if direction.Magnitude < 0.1 then
+		direction = root.CFrame.LookVector
+	end
+	direction = Vector3.new(direction.X, 0, direction.Z)
+	if direction.Magnitude < 0.01 then
+		return
+	end
+	direction = direction.Unit
+	lastDash = t
+	moveRemote:FireServer("dash")
+
+	local inAir = airborne(humanoid)
+	local attachment = Instance.new("Attachment")
+	attachment.Name = "Dash"
+	attachment.Parent = root
+	local push = Instance.new("LinearVelocity")
+	push.Attachment0 = attachment
+	push.RelativeTo = Enum.ActuatorRelativeTo.World
+	push.ForceLimitMode = Enum.ForceLimitMode.PerAxis
+	-- In the air the dash also cancels your fall, so it reaches across gaps.
+	push.MaxAxesForce = Vector3.new(1e6, inAir and 1e6 or 0, 1e6)
+	push.VectorVelocity = direction * Config.DASH_SPEED + Vector3.new(0, inAir and Config.DASH_AIR_LIFT or 0, 0)
+	push.Parent = attachment
+	task.delay(Config.DASH_TIME, function()
+		attachment:Destroy()
+		if root.Parent then
+			-- Leave the dash a little faster than a run, so it flows into the next move.
+			local v = root.AssemblyLinearVelocity
+			root.AssemblyLinearVelocity = direction * humanoid.WalkSpeed * 1.15 + Vector3.new(0, v.Y, 0)
+		end
+	end)
+	Effects.dash(root.Position, direction)
+	Effects.punchFov(82)
+end
+
+local function tryAirJump(minAirTime)
+	local _, humanoid, root = getCharacter()
+	if not root or airJumpUsed or humanoid.SeatPart or ride or pull then
+		return
+	end
+	if not airborne(humanoid) or os.clock() - lastGroundedAt < (minAirTime or 0.1) then
+		return
+	end
+	if not hasStamina(staminaCost(Config.AIR_JUMP_COST)) then
+		return
+	end
+	airJumpUsed = true
+	moveRemote:FireServer("airjump")
+	humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+	local function lift()
+		if root.Parent then
+			local v = root.AssemblyLinearVelocity
+			root.AssemblyLinearVelocity = Vector3.new(v.X, Config.AIR_JUMP_POWER, v.Z)
+		end
+	end
+	lift()
+	task.defer(lift) -- The state change applies its own jump a moment later; ours wins.
+	Effects.airJump(root.Position)
+end
+
+RunService.Heartbeat:Connect(function()
+	local _, humanoid = getCharacter()
+	if humanoid and not airborne(humanoid) then
+		lastGroundedAt = os.clock()
+		airJumpUsed = false
+	end
+end)
+
+UserInputService.JumpRequest:Connect(function()
+	-- Touch has no key-down to catch, so a second tap of the jump button counts once you have
+	-- been in the air for a moment.
+	if UserInputService:GetLastInputType() == Enum.UserInputType.Touch then
+		tryAirJump(0.3)
 	end
 end)
 
@@ -527,6 +667,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		else
 			setSprint(true)
 		end
+	elseif input.KeyCode == Enum.KeyCode.C or input.KeyCode == Enum.KeyCode.ButtonB then
+		pressDash()
+	elseif input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.ButtonA then
+		tryAirJump()
 	elseif input.KeyCode == Enum.KeyCode.G then
 		pressKeg()
 	elseif input.KeyCode == Enum.KeyCode.M then
@@ -557,6 +701,10 @@ applyHeatTint()
 
 RunService.RenderStepped:Connect(function()
 	Hud.update(now())
+	-- The faster you travel (on foot or in a boat), the wider the view.
+	local _, _, root = getCharacter()
+	local v = root and root.AssemblyLinearVelocity or Vector3.zero
+	Effects.setSpeed(Vector3.new(v.X, 0, v.Z).Magnitude)
 end)
 
 -- Server events --------------------------------------------------------------------------
@@ -710,12 +858,12 @@ end
 function handlers.GrappleFX(p)
 	if p.kind == "pull" then
 		if isMe(p) then
-			startPull(p.to, p.normal or Vector3.yAxis)
+			startPull(p.to, p.normal or Vector3.yAxis, p.part, p.offset)
 		else
 			local other = Players:GetPlayerByUserId(p.userId or 0)
 			local root = other and other.Character and other.Character:FindFirstChild("HumanoidRootPart")
 			if root then
-				Effects.rope(root, p.to, ROPE_COLOR, p.duration)
+				Effects.rope(root, p.to, ROPE_COLOR, p.duration, p.part, p.offset)
 			end
 		end
 		Effects.ball(p.to, ROPE_COLOR, 2.5, 0.3)
@@ -727,6 +875,19 @@ function handlers.GrappleFX(p)
 	Effects.line(p.from, p.to, color, p.kind == "miss" and 0.12 or 0.22, 0.25)
 	if p.success then
 		Effects.burst(p.to, GOLD, 15, 12)
+	end
+end
+
+-- Other players' moves (your own are drawn the moment you press the key).
+function handlers.Dash(p)
+	if not isMe(p) then
+		Effects.dash(p.position, nil)
+	end
+end
+
+function handlers.AirJump(p)
+	if not isMe(p) then
+		Effects.airJump(p.position)
 	end
 end
 
