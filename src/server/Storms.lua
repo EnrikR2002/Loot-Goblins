@@ -26,6 +26,9 @@ local Loot = require(script.Parent.Loot)
 local Storms = {}
 Storms.cells = {}
 
+local refs
+-- Waterspouts wandering inside the storm cells: { cell, angle, orbit, turn, part, hitAt = {} }.
+local spouts = {}
 local nextId = 1
 local nextAmbientAt = 0
 local nextPublishAt = 0
@@ -65,8 +68,128 @@ function Storms.spawn(o)
 	table.insert(Storms.cells, cell)
 	if cell.kind == "storm" then
 		table.insert(Sea.storms, cell)
+		-- Twisters circle the storm's heart, some one way and some the other.
+		for i = 1, (o.hunt and Config.SPOUT_COUNT_TEMPEST or Config.SPOUT_COUNT) do
+			table.insert(spouts, {
+				cell = cell,
+				angle = random:NextNumber(0, math.pi * 2),
+				orbit = random:NextNumber(0.25, 0.6),
+				turn = random:NextNumber(0.1, 0.18) * (i % 2 == 0 and -1 or 1),
+				part = nil,
+				hitAt = {},
+			})
+		end
 	end
 	return cell
+end
+
+-- Waterspouts ---------------------------------------------------------------------------
+-- A tall column of spray you can see from across the storm. Whatever it catches goes up and
+-- sideways: a boat is thrown off its line (and can land a clean one for a burst), a goblin is
+-- flung. It is a hazard to steer round, or a launch for the brave.
+local function spoutPart()
+	local column = Instance.new("Part")
+	column.Name = "Waterspout"
+	column.Shape = Enum.PartType.Cylinder
+	column.Size = Vector3.new(170, Config.SPOUT_RADIUS * 1.2, Config.SPOUT_RADIUS * 1.2)
+	column.Color = Color3.fromRGB(205, 225, 240)
+	column.Material = Enum.Material.SmoothPlastic
+	column.Transparency = 0.55
+	column.Anchored = true
+	column.CanCollide = false
+	column.CanTouch = false
+	column.CanQuery = false
+	column.CastShadow = false
+	local foot = Instance.new("Part")
+	foot.Name = "SpoutFoot"
+	foot.Shape = Enum.PartType.Cylinder
+	foot.Size = Vector3.new(1, Config.SPOUT_RADIUS * 2, Config.SPOUT_RADIUS * 2)
+	foot.Color = Color3.fromRGB(240, 248, 255)
+	foot.Material = Enum.Material.Neon
+	foot.Transparency = 0.6
+	foot.Anchored = true
+	foot.CanCollide = false
+	foot.CanTouch = false
+	foot.CanQuery = false
+	foot.CastShadow = false
+	foot.Parent = column
+	local mist = Instance.new("ParticleEmitter")
+	mist.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	mist.Color = ColorSequence.new(Color3.fromRGB(235, 245, 255))
+	mist.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 8), NumberSequenceKeypoint.new(1, 22) })
+	mist.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 1) })
+	mist.Lifetime = NumberRange.new(1, 1.6)
+	mist.Speed = NumberRange.new(20, 40)
+	mist.SpreadAngle = Vector2.new(60, 60)
+	mist.Rate = 30
+	mist.Parent = foot
+	column.Parent = refs.folders.fx
+	return column, foot
+end
+
+local function removeSpout(spout)
+	if spout.part then
+		spout.part:Destroy()
+		spout.part = nil
+	end
+end
+
+local function tickSpouts(dt, t)
+	for i = #spouts, 1, -1 do
+		local spout = spouts[i]
+		local cell = spout.cell
+		if t >= cell.endsAt then
+			removeSpout(spout)
+			table.remove(spouts, i)
+		elseif cell.s < 0.5 then
+			-- The storm is still building, or blowing itself out.
+			removeSpout(spout)
+		else
+			spout.angle += spout.turn * dt
+			local radius = cell.r * spout.orbit
+			local x, z = cell.x + math.cos(spout.angle) * radius, cell.z + math.sin(spout.angle) * radius
+			if not spout.part then
+				spout.part, spout.foot = spoutPart()
+			end
+			-- A cylinder's long axis is X: stand it up.
+			spout.part.CFrame = CFrame.new(x, 85, z) * CFrame.Angles(0, 0, math.rad(90))
+			spout.foot.CFrame = CFrame.new(x, 1, z) * CFrame.Angles(0, 0, math.rad(90))
+			-- The way the water circles inside it.
+			local function fling(position)
+				local out = Vector3.new(position.X - x, 0, position.Z - z)
+				out = out.Magnitude > 0.5 and out.Unit or Vector3.new(1, 0, 0)
+				local along = Vector3.new(-out.Z, 0, out.X) * (spout.turn > 0 and 1 or -1)
+				return (along * 0.8 + out * 0.6) * Config.SPOUT_PUSH + Vector3.new(0, Config.SPOUT_LIFT, 0)
+			end
+			for _, boat in ipairs(Boats.list) do
+				if
+					boat.state == "float"
+					and not boat.asleep
+					and t - (spout.hitAt[boat] or -10) > Config.SPOUT_REHIT
+				then
+					local p = boat.hull.Position
+					local reach = Config.SPOUT_RADIUS + boat.spec.size.X * 0.5
+					if (p.X - x) ^ 2 + (p.Z - z) ^ 2 < reach * reach and p.Y < 30 then
+						spout.hitAt[boat] = t
+						Boats.shove(boat, fling(p), Vector3.new(0, spout.turn > 0 and 1.4 or -1.4, 0))
+						Boats.damage(boat, Config.SPOUT_HULL_DAMAGE, "a waterspout")
+						Net.broadcast("Spout", { position = Vector3.new(x, 0, z) })
+					end
+				end
+			end
+			for _, player in ipairs(Players:GetPlayers()) do
+				local root, humanoid = Util.aliveRoot(player)
+				if root and not humanoid.SeatPart and t - (spout.hitAt[player] or -10) > Config.SPOUT_REHIT then
+					local p = root.Position
+					if (p.X - x) ^ 2 + (p.Z - z) ^ 2 < Config.SPOUT_RADIUS ^ 2 and p.Y < 30 then
+						spout.hitAt[player] = t
+						Util.knockback(root, fling(p) * 1.15, 0.25)
+						Net.broadcast("Spout", { position = Vector3.new(x, 0, z) })
+					end
+				end
+			end
+		end
+	end
 end
 
 local function remove(cell)
@@ -175,7 +298,7 @@ local function strike(cell)
 		for _, c in ipairs(candidates) do
 			roll -= c.weight
 			if roll <= 0 then
-				position = c.position + Vector3.new(c.velocity.X, 0, c.velocity.Z) * Config.LIGHTNING_DELAY * 0.5
+				position = c.position + Vector3.new(c.velocity.X, 0, c.velocity.Z) * Config.LIGHTNING_DELAY * 0.65
 				break
 			end
 		end
@@ -269,13 +392,22 @@ function Storms.tick(dt, raidActive)
 			end
 		end
 	end
+	tickSpouts(dt, t)
 	if t >= nextPublishAt then
 		nextPublishAt = t + 0.25
 		publish(t)
 	end
 end
 
+function Storms.build(worldRefs)
+	refs = worldRefs
+end
+
 function Storms.reset()
+	for _, spout in ipairs(spouts) do
+		removeSpout(spout)
+	end
+	table.clear(spouts)
 	table.clear(Storms.cells)
 	Sea.reset()
 	nextAmbientAt = now() + Config.STORM_FIRST_DELAY

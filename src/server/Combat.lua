@@ -1,13 +1,15 @@
 -- Sword and grapple: how players interfere with each other.
 --
 -- Sword (everyone spawns with one): click to swing. A hit on a carrier knocks
--- their loot loose. Carriers can't swing; their hands are full.
+-- their loot loose. A carrier's own swing is a slow, short, tiring bash.
 -- Grapple (F): one hook, two jobs.
 --   * Aimed at loot or near a carrier (aim is forgiving): steal it, if nothing
 --     solid is in the way. Cover and tunnels still protect carriers.
 --   * Aimed anywhere else: hook the first solid thing along your aim and the
---     client reels you in. Great for cliffs, masts and getting off the beach.
--- Carriers can't grapple at all (hands full), so it never carries loot home.
+--     client reels you in. Cliffs, masts, the beach, or a boat: a hook on something
+--     that moves follows it, and from a boat seat it yanks you out of the seat.
+-- Carriers can't steal with it (hands full) but can still pull themselves about,
+-- on a longer cooldown: an escape tool, not a free ride home.
 -- A miss (nothing in range) costs no cooldown.
 --
 -- The server picks every target and anchor. The client only sends its aim.
@@ -87,12 +89,17 @@ local function swing(player, tool)
 	end
 end
 
+-- Metal is dense: a real-weight sword outweighs a goblin's buoyancy and drags an idle swimmer
+-- to the sea floor. The blade only looks like metal.
+local LIGHT = PhysicalProperties.new(0.3, 0.3, 0.5)
+
 local function makeSwordParts(parent)
 	local handle = Instance.new("Part")
 	handle.Name = "Handle"
 	handle.Size = Vector3.new(0.5, 0.5, 4.5)
 	handle.Color = Color3.fromRGB(205, 210, 220)
 	handle.Material = Enum.Material.Metal
+	handle.CustomPhysicalProperties = LIGHT
 	handle.Parent = parent
 
 	local guard = Instance.new("Part")
@@ -100,6 +107,7 @@ local function makeSwordParts(parent)
 	guard.Size = Vector3.new(2, 0.5, 0.5)
 	guard.Color = Color3.fromRGB(255, 200, 35)
 	guard.Material = Enum.Material.Metal
+	guard.CustomPhysicalProperties = LIGHT
 	guard.Parent = parent
 	return handle, guard
 end

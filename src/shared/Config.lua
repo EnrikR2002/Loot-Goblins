@@ -4,7 +4,7 @@ local Config = {}
 
 -- Raid -----------------------------------------------------------------------
 -- A raid is one timed match. Bank the most gold before the timer runs out.
-Config.RAID_DURATION = 480 -- The sea is big now; a deep run takes a while.
+Config.RAID_DURATION = 420 -- Everything moves faster in V3, so a raid is a minute shorter (V2: 480).
 Config.LAST_CALL = 60 -- The HUD turns red for the final stretch.
 Config.INTERMISSION = 12
 Config.FIRST_INTERMISSION = 6 -- Gives the first players time to load in.
@@ -280,14 +280,14 @@ Config.LOOT = {
 -- Loot nobody takes grows more valuable: +1 gold per LOOT_INTEREST_EVERY seconds
 -- untouched, up to LOOT_INTEREST_MAX. A treasure everyone ignores becomes the best deal
 -- on the map, so the crowd is always deciding between "now, with company" and "later".
-Config.LOOT_INTEREST_EVERY = 80
+Config.LOOT_INTEREST_EVERY = 70
 Config.LOOT_INTEREST_MAX = 3
 
 Config.PICKUP_DISTANCE = 10
 Config.STEAL_HOLD = 0.6 -- Holding E to pry loot off its spot.
 Config.GRAB_HOLD = 0.15 -- Holding E to grab loose loot.
 Config.STEAL_IMMUNITY = 1.5 -- After loot changes hands, nobody can take it for this long.
-Config.THROW_SPEED = 55
+Config.THROW_SPEED = 62
 Config.THROW_UP_SPEED = 38
 Config.THROW_REGRAB_DELAY = 0.6 -- The thrower can't instantly catch their own throw.
 Config.THROWN_BANK_WINDOW = 8 -- Loose loot entering the Hoard banks for whoever last held it.
@@ -318,42 +318,46 @@ Config.HEAT_TIERS = {
 		name = "HUNTED",
 		at = 50,
 		color = Color3.fromRGB(255, 120, 40),
-		hint = "The Navy sails out. The Guardian hunts.",
+		hint = "A patrol ship cuts the thief off. The Guardian hunts.",
 	},
 	{
 		name = "FRENZY",
 		at = 80,
 		color = Color3.fromRGB(255, 45, 60),
-		hint = "The sea turns on the thief. A tempest is coming.",
+		hint = "A second ship mines the way home. A tempest chases the thief.",
 	},
 }
-Config.HEAT_CARRY_RATE = 0.5 -- Per carrier outside the ward, per second, for a 25-heat treasure (scaled by its heat).
-Config.HEAT_CARRY_RATE_CAP = 1.2
-Config.HEAT_DECAY_RATE = 0.8 -- Per second while nobody carries loot.
+-- Trips are shorter now that everything is faster, so carrying heats the world up quicker:
+-- a deep treasure still reaches HUNTED on the way home.
+Config.HEAT_CARRY_RATE = 0.8 -- Per carrier outside the ward, per second, for a 25-heat treasure (scaled by its heat). (V2: 0.5)
+Config.HEAT_CARRY_RATE_CAP = 2.0 -- (V2: 1.2)
+Config.HEAT_DECAY_RATE = 0.6 -- Per second while nobody carries loot. (V2: 0.8)
 Config.REVEAL_TIER = 2 -- ALERT and up: carriers are visible through walls.
 
 -- Guardian -------------------------------------------------------------------
 -- Wakes when the Golden Idol is taken, or when Heat reaches GUARDIAN_WAKE_TIER.
 Config.GUARDIAN_WAKE_TIER = 3
-Config.GUARDIAN_SPEED = 16
-Config.GUARDIAN_FRENZY_SPEED = 19
-Config.GUARDIAN_WADE_MULT = 0.6
-Config.GUARDIAN_LEASH = 260 -- From the temple island's center, until FRENZY.
+-- It outpaces a carrier who only runs (21.5-27) and loses to one who sprints (27-34), so
+-- stamina is the lifeline and a straight line is how you spend it.
+Config.GUARDIAN_SPEED = 27 -- (V2: 16)
+Config.GUARDIAN_FRENZY_SPEED = 32 -- (V2: 19)
+Config.GUARDIAN_WADE_MULT = 0.8
+Config.GUARDIAN_LEASH = 300 -- From the temple island's center, until FRENZY.
 Config.GUARDIAN_HIT_RANGE = 9
 Config.GUARDIAN_DAMAGE = 20
 Config.GUARDIAN_KNOCKBACK = 60
 Config.GUARDIAN_HIT_COOLDOWN = 1.2
-Config.GUARDIAN_RECOVER = 1 -- It stands still this long after a smash.
+Config.GUARDIAN_RECOVER = 0.8 -- It stands still this long after a smash.
 
 -- Totems ---------------------------------------------------------------------
 -- Stone watchers by the loot spots. They charge, then lob a blast at a carrier.
 Config.TOTEM_TIER = 2
-Config.TOTEM_RANGE = 110
+Config.TOTEM_RANGE = 130
 Config.TOTEM_TELEGRAPH = 0.9
 Config.TOTEM_INTERVAL = { [2] = 4.5, [3] = 3.2, [4] = 2.2 } -- By Heat tier.
-Config.TOTEM_LEAD = 0.25 -- Aims this many seconds ahead of the target.
+Config.TOTEM_LEAD = 0.35 -- Aims this many seconds ahead of the target.
 
-Config.BLAST_SPEED = 85
+Config.BLAST_SPEED = 125
 Config.BLAST_MAX_TIME = 2
 Config.BLAST_RADIUS = 8
 Config.BLAST_DAMAGE = 15
@@ -361,7 +365,7 @@ Config.BLAST_KNOCKBACK = 55
 
 -- Trouble (what each loot does when taken) -------------------------------------
 Config.BOULDER_SIZE = 11
-Config.BOULDER_SPEED = 30
+Config.BOULDER_SPEED = 44
 Config.BOULDER_DAMAGE = 35
 Config.BOULDER_KNOCKBACK = 70
 Config.BOULDER_LIFETIME = 10
@@ -378,7 +382,7 @@ Config.BELL_REVEAL_TIME = 20
 -- Combat ---------------------------------------------------------------------
 -- Everyone spawns with a sword. Carriers can't swing (hands full).
 Config.SWORD_DAMAGE = 20
-Config.SWORD_RANGE = 8
+Config.SWORD_RANGE = 9
 Config.SWORD_MIN_DOT = 0.3
 Config.SWORD_COOLDOWN = 0.55
 Config.SWORD_KNOCKBACK = 34
@@ -401,7 +405,7 @@ Config.GRAPPLE_KEEP_SPEED = 0.6 -- How much of the pull's sideways speed you kee
 -- Poltergoblin (was Soul Unbound, Yone's E) ----------------------------------------
 -- E leaves your body behind and sends your spirit out. Whatever loot the spirit
 -- holds rides the tether back to the body.
-Config.POLTER_DASH_DISTANCE = 14
+Config.POLTER_DASH_DISTANCE = 16
 Config.POLTER_DASH_TIME = 0.16
 Config.POLTER_DURATION = 5
 Config.POLTER_RECAST_DELAY = 0.5
@@ -409,7 +413,7 @@ Config.POLTER_COOLDOWN = 10 -- Starts on cast.
 Config.POLTER_SPEED_BONUS_START = 0.1
 Config.POLTER_SPEED_BONUS_END = 0.3
 Config.POLTER_ECHO_FRACTION = 0.35
-Config.POLTER_TETHER = 75 -- Straying farther from the body snaps you back.
+Config.POLTER_TETHER = 90 -- Straying farther from the body snaps you back.
 
 -- Sea ------------------------------------------------------------------------
 -- Waves, currents and storms are functions of position and time (Sea.lua). The
@@ -476,7 +480,7 @@ Config.BOAT_TYPES = {
 		draft = 3.8,
 		density = 0.85,
 		accel = 58, -- (V2: 27)
-		maxSpeed = 92, -- (V2: 54) Slower than an empty skiff, faster than a cutter or a laden skiff.
+		maxSpeed = 88, -- (V2: 54) Slower than an empty skiff, faster than a cutter or a heavily laden skiff.
 		turn = 1.15,
 		turnFade = 120,
 		grip = 2.4,
@@ -505,6 +509,7 @@ Config.BOAT_WATER_DRAG = 0.166 -- Measured: Terrain water slows a hull by this s
 Config.BOAT_BUOY_DAMPING = 1.1 -- How quickly a hull stops bouncing on its springs (V2: 0.85).
 Config.BOAT_AIR_CONTROL = 0.35 -- Share of the steering you keep while airborne.
 Config.BOAT_AIR_MIN = 0.4 -- Seconds off the water before a touchdown counts as a landing.
+Config.BOAT_FLIP_TIME = 1 -- Seconds a hull lies capsized before it pops back upright.
 Config.BOAT_LANDING_KICK = 12 -- Speed added by a clean landing.
 Config.BOAT_PAYLOAD_DRAG = 0.03 -- Each unit of loot weight aboard cuts thrust and top speed by this much.
 
@@ -590,8 +595,8 @@ Config.WINDMILL_RAGE_TIME = 25
 Config.STORM_FIRST_DELAY = 50 -- Quiet time at the start of a raid.
 Config.STORM_GAP_MIN = 95 -- Seconds between ambient storms (then 120 s or so of weather).
 Config.STORM_GAP_MAX = 140
-Config.STORM_SPEED_MIN = 9
-Config.STORM_SPEED_MAX = 16 -- A boat does 56-72, so you can always outrun one.
+Config.STORM_SPEED_MIN = 16
+Config.STORM_SPEED_MAX = 28 -- A boat does 86-108, so you can always outrun one.
 Config.STORM_FADE = 10 -- Seconds a storm takes to build and to fade.
 Config.LIGHTNING_FIRST_DELAY = 6
 Config.LIGHTNING_GAP_MIN = 2.4
@@ -599,41 +604,90 @@ Config.LIGHTNING_GAP_MAX = 4.2
 Config.LIGHTNING_DELAY = 1.3 -- From marker to strike.
 Config.LIGHTNING_DAMAGE = 24
 Config.LIGHTNING_HULL_DAMAGE = 48
-Config.TEMPEST_DISTANCE = 520 -- How far off the hunting storm starts.
-Config.TEMPEST_SPEED = 15
-Config.TEMPEST_DURATION = 85
+Config.TEMPEST_DISTANCE = 560 -- How far off the hunting storm starts.
+Config.TEMPEST_SPEED = 42 -- Slower than any boat, faster than anyone on foot (V2: 15).
+Config.TEMPEST_DURATION = 80
+
+-- Waterspouts: twisters that wander inside a storm. One throws whatever it catches into the
+-- air and off its line. They are tall and easy to see: a hazard to steer around, or a launch.
+Config.SPOUT_COUNT = 2 -- Per ordinary storm.
+Config.SPOUT_COUNT_TEMPEST = 3
+Config.SPOUT_RADIUS = 18
+Config.SPOUT_LIFT = 64 -- Upward speed it gives a boat or a goblin.
+Config.SPOUT_PUSH = 26 -- Sideways speed, along its spin.
+Config.SPOUT_HULL_DAMAGE = 14
+Config.SPOUT_REHIT = 5 -- Seconds before the same spout can throw the same thing again.
 Config.FRENZY_ROUGH = 0.45 -- Extra swell everywhere at FRENZY heat.
 
 -- The Navy -----------------------------------------------------------------------------------------------
 Config.NAVY_MAX = 3
-Config.NAVY_SIGHT = 520 -- Sight range in clear weather (needs a clear line).
-Config.NAVY_SEARCH_TIME = 22 -- They check your last position this long, then go home.
-Config.NAVY_STANDOFF = 95 -- They hold at this range and shell you.
-Config.NAVY_FIRE_RANGE = 300
-Config.NAVY_FIRE_GAP = 4.2
-Config.NAVY_FIRST_SHOT_DELAY = 6
-Config.NAVY_SHELL_DELAY = 1.7 -- Marker to landing: time to read it and move.
+Config.NAVY_SIGHT = 600 -- Sight range in clear weather (needs a clear line).
+Config.NAVY_SEARCH_TIME = 20 -- They check your last position this long, then go home.
+Config.NAVY_LEAVE_TIME = 25 -- A ship heading home leaves the sea after this long.
+Config.NAVY_STANDOFF = 95 -- Against a thief ashore they hold at this range and shell.
+Config.NAVY_FIRE_RANGE = 320
+Config.NAVY_FIRE_GAP = 3.6
+Config.NAVY_FIRST_SHOT_DELAY = 5
+Config.NAVY_SHELL_DELAY = 1.5 -- Marker to landing: time to read it and move.
 Config.NAVY_SHELL_DAMAGE = 22
-Config.NAVY_SHELL_HULL_DAMAGE = 60
-Config.NAVY_REPLAN = 1.4
-Config.NAVY_DISPATCH_GAP = 22
+Config.NAVY_SHELL_HULL_DAMAGE = 55
+Config.NAVY_SPREAD_RANGE = 140 -- Closer than this they fire a spread along your course.
+Config.NAVY_SPREAD_SHOTS = 3
+Config.NAVY_REPLAN = 1.0
+Config.NAVY_DISPATCH_GAP = 20
+-- Where they come from: the fort if it is this close to the thief, otherwise the horizon, on
+-- the side the thief has to sail home through.
+Config.NAVY_BASE_RANGE = 900
+Config.NAVY_SPAWN_MIN = 750 -- Far enough that you see it coming and have time to choose a course.
+Config.NAVY_SPAWN_MAX = 950
+Config.NAVY_LEAD_MAX = 5 -- A hunter aims at most this many seconds ahead of the thief.
+Config.NAVY_BLOCK_AHEAD = 280 -- A blocker sits this far along the thief's line home...
+Config.NAVY_BLOCK_RELEASE = 150 -- ...and turns hunter when the thief gets this close.
+Config.NAVY_RAM_RANGE = 170 -- Lined up within this range of a boat, a ship sounds its horn and charges.
+Config.NAVY_RAM_TIME = 2.6 -- The charge holds one bearing for this long: turn and it misses.
+Config.NAVY_RAM_GAP = 11
+Config.NAVY_FIRST_RAM_DELAY = 9 -- A new ship does not charge until it has been out this long.
+Config.NAVY_PEEL_TIME = 3.5 -- After a charge the ship swings out wide for this long before closing again.
+Config.NAVY_PEEL_DISTANCE = 180
+Config.NAVY_STATION = 110 -- Between charges it runs alongside at this range and fires.
+
+-- Mines: a blocker sows them across the way home. Bright, still, and they go off for anyone.
+Config.MINE_MAX = 10 -- On the whole sea at once (the oldest goes when another is laid).
+Config.MINE_LAY_GAP = 2.4 -- Seconds between mines while a blocker is laying.
+Config.MINE_LAY_RANGE = 480 -- Only while the thief is this close.
+Config.MINE_ARM_TIME = 1.2
+Config.MINE_LIFETIME = 40
+Config.MINE_TRIGGER = 8 -- A hull or a swimmer this close sets it off.
+Config.MINE_RADIUS = 16
+Config.MINE_DAMAGE = 24
+Config.MINE_HULL_DAMAGE = 70
 
 -- Heat reactions --------------------------------------------------------------------------------------------
-Config.FLARE_GAP = 7 -- ALERT and up: a carrier outside the ward fires a flare this often.
+Config.FLARE_GAP = 6 -- ALERT and up: a carrier outside the ward fires a flare this often.
 
 -- The Guardian's new moves -------------------------------------------------------------------------------
-Config.GUARDIAN_LEAP_MIN = 28
-Config.GUARDIAN_LEAP_MAX = 95
-Config.GUARDIAN_LEAP_WINDUP = 0.95
+Config.GUARDIAN_LEAP_MIN = 30
+Config.GUARDIAN_LEAP_MAX = 150 -- (V2: 95)
+Config.GUARDIAN_LEAP_WINDUP = 0.9
 Config.GUARDIAN_LEAP_RADIUS = 15
 Config.GUARDIAN_LEAP_DAMAGE = 25
 Config.GUARDIAN_LEAP_KNOCKBACK = 78
-Config.GUARDIAN_LEAP_GAP = 7
-Config.GUARDIAN_THROW_MIN = 80
-Config.GUARDIAN_THROW_MAX = 200
-Config.GUARDIAN_THROW_DELAY = 1.6
+Config.GUARDIAN_LEAP_GAP = 4.5 -- (V2: 7)
+Config.GUARDIAN_THROW_MIN = 70
+Config.GUARDIAN_THROW_MAX = 260 -- Far enough to reach a boat pulling away (V2: 200).
+Config.GUARDIAN_THROW_DELAY = 1.4
 Config.GUARDIAN_THROW_RADIUS = 11
-Config.GUARDIAN_THROW_GAP = 6
+Config.GUARDIAN_THROW_GAP = 4 -- (V2: 6)
+-- STOMP: up close it raises both fists, slams the ground, and a ring races outward along it.
+-- Anyone standing on the ground when the ring passes is thrown and drops their loot. Be in the
+-- air (jump, air jump, dash off a ledge) and it passes under you.
+Config.GUARDIAN_STOMP_RANGE = 60 -- It stomps when its target is this close.
+Config.GUARDIAN_STOMP_WINDUP = 0.8
+Config.GUARDIAN_STOMP_RADIUS = 75 -- How far the ring travels.
+Config.GUARDIAN_STOMP_SPEED = 55 -- Studs/s: the ring is 6 studs deep, so the jump has to be timed.
+Config.GUARDIAN_STOMP_GAP = 6
+Config.GUARDIAN_STOMP_DAMAGE = 14
+Config.GUARDIAN_STOMP_KNOCKBACK = 46
 
 -- Per-treasure trouble ---------------------------------------------------------------------------------------
 Config.GULLS_REVEAL_TIME = 10

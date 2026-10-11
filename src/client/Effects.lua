@@ -321,6 +321,30 @@ function Effects.marker(position, radius, duration, color, style)
 	Effects.sound("blip", { position = position, speed = 1.4, volume = 0.5, range = 250 })
 end
 
+-- The Guardian's stomp. While its fists are up the whole reach of the ring shows faintly; then
+-- the ring itself races out along the ground. Its leading edge is what you jump.
+function Effects.shockwave(position, radius, windup, speed)
+	local color = Color3.fromRGB(255, 150, 60)
+	local flat = CFrame.new(position + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	local travel = radius / speed
+	local reach = fxPart(Vector3.new(0.3, radius * 2, radius * 2), flat, color, Enum.PartType.Cylinder)
+	reach.Transparency = 0.9
+	Debris:AddItem(reach, windup + travel)
+	Effects.sound("blip", { position = position, speed = 0.5, volume = 1, range = 300 })
+	task.delay(windup, function()
+		local ring = fxPart(Vector3.new(1.4, 2, 2), flat, color, Enum.PartType.Cylinder)
+		ring.Transparency = 0.4
+		TweenService:Create(
+			ring,
+			TweenInfo.new(travel, Enum.EasingStyle.Linear),
+			{ Size = Vector3.new(1.4, radius * 2, radius * 2), Transparency = 0.82 }
+		):Play()
+		Debris:AddItem(ring, travel + 0.1)
+		Effects.sound("boom", { position = position, speed = 0.5, volume = 1, range = 400 })
+		Effects.shakeAt(position, 1.6, 0.5, 150)
+	end)
+end
+
 -- Lightning: a jagged bolt from the clouds, a flash of sky and thunder that arrives late.
 function Effects.bolt(position)
 	local top = position + Vector3.new(math.random(-30, 30), 320, math.random(-30, 30))

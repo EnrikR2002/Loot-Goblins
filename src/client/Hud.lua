@@ -27,6 +27,10 @@ local results, resultsTitle, resultsList, resultsFooter, help
 local slots = {}
 local boardRows = {}
 local boatPanel, boatSpeed, boatHull, boatHullFill, boatBoost, boatBoostFill, boatDrift, boatDriftFill, boatNote
+local LOOT_WEIGHT = {}
+for _, def in ipairs(Config.LOOT) do
+	LOOT_WEIGHT[def.id] = def.weight or 1
+end
 -- The drift meter's colour says which burst releasing now would give: none, small, big.
 local DRIFT_COLORS = {
 	[0] = Color3.fromRGB(150, 160, 180),
@@ -274,13 +278,20 @@ local function buildAbilities()
 		slots[key].frame.Parent = row
 	end
 
-	-- Sprint sits bottom-left, clear of the hotbar and the objective line. Its fill is stamina.
+	-- Stamina sits bottom-left, clear of the hotbar and the objective line. It pays for
+	-- sprint, dash and air jump; running is free. The dash sits beside it.
 	slots.sprint = makeSlot("SHIFT", "SPRINT", STAMINA)
 	slots.sprint.frame.Name = "Sprint"
 	slots.sprint.frame.AnchorPoint = Vector2.new(0, 1)
 	slots.sprint.frame.Position = UDim2.new(0, 12, 1, -12)
-	slots.sprint.frame.Size = UDim2.fromOffset(200, 52)
+	slots.sprint.frame.Size = UDim2.fromOffset(220, 52)
 	slots.sprint.frame.Parent = gui
+	slots.dash = makeSlot("C", "DASH", STAMINA)
+	slots.dash.frame.Name = "Dash"
+	slots.dash.frame.AnchorPoint = Vector2.new(0, 1)
+	slots.dash.frame.Position = UDim2.new(0, 238, 1, -12)
+	slots.dash.frame.Size = UDim2.fromOffset(160, 52)
+	slots.dash.frame.Parent = gui
 end
 
 -- Shown only while you sit in a boat: speed, hull health, boost, anchor and what the cargo costs you.
@@ -396,13 +407,24 @@ end
 local HELP_LINES = {
 	{ "STEAL", "Hold E on a glowing treasure to pry it off its spot. That causes TROUBLE. M opens the map." },
 	{ "BANK", "Carry it to THE HOARD (gold beam at Goblin Cove). Deeper treasure is worth more." },
-	{ "BOATS", "E on a boat to board. W/A/S/D drives, SHIFT boosts, R drops anchor. Mind the waves and storms." },
-	{ "MOVE", "Hold SHIFT to sprint (stamina). F on a cliff, wall or mast hooks you up to it." },
+	{
+		"BOATS",
+		"E boards. W/S/A/D drive (S brakes), SHIFT boosts. Hold C in a turn to DRIFT; let go for a speed burst.",
+	},
+	{
+		"MOVE",
+		"You run fast for free. Stamina buys SHIFT sprint, C dash (also in the air) and a second jump in the air.",
+	},
+	{ "HOOK", "F on a cliff, wall, mast or a passing boat reels you to it. Jump to let go and keep the swing." },
 	{ "HEAT", "Stealing and carrying raise Heat. High Heat sends flares, the Navy and a tempest after the CARRIER." },
-	{ "FIGHT", "Sword hits knock loot loose (carriers swing slow and tired). F near loot or a carrier steals it." },
+	{
+		"FIGHT",
+		"Sword hits knock loot loose. F near loot or a carrier steals it. Loot makes every stamina cost bigger.",
+	},
 	{ "TOYS", "G throws a powder keg (take one from keg crates). E at a cannon fires it where you aim." },
 	{ "POLTERGOBLIN", "E: leave your body, run as a spirit, snap back. Loot you grab comes back with you." },
-	{ "WIN", "Most gold when the raid timer ends wins. Red rings on the ground = something lands there. Move!" },
+	{ "DANGER", "A ring on the ground = something lands there: move. The Guardian's ring races outward: jump it." },
+	{ "WIN", "Most gold when the raid timer ends wins." },
 }
 
 local function buildHelp()
@@ -410,7 +432,7 @@ local function buildHelp()
 		Name = "Help",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(700, 408),
+		Size = UDim2.fromOffset(760, 480),
 		BackgroundTransparency = 0.1,
 		Visible = false,
 		ZIndex = 8,
@@ -732,20 +754,31 @@ local function updateAbilities(now, root, carrying)
 		local length = player:GetAttribute("GrappleCooldown") or Config.GRAPPLE_COOLDOWN
 		setSlot(slots.grapple, 1 - left / length, string.format("%.1fs", left), false)
 	else
-		setSlot(slots.grapple, 1, carrying and "hands full" or "hook / steal", not carrying)
+		setSlot(slots.grapple, 1, carrying and "pull only (hands full)" or "hook / steal", true)
 	end
 
 	local winded = player:GetAttribute("Winded") == true
 	local sprinting = player:GetAttribute("Sprinting") == true
-	shownStamina += ((player:GetAttribute("Stamina") or Config.STAMINA_MAX) - shownStamina) * 0.3
+	local stamina = player:GetAttribute("Stamina") or Config.STAMINA_MAX
+	shownStamina += (stamina - shownStamina) * 0.3
 	setSlot(
 		slots.sprint,
 		shownStamina / Config.STAMINA_MAX,
-		winded and "OUT OF BREATH" or (sprinting and "sprinting!" or "hold to run"),
+		winded and "OUT OF BREATH" or (sprinting and "sprinting!" or "stamina: sprint, dash, air jump"),
 		not winded
 	)
 	slots.sprint.fill.BackgroundColor3 = winded and WINDED or STAMINA
 	slots.sprint.stroke.Color = winded and WINDED or STAMINA
+
+	-- Loot makes every stamina cost bigger, by its weight: the dash slot shows the real price.
+	local dashCost = Config.DASH_COST * (1 + (LOOT_WEIGHT[carrying] or 0) * Config.CARRY_STAMINA_PER_WEIGHT)
+	local seated = BoatDrive.info().driving
+	setSlot(
+		slots.dash,
+		math.clamp(stamina / dashCost, 0, 1),
+		seated and "at the wheel: DRIFT" or string.format("dodge, any time (%d)", math.floor(dashCost + 0.5)),
+		stamina >= dashCost or seated
+	)
 
 	setSlot(slots.throw, carrying and 1 or 0, carrying and "throw your loot" or "nothing held", carrying)
 	setSlot(slots.sword, 1, carrying and "heavy bash (tiring)" or "knocks loot loose", true)
@@ -858,7 +891,7 @@ local function updateObjective(now, phase, root, carrying)
 			"You're home. Take a boat (E), sail out, steal treasure (M map, compass up top), bring it back here."
 		objective.TextColor3 = WARD
 	elseif inBoat then
-		objective.Text = "Sailing: W/A/S/D steer, SHIFT boost, R anchor. Mind the storms and the shallows."
+		objective.Text = "Sailing: W/A/S/D steer, S brakes, SHIFT boost, hold C in a turn to drift. Mind the storms."
 		objective.TextColor3 = WHITE
 	else
 		objective.Text = "Steal treasure (light pillars) or rob a carrier, then bring it to THE HOARD."

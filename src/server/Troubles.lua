@@ -210,7 +210,7 @@ Threats.handlers.Avalanche = function()
 			pcall(function()
 				ball:SetNetworkOwner(nil)
 			end)
-			ball.AssemblyLinearVelocity = site.direction * 18
+			ball.AssemblyLinearVelocity = site.direction * 28
 			Threats.addRoller(ball, size / 2, 32, 72, 14, 16)
 			Net.broadcast("Rumble", { position = ball.Position })
 		end)

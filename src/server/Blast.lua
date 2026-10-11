@@ -20,6 +20,7 @@ local Poltergoblin = require(script.Parent.Poltergoblin)
 local Destructibles = require(script.Parent.Destructibles)
 
 local Blast = {}
+Blast.Hit = Util.signal() -- (position, radius): something just went bang here (mines listen).
 local generation = 0 -- Bumped on reset, so strikes from an old raid never land.
 
 -- opts: radius, damage, knockback, hullDamage, boatPush, breakPower, lootReason, owner (Player),
@@ -42,7 +43,9 @@ function Blast.at(position, opts)
 					end
 				end
 				local push = (opts.knockback or 0) * falloff * (isOwner and 0.5 or 1)
-				if push > 0 then
+				-- Someone sitting in a boat is part of the boat: the hull takes the shove
+				-- (Boats.hitAt below), not the goblin, or one blast would fling the whole boat twice.
+				if push > 0 and not humanoid.SeatPart then
 					local direction = distance > 0.1 and offset.Unit or Vector3.yAxis
 					Util.knockback(root, direction * push + Vector3.new(0, push * 0.55, 0), 0.22)
 				end
@@ -70,6 +73,7 @@ function Blast.at(position, opts)
 		Destructibles.blastAt(position, radius, opts.breakPower)
 	end
 	Net.broadcast("Blast", { position = position, radius = radius, color = opts.color })
+	Blast.Hit:Fire(position, radius)
 end
 
 -- Marks a spot, then blasts it after `delay` seconds. The marker is the warning: it closes in

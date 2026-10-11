@@ -89,11 +89,20 @@ local guardian = {
 	leap = nil,
 	nextLeapAt = 0,
 	nextThrowAt = 0,
+	stomp = nil,
+	nextStompAt = 0,
 }
 
 local groundParams = RaycastParams.new()
 groundParams.FilterType = Enum.RaycastFilterType.Include
 groundParams.IgnoreWater = false
+
+-- Stomp rings racing outward along the ground: { origin, startedAt, last, hit = {} }.
+local waves = {}
+-- What counts as standing on something when a ring passes (solid things, not the sea).
+local standParams = RaycastParams.new()
+standParams.FilterType = Enum.RaycastFilterType.Include
+standParams.IgnoreWater = true
 
 local function buildGuardian()
 	local model = Instance.new("Model")
@@ -192,6 +201,7 @@ local function buildGuardian()
 	model.Parent = refs.folders.threats
 	guardian.model = model
 	groundParams.FilterDescendantsInstances = { workspace.Terrain, refs.folders.ground }
+	standParams.FilterDescendantsInstances = { workspace.Terrain, refs.folders.ground, refs.folders.structures }
 end
 
 local function poseGuardian()
@@ -208,12 +218,14 @@ local function poseGuardian()
 		base *= CFrame.Angles(math.rad(12), 0, 0)
 	end
 	local parts, cframes = {}, {}
+	-- Both fists high overhead while it winds up a stomp: the tell to get off the ground.
+	local raised = g.stomp ~= nil and 2.8 or nil
 	for _, entry in ipairs(g.parts) do
 		local angle = 0
 		if entry.name == "ArmL" or entry.name == "FistL" then
-			angle = recovering and 1.3 or swing
+			angle = raised or (recovering and 1.3 or swing)
 		elseif entry.name == "ArmR" or entry.name == "FistR" then
-			angle = recovering and 1.3 or -swing
+			angle = raised or (recovering and 1.3 or -swing)
 		elseif entry.name == "LegL" then
 			angle = -swing * 0.8
 		elseif entry.name == "LegR" then
@@ -245,6 +257,7 @@ function Threats.wakeGuardian(reason)
 	-- A grace period before its ranged moves, so the opening is a warning, not an ambush.
 	guardian.nextLeapAt = now() + 2.5
 	guardian.nextThrowAt = now() + 3.5
+	guardian.nextStompAt = now() + 2
 	setGuardianLook()
 	poseGuardian()
 	Net.broadcast("GuardianWake", { position = guardian.position, reason = reason })
@@ -317,7 +330,8 @@ local function stepGuardianToward(dt, goal, stopDistance)
 	return walking
 end
 
--- The Guardian's two answers to a carrier who keeps their distance. Both are announced first.
+-- The Guardian's moves beyond walking you down. All of them are announced first.
+--   STOMP  up close: both fists go up, then a ring races out along the ground. Be in the air.
 --   LEAP   a marked circle where you will be; it crouches, then jumps and lands on it.
 --   THROW  a marked circle for a boulder from range, which is how it reaches boats and ledges.
 local function guardianAttacks(g, targetPlayer, t)
@@ -328,6 +342,21 @@ local function guardianAttacks(g, targetPlayer, t)
 	local flatDistance = Util.flatDistance(root.Position, g.position)
 	local v = root.AssemblyLinearVelocity
 	local velocity = Vector3.new(v.X, 0, v.Z)
+	if
+		t >= g.nextStompAt
+		and flatDistance <= Config.GUARDIAN_STOMP_RANGE
+		and math.abs(root.Position.Y - 3 - g.position.Y) < 12
+	then
+		g.nextStompAt = t + (frenzy() and Config.GUARDIAN_STOMP_GAP * 0.7 or Config.GUARDIAN_STOMP_GAP)
+		g.stomp = { releaseAt = t + Config.GUARDIAN_STOMP_WINDUP }
+		Net.broadcast("GuardianStomp", {
+			position = g.position,
+			radius = Config.GUARDIAN_STOMP_RADIUS,
+			windup = Config.GUARDIAN_STOMP_WINDUP,
+			speed = Config.GUARDIAN_STOMP_SPEED,
+		})
+		return
+	end
 	if t >= g.nextLeapAt and flatDistance >= Config.GUARDIAN_LEAP_MIN and flatDistance <= Config.GUARDIAN_LEAP_MAX then
 		local aim = root.Position + velocity * (Config.GUARDIAN_LEAP_WINDUP + 0.3)
 		if not inWard(aim, 6) and inLeash(aim) then
@@ -413,6 +442,16 @@ local function tickGuardian(dt)
 		poseGuardian()
 		return
 	end
+	if g.stomp then
+		if t >= g.stomp.releaseAt then
+			g.stomp = nil
+			g.recoverUntil = t + 0.7
+			table.insert(waves, { origin = g.position, startedAt = t, last = 0, hit = {} })
+			Net.broadcast("GuardianSmash", { position = g.position })
+		end
+		poseGuardian()
+		return
+	end
 	if t < g.recoverUntil then
 		poseGuardian()
 		return
@@ -469,8 +508,42 @@ local function tickGuardian(dt)
 	poseGuardian()
 end
 
+-- A stomp's ring: it only hurts whoever is standing on the ground as it passes under them.
+local function tickWaves(t)
+	for i = #waves, 1, -1 do
+		local wave = waves[i]
+		local radius = (t - wave.startedAt) * Config.GUARDIAN_STOMP_SPEED
+		for _, player in ipairs(Players:GetPlayers()) do
+			local root, humanoid = Util.aliveRoot(player)
+			if root and not wave.hit[player] and not humanoid.SeatPart then
+				local distance = Util.flatDistance(root.Position, wave.origin)
+				local level = math.abs(root.Position.Y - 3 - wave.origin.Y) < 10
+				if level and distance >= wave.last - 3 and distance <= radius + 3 then
+					-- A standing goblin's root is 3 studs up; anything higher is a jump.
+					if workspace:Raycast(root.Position, Vector3.new(0, -5, 0), standParams) then
+						wave.hit[player] = true
+						Util.damage(humanoid, Config.GUARDIAN_STOMP_DAMAGE)
+						local away = root.Position - wave.origin
+						away = Vector3.new(away.X, 0, away.Z)
+						away = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1)
+						Util.knockback(root, away * 40 + Vector3.new(0, Config.GUARDIAN_STOMP_KNOCKBACK, 0), 0.2)
+						Loot.knockLoose(player, wave.origin, "guardian", nil)
+					end
+				end
+			end
+		end
+		wave.last = radius
+		if radius > Config.GUARDIAN_STOMP_RADIUS then
+			table.remove(waves, i)
+		end
+	end
+end
+
 local function resetGuardian()
 	local g = guardian
+	g.stomp = nil
+	g.nextStompAt = 0
+	table.clear(waves)
 	g.state = "sleep"
 	g.position = refs.guardianLair.Position
 	g.yaw = select(2, refs.guardianLair:ToEulerAnglesYXZ())
@@ -899,6 +972,7 @@ end
 
 function Threats.tick(dt)
 	tickGuardian(dt)
+	tickWaves(now())
 	tickTotems()
 	tickProjectiles(dt)
 	tickRollers()

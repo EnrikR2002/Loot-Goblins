@@ -234,7 +234,7 @@ function BoatSim.step(boat, input, dt, t)
 	local lean = steer * spec.lean * math.clamp(speedAbs / (spec.maxSpeed * 0.6), 0, 1) * wet * (loose and 1.5 or 1)
 	local tilt = up:Cross(Vector3.yAxis)
 	local flatSpin = spin - up * yawNow
-	local righting = 14 * (0.35 + 0.65 * wet)
+	local righting = 14 * (0.55 + 0.45 * wet)
 	hull:ApplyAngularImpulse((cf.LookVector * lean + tilt * righting - flatSpin * 2.2 * (0.4 + wet)) * rollInertia * dt)
 
 	-- Air time, and a burst for landing clean (upright, pointing the way you travel).
@@ -242,7 +242,7 @@ function BoatSim.step(boat, input, dt, t)
 		boat.airTime += dt
 	elseif wet >= 0.3 then
 		if boat.airTime >= Config.BOAT_AIR_MIN then
-			if up.Y > 0.9 and slip < 0.3 and forwardSpeed > spec.maxSpeed * 0.4 and not sinking then
+			if up.Y > 0.8 and slip < 0.3 and forwardSpeed > spec.maxSpeed * 0.4 and not sinking then
 				boat.miniUntil = math.max(boat.miniUntil, t + Config.BOAT_MINI_TIME[1])
 				hull:ApplyImpulse(forward * Config.BOAT_LANDING_KICK * mass)
 				out.event = "landing"
@@ -253,13 +253,18 @@ function BoatSim.step(boat, input, dt, t)
 		boat.airTime = 0
 	end
 
-	-- Capsized (or nearly): flip back upright with a hop, so no one is ever stuck.
-	if up.Y < 0.25 then
+	-- Capsized (or nearly) for a moment: the hull pops back upright where it lies, with a hop,
+	-- so no one is ever stuck under a boat. (A push is not enough: an upside-down hull has no
+	-- buoyancy points in the water and simply sits there.)
+	if up.Y < 0.3 then
 		boat.flippedFor += dt
-		if boat.flippedFor > 1.2 then
+		if boat.flippedFor > Config.BOAT_FLIP_TIME then
 			boat.flippedFor = 0
-			hull:ApplyAngularImpulse(forward * (up.Y < 0 and 1 or -1) * rollInertia * 3.2)
-			hull:ApplyImpulse(Vector3.new(0, mass * 22, 0))
+			local at = position + Vector3.new(0, 2.5, 0)
+			hull.CFrame = CFrame.lookAt(at, at + forward)
+			hull.AssemblyAngularVelocity = Vector3.zero
+			hull.AssemblyLinearVelocity = Vector3.new(velocity.X * 0.6, 14, velocity.Z * 0.6)
+			out.event = "splash"
 		end
 	else
 		boat.flippedFor = 0

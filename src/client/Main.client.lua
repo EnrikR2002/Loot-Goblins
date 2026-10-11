@@ -278,13 +278,30 @@ local function stopPull(pop)
 	current.holder:Destroy()
 	current.rope:Destroy()
 	local _, _, root = getCharacter()
-	if root and pop then
-		-- A hop at the end, so a hook on a ledge lifts you over its lip. You keep most of the
-		-- swing, so a pull flows straight into a run, a jump or a dash.
-		local v = root.AssemblyLinearVelocity
-		local keep = Config.GRAPPLE_KEEP_SPEED
-		root.AssemblyLinearVelocity = Vector3.new(v.X * keep, Config.GRAPPLE_POP_SPEED, v.Z * keep)
+	if not root or not pop then
+		return
 	end
+	local v = root.AssemblyLinearVelocity
+	if current.part and current.part.Parent then
+		-- Hooked something that moves: arrive at its speed, not ours, so it does not sail out
+		-- from under us. If it is a boat with a free seat, take the seat.
+		local carry = current.part.AssemblyLinearVelocity
+		root.AssemblyLinearVelocity = Vector3.new(carry.X, Config.GRAPPLE_POP_SPEED * 0.6, carry.Z)
+		local model = current.part:FindFirstAncestorOfClass("Model")
+		local hull = model and model:FindFirstChild("Hull")
+		local board = hull and hull:FindFirstChild("BoardPrompt")
+		if board and board.Enabled then
+			board:InputHoldBegin()
+			task.delay(0.1, function()
+				board:InputHoldEnd()
+			end)
+		end
+		return
+	end
+	-- A hop at the end, so a hook on a ledge lifts you over its lip. You keep most of the
+	-- swing, so a pull flows straight into a run, a jump or a dash.
+	local keep = Config.GRAPPLE_KEEP_SPEED
+	root.AssemblyLinearVelocity = Vector3.new(v.X * keep, Config.GRAPPLE_POP_SPEED, v.Z * keep)
 end
 
 -- Where the hook is right now. A hook on a boat rides the boat.
@@ -969,6 +986,33 @@ end
 
 function handlers.GuardianThrow(p)
 	Effects.shell(p.from, p.to, p.duration or 1.6)
+end
+
+function handlers.GuardianStomp(p)
+	Effects.shockwave(p.position, p.radius or 70, p.windup or 0.8, p.speed or 55)
+	local _, _, root = getCharacter()
+	if root and (root.Position - p.position).Magnitude < (p.radius or 70) + 15 then
+		Hud.banner("STOMP! BE IN THE AIR WHEN THE RING REACHES YOU", DANGER, 1.6)
+	end
+end
+
+-- A patrol ship has lined you up and is coming through.
+function handlers.NavyRam(p)
+	for i = 0, 2 do
+		task.delay(i * 0.22, function()
+			Effects.sound("rise", { position = p.position, speed = 0.45, volume = 1, range = 900 })
+		end)
+	end
+	if isMe(p) then
+		Hud.banner("RAMMING SPEED! TURN HARD OR DRIFT OUT OF ITS WAY", DANGER, 2.2)
+		Hud.flash(DANGER, 0.2)
+	end
+end
+
+-- A waterspout caught something.
+function handlers.Spout(p)
+	Effects.spray(p.position, 0.8)
+	Effects.sound("whoosh", { position = p.position, speed = 0.5, volume = 1, range = 400 })
 end
 
 function handlers.CannonFire(p)
