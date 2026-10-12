@@ -807,7 +807,11 @@ local function updateBoatPanel(now)
 	local maxHealth = model:GetAttribute("MaxHealth") or spec.health
 	local fraction = math.clamp(health / maxHealth, 0, 1)
 	local drive = BoatDrive.info()
-	boatSpeed.Text = string.format("%s  %d", string.upper(spec.name), math.floor(drive.speed + 0.5))
+	-- Speed straight from the hull, so passengers see it too.
+	local hull = model:FindFirstChild("Hull")
+	local velocity = hull and hull.AssemblyLinearVelocity or Vector3.zero
+	local speed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
+	boatSpeed.Text = string.format("%s  %d", string.upper(spec.name), math.floor(speed + 0.5))
 	-- Drift: the meter fills while you slide; its colour is the burst you get for letting go.
 	local full = Config.BOAT_DRIFT_CHARGE[2]
 	boatDriftFill.Size = UDim2.fromScale(math.clamp(drive.charge / full, 0, 1), 1)

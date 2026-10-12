@@ -23,11 +23,13 @@ local Net = require(script.Parent.Net)
 local Loot = require(script.Parent.Loot)
 local Movement = require(script.Parent.Movement)
 local Poltergoblin = require(script.Parent.Poltergoblin)
+local Boats = require(script.Parent.Boats)
 
 local Combat = {}
 local refs
 local lastSwing = {}
 local lastGrapple = {}
+local boatHook = {} -- player -> { boat, at }: the boat their hook just caught.
 local GUARD_OFFSET = CFrame.new(0, 0, -1)
 local GRAPPLE_SPAM_GAP = 0.25 -- Misses are free, so ignore requests faster than this.
 
@@ -286,6 +288,35 @@ local function grapple(player, hitPosition, target)
 	end
 	losParams.FilterDescendantsInstances = ignore
 	local hit = workspace:Raycast(origin, aim * Config.GRAPPLE_PULL_RANGE, losParams)
+	-- A fast boat is not where the player sees it (what they aim at is a moment old), so a
+	-- hook thrown at a passing boat would fly behind its stern. Aim that passes close to a
+	-- MOVING boat catches the boat, unless something solid is nearer. (A parked boat needs no
+	-- help, and must not steal a hook meant for the cliff behind it.)
+	local own = seat and Boats.boatOf(seat) or nil
+	local nearBoat, nearOff = nil, Config.GRAPPLE_BOAT_ASSIST
+	for _, boat in ipairs(Boats.list) do
+		if boat.state == "float" and boat ~= own and boat.hull.AssemblyLinearVelocity.Magnitude > 12 then
+			local offset = boat.hull.Position - origin
+			local along = offset:Dot(aim)
+			if along > 0 and offset.Magnitude <= Config.GRAPPLE_PULL_RANGE then
+				local off = (offset - aim * along).Magnitude
+				if off < nearOff then
+					nearBoat, nearOff = boat, off
+				end
+			end
+		end
+	end
+	if nearBoat then
+		local toBoat = nearBoat.hull.Position - origin
+		local direct = workspace:Raycast(origin, toBoat, losParams)
+		local reached = direct and direct.Instance:IsDescendantOf(nearBoat.model)
+		local nothingNearer = not hit
+			or hit.Position.Y < HOOK_MIN_Y
+			or (hit.Position - origin).Magnitude > toBoat.Magnitude
+		if reached and (nothingNearer or hit.Instance:IsDescendantOf(nearBoat.model)) then
+			hit = direct
+		end
+	end
 	if not hit or hit.Position.Y < HOOK_MIN_Y then
 		local reach = hit and (hit.Position - origin).Magnitude or Config.GRAPPLE_PULL_RANGE
 		Net.send(
@@ -310,6 +341,11 @@ local function grapple(player, hitPosition, target)
 	local distance = (hit.Position - origin).Magnitude
 	-- Something that moves (a boat): the client keeps the rope on the part, not on the spot.
 	local moving = not hit.Instance.Anchored and hit.Instance ~= workspace.Terrain
+	-- Remember a hook on a boat for a moment: the client asks for a seat when the pull arrives
+	-- (Combat.hookedBoat), and by then a fast boat is too far from where the server last saw
+	-- the player for an ordinary "are you beside it" check.
+	local hooked = Boats.boatOf(hit.Instance)
+	boatHook[player] = hooked and not hooked.ai and { boat = hooked, at = t } or nil
 	Net.broadcast("GrappleFX", {
 		kind = "pull",
 		from = origin,
@@ -327,7 +363,18 @@ function Combat.init(worldRefs)
 	Net.Grapple.OnServerEvent:Connect(grapple)
 end
 
+-- The boat this player's hook caught in the last few seconds, if any (asked once).
+function Combat.hookedBoat(player)
+	local hook = boatHook[player]
+	boatHook[player] = nil
+	if hook and workspace:GetServerTimeNow() - hook.at < 4 then
+		return hook.boat
+	end
+	return nil
+end
+
 function Combat.forget(player)
+	boatHook[player] = nil
 	lastSwing[player] = nil
 	lastGrapple[player] = nil
 end

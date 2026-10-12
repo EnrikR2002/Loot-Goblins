@@ -28,6 +28,7 @@ Net.Move = remote("MoveRequest") -- "dash" | "airjump": pay stamina for a move t
 Net.BoatBoost = remote("BoatBoostRequest")
 Net.BoatDrift = remote("BoatDriftRequest") -- (held): the driver's drift key.
 Net.BoatFx = remote("BoatFxRequest") -- (kind): the driver's boat did something worth showing.
+Net.BoatBoard = remote("BoatBoardRequest") -- A grapple reeled the player onto a boat: seat them.
 Net.Cannon = remote("CannonRequest")
 Net.Keg = remote("KegRequest")
 Net.GameEvent = remote("GameEvent")

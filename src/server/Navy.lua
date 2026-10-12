@@ -97,21 +97,28 @@ local function horizonSpawn(position)
 	local toHome = flat(refs.hoard.position - position)
 	local homeAngle = toHome.Magnitude > 1 and math.atan2(toHome.Z, toHome.X) or random:NextNumber(0, math.pi * 2)
 	local min, max = Config.BOUNDS_MIN, Config.BOUNDS_MAX
-	for attempt = 1, 16 do
-		-- Ahead of them first; anywhere at all if the way home is all islands.
-		local spread = attempt <= 9 and math.rad(70) or math.pi
+	for attempt = 1, 24 do
+		-- Ahead of them first, and in plain sight, so the ship is something the thief sees
+		-- coming and it can start the chase at once. If the way home is all islands, anywhere.
+		local ahead = attempt <= 10
+		local inSight = attempt <= 18
+		local spread = ahead and math.rad(70) or math.pi
 		local angle = homeAngle + random:NextNumber(-spread, spread)
 		local distance = random:NextNumber(Config.NAVY_SPAWN_MIN, Config.NAVY_SPAWN_MAX)
 		local x, z = position.X + math.cos(angle) * distance, position.Z + math.sin(angle) * distance
 		local open = x > min.X + 120 and x < max.X - 120 and z > min.Z + 120 and z < max.Z - 120
 		if open then
 			-- Room to sail, not a pond between reefs.
-			for _, offset in ipairs({ { 0, 0 }, { 50, 0 }, { -50, 0 }, { 0, 50 }, { 0, -50 } }) do
+			for _, offset in ipairs({ { 0, 0 }, { 60, 0 }, { -60, 0 }, { 0, 60 }, { 0, -60 } }) do
 				open = open and SeaNav.passable(x + offset[1], z + offset[2], draft)
 			end
 		end
 		local spot = Vector3.new(x, 0, z)
-		if open and (spot - flat(refs.hoard.position)).Magnitude > Config.WARD_RADIUS + 300 then
+		if
+			open
+			and (spot - flat(refs.hoard.position)).Magnitude > Config.WARD_RADIUS + 300
+			and (not inSight or clearLine(spot + Vector3.new(0, 8, 0), position + Vector3.new(0, 2, 0)))
+		then
 			return CFrame.lookAt(spot, flat(position))
 		end
 	end
@@ -452,14 +459,21 @@ local function steerToward(ship, goal)
 		return 0, 0, 0
 	end
 	desired = desired.Unit
-	-- Whiskers: if water ahead is too shallow or land, bias away from that side.
+	-- Whiskers: if water ahead is too shallow or land, bias away from that side. They reach
+	-- farther the faster the ship goes (it needs the room to turn), and a nearer one checks
+	-- for anything it is about to hit.
 	local avoid = 0
+	local blocked = false
 	local draft = boat.spec.draft
+	local speed = flat(boat.hull.AssemblyLinearVelocity).Magnitude
+	local reach = math.max(110, speed * 1.5)
 	for _, offset in ipairs({ -0.5, 0, 0.5 }) do
 		local probeDir = (CFrame.Angles(0, offset, 0) * forward)
-		local probe = cf.Position + probeDir * 110
-		if not SeaNav.passable(probe.X, probe.Z, draft) then
+		local probe = cf.Position + probeDir * reach
+		local near = cf.Position + probeDir * (reach * 0.5)
+		if not SeaNav.passable(probe.X, probe.Z, draft) or not SeaNav.passable(near.X, near.Z, draft) then
 			avoid += (offset == 0) and 1.2 or -offset * 1.4
+			blocked = true
 		end
 	end
 	local cross = forward:Cross(desired).Y -- positive: the goal is to the left
@@ -468,8 +482,12 @@ local function steerToward(ship, goal)
 	if dot < 0 then
 		steer = cross >= 0 and -1 or 1
 	end
-	-- Slow for a hard turn; a ship at full speed turns too wide to come about.
+	-- Slow for a hard turn, and for land ahead: a ship at full speed turns too wide to come
+	-- about or to clear a headland.
 	local throttle = dot > 0.5 and 1 or 0.45
+	if blocked then
+		throttle = math.min(throttle, speed > 55 and 0.1 or 0.5)
+	end
 	return throttle, steer, dot
 end
 
@@ -589,7 +607,7 @@ local function tickShip(ship, t)
 	if t - ship.routeAt > Config.NAVY_REPLAN or not ship.routeGoal or (ship.routeGoal - goal).Magnitude > 120 then
 		ship.routeAt = t
 		ship.routeGoal = goal
-		ship.route = SeaNav.path(position, goal, boat.spec.draft)
+		ship.route = SeaNav.path(position, goal, boat.spec.draft, Config.NAVY_COAST_WEIGHT)
 		ship.routeIndex = 2
 	end
 	local waypoint = goal

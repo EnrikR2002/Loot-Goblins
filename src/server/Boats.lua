@@ -256,22 +256,25 @@ local function buildBoat(spawn)
 	model.PrimaryPart = hull
 	buildVisuals(spec, typeName, model, hull, trim)
 
-	-- The bow's underside slopes up, so a hull that meets a sandbar or a beach rides up onto
-	-- it instead of hitting it like a wall. (An upside-down wedge in front of the hull box.)
-	local skidLength = size.Z * 0.3
-	local skid = Instance.new("WedgePart")
-	skid.Name = "BowSkid"
-	skid.Size = Vector3.new(size.X * 0.92, size.Y, skidLength)
-	skid.CFrame = home * CFrame.new(0, 0, -size.Z / 2 - skidLength / 2) * CFrame.Angles(0, 0, math.pi)
-	skid.Transparency = 1
-	skid.CanTouch = false
-	skid.Massless = true
-	skid.CustomPhysicalProperties = PhysicalProperties.new(spec.density, HULL_FRICTION, 0.15, 100, 1)
-	local skidWeld = Instance.new("WeldConstraint")
-	skidWeld.Part0 = hull
-	skidWeld.Part1 = skid
-	skidWeld.Parent = skid
-	skid.Parent = model
+	-- The bow's underside slopes up, so a hull that meets a beach rides up onto it instead of
+	-- hitting it like a wall. (An upside-down wedge in front of the hull box.) Players' boats
+	-- only: an AI ship that overshoots should bump the shore, not climb the island.
+	if not spawn.ai then
+		local skidLength = size.Z * 0.3
+		local skid = Instance.new("WedgePart")
+		skid.Name = "BowSkid"
+		skid.Size = Vector3.new(size.X * 0.92, size.Y, skidLength)
+		skid.CFrame = home * CFrame.new(0, 0, -size.Z / 2 - skidLength / 2) * CFrame.Angles(0, 0, math.pi)
+		skid.Transparency = 1
+		skid.CanTouch = false
+		skid.Massless = true
+		skid.CustomPhysicalProperties = PhysicalProperties.new(spec.density, HULL_FRICTION, 0.15, 100, 1)
+		local skidWeld = Instance.new("WeldConstraint")
+		skidWeld.Part0 = hull
+		skidWeld.Part1 = skid
+		skidWeld.Parent = skid
+		skid.Parent = model
+	end
 
 	-- BoatSim's fields (points, boostUntil, driftCharge...) plus the server's own.
 	local boat = BoatSim.new(hull, spec)
@@ -412,6 +415,8 @@ local function setPilot(boat, player)
 	boat.lastPosition = nil
 	boat.driftCharge = 0
 	boat.driftHeld = false
+	boat.predicted = nil
+	boat.waterDrag = 0
 end
 
 local function eject(boat)
@@ -428,7 +433,8 @@ local function eject(boat)
 	end
 end
 
-function Boats.board(boat, player)
+-- reach: how far from the hull the player may be (default: beside it; a grapple reaches farther).
+function Boats.board(boat, player, reach)
 	if boat.state ~= "float" then
 		return
 	end
@@ -437,7 +443,7 @@ function Boats.board(boat, player)
 		return
 	end
 	-- Generous: a boat worth boarding is often moving.
-	if (root.Position - boat.hull.Position).Magnitude > boat.spec.size.Z * 0.5 + 16 then
+	if (root.Position - boat.hull.Position).Magnitude > (reach or boat.spec.size.Z * 0.5 + 16) then
 		return
 	end
 	for _, seat in ipairs(boat.seats) do
@@ -871,7 +877,7 @@ end
 
 function Boats.tick(dt)
 	local t = now()
-	dt = math.min(dt, 0.05)
+	dt = math.min(dt, Config.BOAT_MAX_STEP)
 	-- Player positions, once per frame, for the sleep check.
 	local positions = {}
 	for _, player in ipairs(Players:GetPlayers()) do

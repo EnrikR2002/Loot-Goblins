@@ -225,8 +225,10 @@ local function lineClear(a, b, need)
 end
 
 -- A route from `from` to `to` for a hull with this draft: a list of Vector3 waypoints (the
--- last is the goal's nearest water cell), or nil if there is no way through.
-function SeaNav.path(from, to, draft)
+-- last is the goal's nearest water cell), or nil if there is no way through. coastWeight is
+-- how strongly the route avoids water near land (default: a gentle preference; a fast ship
+-- that turns wide wants a strong one, so it does not have to shave a headland).
+function SeaNav.path(from, to, draft, coastWeight)
 	if not ready then
 		return { to }
 	end
@@ -265,7 +267,7 @@ function SeaNav.path(from, to, draft)
 								and (depth[index(cx + ox, cz)] < need or depth[index(cx, cz + oz)] < need)
 							if d >= need and not closed[n] and not corner then
 								-- Prefer open water: a gentle penalty near coasts.
-								local penalty = shelter[n] * 0.8
+								local penalty = shelter[n] * (coastWeight or 0.8)
 								local step = (ox ~= 0 and oz ~= 0 and 1.414 or 1) * (1 + penalty)
 								local newCost = cost[node] + step
 								if not cost[n] or newCost < cost[n] then

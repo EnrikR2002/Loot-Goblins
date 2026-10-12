@@ -130,7 +130,9 @@ RunService.PreSimulation:Connect(function(dt)
 	sim.payload = model:GetAttribute("Payload") or 0
 	sim.boostUntil = math.max(sim.boostUntil, model:GetAttribute("BoostEndsAt") or 0)
 	input.throttle, input.steer, input.drift = seat.ThrottleFloat, seat.SteerFloat, driftHeld
-	local out = BoatSim.step(sim, input, math.min(dt, 0.05), t)
+	-- The real frame time, down to 10 frames a second, so a slow client's boat still gets its
+	-- full thrust and buoyancy (the forces are impulses scaled by dt).
+	local out = BoatSim.step(sim, input, math.min(dt, Config.BOAT_MAX_STEP), t)
 	info.charge, info.level, info.drifting = out.charge, out.level, out.drifting
 	if out.event then
 		onEvent(out.event, hull.Position)

@@ -32,14 +32,14 @@ Config.CARRY_STAMINA_PER_WEIGHT = 0.12 -- Leviathan Tooth (weight 6): everything
 
 -- Dash (C): a short burst the way you are moving, on the ground or in the air. It is the dodge:
 -- out of a marked circle, across a gap, away from a sword.
-Config.DASH_COST = 20
+Config.DASH_COST = 18
 Config.DASH_COOLDOWN = 0.9
 Config.DASH_SPEED = 85
 Config.DASH_TIME = 0.17 -- 85 * 0.17 is about 14 studs.
 Config.DASH_AIR_LIFT = 6 -- An air dash cancels your fall and floats a touch.
 
 -- Air jump (Space in the air): one extra jump per flight.
-Config.AIR_JUMP_COST = 14
+Config.AIR_JUMP_COST = 12
 Config.AIR_JUMP_POWER = 52
 
 -- Loot -----------------------------------------------------------------------
@@ -401,6 +401,7 @@ Config.GRAPPLE_PULL_COOLDOWN = 1.4
 Config.GRAPPLE_CARRY_COOLDOWN = 5 -- A carrier's pull: usable, but not spammable.
 Config.GRAPPLE_POP_SPEED = 42 -- Upward hop at the end of a pull, to climb onto ledges.
 Config.GRAPPLE_KEEP_SPEED = 0.6 -- How much of the pull's sideways speed you keep when it ends.
+Config.GRAPPLE_BOAT_ASSIST = 18 -- Aim passing this close to a boat hooks the boat (a fast boat is ahead of where you see it).
 
 -- Poltergoblin (was Soul Unbound, Yone's E) ----------------------------------------
 -- E leaves your body behind and sends your spirit out. Whatever loot the spirit
@@ -505,8 +506,8 @@ Config.BOAT_BEACH_SPEED = 12 -- ...which only works below this speed: boats do n
 Config.BOAT_YAW_SNAP = 8 -- How quickly the hull reaches the turn rate you ask for (V2: 5).
 Config.BOAT_SLIP_LOSS = 0.15 -- Speed shed by sliding sideways in an ordinary turn (V2: 0.5).
 Config.BOAT_COAST_DRAG = 0.35 -- Share of the engine-on drag that remains off the throttle: boats coast.
-Config.BOAT_WATER_DRAG = 0.166 -- Measured: Terrain water slows a hull by this share of its speed per second.
 Config.BOAT_BUOY_DAMPING = 1.1 -- How quickly a hull stops bouncing on its springs (V2: 0.85).
+Config.BOAT_MAX_STEP = 0.1 -- Longest frame the boat physics will integrate in one go (10 frames a second).
 Config.BOAT_AIR_CONTROL = 0.35 -- Share of the steering you keep while airborne.
 Config.BOAT_AIR_MIN = 0.4 -- Seconds off the water before a touchdown counts as a landing.
 Config.BOAT_FLIP_TIME = 1 -- Seconds a hull lies capsized before it pops back upright.
@@ -634,6 +635,7 @@ Config.NAVY_SHELL_HULL_DAMAGE = 55
 Config.NAVY_SPREAD_RANGE = 140 -- Closer than this they fire a spread along your course.
 Config.NAVY_SPREAD_SHOTS = 3
 Config.NAVY_REPLAN = 1.0
+Config.NAVY_COAST_WEIGHT = 3 -- How hard their routes keep off the coasts (a fast ship turns wide).
 Config.NAVY_DISPATCH_GAP = 20
 -- Where they come from: the fort if it is this close to the thief, otherwise the horizon, on
 -- the side the thief has to sail home through.
@@ -706,6 +708,6 @@ Config.GHOST_FOG_TIME = 80
 Config.QUAKE_DELAY = 1.6
 
 -- Traversal ------------------------------------------------------------------
-Config.ZIPLINE_SPEED = 70
+Config.ZIPLINE_SPEED = 90
 
 return Config

@@ -21,6 +21,7 @@ local grappleRemote = remotes:WaitForChild("GrappleRequest")
 local polterRemote = remotes:WaitForChild("PoltergoblinRequest")
 local sprintRemote = remotes:WaitForChild("SprintRequest")
 local moveRemote = remotes:WaitForChild("MoveRequest")
+local boatBoardRemote = remotes:WaitForChild("BoatBoardRequest")
 local cannonRemote = remotes:WaitForChild("CannonRequest")
 local kegRemote = remotes:WaitForChild("KegRequest")
 local eventRemote = remotes:WaitForChild("GameEvent")
@@ -283,19 +284,10 @@ local function stopPull(pop)
 	end
 	local v = root.AssemblyLinearVelocity
 	if current.part and current.part.Parent then
-		-- Hooked something that moves: arrive at its speed, not ours, so it does not sail out
-		-- from under us. If it is a boat with a free seat, take the seat.
+		-- Hooked something that moves: let go at its speed, not ours, so it does not sail out
+		-- from under us.
 		local carry = current.part.AssemblyLinearVelocity
-		root.AssemblyLinearVelocity = Vector3.new(carry.X, Config.GRAPPLE_POP_SPEED * 0.6, carry.Z)
-		local model = current.part:FindFirstAncestorOfClass("Model")
-		local hull = model and model:FindFirstChild("Hull")
-		local board = hull and hull:FindFirstChild("BoardPrompt")
-		if board and board.Enabled then
-			board:InputHoldBegin()
-			task.delay(0.1, function()
-				board:InputHoldEnd()
-			end)
-		end
+		root.AssemblyLinearVelocity = Vector3.new(carry.X, 8, carry.Z)
 		return
 	end
 	-- A hop at the end, so a hook on a ledge lifts you over its lip. You keep most of the
@@ -333,6 +325,12 @@ local function startPull(to, normal, part, offset, tries)
 	stopPull(false)
 	-- Aim a little off the surface: a floor lands you on it, a wall leaves you at it.
 	local current = { part = part, offset = offset, goal = to + normal * 2 + Vector3.new(0, 2.5, 0) }
+	-- A hook anywhere on a boat reels you to the middle of its deck, and you take a seat.
+	local boatModel = part and part:FindFirstAncestorOfClass("Model")
+	local hull = boatModel and boatModel:GetAttribute("BoatType") and boatModel:FindFirstChild("Hull")
+	if hull then
+		current.part, current.offset, current.boat = hull, Vector3.new(0, hull.Size.Y / 2 - 1, 0), true
+	end
 	local goal = pullGoal(current)
 	if not goal then
 		return
@@ -378,8 +376,24 @@ RunService.Heartbeat:Connect(function()
 	local offset = goal - root.Position
 	local distance = offset.Magnitude
 	local t = os.clock()
+	local carry = pull.part and pull.part.AssemblyLinearVelocity or Vector3.zero
+	if pull.holdUntil then
+		-- Over a boat's deck: ride along with it until the server seats us (the top of this
+		-- function ends the pull the moment it does), or let go onto the deck if it is full.
+		if t > pull.holdUntil then
+			stopPull(true)
+		else
+			pull.push.VectorVelocity = offset * 8 + carry
+		end
+		return
+	end
 	if distance < 3 or t > pull.endsAt then
-		stopPull(true)
+		if pull.boat and distance < 12 then
+			pull.holdUntil = t + 0.7
+			boatBoardRemote:FireServer()
+		else
+			stopPull(true)
+		end
 		return
 	end
 	if distance < pull.best - 0.5 then
@@ -391,7 +405,6 @@ RunService.Heartbeat:Connect(function()
 	end
 	-- Ease in over the last few studs instead of slamming into the wall. A moving hook adds
 	-- its own speed, so you close on a fleeing boat as fast as on a cliff.
-	local carry = pull.part and pull.part.AssemblyLinearVelocity or Vector3.zero
 	pull.push.VectorVelocity = offset.Unit * math.min(Config.GRAPPLE_PULL_SPEED, 30 + distance * 6) + carry
 end)
 
@@ -686,6 +699,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		else
 			setSprint(true)
 		end
+	elseif input.KeyCode == Enum.KeyCode.ButtonX and seatedInBoat() then
+		BoatDrive.boost()
 	elseif input.KeyCode == Enum.KeyCode.C or input.KeyCode == Enum.KeyCode.ButtonB then
 		-- One key, two jobs: a dash on foot, a drift at the wheel.
 		if seatedInBoat() then

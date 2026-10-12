@@ -227,6 +227,14 @@ end)
 Net.BoatDrift.OnServerEvent:Connect(function(player, held)
 	Boats.setDrift(player, held == true)
 end)
+-- A grapple reeled the player onto a boat: give them a seat. Only the boat the server itself
+-- hooked for them a moment ago counts (Combat.hookedBoat); nothing the client says is used.
+Net.BoatBoard.OnServerEvent:Connect(function(player)
+	local boat = Combat.hookedBoat(player)
+	if boat then
+		Boats.board(boat, player, Config.GRAPPLE_PULL_RANGE)
+	end
+end)
 Net.BoatFx.OnServerEvent:Connect(function(player, kind)
 	if kind == "mini1" or kind == "mini2" or kind == "landing" then
 		Boats.relayFx(player, kind)

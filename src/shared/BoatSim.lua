@@ -47,6 +47,8 @@ function BoatSim.new(hull, spec)
 		boostUntil = 0,
 		miniUntil = 0, -- A drift or landing burst is running.
 		driftCharge = 0,
+		waterDrag = 0, -- Measured each step: how hard Terrain water is slowing this hull.
+		predicted = nil, -- Where our own forces alone would have put its velocity by now.
 		airTime = 0,
 		flippedFor = 0,
 		gateAt = {},
@@ -171,10 +173,17 @@ function BoatSim.step(boat, input, dt, t)
 	-- Drag sets the top speed under power. Off the throttle a hull coasts a long way (S is
 	-- the brake), so momentum is something you carry through a manoeuvre.
 	local dragForward = accel / topSpeed * (0.25 + 0.75 * wet) * (throttle == 0 and Config.BOAT_COAST_DRAG or 1)
-	-- Roblox's own Terrain water also drags on the hull; under power the engine cancels that,
-	-- so maxSpeed in Config is the speed the boat really reaches.
-	if throttle > 0 and forwardSpeed > 0 then
-		drive += forwardSpeed * Config.BOAT_WATER_DRAG * wet
+	-- Roblox's own Terrain water also drags on the hull, by an amount that depends on the hull
+	-- and that this code does not control. So measure it: whatever slowed the hull along its
+	-- length since the last step, beyond what these forces did, is the water (or a collision,
+	-- which the cap and the smoothing keep out). Under power the engine cancels it, so maxSpeed
+	-- in Config is the speed the boat really reaches, on any hull and at any frame rate.
+	if boat.predicted and throttle > 0 and wet > 0.5 and forwardSpeed > 5 then
+		local slowed = (boat.predicted - horizontal):Dot(forward) / dt
+		boat.waterDrag += (math.clamp(slowed, 0, spec.accel * 0.35) - boat.waterDrag) * math.min(1, dt * 4)
+		drive += boat.waterDrag
+	else
+		boat.waterDrag *= 1 - math.min(1, dt * 2)
 	end
 
 	-- The keel turns the boat's motion toward where it points instead of braking it
@@ -199,6 +208,7 @@ function BoatSim.step(boat, input, dt, t)
 		acceleration *= 0.4
 	end
 	hull:ApplyImpulse(acceleration * mass * dt)
+	boat.predicted = horizontal + Vector3.new(acceleration.X, 0, acceleration.Z) * dt
 
 	-- Steering: aim for a yaw rate. Sharp when slow, wider at top speed, sharper again in a
 	-- drift, and a little control in the air to line up a landing.
