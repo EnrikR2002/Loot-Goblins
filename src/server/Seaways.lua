@@ -144,7 +144,8 @@ local function buildReef()
 	local gate = Seaways.GATE
 	Kit.hookPost(v3(home.X + gate[1], -8, home.Z + gate[3] - 2), 30, GOLD)
 	Kit.hookPost(v3(home.X + gate[2], -8, home.Z + gate[3] + 3), 30, GOLD)
-	nameplate(home + v3(60, 40, gate[3]), "THE GATE", GOLD, 700)
+	-- (Low, between the posts: any higher and it sits on top of the Crossroads' name from the harbor.)
+	nameplate(home + v3(60, 24, gate[3]), "THE GATE", GOLD, 700)
 	nameplate(home + v3(-285, 22, -612), "GULL PASS (shallow)", GREEN, 420)
 	nameplate(home + v3(430, 22, -605), "SMUGGLER'S GAP (shallow)", GREEN, 420)
 end

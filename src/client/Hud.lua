@@ -449,7 +449,7 @@ local HELP_LINES = {
 	},
 	{
 		"SEA",
-		"Hoops kick your boat: chain them. Coins: 10 = 1 gold at the Hoard. Green lamps: too shallow for patrol ships.",
+		"Teal hoops: a lane to an island, chain them. Orange hoops: a timed course. Coins: 10 = 1 gold. Green lamps: shallows.",
 	},
 }
 

@@ -2,6 +2,7 @@
 -- Poltergoblin dash, ziplines, launch pads, the grapple pull), and turning
 -- server events into HUD messages and effects. The server decides everything
 -- that matters, including sprint speed and stamina.
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -921,7 +922,7 @@ function handlers.TotemFire(p)
 end
 
 function handlers.Blast(p)
-	Effects.explosion(p.position, p.radius)
+	Effects.explosion(p.position, p.radius, p.silent)
 	Effects.shakeAt(p.position, 1, 0.35, 60)
 end
 
@@ -1145,6 +1146,24 @@ BoatDrive.onEvent(function(kind, position, chain)
 	end
 end)
 
+-- Signs ---------------------------------------------------------------------------------------
+-- A floating sign is meant to show within its MaxDistance of the camera. Roblox measures that
+-- along the line of sight, not to the sign, so anything far off to one side still showed: from
+-- the harbor a dozen island names stood on the horizon, most of them islands a long way away.
+-- This hides every sign that is really out of range (the server tags them: WorldKit's sign()).
+task.spawn(function()
+	while true do
+		local eye = workspace.CurrentCamera.CFrame.Position
+		for _, sign in ipairs(CollectionService:GetTagged("RangedSign")) do
+			local holder = sign.Parent
+			if holder and holder:IsA("BasePart") then
+				sign.Enabled = (holder.Position - eye).Magnitude <= sign.MaxDistance
+			end
+		end
+		task.wait(0.4)
+	end
+end)
+
 -- Coins -------------------------------------------------------------------------------------
 -- The server decides who took a coin (Coins.lua). So that it feels instant at boat speed, this
 -- client hides a coin the moment its own boat or goblin is in reach; the server's answer follows
@@ -1241,7 +1260,9 @@ end
 
 function handlers.Run(p)
 	if p.started then
-		Hud.toast(string.format("%s: GO! par %.1f s", p.name, p.par))
+		Hud.toast(
+			string.format(p.loop and "%s: GO! one lap, either way. par %.1f s" or "%s: GO! par %.1f s", p.name, p.par)
+		)
 		Effects.sound("blip", { speed = 1.5, volume = 0.8 })
 		return
 	end

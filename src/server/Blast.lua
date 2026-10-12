@@ -11,7 +11,9 @@
 --
 -- Blast.strike announces a blast first (a marker players can see and dodge), then lands it.
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Boats = require(script.Parent.Boats)
@@ -72,14 +74,20 @@ function Blast.at(position, opts)
 	if (opts.breakPower or 0) > 0 then
 		Destructibles.blastAt(position, radius, opts.breakPower)
 	end
-	Net.broadcast("Blast", { position = position, radius = radius, color = opts.color })
+	-- silent: a bolt of lightning brings its own thunder (the client plays that, not a second boom).
+	Net.broadcastNear(
+		position,
+		Config.AUDIO.SEND_RANGE,
+		"Blast",
+		{ position = position, radius = radius, color = opts.color, silent = opts.bolt and true or nil }
+	)
 	Blast.Hit:Fire(position, radius)
 end
 
 -- Marks a spot, then blasts it after `delay` seconds. The marker is the warning: it closes in
 -- over the delay so players can read when it lands and get out.
 function Blast.strike(position, delay, opts)
-	Net.broadcast("Marker", {
+	Net.broadcastNear(position, Config.AUDIO.SEND_RANGE, "Marker", {
 		position = position,
 		radius = opts.radius or 12,
 		duration = delay,
@@ -90,7 +98,7 @@ function Blast.strike(position, delay, opts)
 	task.delay(delay, function()
 		if current == generation then
 			if opts.bolt then
-				Net.broadcast("Bolt", { position = position })
+				Net.broadcastNear(position, Config.AUDIO.SEND_BOLT_RANGE, "Bolt", { position = position })
 			end
 			Blast.at(position, opts)
 		end

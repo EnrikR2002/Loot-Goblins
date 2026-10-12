@@ -4,14 +4,28 @@
 -- Sounds use files that ship inside every Roblox client (rbxasset://sounds/...),
 -- so they need no uploaded assets or permissions. Pitch changes turn the same
 -- few files into chimes, alarms and thuds.
+--
+-- There are two kinds of sound, and the difference matters:
+--   INTERFACE  a chime when you bank, the alarm when Heat rises. Played in your ears.
+--   WORLD      thunder, a keg, a cannon. It happened at a place: it is played there, it fades
+--              with distance, and past its range it is not played at all.
+-- From V2 to V5 thunder was played as an interface sound with a floor on its volume, so every
+-- bolt of every storm on the map boomed in every goblin's ears: about one a second with three
+-- storms out. That was the "explosions in the distance". World sounds also used Roblox's
+-- default rolloff, which never reaches silence: it cuts off dead at the maximum distance.
 local Debris = game:GetService("Debris")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
+local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+
 local Effects = {}
+
+local AUDIO = Config.AUDIO
 
 local SOUNDS = {
 	boom = "rbxasset://sounds/impact_explosion_03.mp3",
@@ -25,26 +39,132 @@ local SOUNDS = {
 
 local camera = workspace.CurrentCamera
 
--- name: key of SOUNDS. options: volume, speed, position (3D sound), range.
+-- Where this player hears from (Roblox's default listener is the camera).
+local function listener()
+	return camera.CFrame.Position
+end
+
+-- How far this player is from a point in the world.
+function Effects.distanceTo(position)
+	return (listener() - position).Magnitude
+end
+
+-- Sound groups: one for the world, one for the interface. The world's has a compressor, so a
+-- pile of blasts at once (a barrage, a chain of powder barrels) is held down instead of adding up.
+local function soundGroup(name)
+	local old = SoundService:FindFirstChild(name)
+	if old then
+		old:Destroy()
+	end
+	local group = Instance.new("SoundGroup")
+	group.Name = name
+	group.Parent = SoundService
+	return group
+end
+
+local worldGroup = soundGroup("LootGoblinsWorld")
+local interfaceGroup = soundGroup("LootGoblinsInterface")
+do
+	local squash = Instance.new("CompressorSoundEffect")
+	squash.Threshold = AUDIO.COMPRESS_THRESHOLD
+	squash.Ratio = AUDIO.COMPRESS_RATIO
+	squash.Attack = 0.005
+	squash.Release = 0.2
+	squash.Parent = worldGroup
+end
+
+-- How loud a world sound is at a distance, from 1 (inside `near`) to 0 (at `range` and beyond).
+-- It is the shape Roblox's InverseTapered rolloff has: an inverse falloff that is pulled down to
+-- nothing as the range runs out. Used to decide what is worth playing; Roblox does the mixing.
+local function heardAt(distance, near, range)
+	if distance <= near then
+		return 1
+	elseif distance >= range then
+		return 0
+	end
+	local taper = (range - distance) / (range - near)
+	return near / distance * taper * taper
+end
+Effects.heardAt = heardAt
+
+-- At most VOICE_LIMIT world sounds of one kind may start within VOICE_WINDOW seconds. One more
+-- only gets in if it would be louder here than all of those (the keg at your feet still sounds
+-- in the middle of a distant barrage).
+local voices = {} -- sound name -> { { at, loudness }, ... }
+
+local function admit(name, loudness)
+	local now = os.clock()
+	local list = voices[name]
+	if not list then
+		list = {}
+		voices[name] = list
+	end
+	local loudest = 0
+	for i = #list, 1, -1 do
+		if now - list[i].at > AUDIO.VOICE_WINDOW then
+			table.remove(list, i)
+		else
+			loudest = math.max(loudest, list[i].loudness)
+		end
+	end
+	if #list >= AUDIO.VOICE_LIMIT and loudness <= loudest then
+		return false
+	end
+	table.insert(list, { at = now, loudness = loudness })
+	return true
+end
+
+-- name: key of SOUNDS. options:
+--   volume, speed
+--   position   makes it a WORLD sound, played at that point
+--   range      silent from this distance on (default AUDIO.RANGE): beyond it nothing is played
+--   near       full volume inside this distance (default AUDIO.NEAR)
+--   muffle     true: the far half of the range loses its treble, like distant thunder
+-- Without a position it is an INTERFACE sound.
 function Effects.sound(name, options)
 	options = options or {}
-	local sound = Instance.new("Sound")
-	sound.SoundId = SOUNDS[name]
-	sound.Volume = options.volume or 0.6
-	sound.PlaybackSpeed = options.speed or 1
-	if options.position then
-		local holder = Instance.new("Attachment")
-		holder.Name = "SoundAt"
-		holder.Position = options.position
-		holder.Parent = workspace.Terrain
-		sound.RollOffMaxDistance = options.range or 350
-		sound.RollOffMinDistance = 15
-		sound.Parent = holder
-		Debris:AddItem(holder, 5)
-	else
+	local volume = options.volume or 0.6
+	if not options.position then
+		local sound = Instance.new("Sound")
+		sound.SoundId = SOUNDS[name]
+		sound.Volume = volume
+		sound.PlaybackSpeed = options.speed or 1
+		sound.SoundGroup = interfaceGroup
 		sound.Parent = SoundService
 		Debris:AddItem(sound, 5)
+		sound:Play()
+		return
 	end
+	local near, range = options.near or AUDIO.NEAR, options.range or AUDIO.RANGE
+	local distance = (listener() - options.position).Magnitude
+	local loudness = volume * heardAt(distance, near, range)
+	if loudness < AUDIO.FLOOR or not admit(name, loudness) then
+		return -- Too far to hear, or one too many at once: not played at all.
+	end
+	local holder = Instance.new("Attachment")
+	holder.Name = "SoundAt"
+	holder.Position = options.position
+	holder.Parent = workspace.Terrain
+	local sound = Instance.new("Sound")
+	sound.SoundId = SOUNDS[name]
+	sound.Volume = volume
+	sound.PlaybackSpeed = options.speed or 1
+	sound.RollOffMode = Enum.RollOffMode.InverseTapered
+	sound.RollOffMinDistance = near
+	sound.RollOffMaxDistance = range
+	sound.SoundGroup = worldGroup
+	if options.muffle then
+		local far = math.clamp((distance - near) / (range - near) * 2, 0, 1)
+		if far > 0.05 then
+			local muffle = Instance.new("EqualizerSoundEffect")
+			muffle.LowGain = 0
+			muffle.MidGain = -10 * far
+			muffle.HighGain = -30 * far
+			muffle.Parent = sound
+		end
+	end
+	sound.Parent = holder
+	Debris:AddItem(holder, 5)
 	sound:Play()
 end
 
@@ -133,15 +253,21 @@ function Effects.burst(position, color, count, speed)
 	Debris:AddItem(holder, 2)
 end
 
--- Visual-only explosion (no push, nothing breaks).
-function Effects.explosion(position, radius)
+-- Visual-only explosion (no push, nothing breaks). silent: something else is its sound (a bolt
+-- of lightning has its thunder).
+function Effects.explosion(position, radius, silent)
+	if Effects.distanceTo(position) > AUDIO.DRAW_BLAST then
+		return -- Across the sea: nothing to see or hear from here.
+	end
 	local explosion = Instance.new("Explosion")
 	explosion.Position = position
 	explosion.BlastRadius = radius or 6
 	explosion.BlastPressure = 0
 	explosion.DestroyJointRadiusPercent = 0
 	explosion.Parent = workspace
-	Effects.sound("boom", { position = position, volume = 0.8 })
+	if not silent then
+		Effects.sound("boom", { position = position, volume = 0.8, near = AUDIO.BLAST_NEAR, range = AUDIO.BLAST_RANGE })
+	end
 end
 
 -- Camera shake --------------------------------------------------------------------
@@ -298,6 +424,9 @@ local MARKER_COLORS = {
 }
 
 function Effects.marker(position, radius, duration, color, style)
+	if Effects.distanceTo(position) > AUDIO.DRAW_MARKER then
+		return -- Too far to matter to this player, or to be seen.
+	end
 	color = color or MARKER_COLORS[style] or Color3.fromRGB(255, 80, 60)
 	local flat = CFrame.new(position + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
 	local base = fxPart(Vector3.new(0.3, radius * 2, radius * 2), flat, color, Enum.PartType.Cylinder)
@@ -345,26 +474,66 @@ function Effects.shockwave(position, radius, windup, speed)
 	end)
 end
 
+-- The sky lighting up for a moment. strength 0 to 1. (The resting colour is remembered once per
+-- flash and restored by the last one to end: V5 let each bolt restore whatever it had found, so
+-- two bolts close together could leave the world lit.)
+local flashing, flashToken, restAmbient = false, 0, nil
+
+local function skyFlash(strength)
+	if strength < 0.03 then
+		return
+	end
+	if not flashing then
+		restAmbient = Lighting.Ambient
+		flashing = true
+	end
+	flashToken += 1
+	local token = flashToken
+	Lighting.Ambient = restAmbient:Lerp(Color3.fromRGB(230, 235, 255), strength)
+	task.delay(0.12, function()
+		if token == flashToken then
+			Lighting.Ambient = restAmbient
+			flashing = false
+		end
+	end)
+end
+
+-- Thunder: a WORLD sound at the strike, late by the time sound takes to arrive. Loud inside the
+-- storm, a muffled rumble as one comes near, and nothing at all from a storm across the sea.
+function Effects.thunder(position)
+	local distance = Effects.distanceTo(position)
+	if distance >= AUDIO.THUNDER_RANGE then
+		return
+	end
+	task.delay(math.min(distance / 340, 3), function()
+		Effects.sound("boom", {
+			position = position,
+			speed = 0.5,
+			volume = 1,
+			near = AUDIO.THUNDER_NEAR,
+			range = AUDIO.THUNDER_RANGE,
+			muffle = true,
+		})
+	end)
+end
+
 -- Lightning: a jagged bolt from the clouds, a flash of sky and thunder that arrives late.
 function Effects.bolt(position)
-	local top = position + Vector3.new(math.random(-30, 30), 320, math.random(-30, 30))
-	local from = top
-	for i = 1, 8 do
-		local nextPoint = position:Lerp(top, 1 - i / 8)
-			+ Vector3.new(math.random(-14, 14), 0, math.random(-14, 14)) * (i < 8 and 1 or 0)
-		Effects.line(from, nextPoint, Color3.fromRGB(235, 240, 255), 2.2, 0.28)
-		from = nextPoint
+	local distance = Effects.distanceTo(position)
+	if distance <= AUDIO.DRAW_BOLT then
+		local top = position + Vector3.new(math.random(-30, 30), 320, math.random(-30, 30))
+		local from = top
+		for i = 1, 8 do
+			local nextPoint = position:Lerp(top, 1 - i / 8)
+				+ Vector3.new(math.random(-14, 14), 0, math.random(-14, 14)) * (i < 8 and 1 or 0)
+			Effects.line(from, nextPoint, Color3.fromRGB(235, 240, 255), 2.2, 0.28)
+			from = nextPoint
+		end
+		Effects.ball(position, Color3.fromRGB(235, 240, 255), 18, 0.3)
 	end
-	Effects.ball(position, Color3.fromRGB(235, 240, 255), 18, 0.3)
-	local distance = (camera.CFrame.Position - position).Magnitude
-	local ambient = Lighting.Ambient
-	Lighting.Ambient = Color3.fromRGB(230, 235, 255)
-	task.delay(0.12, function()
-		Lighting.Ambient = ambient
-	end)
-	task.delay(math.min(distance / 340, 3), function()
-		Effects.sound("boom", { speed = 0.5, volume = math.clamp(1 - distance / 1500, 0.15, 0.9) })
-	end)
+	-- The sky flickers for a storm in the distance and goes white for one overhead.
+	skyFlash(math.clamp(1 - (distance - AUDIO.FLASH_FULL) / (AUDIO.FLASH_NONE - AUDIO.FLASH_FULL), 0, 1))
+	Effects.thunder(position)
 	Effects.shakeAt(position, 0.8, 0.3, 90)
 end
 

@@ -367,6 +367,9 @@ local function sign(parent, text, color, studsOffset, maxDistance)
 	label.TextColor3 = color
 	label.TextStrokeTransparency = 0.2
 	label.Parent = gui
+	-- The client hides a sign that is really farther than MaxDistance (Roblox alone measures it
+	-- along the line of sight, so signs far off to one side would all show).
+	gui:AddTag("RangedSign")
 	gui.Parent = parent
 	return gui
 end

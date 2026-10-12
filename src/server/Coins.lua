@@ -9,11 +9,12 @@
 --   PURSE    Ten coins are worth 1 gold, paid when you are next at the Hoard, up to
 --            COIN_GOLD_CAP gold a raid. Treasure stays the real score: the cap is about one
 --            near-island treasure, and nobody wins a raid on coins.
---   RUNS     A timed run starts when a boat passes the hoop at either end and ends at the
---            other, hoops in order. It pays coins once a raid (more under par) and keeps the
---            best time on its signs, with a name, for the others to beat.
+--   RUNS     A timed course starts when a boat passes the hoop at either end and ends at the
+--            other, hoops in order. A LAP starts and ends at its first hoop, either way round,
+--            and the clock keeps running for the next lap. A course pays coins once a raid
+--            (more under par) and keeps the best time on its signs, with a name, to beat.
 --   SALVAGE  A floating crate where a patrol ship went down, where a storm blew itself out,
---            and a few adrift each raid. Coins, a keg, and a hull patch.
+--            and a few adrift each raid beside the lanes. Coins, a keg, and a hull patch.
 --
 -- The server decides all of it from where hulls and goblins actually are. The client only
 -- hides a coin a moment early so it feels instant (Main.client.lua); it never claims one.
@@ -23,6 +24,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
+local SeaNav = require(script.Parent.SeaNav)
 local Boats = require(script.Parent.Boats)
 local Kegs = require(script.Parent.Kegs)
 
@@ -260,6 +262,10 @@ local function finishRun(player, s, t)
 	end
 end
 
+local function reached(position, target)
+	return Util.flatDistance(position, target) <= Config.RUN_REACH
+end
+
 local function tickRuns(player, s, position, t)
 	local active = s.run
 	if active then
@@ -268,9 +274,41 @@ local function tickRuns(player, s, position, t)
 			s.run = nil -- Wandered off: no fuss.
 			return
 		end
+		local count = #run.checkpoints
+		if run.loop then
+			-- A lap: every other hoop in order, either way round, then the first one again.
+			if active.way == 0 then
+				-- The first hoop after the line says which way round this lap goes.
+				if reached(position, run.checkpoints[2]) then
+					active.way, active.index, active.passed = 1, 2, 1
+				elseif reached(position, run.checkpoints[count]) then
+					active.way, active.index, active.passed = -1, count, 1
+				end
+				return
+			end
+			local home = active.passed >= count - 1
+			if not home and t - active.startedAt > 2 and reached(position, run.checkpoints[1]) then
+				-- Back over the line with hoops missed: that lap is void, and a new one starts here.
+				active.way, active.index, active.passed, active.startedAt = 0, 1, 0, t
+				return
+			end
+			local index = home and 1 or active.index + active.way
+			if reached(position, run.checkpoints[index]) then
+				if home then
+					finishRun(player, s, t)
+					-- A flying lap: the clock is already running for the next one.
+					s.run = { def = run, index = 1, way = 0, passed = 0, startedAt = t }
+					s.runWait = nil
+				else
+					active.index = index
+					active.passed += 1
+				end
+			end
+			return
+		end
 		local index = active.index + active.way
 		local target = run.checkpoints[index]
-		if target and Util.flatDistance(position, target) <= Config.RUN_REACH then
+		if target and reached(position, target) then
 			active.index = index
 			if run.checkpoints[index + active.way] == nil then
 				finishRun(player, s, t)
@@ -283,12 +321,20 @@ local function tickRuns(player, s, position, t)
 	end
 	for _, run in ipairs(refs.runs) do
 		local count = #run.checkpoints
-		local atFirst = Util.flatDistance(position, run.checkpoints[1]) <= Config.RUN_REACH
-		local atLast = not atFirst and Util.flatDistance(position, run.checkpoints[count]) <= Config.RUN_REACH
-		if atFirst or atLast then
-			s.run = { def = run, index = atFirst and 1 or count, way = atFirst and 1 or -1, startedAt = t }
-			Net.send(player, "Run", { name = run.name, par = run.par, started = true })
-			return
+		local atFirst = reached(position, run.checkpoints[1])
+		if run.loop then
+			if atFirst then
+				s.run = { def = run, index = 1, way = 0, passed = 0, startedAt = t }
+				Net.send(player, "Run", { name = run.name, par = run.par, started = true, loop = true })
+				return
+			end
+		else
+			local atLast = not atFirst and reached(position, run.checkpoints[count])
+			if atFirst or atLast then
+				s.run = { def = run, index = atFirst and 1 or count, way = atFirst and 1 or -1, startedAt = t }
+				Net.send(player, "Run", { name = run.name, par = run.par, started = true })
+				return
+			end
 		end
 	end
 end
@@ -376,7 +422,33 @@ function Coins.tick(dt, raidActive)
 	end
 end
 
--- A new raid: every coin back, every purse empty, a few crates adrift on the runs.
+-- Open water beside a lane: in sight of a boat sailing it, never on its line (V5 dropped crates
+-- on top of coins, which put them inside slaloms and the fort's harbor).
+local function adriftSpot()
+	local lanes = {}
+	for _, lane in ipairs(refs and refs.lanes or {}) do
+		if lane.adrift then
+			table.insert(lanes, lane)
+		end
+	end
+	if #lanes == 0 then
+		return nil
+	end
+	for _ = 1, 12 do
+		local lane = lanes[random:NextInteger(1, #lanes)]
+		local i = random:NextInteger(1, #lane.checkpoints - 1)
+		local a, b = lane.checkpoints[i], lane.checkpoints[i + 1]
+		local along = (b - a).Unit
+		local side = Vector3.new(-along.Z, 0, along.X) * (random:NextNumber() < 0.5 and 1 or -1)
+		local spot = a:Lerp(b, random:NextNumber(0.3, 0.7)) + side * random:NextNumber(45, 70)
+		if SeaNav.depthAt(spot.X, spot.Z) >= 6 then
+			return spot
+		end
+	end
+	return nil
+end
+
+-- A new raid: every coin back, every purse empty, a few crates adrift beside the lanes.
 function Coins.reset()
 	for _, coin in ipairs(taken) do
 		coin.takenAt = nil
@@ -393,10 +465,10 @@ function Coins.reset()
 			publish(player, s)
 		end
 	end
-	if #coins > 0 then
-		for _ = 1, Config.SALVAGE_ADRIFT do
-			local near = coins[random:NextInteger(1, #coins)].position
-			Coins.dropSalvage(near + Vector3.new(random:NextNumber(-14, 14), 0, random:NextNumber(-14, 14)))
+	for _ = 1, Config.SALVAGE_ADRIFT do
+		local spot = adriftSpot()
+		if spot then
+			Coins.dropSalvage(spot)
 		end
 	end
 end

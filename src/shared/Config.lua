@@ -918,6 +918,40 @@ Config.SALVAGE_COINS = 8
 Config.SALVAGE_REPAIR = 60
 Config.SALVAGE_ADRIFT = 4 -- Set adrift on the runs at the start of each raid.
 
+-- Sound and far-off effects (client: Effects.lua) -------------------------------------
+-- A world sound is played where it happens and fades to silence at its range. Past the range
+-- it is not played at all, so nothing is heard from across the sea.
+Config.AUDIO = {
+	NEAR = 15, -- Full volume inside this many studs (an ordinary sound: a keg, a splash).
+	RANGE = 350, -- An ordinary sound is silent from here on. Callers give bigger sounds more.
+	FLOOR = 0.004, -- Quieter than this where the player stands: not worth playing.
+	-- A blast (a keg, a shell, a cannonball) carries farther than a splash: clear at 100 studs,
+	-- faint at 300, gone by 600.
+	BLAST_NEAR = 20,
+	BLAST_RANGE = 600,
+	-- Thunder carries: full inside a storm cell, a rumble as one approaches, silent beyond.
+	-- (Ambient storms are seeded 600-1050 studs from a goblin at sea, so the first rumbles
+	-- are the warning that one is coming.)
+	THUNDER_NEAR = 150,
+	THUNDER_RANGE = 900,
+	-- At most VOICE_LIMIT world sounds of one kind within VOICE_WINDOW seconds.
+	VOICE_LIMIT = 3,
+	VOICE_WINDOW = 0.3,
+	-- The compressor on the world's sound group: holds down a pile of blasts at once.
+	COMPRESS_THRESHOLD = -14,
+	COMPRESS_RATIO = 6,
+	-- How far away things are still drawn for this player.
+	DRAW_MARKER = 900, -- A danger marker (its column is 60 studs tall).
+	DRAW_BLAST = 900,
+	DRAW_BOLT = 1800, -- Lightning is tall and bright: it is a way to see where the storms are.
+	FLASH_FULL = 300, -- The sky goes white for a bolt this close...
+	FLASH_NONE = 1400, -- ...and does not flicker at all for one this far off.
+	-- The server does not even send lightning and blast effects to goblins farther than this
+	-- from them (Blast.lua): generous, since a marker is also the warning to get out of the way.
+	SEND_RANGE = 1200,
+	SEND_BOLT_RANGE = 2000,
+}
+
 -- Traversal ------------------------------------------------------------------
 Config.ZIPLINE_SPEED = 110 -- The long lines are 550 studs: five seconds (V3: 90).
 
