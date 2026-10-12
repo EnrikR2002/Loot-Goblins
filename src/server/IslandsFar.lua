@@ -735,18 +735,38 @@ local function buildSkull()
 		local a = i / 4 * math.pi * 2
 		glow(v3(cx + math.cos(a) * 26, 8, cz - 6 + math.sin(a) * 26), Color3.fromRGB(110, 255, 170), 24)
 	end
-	terrain:FillCylinder(CFrame.new(cx, 13, cz - 32), 26, 4.5, AIR)
+	-- The shaft is cut square and wide. (It was a round one 4.5 studs across: terrain is made of
+	-- 4-stud cells, so that left rock across it, and nobody could climb to the chalice.)
+	terrain:FillBlock(CFrame.new(cx + 1, 14.5, cz - 32.5), v3(12, 25, 9), AIR)
 	ladder("SkullShaft", v3(cx + 1.6, 1.2, cz - 32), 24)
-	-- The cranium chamber and the throne.
+	-- The cranium chamber and the throne. The ladder comes up through a HATCH in the floor: a
+	-- goblin climbs the face nearest the pier, tops out, and walks on (north) onto a landing,
+	-- then round either side of the hatch to the chalice. (The floor was one slab laid over the
+	-- top of the ladder, with the throne on it. A ladder's far side is the way off it: the floor
+	-- has to be there, and nothing may be above the climber.)
 	terrain:FillBall(v3(cx, 36, cz - 20), 20, AIR)
-	ground(
-		"CraniumFloor",
-		v3(30, 1.4, 30),
-		CFrame.new(cx, 23.8, cz - 20),
-		Color3.fromRGB(90, 80, 90),
+	terrain:FillBlock(CFrame.new(cx, 29, cz - 33), v3(18, 10, 10), AIR) -- headroom over the landing
+	for _, slab in ipairs({
+		{ 0, -16.5, 30, 23 }, -- the chamber floor, south of the hatch
+		{ 0, -35.75, 16, 4.5 }, -- the landing, north of it
+		{ -5, -30.75, 6, 5.5 }, -- and a way round on each side
+		{ 6.5, -30.75, 3, 5.5 },
+	}) do
+		ground(
+			"CraniumFloor",
+			v3(slab[3], 1.4, slab[4]),
+			CFrame.new(cx + slab[1], 23.8, cz + slab[2]),
+			Color3.fromRGB(90, 80, 90),
+			Enum.Material.Slate
+		)
+	end
+	structure(
+		"Throne",
+		v3(8, 6, 4),
+		CFrame.new(cx + 11, 27, cz - 18) * CFrame.Angles(0, math.rad(90), 0),
+		Color3.fromRGB(60, 55, 65),
 		Enum.Material.Slate
 	)
-	structure("Throne", v3(8, 6, 4), CFrame.new(cx, 27, cz - 30), Color3.fromRGB(60, 55, 65), Enum.Material.Slate)
 	Kit.lootSpot("Chalice", CFrame.new(cx, 24.5 + 3, cz - 20))
 	pointLight(
 		decor(

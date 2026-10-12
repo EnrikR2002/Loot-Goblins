@@ -331,6 +331,11 @@ In my own V6 drafts, found by driving them:
 12. **A wrong property name** in the new sound code stopped the client loading on the first run.
 13. **A missed hoop made a lap last two laps** (the clock ran until the hoop was finally taken). Crossing the line now starts a new lap.
 
+Found by Ninety playing V6, after this report was first written:
+
+14. **The Skull Chalice could not be reached.** The ladder shaft from the lagoon to the chamber had rock left across it (it was cut as a round hole 4.5 studs across, and terrain is made of 4-stud cells), and the chamber's floor and throne were laid over the top of the ladder. The geometry dates from V2; every test since had teleported to the chalice, so nobody noticed. The shaft is now cut square and wide and the ladder comes up through a hatch in the floor. Tested on foot: from the pier, up the ladder, onto the landing, round the hatch, and the chalice taken by holding E.
+15. **Not fixed, and flagged by the same check:** a scan of all 24 ladders for something over the climber's head found two more that come up under a floor on every side: the windmill's ladder to its gallery (the Golden Gear; the gallery can still be reached by grapple) and the ladder to the fort's cannon stand. Three others (two on the wreck, one in the Crossroads' undercroft) are open on one side and probably fine. None of the five was climbed.
+
 ## 14. Remaining limitations
 
 - **Everything in "Not verified".**
