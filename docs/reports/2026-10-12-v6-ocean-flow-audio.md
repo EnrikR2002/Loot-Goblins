@@ -6,7 +6,7 @@
 | Request | Ninety's "V6 One-Shot: Ocean Flow & Sensory Polish" prompt |
 | Agent | Claude Code (Opus 5.5), local session on Ninety's machine with Roblox Studio MCP |
 | Branch | `feature/v6-ocean-flow-audio`, **stacked on** PR #13's branch `feature/v5-living-threats-playful-seas` (then #12, #11, #10, #9) |
-| Pull request | PR_LINK_PLACEHOLDER, base branch is `feature/v5-living-threats-playful-seas` |
+| Pull request | [#14](https://github.com/EnrikR2002/Loot-Goblins/pull/14), base branch is `feature/v5-living-threats-playful-seas` |
 | Merge status | **Not merged.** Nothing was merged, including PRs #9 to #13. Needs a human playtest and explicit approval. |
 
 ## 1. Summary
@@ -394,7 +394,7 @@ Run **Test > Server & Clients > 4 players > Play** if you can. Press `H` first.
 ## 17. Branch, commits, PR
 
 - Branch `feature/v6-ocean-flow-audio`, created from `origin/feature/v5-living-threats-playful-seas` at `1de020b`.
-- Pull request: PR_LINK_PLACEHOLDER, base `feature/v5-living-threats-playful-seas`. **Merge order: #9, #10, #11, #12, #13, then this.**
+- Pull request: [#14](https://github.com/EnrikR2002/Loot-Goblins/pull/14), base `feature/v5-living-threats-playful-seas`. **Merge order: #9, #10, #11, #12, #13, then this.**
 - **Nothing was merged.** No force-push. `main` is untouched.
 - `./scripts/check.ps1` passes (formatting, lint, Rojo build, whitespace).
 - Studio was left in Edit mode with the temporary test script removed and `HttpService.HttpEnabled` off. The open place has script edits that are not saved; they are all in this branch.
