@@ -6,6 +6,9 @@
 --   gates      slide up and down; Troubles can slam one shut as a trap
 --   lava       the volcano's crater burns anyone standing in it
 --
+--   beacons    signal fires anyone can light; Mechanisms.BeaconLit tells whoever cares (the
+--              Navy turns to look: Main wires it)
+--
 -- Boost gates and kickers live in Boats.lua (they act on hulls). Geysers are animated and
 -- applied on the client from timestamps, so there is nothing to run for them here.
 local Players = game:GetService("Players")
@@ -17,6 +20,8 @@ local Net = require(script.Parent.Net)
 local Loot = require(script.Parent.Loot)
 
 local Mechanisms = {}
+
+Mechanisms.BeaconLit = Util.signal() -- (beacon, player)
 
 local refs
 local lastBladeHit = {} -- player -> time
@@ -54,17 +59,22 @@ function Mechanisms.pull(lever, player)
 		Net.toast(player, "The lever won't budge - the gate is jammed")
 		return
 	end
-	if Mechanisms.openGate(gate, Config.GATE_OPEN_TIME) then
+	-- gate.hold: how long this one stays moved. gate.pulled: what the feed says (a harbor chain
+	-- does not "grind open").
+	local hold = gate.hold or Config.GATE_OPEN_TIME
+	if Mechanisms.openGate(gate, hold) then
 		lever.handle.CFrame = lever.restCFrame * CFrame.Angles(0, 0, math.rad(-70))
 		lever.knob.Color = Color3.fromRGB(110, 255, 150)
-		task.delay(Config.GATE_OPEN_TIME, function()
+		task.delay(hold, function()
 			if lever.handle.Parent then
 				lever.handle.CFrame = lever.restCFrame
 				lever.knob.Color = Color3.fromRGB(255, 80, 60)
 			end
 		end)
 		Net.feed(
-			player.DisplayName .. " pulled the lever: the " .. (gate.name or "gate") .. " grinds open!",
+			player.DisplayName
+				.. " "
+				.. (gate.pulled or ("pulled the lever: the " .. (gate.name or "gate") .. " grinds open!")),
 			Color3.fromRGB(120, 255, 190)
 		)
 		Net.broadcast("GateMove", { position = gate.model.PrimaryPart.Position, open = true })
@@ -182,8 +192,39 @@ local function tickLava()
 	end
 end
 
+-- Beacons --------------------------------------------------------------------------
+function Mechanisms.light(beacon, player)
+	local t = now()
+	if t < (beacon.readyAt or 0) then
+		Net.toast(player, "The beacon is still smouldering - give it a minute")
+		return
+	end
+	beacon.readyAt = t + Config.BEACON_COOLDOWN
+	beacon.fire.Enabled = true
+	beacon.light.Brightness = 3
+	beacon.prompt.Enabled = false
+	Net.broadcast("Beacon", { position = beacon.position })
+	Mechanisms.BeaconLit:Fire(beacon, player)
+	task.delay(Config.BEACON_BURN, function()
+		if beacon.fire.Parent then
+			beacon.fire.Enabled = false
+			beacon.light.Brightness = 0
+		end
+	end)
+	task.delay(Config.BEACON_COOLDOWN, function()
+		if beacon.prompt.Parent then
+			beacon.prompt.Enabled = true
+		end
+	end)
+end
+
 function Mechanisms.build(worldRefs)
 	refs = worldRefs
+	for _, beacon in ipairs(refs.beacons or {}) do
+		beacon.prompt.Triggered:Connect(function(player)
+			Mechanisms.light(beacon, player)
+		end)
+	end
 	for _, lever in ipairs(refs.levers) do
 		lever.prompt.Triggered:Connect(function(player)
 			Mechanisms.pull(lever, player)
@@ -211,6 +252,12 @@ function Mechanisms.reset()
 	end
 	for _, spinner in ipairs(refs.spinners) do
 		spinner.speed = spinner.baseSpeed or spinner.speed
+	end
+	for _, beacon in ipairs(refs.beacons or {}) do
+		beacon.readyAt = 0
+		beacon.fire.Enabled = false
+		beacon.light.Brightness = 0
+		beacon.prompt.Enabled = true
 	end
 end
 

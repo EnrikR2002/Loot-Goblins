@@ -1,17 +1,12 @@
 -- Builds the whole map at runtime from Terrain and parts. The repository stays
 -- the only source of truth; Edit mode shows an empty sky until Play.
 --
--- Layout (north is -Z). The big islands sit about 700 studs apart across open
--- sea, so boats are the way to travel and every escape is a real journey.
---
---                          SUN TEMPLE (mesa, idol, guardian)
---                                 \ zipline
---                                  \            TWIN STACKS
---   SHIPWRECK SHOALS        CROSSROADS RUINS     (islet)       CRYSTAL ISLE
---   (atoll, galleon, chest) (acropolis, lighthouse lens)       (spire, heart)
---                 GULL ROCK                    SMUGGLER'S COVE
---                 (islet) \ zipline             (islet)
---                          GOBLIN COVE (spawn, the Hoard, 4 boats)
+-- Where everything is lives in shared/Archipelago.lua (north is -Z). This file builds the sea
+-- itself and the original hand-built islands: Goblin Cove, Crossroads Ruins, the Sun Temple,
+-- Crystal Isle, Shipwreck Shoals and three islets. Those builders are written in the coordinates
+-- they were first built at (the constants below); each runs with a build offset (Kit.setShift)
+-- that moves it, unchanged, to its place in the Archipelago list. Outlands.lua grows new land
+-- around every island and Seaways.lua fills the water between them.
 --
 -- Every island has a dock with a boat. Gameplay modules only use the
 -- references returned in World.refs.
@@ -19,7 +14,6 @@ local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
-local Util = require(script.Parent.Util)
 
 local World = {}
 
@@ -54,7 +48,37 @@ local Kit = require(script.Parent.WorldKit)
 local Sea = require(script.Parent.Sea)
 local Islands = require(script.Parent.Islands)
 local IslandsFar = require(script.Parent.IslandsFar)
+local Outlands = require(script.Parent.Outlands)
+local Seaways = require(script.Parent.Seaways)
+local Landform = require(script.Parent.Landform)
+local Archipelago = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Archipelago"))
 local terrain = Kit.terrain
+local W = Kit.world -- Builder space to world space, for anything left in `refs`.
+
+-- How far an original island has moved from where its builder was written.
+local BUILT_AT = {
+	Home = HOME,
+	Cross = CROSS,
+	Temple = TEMPLE,
+	Crystal = CRYSTAL,
+	Shoals = SHOALS,
+	Gull = GULL_ROCK,
+	Smuggler = SMUGGLER,
+	Twin = TWIN_STACK,
+}
+local function shiftOf(id)
+	local now, was = Archipelago.byId[id], BUILT_AT[id]
+	local offset = Vector3.new(now.x - was.X, 0, now.z - was.Z)
+	assert(offset.X % 4 == 0 and offset.Z % 4 == 0, id .. " must move by a multiple of 4 studs")
+	return offset
+end
+local function moved(id, builder)
+	Kit.setShift(shiftOf(id))
+	builder()
+	Kit.setShift(nil)
+end
+-- Ziplines that leave an island are strung afterwards, in world space (buildLongZiplines).
+local spireTop, gullTop
 local folders = Kit.folders
 local refs = Kit.refs
 World.refs = refs
@@ -92,16 +116,18 @@ local deck = Kit.deck
 
 -- Ocean, sky and lighting -------------------------------------------------------
 local function buildEnvironment()
-	terrain:Clear()
-	terrain.WaterColor = Color3.fromRGB(35, 150, 185)
-	terrain.WaterTransparency = 0.45
-	terrain.WaterWaveSize = 0.12
-	terrain.WaterWaveSpeed = 8
-	terrain.WaterReflectance = 0.6
-	terrain:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(96, 186, 78))
-	terrain:SetMaterialColor(Enum.Material.Sand, Color3.fromRGB(238, 216, 160))
-	terrain:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(128, 120, 118))
-	terrain:SetMaterialColor(Enum.Material.Basalt, Color3.fromRGB(72, 60, 96))
+	local sea = Kit.realTerrain
+	sea:Clear()
+	sea.WaterColor = Color3.fromRGB(35, 150, 185)
+	sea.WaterTransparency = 0.45
+	sea.WaterWaveSize = 0.12
+	sea.WaterWaveSpeed = 8
+	sea.WaterReflectance = 0.6
+	sea:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(96, 186, 78))
+	sea:SetMaterialColor(Enum.Material.Sand, Color3.fromRGB(238, 216, 160))
+	sea:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(128, 120, 118))
+	sea:SetMaterialColor(Enum.Material.Basalt, Color3.fromRGB(72, 60, 96))
+	sea:SetMaterialColor(Enum.Material.LeafyGrass, Color3.fromRGB(58, 150, 70)) -- Jungle: deeper than the meadows.
 
 	Lighting.ClockTime = 14.5
 	Lighting.Brightness = 2.2
@@ -123,12 +149,12 @@ local function buildEnvironment()
 	local spanX, spanZ = max.X - min.X, max.Z - min.Z
 
 	-- Sea floor. The water itself is poured in last, into every gap below sea level.
-	terrain:FillBlock(CFrame.new(midX, -34, midZ), Vector3.new(spanX + 80, 12, spanZ + 80), Enum.Material.Sand)
+	sea:FillBlock(CFrame.new(midX, -34, midZ), Vector3.new(spanX + 80, 12, spanZ + 80), Enum.Material.Sand)
 
 	-- Invisible walls keep swimmers, boats and thrown loot inside the map. A part can't
 	-- pass 2048 studs, so long walls are several parts.
 	local function wall(size, center)
-		local p = Util.part("BoundaryWall", size, CFrame.new(center), Color3.new(1, 1, 1), nil, folders.structures)
+		local p = Kit.part("BoundaryWall", size, CFrame.new(center), Color3.new(1, 1, 1), nil, folders.structures)
 		p.Transparency = 1
 		p.CanQuery = false
 	end
@@ -154,7 +180,7 @@ local function buildEnvironment()
 	local reach = 4096
 	local tile = 2048
 	local function slab(cx, cz, sx, sz)
-		local p = Util.part(
+		local p = Kit.part(
 			"FarSea",
 			Vector3.new(sx, 1, sz),
 			CFrame.new(cx, -0.9, cz),
@@ -190,8 +216,9 @@ local function pourSea()
 	for x = min.X - 40, max.X + 40, tile do
 		for z = min.Z - 40, max.Z + 40, tile do
 			local region = Region3.new(Vector3.new(x, -28, z), Vector3.new(x + tile, SEA_Y, z + tile)):ExpandToGrid(4)
-			terrain:ReplaceMaterial(region, 4, Enum.Material.Air, Enum.Material.Water)
+			Kit.realTerrain:ReplaceMaterial(region, 4, Enum.Material.Air, Enum.Material.Water)
 		end
+		task.wait() -- A big sea is a lot of water: let the server breathe between strips.
 	end
 end
 
@@ -282,7 +309,7 @@ local function buildHomeToys()
 	)
 	table.insert(
 		refs.boostGates,
-		{ position = Vector3.new(0, 2, 404), radius = 12, kind = "kick", direction = Vector3.new(0, 0, -1) }
+		{ position = W(Vector3.new(0, 2, 404)), radius = 12, kind = "kick", direction = Vector3.new(0, 0, -1) }
 	)
 	neon(decor("JumpArrow", Vector3.new(10, 0.3, 2.4), CFrame.new(0, 5.8, 392), Color3.fromRGB(255, 220, 90)))
 	local jump = decor("JumpSign", Vector3.new(1, 1, 1), CFrame.new(0, 14, 400), Color3.new(1, 1, 1), nil)
@@ -337,13 +364,13 @@ local function buildHome()
 	pointLight(dais, GOLD, 30, 2)
 	sign(dais, "THE HOARD", GOLD, Vector3.new(0, 12, 6), 400)
 	skyBeam("HoardBeacon", HOARD, GOLD, 6)
-	refs.hoard = { position = HOARD, part = dais }
+	refs.hoard = { position = W(HOARD), part = dais }
 	-- With streaming on, far parts come and go; this invisible persistent marker keeps the Hoard's
 	-- position (and the waypoint over it) available to every client at any distance.
 	local marker = Instance.new("Model")
 	marker.Name = "HoardMarker"
 	marker.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
-	local anchor = Util.part("Hoard", Vector3.new(1, 1, 1), CFrame.new(HOARD), GOLD, nil, marker)
+	local anchor = Kit.part("Hoard", Vector3.new(1, 1, 1), CFrame.new(HOARD), GOLD, nil, marker)
 	anchor.Transparency = 1
 	anchor.CanCollide = false
 	anchor.CanQuery = false
@@ -393,7 +420,7 @@ local function buildHome()
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "HomeSpawn"
 	spawn.Size = Vector3.new(12, 1, 12)
-	spawn.CFrame = CFrame.new(0, 6.6, 690)
+	spawn.CFrame = W(CFrame.new(0, 6.6, 690))
 	spawn.Anchored = true
 	spawn.Neutral = true
 	spawn.Duration = 3
@@ -404,7 +431,7 @@ local function buildHome()
 	refs.homePoints = {}
 	for i = 0, 7 do
 		local a = i / 8 * math.pi * 2
-		table.insert(refs.homePoints, CFrame.new(math.cos(a) * 9, 10, 690 + math.sin(a) * 9))
+		table.insert(refs.homePoints, W(CFrame.new(math.cos(a) * 9, 10, 690 + math.sin(a) * 9)))
 	end
 
 	-- Two docks on the north shore, four boats: three skiffs and a Cutter (heavier, with a cannon and
@@ -492,7 +519,7 @@ local function buildCrossroads()
 				Enum.Material.Marble,
 				folders.structures
 			)
-			fallen.CFrame = CFrame.new(pos + Vector3.new(0, 1.6, 0)) * CFrame.Angles(0, a, 0)
+			fallen.CFrame = W(CFrame.new(pos + Vector3.new(0, 1.6, 0)) * CFrame.Angles(0, a, 0))
 		else
 			cylinder(
 				"Column",
@@ -671,7 +698,7 @@ local function buildCrossroads()
 		DARK_STONE,
 		Enum.Material.Slate
 	)
-	refs.lootSpots.Lens = CFrame.new(LIGHTHOUSE.X, topY + 2.5 + 2.2, LIGHTHOUSE.Z)
+	refs.lootSpots.Lens = W(CFrame.new(LIGHTHOUSE.X, topY + 2.5 + 2.2, LIGHTHOUSE.Z))
 
 	-- Spiral ramp: 4 turns from the acropolis (facing the plaza) to the top.
 	local turns, perTurn, radius = 4, 24, 12
@@ -778,7 +805,7 @@ local function buildTemple()
 	end
 	local topY = y -- 94
 	ground("Altar", Vector3.new(6, 2, 6), CFrame.new(ZIGGURAT.X, topY + 1, ZIGGURAT.Z), DARK_STONE, Enum.Material.Slate)
-	refs.lootSpots.Idol = CFrame.new(ZIGGURAT.X, topY + 2 + 2.3, ZIGGURAT.Z)
+	refs.lootSpots.Idol = W(CFrame.new(ZIGGURAT.X, topY + 2 + 2.3, ZIGGURAT.Z))
 
 	-- Grand stairs straight up the south face. The boulder rolls down these.
 	local stairBottom = Vector3.new(0, MESA_Y + 0.2, ZIGGURAT.Z + 68)
@@ -807,7 +834,7 @@ local function buildTemple()
 		stripe.CanCollide = false
 	end
 	-- Just below the top of the stairs, so it misses the thief at the altar.
-	refs.boulderStart = CFrame.new(0, topY, ZIGGURAT.Z + 22)
+	refs.boulderStart = W(CFrame.new(0, topY, ZIGGURAT.Z + 22))
 	refs.boulderDirection = Vector3.new(0, 0, 1)
 	brazier(Vector3.new(-10, MESA_Y, ZIGGURAT.Z + 70))
 	brazier(Vector3.new(10, MESA_Y, ZIGGURAT.Z + 70))
@@ -862,14 +889,14 @@ local function buildTemple()
 			Enum.Material.Slate
 		)
 	end
-	refs.guardianLair = CFrame.lookAt(lair, Vector3.new(ZIGGURAT.X, MESA_Y, ZIGGURAT.Z))
-	refs.templeCenter = c
+	refs.guardianLair = W(CFrame.lookAt(lair, Vector3.new(ZIGGURAT.X, MESA_Y, ZIGGURAT.Z)))
+	refs.templeCenter = W(c)
 
 	totem("TempleTotemWest", Vector3.new(-32, MESA_Y, -668), Vector3.new(0, MESA_Y, -620))
 	totem("TempleTotemEast", Vector3.new(32, MESA_Y, -668), Vector3.new(0, MESA_Y, -620))
 	totem("JungleTotem", Vector3.new(130, c.Y, -578), Vector3.new(60, c.Y, -540))
 
-	-- The Sun Spire on the south-east rim: a zipline all the way to the Crossroads.
+	-- The Sun Spire on the south-east rim: a zipline off the island, out to Pilgrim's Rock.
 	local spire = Vector3.new(75, MESA_Y, -655)
 	local deckY = MESA_Y + 24
 	deck("SpireDeck", Vector3.new(spire.X, deckY - 1, spire.Z), 12)
@@ -888,11 +915,7 @@ local function buildTemple()
 		)
 	end
 	ladder("SpireLadder", spire + Vector3.new(-7, 0, 0), deckY - MESA_Y + 2)
-	World.zipline(
-		"TempleZipline",
-		Vector3.new(spire.X, deckY + 7, spire.Z),
-		Vector3.new(ACROPOLIS.X, ACROPOLIS.Y + 7, -92)
-	)
+	spireTop = W(Vector3.new(spire.X, deckY + 7, spire.Z))
 
 	-- A waterfall down the north-east cliff, just for looks.
 	local fallOut = compass(305)
@@ -1023,14 +1046,14 @@ local function buildCrystalIsle()
 	end
 
 	ground("HeartPedestal", Vector3.new(3, 3, 3), CFrame.new(c.X, 3.5, c.Z + 8), DARK_STONE, Enum.Material.Slate)
-	refs.lootSpots.Heart = CFrame.new(c.X, 5 + 1.9, c.Z + 8)
+	refs.lootSpots.Heart = W(CFrame.new(c.X, 5 + 1.9, c.Z + 8))
 
 	-- Cave-in: a rock plug that seals the west half of the tunnel (the side facing home).
 	refs.caveIn = {
-		plug = CFrame.new(c.X - 28, 8, c.Z),
+		plug = W(CFrame.new(c.X - 28, 8, c.Z)),
 		plugSize = Vector3.new(10, 12.5, 12.5),
-		rockMin = Vector3.new(c.X - 48, 11, c.Z - 4),
-		rockMax = Vector3.new(c.X - 20, 12, c.Z + 4),
+		rockMin = W(Vector3.new(c.X - 48, 11, c.Z - 4)),
+		rockMax = W(Vector3.new(c.X - 20, 12, c.Z + 4)),
 	}
 
 	totem("CrystalTotemWest", Vector3.new(c.X - 168, 1.5, c.Z - 24), Vector3.new(c.X - 260, 1.5, c.Z))
@@ -1130,7 +1153,7 @@ local function buildShoals()
 		{ "WreckForeNest", Vector3.new(6, 1, 6), CFrame.new(0, 60.5, -10), true },
 	}
 	for _, piece in ipairs(pieces) do
-		Util.part(
+		Kit.part(
 			piece[1],
 			piece[2],
 			hull * piece[3],
@@ -1142,7 +1165,7 @@ local function buildShoals()
 	-- Ladders between decks, and the masts (climb them like ladders).
 	local function hullLadder(name, offset, height)
 		local truss = ladder(name, Vector3.zero, height)
-		truss.CFrame = hull * CFrame.new(offset + Vector3.new(0, truss.Size.Y / 2, 0))
+		truss.CFrame = W(hull * CFrame.new(offset + Vector3.new(0, truss.Size.Y / 2, 0)))
 	end
 	hullLadder("HoldLadder", Vector3.new(-8, 1, 10), 10)
 	hullLadder("DeckLadder", Vector3.new(8, 11, -12), 14)
@@ -1184,15 +1207,15 @@ local function buildShoals()
 		local lantern = neon(decor("Lantern", Vector3.new(0.8, 1.2, 0.8), hull * CFrame.new(0, 8, z), GOLD))
 		pointLight(lantern, Color3.fromRGB(255, 190, 110), 20, 1.2)
 	end
-	refs.lootSpots.Chest = hull * CFrame.new(0, 1 + 1.6, 0)
+	refs.lootSpots.Chest = W(hull * CFrame.new(0, 1 + 1.6, 0))
 
 	-- The wreck's cannon on the stern cabin: a totem that also fires the Chest's barrage.
 	local cannonBase = (hull * CFrame.new(0, 33, 27)).Position
 	local model = Instance.new("Model")
 	model.Name = "WreckCannon"
 	local aim = CFrame.lookAt(cannonBase, Vector3.new(-480, cannonBase.Y, 40))
-	Util.part("Carriage", Vector3.new(4, 2, 5), aim * CFrame.new(0, 1, 0), DARK_WOOD, Enum.Material.Wood, model)
-	local barrel = Util.part(
+	Kit.part("Carriage", Vector3.new(4, 2, 5), aim * CFrame.new(0, 1, 0), DARK_WOOD, Enum.Material.Wood, model)
+	local barrel = Kit.part(
 		"Barrel",
 		Vector3.new(6, 2.4, 2.4),
 		aim * CFrame.new(0, 2.6, -1) * CFrame.Angles(0, math.rad(90), 0),
@@ -1201,7 +1224,7 @@ local function buildShoals()
 		model
 	)
 	barrel.Shape = Enum.PartType.Cylinder
-	local muzzle = Util.part(
+	local muzzle = Kit.part(
 		"Eye",
 		Vector3.new(1.4, 1.4, 0.6),
 		aim * CFrame.new(0, 2.6, -4.2),
@@ -1246,17 +1269,19 @@ end
 -- The islets: rest stops and landmarks between the big islands ----------------------
 local function buildIslets()
 	-- Gull Rock: a sea pinnacle with a ladder and a long zipline down to Goblin Cove.
+	Kit.setShift(shiftOf("Gull"))
 	local g = GULL_ROCK
 	fillColumn(g.X, g.Z, -30, 1.5, 34, Enum.Material.Sand)
 	fillColumn(g.X, g.Z, -30, 66, 16, Enum.Material.Rock)
 	terrain:FillBall(Vector3.new(g.X + 9, 18, g.Z + 7), 17, Enum.Material.Rock)
 	deck("GullDeck", Vector3.new(g.X, 66, g.Z), 14)
 	ladder("GullLadder", Vector3.new(g.X, 1.5, g.Z - 17), 66)
-	World.zipline("GullZipline", Vector3.new(g.X, 76, g.Z), Vector3.new(-115, 13, 612))
+	gullTop = W(Vector3.new(g.X, 76, g.Z))
 	islandSign(Vector3.new(g.X, 92, g.Z), "GULL ROCK")
 	palm(g.X - 20, g.Z + 14, 1.5, 14)
 
 	-- Smuggler's Cove: a low islet with a spare boat and a rock arch boats can sail through.
+	Kit.setShift(shiftOf("Smuggler"))
 	local s = SMUGGLER
 	island(s, 46, 36, Enum.Material.Rock, Enum.Material.Grass)
 	for _, z in ipairs({ s.Z - 35, s.Z + 20 }) do
@@ -1284,6 +1309,7 @@ local function buildIslets()
 	islandSign(Vector3.new(s.X, 34, s.Z), "SMUGGLER'S COVE")
 
 	-- Twin Stacks: two sea stacks and a rope bridge. The Crystal Isle zipline lands here.
+	Kit.setShift(shiftOf("Twin"))
 	local t = TWIN_STACK
 	local small = Vector3.new(t.X + 34, 36, t.Z - 32)
 	fillColumn(t.X + 15, t.Z - 15, -30, 1.5, 40, Enum.Material.Sand)
@@ -1301,53 +1327,22 @@ local function buildIslets()
 	)
 	islandSign(Vector3.new(t.X, 72, t.Z), "TWIN STACKS")
 	palm(t.X + 30, t.Z + 10, 1.5, 12)
+	Kit.setShift(nil)
+end
+
+-- The ziplines that leave their island. Gull Rock's runs down to Goblin Cove's west shore; the Sun
+-- Spire's runs out to Pilgrim's Rock, a sea stack with a spare skiff south of the temple. (Crystal
+-- Isle's lands on Twin Stacks, which moved with it, so buildCrystalIsle still strings that one.)
+local function buildLongZiplines()
+	-- (The line is longer and so shallower than it was: it ends a little higher to clear the shore.)
+	World.zipline("GullZipline", gullTop, Vector3.new(-115, 19, 612) + shiftOf("Home"))
+	local rock = Archipelago.byId.Pilgrim
+	World.zipline("TempleZipline", spireTop, Vector3.new(rock.x, rock.top + 8, rock.z))
 end
 
 -- Traversal toys (the client drives these) -------------------------------------------
 World.launchPad = Kit.launchPad
 World.zipline = Kit.zipline
-
--- Currents you can read: a river in the sea with chevrons pointing downstream. Boats carried along
--- it gain speed; sailing against it costs. They are the sea's own shortcuts and traps.
-local function buildStream(name, a, b, halfWidth, speed)
-	Sea.addStream(name, a, b, halfWidth, speed)
-	local direction = flatDirection(a, b)
-	local length = (b - a).Magnitude
-	local right = Vector3.new(-direction.Z, 0, direction.X)
-	for d = 20, length - 10, 46 do
-		local center = a + direction * d
-		for _, side in ipairs({ -1, 1 }) do
-			local arm = center - direction * 5 + right * side * 6
-			local chevron = decor(
-				"StreamChevron",
-				Vector3.new(1.4, 0.2, 14),
-				CFrame.lookAt(Vector3.new(arm.X, 0.35, arm.Z), Vector3.new(center.X, 0.35, center.Z))
-					* CFrame.new(0, 0, 0),
-				Color3.fromRGB(235, 248, 255),
-				Enum.Material.Neon
-			)
-			chevron.Transparency = 0.5
-			chevron.CastShadow = false
-		end
-	end
-	local holder = decor(
-		"StreamSign",
-		Vector3.new(1, 1, 1),
-		CFrame.new(a:Lerp(b, 0.5) + Vector3.new(0, 18, 0)),
-		Color3.new(1, 1, 1),
-		nil
-	)
-	holder.Transparency = 1
-	sign(holder, name, Color3.fromRGB(190, 235, 255), Vector3.zero, 420)
-end
-
-local function buildStreams()
-	-- The Rushing Strait: the channel between Shipwreck Shoals and Crossroads runs east, fast.
-	buildStream("RUSHING STRAIT >", Vector3.new(-505, 0, 90), Vector3.new(-215, 0, 90), 42, 24)
-	-- The Home Stream: the open water between Crossroads and Goblin Cove flows toward home. Treasure
-	-- runs ride it back; outbound boats fight it.
-	buildStream("HOME STREAM v", Vector3.new(-95, 0, 215), Vector3.new(-95, 0, 465), 40, 17)
-end
 
 -- Build ----------------------------------------------------------------------
 function World.build()
@@ -1385,22 +1380,51 @@ function World.build()
 	refs.navyBases = {}
 	refs.troubleSites = {}
 	refs.targets = {}
+	refs.beacons = {}
 	folders.root.Parent = workspace
 
 	table.clear(Sea.streams)
 	table.clear(Sea.whirls)
+	Kit.clearTouched()
+	Landform.touch = Kit.touch
+	refs.builtOn = Kit.touchedAt -- (x, z) -> true where a builder raised the seabed or laid ground
+	-- Seconds each stage took, for the start-up line Main prints.
+	local timings, mark = {}, os.clock()
+	local function stage(name)
+		table.insert(timings, string.format("%s %.1f", name, os.clock() - mark))
+		mark = os.clock()
+	end
 	buildEnvironment()
-	buildHome()
-	buildCrossroads()
-	buildTemple()
-	buildCrystalIsle()
-	buildShoals()
+	stage("sea floor")
+	-- New land first: the island builders then lay their own ground over it and carve their own
+	-- harbors, tunnels and channels out of it, so nothing they rely on is buried.
+	Outlands.buildLand()
+	stage("new land")
+	moved("Home", buildHome)
+	moved("Cross", buildCrossroads)
+	moved("Temple", buildTemple)
+	moved("Crystal", buildCrystalIsle)
+	moved("Shoals", buildShoals)
 	buildIslets()
+	buildLongZiplines()
 	Islands.build()
 	IslandsFar.build()
-	buildStreams()
+	stage("islands")
+	-- What stands on the new land (it needs the finished ground), then the open sea.
+	Outlands.buildPlaces()
+	Seaways.build()
+	stage("places and seaways")
 	pourSea()
+	stage("water")
+	refs.buildTimings = table.concat(timings, ", ")
 	return refs
+end
+
+-- The islands' silhouettes for the horizon. Cosmetic and slow (it reads every island's shape back
+-- from the terrain), so Main runs it in the background once players are in: a few milliseconds a
+-- frame for about ten seconds. Returns how many blocks it made.
+function World.buildHorizon()
+	return Outlands.buildSilhouettes(0.004)
 end
 
 return World

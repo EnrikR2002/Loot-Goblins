@@ -45,6 +45,7 @@ Navy.mines = {}
 local refs
 local random = Random.new()
 local lastDispatchAt = -math.huge
+local chainNoticeAt = -math.huge
 
 local NAVY_RED = Color3.fromRGB(255, 120, 100)
 
@@ -220,6 +221,15 @@ function Navy.dispatch(targetPlayer, count, force)
 	end
 	local base, baseDistance = nearestBase(root.Position)
 	local fromBase = base ~= nil and baseDistance < Config.NAVY_BASE_RANGE
+	-- The fort's harbor chain is up: nothing sails from it. (Out of the fort's waters the Navy
+	-- comes from the open sea and the chain is no help.)
+	if fromBase and base.chain and (base.chain.progress or 0) > 0.4 then
+		if t >= chainNoticeAt then
+			chainNoticeAt = t + 12
+			Net.feed("Fort Barnacle's ships are stuck behind the harbor chain!", NAVY_RED)
+		end
+		return 0
+	end
 	local sent = 0
 	local seenAt = nil
 	for i = 1, count do
@@ -270,6 +280,28 @@ function Navy.dispatchGhosts(spawns, count, hunted)
 		Net.message("GHOST SHIPS RISE FROM THE FOG!", 3.5, Color3.fromRGB(120, 255, 210))
 	end
 	return sent
+end
+
+-- A signal fire: every patrol ship close enough to see it gives up whatever it was doing and
+-- sails over to look, for a while. Returns how many turned.
+function Navy.distract(position)
+	local t = now()
+	local turned = 0
+	for _, ship in ipairs(Navy.ships) do
+		if not ship.ghost and not ship.leaving then
+			local distance = (flat(ship.boat.hull.Position) - flat(position)).Magnitude
+			if distance < Config.BEACON_RANGE then
+				ship.decoyUntil = t + Config.BEACON_TIME
+				ship.target = nil
+				ship.lastSeenPos = position
+				ship.lastSeenAt = t
+				ship.ramUntil = 0
+				ship.route = nil
+				turned += 1
+			end
+		end
+	end
+	return turned
 end
 
 function Navy.standDown()
@@ -521,8 +553,8 @@ local function tickShip(ship, t)
 	local position = hull.Position
 	local input = boat.input
 
-	-- See someone?
-	local carrier = pickTarget(position)
+	-- See someone? (Not while it is off looking at a signal fire.)
+	local carrier = t >= (ship.decoyUntil or 0) and pickTarget(position) or nil
 	if carrier then
 		ship.target = carrier.player
 		ship.lastSeenAt = t

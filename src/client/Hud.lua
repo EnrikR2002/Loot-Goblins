@@ -415,16 +415,22 @@ local HELP_LINES = {
 		"MOVE",
 		"You run fast for free. Stamina buys SHIFT sprint, C dash (also in the air) and a second jump in the air.",
 	},
-	{ "HOOK", "F on a cliff, wall, mast or a passing boat reels you to it. Jump to let go and keep the swing." },
+	{ "HOOK", "F on a cliff, crag, mast or a passing boat reels you to it. Jump lets go. Orange pads are catapults." },
 	{ "HEAT", "Stealing and carrying raise Heat. High Heat sends flares, the Navy and a tempest after the CARRIER." },
 	{
 		"FIGHT",
 		"Sword hits knock loot loose. F near loot or a carrier steals it. Loot makes every stamina cost bigger.",
 	},
-	{ "TOYS", "G throws a powder keg (take one from keg crates). E at a cannon fires it where you aim." },
+	{
+		"TOYS",
+		"G throws a keg (from keg crates). E fires a cannon, pulls a lever, or lights a beacon: the Navy goes to look.",
+	},
 	{ "POLTERGOBLIN", "E: leave your body, run as a spirit, snap back. Loot you grab comes back with you." },
 	{ "DANGER", "A ring on the ground = something lands there: move. The Guardian's ring races outward: jump it." },
-	{ "WIN", "Most gold when the raid timer ends wins." },
+	{
+		"SEA",
+		"Green lamps: water too shallow for patrol ships. Hoops and currents are fast lanes. Most gold at the end wins.",
+	},
 }
 
 local function buildHelp()
@@ -457,8 +463,8 @@ local function buildHelp()
 			ZIndex = 9,
 		})
 		text(help, {
-			Position = UDim2.fromOffset(160, 50 + (i - 1) * 36),
-			Size = UDim2.new(1, -180, 0, 30),
+			Position = UDim2.fromOffset(176, 50 + (i - 1) * 36),
+			Size = UDim2.new(1, -196, 0, 30),
 			Text = line[2],
 			Font = Enum.Font.GothamMedium,
 			TextXAlignment = Enum.TextXAlignment.Left,

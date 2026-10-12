@@ -17,6 +17,7 @@ local SeaNav = {}
 local CELL = 40
 local PROBE = 14
 local LAND_FLOOR = -1.5 -- A seabed higher than this is land.
+local OPEN_FLOOR = -26 -- Where a raycast finds the flat sea floor: the depth of open water.
 
 local minX, minZ, cols, rows
 local depth = {} -- index -> water depth in studs (0 = land)
@@ -55,19 +56,41 @@ function SeaNav.build(refs)
 		Vector2.new(0, PROBE),
 		Vector2.new(0, -PROBE),
 	}
-	local landCount = 0
+	-- Most of the sea is open water over a flat floor, and a raycast there makes the engine build
+	-- collision for terrain nothing will ever touch (seconds of start-up on a big map). The
+	-- builders record where they raised the seabed or laid ground (refs.builtOn), so only those
+	-- cells and their neighbours are probed; the rest are open water.
+	local builtOn = refs.builtOn
+	local function worthProbing(center)
+		if not builtOn then
+			return true
+		end
+		for oz = -1, 1 do
+			for ox = -1, 1 do
+				if builtOn(center.X + ox * CELL, center.Z + oz * CELL) then
+					return true
+				end
+			end
+		end
+		return false
+	end
+	local landCount, probeCount = 0, 0
 	for cz = 0, rows - 1 do
 		for cx = 0, cols - 1 do
 			local center = centerOf(cx, cz)
-			local shallowest = -math.huge
-			for _, probe in ipairs(probes) do
-				local hit = workspace:Raycast(
-					Vector3.new(center.X + probe.X, 200, center.Z + probe.Y),
-					Vector3.new(0, -260, 0),
-					params
-				)
-				local floorY = hit and hit.Position.Y or -40
-				shallowest = math.max(shallowest, floorY)
+			local shallowest = OPEN_FLOOR
+			if worthProbing(center) then
+				shallowest = -math.huge
+				for _, probe in ipairs(probes) do
+					local hit = workspace:Raycast(
+						Vector3.new(center.X + probe.X, 200, center.Z + probe.Y),
+						Vector3.new(0, -260, 0),
+						params
+					)
+					local floorY = hit and hit.Position.Y or -40
+					shallowest = math.max(shallowest, floorY)
+				end
+				probeCount += #probes
 			end
 			local d = shallowest > LAND_FLOOR and 0 or -shallowest
 			depth[index(cx, cz)] = d
@@ -76,7 +99,7 @@ function SeaNav.build(refs)
 			end
 		end
 		-- Yield now and then so a big map never freezes the server at start-up.
-		if cz % 12 == 0 then
+		if cz % 16 == 0 then
 			task.wait()
 		end
 	end
@@ -121,7 +144,7 @@ function SeaNav.build(refs)
 		return shelter[index(cx, cz)]
 	end
 	ready = true
-	return { cells = cols * rows, land = landCount }
+	return { cells = cols * rows, land = landCount, probes = probeCount }
 end
 
 -- The shelter map as one digit (0-9) per cell, for clients (Sea.import): the driver's client
@@ -245,7 +268,9 @@ function SeaNav.path(from, to, draft, coastWeight)
 	local open, cost, came, closed = {}, { [startNode] = 0 }, {}, {}
 	heapPush(open, startNode, 0)
 	local expanded = 0
-	while #open > 0 and expanded < 6000 do
+	-- The cap is a safety net, not a budget: the sea is 25,000 cells (V4) and a route across it
+	-- with a detour can touch most of them.
+	while #open > 0 and expanded < 26000 do
 		local node = heapPop(open)
 		if node == goalNode then
 			break

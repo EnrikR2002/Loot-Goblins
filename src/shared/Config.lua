@@ -4,7 +4,7 @@ local Config = {}
 
 -- Raid -----------------------------------------------------------------------
 -- A raid is one timed match. Bank the most gold before the timer runs out.
-Config.RAID_DURATION = 420 -- Everything moves faster in V3, so a raid is a minute shorter (V2: 480).
+Config.RAID_DURATION = 600 -- The sea is 2.2x wider in V4: the farthest round trip is about 3 minutes, and three should fit. (V3: 420)
 Config.LAST_CALL = 60 -- The HUD turns red for the final stretch.
 Config.INTERMISSION = 12
 Config.FIRST_INTERMISSION = 6 -- Gives the first players time to load in.
@@ -50,6 +50,8 @@ Config.AIR_JUMP_POWER = 52
 -- trouble is what the world does the moment it leaves its spot (Threats / Troubles).
 -- island is the Archipelago id. visual picks the model (Loot.lua).
 -- The rule of the map: more gold means farther, harder to carry and nastier trouble.
+-- V4 values follow travel time on the bigger sea: a near treasure earns about 2.5 gold a minute
+-- for a goblin working alone, a middle one 4 to 5, a far one 6 to 8 (and far ones go wrong).
 Config.LOOT = {
 	{
 		id = "Compass",
@@ -99,7 +101,7 @@ Config.LOOT = {
 		place = "the Windmill",
 		island = "Windmill",
 		visual = "gear",
-		value = 3,
+		value = 4,
 		weight = 2,
 		carrySpeed = 26,
 		heat = 10,
@@ -113,7 +115,7 @@ Config.LOOT = {
 		place = "the Lighthouse",
 		island = "Cross",
 		visual = "disc",
-		value = 3,
+		value = 4,
 		weight = 2,
 		carrySpeed = 25.5,
 		heat = 15,
@@ -122,12 +124,26 @@ Config.LOOT = {
 		color = Color3.fromRGB(255, 240, 140),
 	},
 	{
+		id = "Sextant",
+		name = "Sunken Sextant",
+		place = "Kelp Cay",
+		island = "Kelp",
+		visual = "gear",
+		value = 4,
+		weight = 1,
+		carrySpeed = 26.5,
+		heat = 10,
+		respawn = 30,
+		trouble = "Gulls",
+		color = Color3.fromRGB(150, 220, 160),
+	},
+	{
 		id = "Chest",
 		name = "Captain's Chest",
 		place = "the Shipwreck",
 		island = "Shoals",
 		visual = "chest",
-		value = 4,
+		value = 6,
 		weight = 4,
 		carrySpeed = 23.5,
 		heat = 20,
@@ -141,7 +157,7 @@ Config.LOOT = {
 		place = "Crystal Isle",
 		island = "Crystal",
 		visual = "orb",
-		value = 5,
+		value = 8,
 		weight = 3,
 		carrySpeed = 24.5,
 		heat = 25,
@@ -155,7 +171,7 @@ Config.LOOT = {
 		place = "Tangle Isle",
 		island = "Tangle",
 		visual = "idol",
-		value = 5,
+		value = 10,
 		weight = 2,
 		carrySpeed = 25,
 		heat = 22,
@@ -169,7 +185,7 @@ Config.LOOT = {
 		place = "the Tide Vault",
 		island = "Tide",
 		visual = "orb",
-		value = 6,
+		value = 9,
 		weight = 3,
 		carrySpeed = 24.5,
 		heat = 26,
@@ -183,7 +199,7 @@ Config.LOOT = {
 		place = "Maelstrom Rock",
 		island = "Maelstrom",
 		visual = "gem",
-		value = 6,
+		value = 10,
 		weight = 3,
 		carrySpeed = 24.5,
 		heat = 24,
@@ -192,12 +208,40 @@ Config.LOOT = {
 		color = Color3.fromRGB(150, 190, 255),
 	},
 	{
+		id = "Lantern",
+		name = "Storm Lantern",
+		place = "Lantern Key",
+		island = "Lantern",
+		visual = "gem",
+		value = 10,
+		weight = 2,
+		carrySpeed = 25.5,
+		heat = 22,
+		respawn = 45,
+		trouble = "Bell",
+		color = Color3.fromRGB(255, 200, 110),
+	},
+	{
+		id = "Castaway",
+		name = "Castaway's Hoard",
+		place = "Driftwood Key",
+		island = "Driftwood",
+		visual = "chest",
+		value = 11,
+		weight = 4,
+		carrySpeed = 23.5,
+		heat = 24,
+		respawn = 45,
+		trouble = "Gulls",
+		color = Color3.fromRGB(205, 175, 130),
+	},
+	{
 		id = "Strongbox",
 		name = "Admiral's Strongbox",
 		place = "Fort Barnacle",
 		island = "Fort",
 		visual = "chest",
-		value = 7,
+		value = 15,
 		weight = 5,
 		carrySpeed = 22.5,
 		heat = 30,
@@ -211,7 +255,7 @@ Config.LOOT = {
 		place = "the Volcano",
 		island = "Ember",
 		visual = "crown",
-		value = 8,
+		value = 15,
 		weight = 3,
 		carrySpeed = 24,
 		heat = 32,
@@ -225,7 +269,7 @@ Config.LOOT = {
 		place = "the Sun Temple",
 		island = "Temple",
 		visual = "idol",
-		value = 10,
+		value = 16,
 		weight = 4,
 		carrySpeed = 23.5,
 		heat = 40,
@@ -239,7 +283,7 @@ Config.LOOT = {
 		place = "Frost Spire",
 		island = "Frost",
 		visual = "gem",
-		value = 12,
+		value = 20,
 		weight = 4,
 		carrySpeed = 23.5,
 		heat = 38,
@@ -253,7 +297,7 @@ Config.LOOT = {
 		place = "Leviathan's Rest",
 		island = "Bone",
 		visual = "tooth",
-		value = 13,
+		value = 21,
 		weight = 6,
 		carrySpeed = 21.5,
 		heat = 42,
@@ -267,7 +311,7 @@ Config.LOOT = {
 		place = "Skull Rock",
 		island = "Skull",
 		visual = "chalice",
-		value = 14,
+		value = 24,
 		weight = 5,
 		carrySpeed = 22.5,
 		heat = 45,
@@ -277,11 +321,14 @@ Config.LOOT = {
 	},
 }
 
--- Loot nobody takes grows more valuable: +1 gold per LOOT_INTEREST_EVERY seconds
--- untouched, up to LOOT_INTEREST_MAX. A treasure everyone ignores becomes the best deal
--- on the map, so the crowd is always deciding between "now, with company" and "later".
-Config.LOOT_INTEREST_EVERY = 70
+-- Loot nobody takes grows more valuable: one step per LOOT_INTEREST_EVERY seconds untouched,
+-- up to LOOT_INTEREST_MAX steps. A step is LOOT_INTEREST_SHARE of the treasure's value (at
+-- least 1 gold), so a far prize left alone gains as much, in proportion, as a near one. A
+-- treasure everyone ignores becomes the best deal on the map, so the crowd is always deciding
+-- between "now, with company" and "later".
+Config.LOOT_INTEREST_EVERY = 80
 Config.LOOT_INTEREST_MAX = 3
+Config.LOOT_INTEREST_SHARE = 0.12 -- The Skull Chalice (24) gains 3 a step, up to +9.
 
 Config.PICKUP_DISTANCE = 10
 Config.STEAL_HOLD = 0.6 -- Holding E to pry loot off its spot.
@@ -299,8 +346,9 @@ Config.WARD_RADIUS = 55 -- Around the Hoard: no Poltergoblin, no Guardian.
 
 -- Out of bounds. Loot past these returns to its spot. Invisible walls stand at
 -- the X/Z edges, built from several parts because one part can't pass 2048 studs.
-Config.BOUNDS_MIN = Vector3.new(-1500, -45, -1560)
-Config.BOUNDS_MAX = Vector3.new(1700, 600, 1180)
+-- V4: 6900 x 5840 studs, 4.6 times the area of V3's sea (3200 x 2740).
+Config.BOUNDS_MIN = Vector3.new(-3400, -45, -2800)
+Config.BOUNDS_MAX = Vector3.new(3500, 600, 3040)
 
 -- Heat -----------------------------------------------------------------------
 -- One shared meter. Stealing and carrying raise it, quiet time lowers it.
@@ -327,11 +375,13 @@ Config.HEAT_TIERS = {
 		hint = "A second ship mines the way home. A tempest chases the thief.",
 	},
 }
--- Trips are shorter now that everything is faster, so carrying heats the world up quicker:
--- a deep treasure still reaches HUNTED on the way home.
-Config.HEAT_CARRY_RATE = 0.8 -- Per carrier outside the ward, per second, for a 25-heat treasure (scaled by its heat). (V2: 0.5)
-Config.HEAT_CARRY_RATE_CAP = 2.0 -- (V2: 1.2)
-Config.HEAT_DECAY_RATE = 0.6 -- Per second while nobody carries loot. (V2: 0.8)
+-- V4: trips home are two to three times longer than in V3, so each second of carrying heats the
+-- world less. The aim is the same shape as before over a longer run: a middle treasure ends its
+-- trip at ALERT, a far one is HUNTED for most of the way and reaches FRENZY near home if the
+-- thief dawdles or is caught up in a fight.
+Config.HEAT_CARRY_RATE = 0.48 -- Per carrier outside the ward, per second, for a 25-heat treasure (scaled by its heat). (V3: 0.8)
+Config.HEAT_CARRY_RATE_CAP = 1.4 -- (V3: 2.0)
+Config.HEAT_DECAY_RATE = 0.5 -- Per second while nobody carries loot. (V3: 0.6)
 Config.REVEAL_TIER = 2 -- ALERT and up: carriers are visible through walls.
 
 -- Guardian -------------------------------------------------------------------
@@ -342,7 +392,7 @@ Config.GUARDIAN_WAKE_TIER = 3
 Config.GUARDIAN_SPEED = 27 -- (V2: 16)
 Config.GUARDIAN_FRENZY_SPEED = 32 -- (V2: 19)
 Config.GUARDIAN_WADE_MULT = 0.8
-Config.GUARDIAN_LEASH = 300 -- From the temple island's center, until FRENZY.
+Config.GUARDIAN_LEASH = 520 -- From the temple island's center, until FRENZY: the whole of the bigger island (V3: 300).
 Config.GUARDIAN_HIT_RANGE = 9
 Config.GUARDIAN_DAMAGE = 20
 Config.GUARDIAN_KNOCKBACK = 60
@@ -589,13 +639,23 @@ Config.KEG_BOAT_PUSH = 55
 
 -- Island mechanisms ---------------------------------------------------------------------------------
 Config.GATE_OPEN_TIME = 28 -- A pulled lever holds its gate open this long.
+Config.CHAIN_HOLD_TIME = 40 -- Fort Barnacle's harbor chain stays up this long: no ship leaves port.
+-- Signal beacons: light one and every patrol ship within BEACON_RANGE sails over to look.
+Config.BEACON_RANGE = 1500
+Config.BEACON_TIME = 16 -- Seconds a ship ignores carriers while it goes to look.
+Config.BEACON_BURN = 20 -- Seconds the fire shows.
+Config.BEACON_COOLDOWN = 75 -- Before the same beacon can be lit again.
 Config.WINDMILL_DAMAGE = 14
 Config.WINDMILL_RAGE_TIME = 25
 
 -- Storms and lightning ---------------------------------------------------------------------------------
 Config.STORM_FIRST_DELAY = 50 -- Quiet time at the start of a raid.
-Config.STORM_GAP_MIN = 95 -- Seconds between ambient storms (then 120 s or so of weather).
-Config.STORM_GAP_MAX = 140
+Config.STORM_GAP_MIN = 45 -- Seconds between new ambient storms (each lasts 90-125 s). (V3: 95-140, one at a time)
+Config.STORM_GAP_MAX = 75
+Config.STORM_MAX_AMBIENT = 3 -- At once. The sea is big; one storm would never be met.
+Config.STORM_NEAR_MIN = 700 -- A storm starts this far from someone out at sea...
+Config.STORM_NEAR_MAX = 1300 -- ...and blows back across their water.
+Config.STORM_HOME_CLEAR = 800 -- Never seeded this close to the Hoard, or on a goblin this close to it.
 Config.STORM_SPEED_MIN = 16
 Config.STORM_SPEED_MAX = 28 -- A boat does 86-108, so you can always outrun one.
 Config.STORM_FADE = 10 -- Seconds a storm takes to build and to fade.
@@ -622,9 +682,9 @@ Config.FRENZY_ROUGH = 0.45 -- Extra swell everywhere at FRENZY heat.
 
 -- The Navy -----------------------------------------------------------------------------------------------
 Config.NAVY_MAX = 3
-Config.NAVY_SIGHT = 600 -- Sight range in clear weather (needs a clear line).
-Config.NAVY_SEARCH_TIME = 20 -- They check your last position this long, then go home.
-Config.NAVY_LEAVE_TIME = 25 -- A ship heading home leaves the sea after this long.
+Config.NAVY_SIGHT = 700 -- Sight range in clear weather (needs a clear line). (V3: 600)
+Config.NAVY_SEARCH_TIME = 25 -- They check your last position this long, then go home.
+Config.NAVY_LEAVE_TIME = 30 -- A ship heading home leaves the sea after this long.
 Config.NAVY_STANDOFF = 95 -- Against a thief ashore they hold at this range and shell.
 Config.NAVY_FIRE_RANGE = 320
 Config.NAVY_FIRE_GAP = 3.6
@@ -639,7 +699,7 @@ Config.NAVY_COAST_WEIGHT = 3 -- How hard their routes keep off the coasts (a fas
 Config.NAVY_DISPATCH_GAP = 20
 -- Where they come from: the fort if it is this close to the thief, otherwise the horizon, on
 -- the side the thief has to sail home through.
-Config.NAVY_BASE_RANGE = 900
+Config.NAVY_BASE_RANGE = 1500 -- Navy Waters: Tangle Isle, Driftwood Key and the Serpent Channel are the fort's (V3: 900).
 Config.NAVY_SPAWN_MIN = 750 -- Far enough that you see it coming and have time to choose a course.
 Config.NAVY_SPAWN_MAX = 950
 Config.NAVY_LEAD_MAX = 5 -- A hunter aims at most this many seconds ahead of the thief.
@@ -708,6 +768,6 @@ Config.GHOST_FOG_TIME = 80
 Config.QUAKE_DELAY = 1.6
 
 -- Traversal ------------------------------------------------------------------
-Config.ZIPLINE_SPEED = 90
+Config.ZIPLINE_SPEED = 110 -- The long lines are 550 studs: five seconds (V3: 90).
 
 return Config

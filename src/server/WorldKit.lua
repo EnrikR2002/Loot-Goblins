@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Util = require(script.Parent.Util)
+local Sea = require(script.Parent.Sea)
 
 local Kit = {}
 
@@ -21,10 +22,87 @@ Kit.SEA_Y = SEA_Y
 Kit.STONE, Kit.DARK_STONE, Kit.SANDSTONE = STONE, DARK_STONE, SANDSTONE
 Kit.WOOD, Kit.DARK_WOOD, Kit.GOLD, Kit.CAVE_GLOW = WOOD, DARK_WOOD, GOLD, CAVE_GLOW
 
-local terrain = workspace.Terrain
+local realTerrain = workspace.Terrain
 local folders: { [string]: Folder } = {}
 local refs: { [string]: any } = {}
-Kit.terrain, Kit.folders, Kit.refs = terrain, folders, refs
+
+-- The build offset. The original islands (World.lua) are written in the coordinates they were
+-- first built at. To move one, its builder runs with a horizontal `shift`: everything it asks for
+-- (terrain, parts, raycasts) lands shifted, and everything it leaves in `refs` is converted to
+-- real positions with Kit.world. Builders that already use real positions run with no shift.
+-- Shifts are multiples of 4 studs, so shifted terrain lands on the same voxels and keeps its shape.
+local shift = Vector3.zero
+
+function Kit.setShift(offset)
+	shift = offset or Vector3.zero
+end
+
+-- A builder-space Vector3 or CFrame in real world space.
+function Kit.world(value)
+	return value + shift
+end
+
+-- Where anything has been built. The sea is mostly open water over a flat floor, and looking at
+-- all of it (SeaNav probes the seabed with raycasts) costs seconds at start-up, so every builder
+-- records the ground it touched on a coarse grid and SeaNav only looks there.
+local TOUCH_CELL = 40
+local touched = {}
+local function touch(minX, minZ, maxX, maxZ)
+	for cz = math.floor(minZ / TOUCH_CELL), math.floor(maxZ / TOUCH_CELL) do
+		for cx = math.floor(minX / TOUCH_CELL), math.floor(maxX / TOUCH_CELL) do
+			touched[(cz + 32768) * 65536 + cx + 32768] = true
+		end
+	end
+end
+local function touchAround(position, radius)
+	touch(position.X - radius, position.Z - radius, position.X + radius, position.Z + radius)
+end
+Kit.touch = touch
+
+function Kit.touchedAt(x, z)
+	return touched[(math.floor(z / TOUCH_CELL) + 32768) * 65536 + math.floor(x / TOUCH_CELL) + 32768] == true
+end
+
+function Kit.clearTouched()
+	table.clear(touched)
+end
+
+-- Stands in for workspace.Terrain in the builders: the same fill calls, moved by the shift.
+local terrain = {}
+local AIR = Enum.Material.Air
+function terrain:FillBall(center, radius, material)
+	realTerrain:FillBall(center + shift, radius, material)
+	if material ~= AIR then
+		touchAround(center + shift, radius)
+	end
+end
+function terrain:FillBlock(cframe, size, material)
+	realTerrain:FillBlock(cframe + shift, size, material)
+	if material ~= AIR then
+		touchAround(cframe.Position + shift, size.Magnitude / 2)
+	end
+end
+function terrain:FillCylinder(cframe, height, radius, material)
+	realTerrain:FillCylinder(cframe + shift, height, radius, material)
+	if material ~= AIR then
+		touchAround(cframe.Position + shift, radius)
+	end
+end
+function terrain:ReplaceMaterial(region, resolution, from, to)
+	local center, half = region.CFrame.Position + shift, region.Size / 2
+	realTerrain:ReplaceMaterial(Region3.new(center - half, center + half), resolution, from, to)
+end
+Kit.terrain, Kit.realTerrain, Kit.folders, Kit.refs = terrain, realTerrain, folders, refs
+
+-- Every part the builders make goes through here, so it lands shifted too.
+local function part(name, size, cframe, color, material, parent)
+	-- Walkable parts count as ground for ships too (SeaNav), so they are recorded as built on.
+	if parent == folders.ground then
+		touchAround(cframe.Position + shift, size.Magnitude / 2)
+	end
+	return Util.part(name, size, cframe + shift, color, material, parent)
+end
+Kit.part = part
 
 -- Helpers --------------------------------------------------------------------
 local function folder(name, parent)
@@ -36,16 +114,16 @@ end
 
 -- Walkable parts go in Ground (the Guardian walks on Ground and Terrain only).
 local function ground(name, size, cframe, color, material)
-	return Util.part(name, size, cframe, color, material, folders.ground)
+	return part(name, size, cframe, color, material, folders.ground)
 end
 
 local function structure(name, size, cframe, color, material)
-	return Util.part(name, size, cframe, color, material, folders.structures)
+	return part(name, size, cframe, color, material, folders.structures)
 end
 
 -- Decoration never blocks shots or the mouse.
 local function decor(name, size, cframe, color, material, collide)
-	local p = Util.part(name, size, cframe, color, material, folders.decor)
+	local p = part(name, size, cframe, color, material, folders.decor)
 	p.CanCollide = collide == true
 	p.CanQuery = collide == true
 	p.CanTouch = false
@@ -65,7 +143,7 @@ local function upright(position)
 end
 
 local function cylinder(name, radius, height, position, color, material, parent)
-	local p = Util.part(name, Vector3.new(height, radius * 2, radius * 2), upright(position), color, material, parent)
+	local p = part(name, Vector3.new(height, radius * 2, radius * 2), upright(position), color, material, parent)
 	p.Shape = Enum.PartType.Cylinder
 	return p
 end
@@ -76,7 +154,7 @@ local function plank(name, a, b, width, thickness, color, material, parent, over
 	local mid = (a + b) / 2
 	local length = (b - a).Magnitude + (overlap or 0)
 	local cframe = CFrame.lookAt(mid, b) * CFrame.new(0, -thickness / 2, 0)
-	return Util.part(name, Vector3.new(width, thickness, length), cframe, color, material, parent)
+	return part(name, Vector3.new(width, thickness, length), cframe, color, material, parent)
 end
 
 local function flatDirection(from, to)
@@ -97,7 +175,7 @@ local function ladder(name, bottom, height)
 	local truss = Instance.new("TrussPart")
 	truss.Name = name
 	truss.Size = Vector3.new(2, h, 2)
-	truss.CFrame = CFrame.new(bottom + Vector3.new(0, h / 2, 0))
+	truss.CFrame = CFrame.new(bottom + shift + Vector3.new(0, h / 2, 0))
 	truss.Anchored = true
 	truss.Color = DARK_WOOD
 	truss.Material = Enum.Material.Wood
@@ -157,8 +235,8 @@ terrainOnly.FilterType = Enum.RaycastFilterType.Include
 terrainOnly.IgnoreWater = true
 
 local function groundY(x, z, default)
-	terrainOnly.FilterDescendantsInstances = { terrain, folders.ground }
-	local hit = workspace:Raycast(Vector3.new(x, 300, z), Vector3.new(0, -400, 0), terrainOnly)
+	terrainOnly.FilterDescendantsInstances = { realTerrain, folders.ground }
+	local hit = workspace:Raycast(Vector3.new(x + shift.X, 300, z + shift.Z), Vector3.new(0, -400, 0), terrainOnly)
 	return hit and hit.Position.Y or default
 end
 
@@ -249,12 +327,12 @@ end
 local function skyBeam(name, position, color, width)
 	local bottom = Instance.new("Attachment")
 	bottom.Name = name .. "Bottom"
-	bottom.Position = position
-	bottom.Parent = terrain
+	bottom.Position = position + shift
+	bottom.Parent = realTerrain
 	local top = Instance.new("Attachment")
 	top.Name = name .. "Top"
-	top.Position = position + Vector3.new(0, 500, 0)
-	top.Parent = terrain
+	top.Position = position + shift + Vector3.new(0, 500, 0)
+	top.Parent = realTerrain
 	local beam = Instance.new("Beam")
 	beam.Name = name
 	beam.Attachment0 = bottom
@@ -312,11 +390,11 @@ local function totem(name, position, faceToward)
 	local model = Instance.new("Model")
 	model.Name = name
 	local look = CFrame.lookAt(position, Vector3.new(faceToward.X, position.Y, faceToward.Z))
-	Util.part("Base", Vector3.new(5, 2, 5), look * CFrame.new(0, 1, 0), DARK_STONE, Enum.Material.Slate, model)
-	Util.part("Body", Vector3.new(3.4, 9, 3.4), look * CFrame.new(0, 6.5, 0), STONE, Enum.Material.Cobblestone, model)
-	Util.part("Brow", Vector3.new(4.4, 1, 4.4), look * CFrame.new(0, 9.4, 0), DARK_STONE, Enum.Material.Slate, model)
-	Util.part("Cap", Vector3.new(3, 1.6, 3), look * CFrame.new(0, 11.7, 0), DARK_STONE, Enum.Material.Slate, model)
-	local eye = Util.part(
+	part("Base", Vector3.new(5, 2, 5), look * CFrame.new(0, 1, 0), DARK_STONE, Enum.Material.Slate, model)
+	part("Body", Vector3.new(3.4, 9, 3.4), look * CFrame.new(0, 6.5, 0), STONE, Enum.Material.Cobblestone, model)
+	part("Brow", Vector3.new(4.4, 1, 4.4), look * CFrame.new(0, 9.4, 0), DARK_STONE, Enum.Material.Slate, model)
+	part("Cap", Vector3.new(3, 1.6, 3), look * CFrame.new(0, 11.7, 0), DARK_STONE, Enum.Material.Slate, model)
+	local eye = part(
 		"Eye",
 		Vector3.new(1.6, 1.2, 0.6),
 		look * CFrame.new(0, 8.3, -1.8),
@@ -361,7 +439,7 @@ local function dock(shore, sea, sides, types)
 		local size = Config.BOAT_TYPES[typeName].size
 		local p = a + direction * (length - size.Z / 2 + 3) + right * side * (4 + size.X / 2 + 1.8)
 		local at = Vector3.new(p.X, 0.8, p.Z)
-		table.insert(refs.boatSpawns, { cf = CFrame.lookAt(at, at + direction), type = typeName })
+		table.insert(refs.boatSpawns, { cf = CFrame.lookAt(at, at + direction) + shift, type = typeName })
 	end
 end
 
@@ -428,7 +506,7 @@ end
 -- A launch pad throws whoever touches it. Launch is a velocity; keep it mostly
 -- vertical, because air control eats sideways speed.
 function Kit.launchPad(position, launch)
-	local pad = Util.part(
+	local pad = part(
 		"LaunchPad",
 		Vector3.new(0.6, 7, 7),
 		upright(position),
@@ -453,13 +531,11 @@ end
 function Kit.zipline(name, from, to)
 	local model = Instance.new("Model")
 	model.Name = name
-	model:SetAttribute("ZipFrom", from)
-	model:SetAttribute("ZipTo", to)
-	local startPost =
-		Util.part("Start", Vector3.new(1.2, 1.2, 1.2), CFrame.new(from), DARK_WOOD, Enum.Material.Wood, model)
+	model:SetAttribute("ZipFrom", from + shift)
+	model:SetAttribute("ZipTo", to + shift)
+	local startPost = part("Start", Vector3.new(1.2, 1.2, 1.2), CFrame.new(from), DARK_WOOD, Enum.Material.Wood, model)
 	startPost.CanCollide = false
-	Util.part("End", Vector3.new(1.2, 1.2, 1.2), CFrame.new(to), DARK_WOOD, Enum.Material.Wood, model).CanCollide =
-		false
+	part("End", Vector3.new(1.2, 1.2, 1.2), CFrame.new(to), DARK_WOOD, Enum.Material.Wood, model).CanCollide = false
 	local cable = plank("Cable", from, to, 0.2, 0.2, Color3.fromRGB(40, 40, 40), Enum.Material.Metal, model)
 	cable.CanCollide = false
 	cable.CanQuery = false
@@ -596,7 +672,7 @@ end
 function Kit.spinner(model, pivot, axis, speed, dangerous, radius)
 	local entry = {
 		model = model,
-		pivot = pivot,
+		pivot = pivot + shift,
 		axis = axis,
 		speed = speed,
 		baseSpeed = speed,
@@ -610,7 +686,7 @@ end
 
 -- A named loot spot. The CFrame is where the treasure's center rests.
 function Kit.lootSpot(id, cframe)
-	refs.lootSpots[id] = cframe
+	refs.lootSpots[id] = cframe + shift
 end
 
 -- A wall of stone blocks (for forts and ruins). Returns the part.
@@ -619,7 +695,7 @@ function Kit.wall(name, from, to, height, thickness, color, material, parent)
 	local mid = (from + to) / 2
 	local cf =
 		CFrame.lookAt(Vector3.new(mid.X, from.Y + height / 2, mid.Z), Vector3.new(to.X, from.Y + height / 2, to.Z))
-	return Util.part(
+	return part(
 		name,
 		Vector3.new(thickness, height, length),
 		cf,
@@ -631,12 +707,12 @@ end
 
 -- A part inside a model (the model supplies the parent).
 function Kit.partOf(model, name, size, cframe, color, material)
-	return Util.part(name, size, cframe, color, material, model)
+	return part(name, size, cframe, color, material, model)
 end
 
 -- A crate of powder kegs. Kegs.lua runs its prompt.
 function Kit.kegCrate(position)
-	local crate = Util.part(
+	local crate = part(
 		"KegCrate",
 		Vector3.new(4.4, 3, 4.4),
 		CFrame.new(position + Vector3.new(0, 1.5, 0)),
@@ -645,7 +721,7 @@ function Kit.kegCrate(position)
 		folders.structures
 	)
 	for i, x in ipairs({ -1.1, 1.1 }) do
-		local keg = Util.part(
+		local keg = part(
 			"KegTop",
 			Vector3.new(2, 2, 2),
 			CFrame.new(position + Vector3.new(x, 3.8, (i - 1.5) * 0.5)),
@@ -683,7 +759,7 @@ function Kit.barrel(position)
 		model
 	)
 	for _, y in ipairs({ -1.2, 1.2 }) do
-		local band = Util.part(
+		local band = part(
 			"BarrelBand",
 			Vector3.new(0.4, 3.4, 3.4),
 			CFrame.new(position + Vector3.new(0, 2.1 + y, 0)) * CFrame.Angles(0, 0, math.rad(90)),
@@ -705,7 +781,7 @@ end
 function Kit.lever(position, label, gate)
 	local model = Instance.new("Model")
 	model.Name = "Lever"
-	local post = Util.part(
+	local post = part(
 		"LeverPost",
 		Vector3.new(1.4, 4, 1.4),
 		CFrame.new(position + Vector3.new(0, 2, 0)),
@@ -713,7 +789,7 @@ function Kit.lever(position, label, gate)
 		Enum.Material.Slate,
 		model
 	)
-	local handle = Util.part(
+	local handle = part(
 		"LeverHandle",
 		Vector3.new(0.6, 3.4, 0.6),
 		CFrame.new(position + Vector3.new(0, 4.4, 0)) * CFrame.Angles(0, 0, math.rad(35)),
@@ -722,7 +798,7 @@ function Kit.lever(position, label, gate)
 		model
 	)
 	handle.CanCollide = false
-	local knob = Util.part(
+	local knob = part(
 		"LeverKnob",
 		Vector3.new(1.4, 1.4, 1.4),
 		CFrame.new(position + Vector3.new(-1, 5.9, 0)),
@@ -759,7 +835,7 @@ function Kit.cannon(position, faceToward, name)
 	local model = Instance.new("Model")
 	model.Name = name or "Cannon"
 	local look = CFrame.lookAt(position, Vector3.new(faceToward.X, position.Y, faceToward.Z))
-	local base = Util.part(
+	local base = part(
 		"CannonBase",
 		Vector3.new(5.4, 1.6, 7),
 		look * CFrame.new(0, 0.8, 0),
@@ -768,7 +844,7 @@ function Kit.cannon(position, faceToward, name)
 		model
 	)
 	for _, x in ipairs({ -2.9, 2.9 }) do
-		local wheel = Util.part(
+		local wheel = part(
 			"CannonWheel",
 			Vector3.new(0.8, 3.6, 3.6),
 			look * CFrame.new(x, 1.8, 0.6),
@@ -780,7 +856,7 @@ function Kit.cannon(position, faceToward, name)
 		wheel.CanCollide = false
 	end
 	local pivot = look * CFrame.new(0, 3.2, 0.8)
-	local barrel = Util.part(
+	local barrel = part(
 		"CannonBarrel",
 		Vector3.new(2.6, 2.6, 8),
 		pivot * CFrame.new(0, 0, -3),
@@ -789,7 +865,7 @@ function Kit.cannon(position, faceToward, name)
 		model
 	)
 	barrel.CanCollide = false
-	Util.part(
+	part(
 		"CannonRing",
 		Vector3.new(3.1, 3.1, 1),
 		pivot * CFrame.new(0, 0, -6.8),
@@ -813,7 +889,7 @@ function Kit.cannon(position, faceToward, name)
 		model = model,
 		base = base,
 		barrel = barrel,
-		pivot = pivot.Position,
+		pivot = pivot.Position + shift,
 		name = name or "Cannon",
 		restLook = look.LookVector,
 	}
@@ -867,7 +943,7 @@ end
 -- A steam vent: shoots whoever stands on it into the air, on a timer anyone can read. The
 -- client animates and launches from these attributes, so the server does nothing per frame.
 function Kit.geyser(position, period, activeTime, phase, launch)
-	local vent = Util.part(
+	local vent = part(
 		"GeyserVent",
 		Vector3.new(7, 0.8, 7),
 		CFrame.new(position + Vector3.new(0, 0.2, 0)),
@@ -876,7 +952,7 @@ function Kit.geyser(position, period, activeTime, phase, launch)
 		folders.launchPads
 	)
 	vent.Shape = Enum.PartType.Cylinder
-	vent.CFrame = CFrame.new(position + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	vent.CFrame = CFrame.new(position + shift + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, 0, math.rad(90))
 	vent:SetAttribute("GeyserPeriod", period)
 	vent:SetAttribute("GeyserActive", activeTime)
 	vent:SetAttribute("GeyserPhase", phase)
@@ -888,13 +964,213 @@ end
 -- A lava hazard volume. Invisible; the glow is the terrain below. Mechanisms.lua burns whoever is in it.
 function Kit.lavaZone(center, size, damage)
 	local zone =
-		Util.part("LavaZone", size, CFrame.new(center), Color3.fromRGB(255, 90, 20), Enum.Material.Neon, folders.decor)
+		part("LavaZone", size, CFrame.new(center), Color3.fromRGB(255, 90, 20), Enum.Material.Neon, folders.decor)
 	zone.Transparency = 1
 	zone.CanCollide = false
 	zone.CanQuery = false
 	zone.CanTouch = false
 	table.insert(refs.lavaZones, { part = zone, damage = damage or 22 })
 	return zone
+end
+
+-- Things in the sea and things to cross it with (V4) ------------------------------------
+-- A ring of lights a boat sails through for a kick of speed and a short boost. One on a sea lane
+-- works both ways (it pushes the way you are already going); a one-way hoop pushes along
+-- `direction` whatever you do, which is what a lagoon racing line wants.
+function Kit.hoop(center, direction, radius, color, oneWay)
+	direction = Vector3.new(direction.X, 0, direction.Z).Unit
+	radius = radius or 10
+	color = color or Color3.fromRGB(120, 255, 230)
+	local look = CFrame.lookAt(center, center + direction)
+	for i = 0, 15 do
+		local a = i / 16 * math.pi * 2
+		local at = look * CFrame.new(math.cos(a) * radius, math.sin(a) * radius, 0)
+		neon(decor("HoopLight", Vector3.new(1.8, 1.8, 1.8), at, color, Enum.Material.Neon))
+	end
+	table.insert(refs.boostGates, {
+		position = Vector3.new(center.X, 1, center.Z) + shift,
+		radius = radius + 1,
+		kind = "boost",
+		direction = direction,
+		both = not oneWay,
+	})
+end
+
+-- A ramp in the water: hit it fast and the boat flies. `at` is the middle of the ramp at sea
+-- level and `direction` the way boats travel up it. Put one in front of a sandbar or a reef and
+-- it is a shortcut only a fast, light boat can take.
+function Kit.kicker(at, direction, width)
+	direction = Vector3.new(direction.X, 0, direction.Z).Unit
+	local foot = Vector3.new(at.X, -3.2, at.Z) - direction * 16
+	local top = Vector3.new(at.X, 5.5, at.Z) + direction * 15
+	plank(
+		"KickerRamp",
+		foot,
+		top,
+		width or 14,
+		2,
+		Color3.fromRGB(255, 170, 90),
+		Enum.Material.Slate,
+		folders.structures,
+		4
+	)
+	neon(
+		decor(
+			"KickerGlow",
+			Vector3.new((width or 14) - 2, 0.3, 2),
+			CFrame.lookAt(top + Vector3.new(0, 0.6, 0), top + direction * 5),
+			Color3.fromRGB(255, 220, 90)
+		)
+	)
+	table.insert(refs.boostGates, {
+		position = foot:Lerp(top, 0.45) + Vector3.new(0, 2, 0) + shift,
+		radius = 12,
+		kind = "kick",
+		direction = direction,
+	})
+end
+
+-- A current you can read: a river in the sea with chevrons pointing downstream. Boats carried
+-- along it gain speed; sailing against it costs. They are the sea's own shortcuts and traps.
+function Kit.stream(name, a, b, halfWidth, speed)
+	Sea.addStream(name, a, b, halfWidth, speed)
+	local direction = flatDirection(a, b)
+	local length = (b - a).Magnitude
+	local right = Vector3.new(-direction.Z, 0, direction.X)
+	for d = 20, length - 10, 56 do
+		local center = a + direction * d
+		for _, side in ipairs({ -1, 1 }) do
+			local arm = center - direction * 5 + right * side * 6
+			local chevron = decor(
+				"StreamChevron",
+				Vector3.new(1.4, 0.2, 14),
+				CFrame.lookAt(Vector3.new(arm.X, 0.35, arm.Z), Vector3.new(center.X, 0.35, center.Z)),
+				Color3.fromRGB(235, 248, 255),
+				Enum.Material.Neon
+			)
+			chevron.Transparency = 0.5
+			chevron.CastShadow = false
+		end
+	end
+	local holder = decor(
+		"StreamSign",
+		Vector3.new(1, 1, 1),
+		CFrame.new(a:Lerp(b, 0.5) + Vector3.new(0, 18, 0)),
+		Color3.new(1, 1, 1),
+		nil
+	)
+	holder.Transparency = 1
+	sign(holder, name, Color3.fromRGB(190, 235, 255), Vector3.zero, 520)
+end
+
+-- A hook post: a mast with a perch on top and a ring of light, standing in the sea or on a shore.
+-- It is something to grapple (F): a line of them is a road across the water for someone on foot.
+-- `base` is where it stands; returns the top of the perch.
+function Kit.hookPost(base, height, color)
+	color = color or Color3.fromRGB(255, 215, 110)
+	local top = Vector3.new(base.X, height, base.Z)
+	cylinder(
+		"HookPost",
+		1.3,
+		height - base.Y,
+		Vector3.new(base.X, (height + base.Y) / 2, base.Z),
+		DARK_WOOD,
+		Enum.Material.Wood,
+		folders.structures
+	)
+	ground("HookPerch", Vector3.new(9, 1, 9), CFrame.new(top - Vector3.new(0, 0.5, 0)), WOOD, Enum.Material.WoodPlanks)
+	for i = 0, 7 do
+		local a = i / 8 * math.pi * 2
+		neon(
+			decor(
+				"HookRing",
+				Vector3.new(1, 1, 1),
+				CFrame.new(top + Vector3.new(math.cos(a) * 5.2, -1.6, math.sin(a) * 5.2)),
+				color
+			)
+		)
+	end
+	return top
+end
+
+-- A catapult: a launch pad that throws you a long way. `launch` is the velocity it gives and
+-- `carry` how many seconds the throw holds its sideways speed (the client keeps it; without that
+-- a goblin's own air control would stop the flight short). Dash, air jump or grapple ends it early.
+function Kit.catapult(position, launch, carry, label)
+	local pad = Kit.launchPad(position, launch)
+	pad.Color = Color3.fromRGB(255, 170, 60)
+	pad.Size = Vector3.new(0.8, 10, 10)
+	pad:SetAttribute("Carry", carry)
+	local flat = Vector3.new(launch.X, 0, launch.Z).Unit
+	local frame = CFrame.lookAt(position, position + flat)
+	for _, side in ipairs({ -1, 1 }) do
+		structure(
+			"CatapultArm",
+			Vector3.new(1.2, 9, 1.2),
+			frame * CFrame.new(side * 6.4, 4.5, 3) * CFrame.Angles(math.rad(-24), 0, 0),
+			DARK_WOOD,
+			Enum.Material.Wood
+		)
+	end
+	structure("CatapultBeam", Vector3.new(14, 1.2, 1.2), frame * CFrame.new(0, 8.4, 4.8), DARK_WOOD, Enum.Material.Wood)
+	local holder = decor("CatapultSign", Vector3.new(1, 1, 1), frame * CFrame.new(0, 10, 4.8), Color3.new(1, 1, 1), nil)
+	holder.Transparency = 1
+	sign(holder, label or "CATAPULT", Color3.fromRGB(255, 200, 110), Vector3.zero, 220)
+	return pad
+end
+
+-- A signal beacon: a fire bowl on a post that anyone can light (hold E). Mechanisms.lua runs the
+-- prompt and the fire; Main wires it to the Navy, which turns to look. Returns the beacons entry.
+function Kit.beacon(position, name)
+	local model = Instance.new("Model")
+	model.Name = "SignalBeacon"
+	part(
+		"BeaconPost",
+		Vector3.new(1.6, 8, 1.6),
+		CFrame.new(position + Vector3.new(0, 4, 0)),
+		DARK_STONE,
+		Enum.Material.Slate,
+		model
+	)
+	local bowl = part(
+		"BeaconBowl",
+		Vector3.new(2, 6.4, 6.4),
+		upright(position + Vector3.new(0, 8.6, 0)),
+		Color3.fromRGB(70, 60, 60),
+		Enum.Material.Metal,
+		model
+	)
+	bowl.Shape = Enum.PartType.Cylinder
+	local fire = Instance.new("Fire")
+	fire.Size = 14
+	fire.Heat = 18
+	fire.Color = Color3.fromRGB(255, 150, 50)
+	fire.SecondaryColor = Color3.fromRGB(255, 70, 30)
+	fire.Enabled = false
+	fire.Parent = bowl
+	local light = pointLight(bowl, Color3.fromRGB(255, 160, 70), 60, 0)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "BeaconPrompt"
+	prompt.ObjectText = "Signal beacon"
+	prompt.ActionText = "Light it (the Navy comes to look)"
+	prompt.HoldDuration = 0.8
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.Parent = bowl
+	model.PrimaryPart = bowl
+	model.Parent = folders.structures
+	local entry = {
+		model = model,
+		bowl = bowl,
+		fire = fire,
+		light = light,
+		prompt = prompt,
+		position = bowl.Position,
+		name = name,
+	}
+	table.insert(refs.beacons, entry)
+	return entry
 end
 
 -- Export every helper so builders can alias what they use.

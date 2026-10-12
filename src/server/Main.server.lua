@@ -57,8 +57,22 @@ StarterPlayer.CharacterJumpPower = Config.JUMP_POWER
 -- Shift sprints, so it can't also toggle Roblox's shift lock.
 StarterPlayer.EnableMouseLockOption = false
 
+-- The world is big: say how long it took, so a slow start-up is noticed when it creeps in.
+local startedAt = os.clock()
 local refs = World.build()
-SeaNav.build(refs)
+local worldSeconds = os.clock() - startedAt
+local seaGrid = SeaNav.build(refs)
+print(
+	string.format(
+		"[LootGoblins] world built in %.1f s (%s), sea grid in %.1f s (%d cells, %d land, %d probes)",
+		worldSeconds,
+		refs.buildTimings or "",
+		os.clock() - startedAt - worldSeconds,
+		seaGrid.cells,
+		seaGrid.land,
+		seaGrid.probes
+	)
+)
 Boats.build(refs)
 Loot.build(refs)
 Poltergoblin.init(refs)
@@ -74,6 +88,30 @@ Escalation.build(refs)
 Combat.init(refs)
 Raid.init(refs)
 Storms.reset()
+
+-- A lit signal beacon turns the patrol ships that can see it.
+Mechanisms.BeaconLit:Connect(function(beacon, player)
+	local turned = Navy.distract(beacon.position)
+	local name = beacon.name or "the sea"
+	if turned > 0 then
+		Net.message(
+			"A SIGNAL FIRE AT " .. string.upper(name) .. ": THE PATROL TURNS TO LOOK!",
+			3.5,
+			Color3.fromRGB(255, 170, 70)
+		)
+	end
+	Net.feed(
+		player.DisplayName
+			.. " lit the beacon at "
+			.. name
+			.. (
+				turned > 0
+					and (": " .. turned .. " patrol ship" .. (turned > 1 and "s go" or " goes") .. " to look")
+				or ""
+			),
+		Color3.fromRGB(255, 170, 70)
+	)
+end)
 
 -- Spirits can't bank; the Hoard's ward also pulls them back before they reach it.
 Loot.canBank = function(player)
@@ -246,6 +284,13 @@ Players.CharacterAutoLoads = true
 for _, player in ipairs(Players:GetPlayers()) do
 	player:LoadCharacter()
 end
+
+-- The far islands' silhouettes are only scenery, so they are made now, a little each frame.
+task.spawn(function()
+	local horizonStarted = os.clock()
+	local blocks = World.buildHorizon()
+	print(string.format("[LootGoblins] horizon ready: %d blocks in %.0f s", blocks, os.clock() - horizonStarted))
+end)
 
 -- Main loop --------------------------------------------------------------------------
 -- Heat per second from carriers outside the ward, weighted by how hot each treasure is.

@@ -144,7 +144,20 @@ end
 
 -- Fort Barnacle: the alarm sends the patrol out at once.
 Threats.handlers.Navy = function(_, player)
-	Navy.dispatch(player, 2, true)
+	-- The fort's harbor chain can hold its ships in port (Navy.dispatch then sends none). That
+	-- buys a head start, not a pardon: they sail the moment the chain drops.
+	local site = refs.troubleSites.Navy
+	local chain = site and site.base and site.base.chain
+	task.spawn(function()
+		for _ = 1, 40 do
+			local sent = Navy.dispatch(player, 2, true)
+			local held = chain ~= nil and (chain.progress or 0) > 0.4
+			if sent > 0 or not held or not player.Parent then
+				return
+			end
+			task.wait(2)
+		end
+	end)
 end
 
 -- Ember Isle: lava bombs rain on the island and the water around it, mostly near the thief. Every

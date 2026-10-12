@@ -781,8 +781,10 @@ function Loot.tick()
 			returnToSpot(item, "respawn")
 		elseif item.state == "spot" and enabled then
 			-- Interest: treasure nobody takes keeps growing, up to a cap.
-			local earned =
+			-- Each step is a share of what the treasure is worth, so waiting matters for a far prize too.
+			local steps =
 				math.min(Config.LOOT_INTEREST_MAX, math.floor((t - item.unclaimedSince) / Config.LOOT_INTEREST_EVERY))
+			local earned = steps * math.max(1, math.floor(item.def.value * Config.LOOT_INTEREST_SHARE + 0.5))
 			if earned ~= item.bonus then
 				setBonus(item, earned)
 				Net.feed("The " .. item.def.name .. " is worth " .. Loot.valueOf(item) .. " gold now!", item.def.color)

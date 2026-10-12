@@ -165,6 +165,7 @@ end)
 
 -- Launch pads -------------------------------------------------------------------------
 local lastLaunch = 0
+local flight = nil -- A catapult throw in progress (see the loop after `airborne`).
 local function hookPad(pad)
 	if not pad:IsA("BasePart") or pad.Name == "GeyserVent" then
 		return
@@ -180,6 +181,15 @@ local function hookPad(pad)
 		end
 		lastLaunch = os.clock()
 		root.AssemblyLinearVelocity = launch
+		local carry = pad:GetAttribute("Carry")
+		if typeof(carry) == "number" then
+			-- A catapult: the throw keeps its sideways speed for this long.
+			flight = {
+				velocity = Vector3.new(launch.X, 0, launch.Z),
+				startedAt = os.clock(),
+				untilAt = os.clock() + carry,
+			}
+		end
 		Effects.sound("whoosh", { speed = 0.7, volume = 0.8 })
 		Effects.burst(pad.Position, Color3.fromRGB(120, 255, 130), 25, 20)
 		Effects.punchFov(82)
@@ -503,6 +513,30 @@ local function airborne(humanoid)
 	return humanoid.FloorMaterial == Enum.Material.Air and humanoid:GetState() ~= Enum.HumanoidStateType.Swimming
 end
 
+-- A catapult throw. A goblin's own air control would stop the flight short, so the sideways
+-- speed is held until the throw has run its time or they touch down. Dash, air jump, a grapple
+-- or a zipline ends it early, so the flight can still be steered out of.
+RunService.Heartbeat:Connect(function()
+	if not flight then
+		return
+	end
+	local _, humanoid, root = getCharacter()
+	local t = os.clock()
+	if
+		not root
+		or ride
+		or pull
+		or humanoid.SeatPart
+		or t >= flight.untilAt
+		or (t - flight.startedAt > 0.35 and not airborne(humanoid))
+	then
+		flight = nil
+		return
+	end
+	local v = root.AssemblyLinearVelocity
+	root.AssemblyLinearVelocity = Vector3.new(flight.velocity.X, v.Y, flight.velocity.Z)
+end)
+
 local function pressDash()
 	local _, humanoid, root = getCharacter()
 	if not root or humanoid.SeatPart or ride or pull then
@@ -527,6 +561,7 @@ local function pressDash()
 	end
 	direction = direction.Unit
 	lastDash = t
+	flight = nil
 	moveRemote:FireServer("dash")
 
 	local inAir = airborne(humanoid)
@@ -565,6 +600,7 @@ local function tryAirJump(minAirTime)
 		return
 	end
 	airJumpUsed = true
+	flight = nil
 	moveRemote:FireServer("airjump")
 	humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 	local function lift()
@@ -1055,6 +1091,11 @@ end
 function handlers.GateMove(p)
 	Effects.sound("thud", { position = p.position, speed = 0.5, volume = 1, range = 300 })
 	Effects.shakeAt(p.position, 0.5, 0.8, 80)
+end
+
+function handlers.Beacon(p)
+	Effects.sound("whoosh", { position = p.position, speed = 0.6, volume = 1, range = 500 })
+	Effects.burst(p.position, Color3.fromRGB(255, 160, 70), 40, 30)
 end
 
 -- What a boat just did, drawn where it happened. mine: this client is driving that boat, so the

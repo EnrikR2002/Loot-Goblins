@@ -207,24 +207,44 @@ local function remove(cell)
 	end
 end
 
--- A cell crossing the open sea, away from home, on a heading that avoids the Hoard.
+-- A cell crossing the open sea. The sea is too big now for weather to find anyone by chance,
+-- so a storm is seeded a little way off someone who is out there and set to blow across their
+-- water: something they see coming and steer around (or through). Never on top of home.
 local function spawnAmbient()
 	local min, max = Config.BOUNDS_MIN, Config.BOUNDS_MAX
+	local home = refs.hoard.position
+	local sailors = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		local root = Util.aliveRoot(player)
+		if root and Util.flatDistance(root.Position, home) > Config.STORM_HOME_CLEAR then
+			table.insert(sailors, root.Position)
+		end
+	end
 	for _ = 1, 12 do
-		local x = random:NextNumber(min.X + 200, max.X - 200)
-		local z = random:NextNumber(min.Z + 200, max.Z - 400)
-		-- Not on top of home.
-		if Vector3.new(x, 0, z - 650).Magnitude > 650 then
-			local heading = random:NextNumber(0, math.pi * 2)
+		local x, z, heading
+		if #sailors > 0 then
+			local near = sailors[random:NextInteger(1, #sailors)]
+			local bearing = random:NextNumber(0, math.pi * 2)
+			local distance = random:NextNumber(Config.STORM_NEAR_MIN, Config.STORM_NEAR_MAX)
+			x, z = near.X + math.cos(bearing) * distance, near.Z + math.sin(bearing) * distance
+			-- Blowing back across them, give or take.
+			heading = bearing + math.pi + random:NextNumber(-0.7, 0.7)
+		else
+			x = random:NextNumber(min.X + 300, max.X - 300)
+			z = random:NextNumber(min.Z + 300, max.Z - 300)
+			heading = random:NextNumber(0, math.pi * 2)
+		end
+		local inside = x > min.X + 200 and x < max.X - 200 and z > min.Z + 200 and z < max.Z - 200
+		if inside and Vector3.new(x - home.X, 0, z - home.Z).Magnitude > Config.STORM_HOME_CLEAR then
 			local speed = random:NextNumber(Config.STORM_SPEED_MIN, Config.STORM_SPEED_MAX)
 			Storms.spawn({
 				x = x,
 				z = z,
-				r = random:NextNumber(230, 320),
+				r = random:NextNumber(300, 420),
 				strength = random:NextNumber(0.7, 0.95),
 				vx = math.cos(heading) * speed,
 				vz = math.sin(heading) * speed,
-				duration = random:NextNumber(85, 115),
+				duration = random:NextNumber(90, 125),
 			})
 			return
 		end
@@ -358,7 +378,7 @@ function Storms.tick(dt, raidActive)
 				ambient += 1
 			end
 		end
-		if ambient < 1 then
+		if ambient < Config.STORM_MAX_AMBIENT then
 			spawnAmbient()
 		end
 	end

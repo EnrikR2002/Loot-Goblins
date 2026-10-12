@@ -232,7 +232,11 @@ end)
 -- The static half of the sea (currents, shelter map, gates) arrives once; the weather follows
 -- live. Until it arrives a boat floats on open water with no currents, which is harmless.
 task.spawn(function()
-	local value = ReplicatedStorage:WaitForChild("LootGoblinsSea")
+	-- The world takes several seconds to build; a timeout only keeps the engine from warning.
+	local value = ReplicatedStorage:WaitForChild("LootGoblinsSea", 600)
+	if not value then
+		return
+	end
 	local data = HttpService:JSONDecode(value.Value)
 	Sea.import(data)
 	gates = data.gates or {}

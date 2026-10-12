@@ -816,6 +816,7 @@ function Boats.build(worldRefs)
 			kind = gate.kind,
 			dx = gate.direction.X,
 			dz = gate.direction.Z,
+			both = gate.both or nil,
 		})
 	end
 	for _, def in ipairs(Config.LOOT) do

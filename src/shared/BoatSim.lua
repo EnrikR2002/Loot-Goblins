@@ -310,7 +310,14 @@ function BoatSim.gate(boat, gates, t, apply)
 				boat.gateAt[index] = t
 				boat.boostUntil = math.max(boat.boostUntil, t + Config.BOAT_HOOP_TIME)
 				if apply then
-					hull:ApplyImpulse(Vector3.new(gate.dx, 0, gate.dz) * hull.AssemblyMass * Config.BOAT_HOOP_KICK)
+					-- A hoop on a sea lane (gate.both) pushes whichever way the boat is already going.
+					local way = 1
+					if gate.both and velocity.X * gate.dx + velocity.Z * gate.dz < 0 then
+						way = -1
+					end
+					hull:ApplyImpulse(
+						Vector3.new(gate.dx, 0, gate.dz) * way * hull.AssemblyMass * Config.BOAT_HOOP_KICK
+					)
 				end
 				return "boost"
 			elseif Vector3.new(velocity.X, 0, velocity.Z).Magnitude > Config.BOAT_KICK_MIN_SPEED then

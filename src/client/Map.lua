@@ -104,6 +104,22 @@ function Map.build(gui, hoard)
 	}, panel)
 	make("UICorner", { CornerRadius = UDim.new(0, 6) }, canvas)
 
+	-- The regions of the sea, faintly, under everything else.
+	for _, region in ipairs(Archipelago.regions or {}) do
+		make("TextLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = toMap(region.x, region.z),
+			Size = UDim2.fromOffset(180, 14),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.GothamBlack,
+			Text = region.name,
+			TextColor3 = Color3.fromRGB(200, 235, 255),
+			TextTransparency = 0.55,
+			TextSize = 12,
+			ZIndex = 21,
+		}, canvas)
+	end
+
 	for _, island in ipairs(Archipelago.islands) do
 		local size = math.max(10, island.r * 2 / spanX * MAP_W * 0.8)
 		local dot = make("Frame", {
@@ -157,7 +173,7 @@ function Map.build(gui, hoard)
 		make("UIStroke", { Color = WHITE, Thickness = 1.5 }, dot)
 		lootViews[def.id] = dot
 	end
-	for i = 1, 4 do
+	for i = 1, 6 do
 		local view = make("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			BackgroundColor3 = Color3.fromRGB(35, 38, 52),
