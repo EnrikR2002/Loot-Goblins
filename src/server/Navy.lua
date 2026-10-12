@@ -325,7 +325,8 @@ local function explodeMine(mine)
 	})
 end
 
-local function dropMine(ship, position)
+-- Floats a mine at a point. owner: the boat that laid it (it gets a moment to sail clear).
+function Navy.layMine(position, owner)
 	while #Navy.mines >= Config.MINE_MAX do
 		removeMine(Navy.mines[1])
 	end
@@ -375,10 +376,14 @@ local function dropMine(ship, position)
 	table.insert(Navy.mines, {
 		part = ball,
 		position = at,
-		owner = ship.boat,
+		owner = owner,
 		armedAt = t + Config.MINE_ARM_TIME,
 		expiresAt = t + Config.MINE_LIFETIME,
 	})
+end
+
+local function dropMine(ship, position)
+	Navy.layMine(position, ship.boat)
 	ship.minesLaid += 1
 	if ship.minesLaid == 1 then
 		Net.feed("A patrol ship is laying MINES across the way home! Steer around the red lights.", NAVY_RED)

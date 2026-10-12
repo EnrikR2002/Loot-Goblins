@@ -1,6 +1,6 @@
-# Loot Goblins — V2 archipelago prototype
+# Loot Goblins — V3 prototype: power, speed and peril
 
-An intentionally ugly Roblox prototype. It grew from Test 001 (one idol, one boat) into a **big physical sea**: a 19-island archipelago to explore, boats that float on real waves, storms and currents to read, and treasure that fights back on the way home.
+An intentionally ugly Roblox prototype. It grew from Test 001 (one idol, one boat) into a **big physical sea**: a 19-island archipelago to explore, boats that float on real waves, storms and currents to read, and treasure that fights back on the way home. V3 makes the goblin and the boats fast and expressive (dash, air jump, drift), and makes the world able to keep up (a Navy that cuts you off, a Guardian you have to jump, storms with waterspouts).
 
 **Explore the sea → steal valuable treasure → the world reacts → escape across dangerous water → bank it at home → go again.**
 
@@ -42,7 +42,7 @@ Playtest/review the PR, then approve the AI to sync, check, and merge it. When s
 
 ## How a raid plays
 
-- A **raid** lasts 8 minutes, then a short intermission. Most gold banked wins the raid (`Gold` and `Wins` leaderstats).
+- A **raid** lasts 7 minutes, then a short intermission. Most gold banked wins the raid (`Gold` and `Wins` leaderstats).
 - Goblin Cove is home. **Boats** (press `E` on one) are how you travel: four wait at the home docks, and most mid-ring islands have one. Open `M` for the map; the compass strip along the top shows the Hoard and treasure.
 - **Sixteen treasures**, and the deeper the island, the more it is worth and the nastier the trouble:
 
@@ -65,24 +65,29 @@ Playtest/review the PR, then approve the AI to sync, check, and merge it. When s
   | Leviathan Tooth | 13 | Skull of Leviathan's Rest | Tentacles |
   | Skull Chalice | 14 | Skull Rock's cranium | Fog and ghost ships |
 
-  Treasure nobody takes grows more valuable (+1 gold per 80 s, up to +3).
-- Carry treasure into **the Hoard** (gold ring and beam at Goblin Cove) to bank it. Heavy treasure slows boats.
-- **Heat** is a shared meter. Stealing adds a chunk, carrying keeps adding, and it cools when nobody carries. At **ALERT** carriers fire flares everyone can see. At **HUNTED** the Navy sails out after the carrier. At **FRENZY** a tempest comes for the thief. The world only ever targets **carriers**, every strike is marked with a closing ring on the ground, and everything can be outrun, out-steered or hidden from.
-- The **sea has weather**: storm cells cross it (dark clouds on the horizon, rough water, marked lightning), currents carry boats (the Rushing Strait, the Home Stream, the Maelstrom), and calm water hugs the coasts.
+  Treasure nobody takes grows more valuable (+1 gold per 70 s, up to +3).
+- Carry treasure into **the Hoard** (gold ring and beam at Goblin Cove) to bank it. Carrying barely slows you on foot; instead heavy treasure makes every stamina move cost more, and slows the boat you sit in.
+- **You run fast for free.** Stamina pays for the special moves: sprint, a dash (also in the air) and one extra jump per flight. It refills in about three seconds.
+- **Heat** is a shared meter. Stealing adds a chunk, carrying keeps adding, and it cools when nobody carries. At **ALERT** carriers fire flares everyone can see. At **HUNTED** a patrol ship appears on the horizon *ahead* of the thief, shells them, and charges (it sounds a horn first: turn and it misses). At **FRENZY** a second ship takes the water between the thief and home and lays mines across it, and a tempest chases the thief. The world only ever targets **carriers**, every strike is marked with a ring on the ground, and everything can be outrun, out-steered or hidden from.
+- The **Guardian** is as fast as a carrier who only runs. It leaps onto a marked circle, throws boulders, and up close it slams the ground: a ring races outward, and you have to be in the air when it reaches you.
+- The **sea has weather**: storm cells cross it (dark clouds on the horizon, rough water, marked lightning, and **waterspouts** that fling a boat into the air), currents carry boats (the Rushing Strait, the Home Stream, the Maelstrom), and calm water hugs the coasts.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
 | Hold `E` on treasure | Steal it from its spot (0.6 s), or grab it when loose |
-| `E` on a boat | Board it. `W A S D` drives from the driver seat |
-| `Shift` in the driver seat | Boost (2.2 s, 7 s cooldown) |
+| `E` on a boat | Board it. `W A S D` drives from the driver seat; `S` is a real brake |
+| `Shift` in the driver seat | Boost (2.2 s, 5.5 s cooldown) |
+| Hold `C` in a turn, in the driver seat | **Drift**: the boat slides round the turn. Let go for a burst of speed (bigger the longer you held the slide) |
 | `R` near a boat's winch | Drop or raise the anchor |
 | `E` at a cannon | Fire it where you aim |
 | `G` | Throw a powder keg (take kegs from keg crates with `E`) |
-| Hold `Shift` on foot | Sprint. Uses stamina; none in water or seats |
+| Hold `Shift` on foot | Sprint (on land or swimming). Uses stamina |
+| `C` on foot | **Dash** the way you are moving, on the ground or in the air. Uses stamina |
+| `Space` in the air | One extra jump per flight. Uses stamina |
 | Click (sword) | Swing. Hits knock treasure loose. Carriers swing too, but slow, short and tiring |
-| `F` | Grappling hook: pulls you to a surface, or steals treasure from a carrier. Not while you carry |
+| `F` | Grappling hook: pulls you to a surface or onto a passing boat (you take a seat), or steals treasure from a carrier. While you carry, it only pulls, on a longer cooldown |
 | `Q` | Throw your treasure |
 | `E` (no prompt showing) | **Poltergoblin**: leave your body and run as a faster spirit for 5 s, then snap back |
 | `E` at a zipline post | Ride the zipline. Jump to let go |
@@ -105,10 +110,11 @@ Afterward make one decision:
 
 ## Known prototype compromises
 
-- Not played by real people yet: V2 was tested by an AI in Studio on one client. Multiplayer fun, mobile performance and balance are unknown. The report lists what to test.
+- V2 had one human playtest (the bigger world was more interesting to explore; the goblin and boats felt too slow). V3 answers that and was tested by an AI in Studio on one client. Whether it feels good, multiplayer fun, mobile performance and balance are unknown. The report lists what to test.
+- A driven boat's physics run on the driver's own computer so steering answers at once; the server watches it and takes the boat back if it moves in a way the physics could not. `BOAT_CLIENT_PHYSICS` in `src/shared/Config.lua` switches back to the old server-run boats for comparison.
 - The Guardian is a kinematic stone golem that walks over terrain instead of using pathfinding. It cannot follow into tunnels.
-- Grapple, throw, keg, cannon and Poltergoblin are keyboard and mouse only (sprint also toggles with a gamepad's left stick click).
-- Boats beach hard against vertical sand edges and pass through dock posts.
+- Grapple, throw, keg, cannon and Poltergoblin are keyboard and mouse only. A gamepad also gets sprint (left stick click), dash and drift (`B`), air jump (`A`) and boat boost (`X`). There are no touch buttons for any of these yet.
+- Boats ride up gentle beaches and slide to a stop (press `S` or `W` to shove a beached boat along slowly), but still hit steep edges like a wall, and pass through dock posts.
 - Shift sprints, so Roblox's shift lock is turned off.
 - Art is primitive geometry and terrain. Sounds are pitched versions of the few sounds built into the Roblox client.
 

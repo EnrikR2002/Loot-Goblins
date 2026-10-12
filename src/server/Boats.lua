@@ -725,11 +725,18 @@ local function police(boat, dt, t)
 	local driver = boat.pilot
 	boat.reclaimUntil = t + Config.BOAT_RECLAIM_TIME
 	setPilot(boat, nil)
-	if (broken or jumped or flying) and boat.lastGood then
-		boat.model:PivotTo(boat.lastGood)
+	if broken or jumped or flying then
+		-- It was somewhere it could not be: back to where it last behaved, at rest.
+		if boat.lastGood then
+			boat.model:PivotTo(boat.lastGood)
+		end
+		hull.AssemblyLinearVelocity = Vector3.zero
+		hull.AssemblyAngularVelocity = Vector3.zero
+	else
+		-- Only too fast: slow it to its limit and carry on. If the check was wrong (a current
+		-- and a burst and lag all at once), an honest driver barely notices.
+		hull.AssemblyLinearVelocity = velocity * math.min(1, allowed / math.max(speed, 1))
 	end
-	hull.AssemblyLinearVelocity = Vector3.zero
-	hull.AssemblyAngularVelocity = Vector3.zero
 	warn(
 		string.format(
 			"[Boats] took %s back from %s (speed %.0f / %.0f, jumped %s, flying %s)",

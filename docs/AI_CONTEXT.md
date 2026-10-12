@@ -10,27 +10,30 @@ Master context for a Claude Code or Codex session that opens this repository wit
 | --- | --- |
 | Shared `main` (as of `84b762a`, 2026-10-07) | The **vertical slice** (PR #7: raids, loot, Heat, Guardian/totems/trouble, Poltergoblin, HUD, module split) and the double-click launcher (PR #8). |
 | Unmerged: PR #9, branch `claude/sprinting-grapple-map-expansion-japzs8` | **Sprint + stamina**, the **grapple hook**, and a bigger map. Waiting for a Studio playtest and approval. |
-| Unmerged: PR #10, branch `feature/v2-archipelago` (stacked on PR #9; merge #9 first) | **V2**: a 19-island archipelago, a physical sea (waves, currents, storms), physics boats, Navy pursuit, per-treasure troubles, Heat that changes the world, cannons, kegs, destructibles. Report: `docs/reports/2026-10-08-v2-archipelago.md`. Studio-tested by one AI on one client; **no human or multiplayer playtest yet**. |
+| Unmerged: PR #10, branch `feature/v2-archipelago` (stacked on PR #9; merge #9 first) | **V2**: a 19-island archipelago, a physical sea (waves, currents, storms), physics boats, Navy pursuit, per-treasure troubles, Heat that changes the world, cannons, kegs, destructibles. Report: `docs/reports/2026-10-08-v2-archipelago.md`. One human playtest since: the world is more interesting to explore; the goblin and boats felt too slow. |
+| Unmerged: PR_NUMBER, branch `feature/v3-speed-agency-danger` (stacked on PR #10; merge #9, then #10, then this) | **V3**: fast movement (dash, air jump, stamina for the exceptional only), fast boats with drift, driver-owned boat physics, a Navy that intercepts, charges and lays mines, a Guardian stomp, waterspouts. Report: `docs/reports/2026-10-11-v3-power-speed-peril.md`. Studio-tested by one AI on one client; **no human playtest of V3 yet**. |
 
 Check the real state before you trust this table: `git log --oneline origin/main` and the open PRs. Update this table when a branch merges.
 
-Everything below describes the V2 branch.
+Everything below describes the V3 branch.
 
 ## Purpose
 
 Loot Goblins is a Roblox game by Ethan, Ninety and Enrik. The one-sentence thesis is: *steal ridiculous treasure from dangerous islands and other players, then somehow get it home.*
 
-V2 asks whether the loop survives a big, physical sea: **explore (awe) → steal treasure → the world reacts → escape (panic) → bank → repeat.** Going out should feel like adventure; coming home with something valuable should feel like needing to GET OUT. The design principle is **active novelty**: surprises the player participates in (a geyser to time, a gate to open, a keg to throw, a storm to steer around), not things that just happen on screen.
+The loop: **explore (awe) → steal treasure → the world reacts → escape (panic) → bank → repeat.** Going out should feel like adventure; coming home with something valuable should feel like needing to GET OUT. V3's aim on top of that: **the player should feel powerful, the world should feel dangerous, and the fun is where those two meet.** Moving and sailing should be enjoyable in themselves, not the price of reaching the fun.
+
+The design principle is **active novelty**: surprises the player participates in (a geyser to time, a ring to jump, a charge to dodge, a storm to steer around), not things that just happen on screen.
 
 `docs/DESIGN_THESIS.txt` holds the long-term vision. That vision is **not** permission to build shops, XP, pets, monetization, rarity tables, trading, or saved progress.
 
 ## Core loop
 
-1. Players spawn at **Goblin Cove** next to **the Hoard**. A raid lasts `Config.RAID_DURATION` (480 s), then a short intermission.
+1. Players spawn at **Goblin Cove** next to **the Hoard**. A raid lasts `Config.RAID_DURATION` (420 s), then a short intermission.
 2. Sixteen treasures wait on 14 islands, each with a light pillar and a name tag visible from anywhere. **Value rises with distance and danger**: 1–2 g near home, 10–14 g deep in the far ring.
 3. Prying treasure off its spot (hold E, 0.6 s) adds Heat and triggers that treasure's own **trouble** (a flooding vault, a volcano, tentacles, ghost ships, snapping bridges...).
-4. The carrier is slowed (by weight), hunted by the world (see Heat), and can be robbed by other players.
-5. Carrying treasure into the Hoard ring banks its gold. Banked treasure respawns later; treasure nobody takes grows more valuable (**interest**, +1 g per 80 s, max +3).
+4. The carrier is hunted by the world (see Heat), can be robbed by other players, pays more stamina for every move and slows the boat they sit in. On foot they are only a little slower than anyone else.
+5. Carrying treasure into the Hoard ring banks its gold. Banked treasure respawns later; treasure nobody takes grows more valuable (**interest**, +1 g per 70 s, max +3).
 6. When the timer ends, the most gold wins (`Wins` +1). Everything resets.
 
 ## Controls
@@ -39,21 +42,24 @@ V2 asks whether the loop survives a big, physical sea: **explore (awe) → steal
 | --- | --- | --- |
 | Hold `E` on treasure | Steal from spot / grab loose treasure (ProximityPrompt) | `Loot` |
 | `E` on a boat | Board it (driver seat first, then passengers) | `Boats` |
-| `W A S D` in the driver seat | Drive | `Boats` |
-| `Shift` in the driver seat | **Boost** (2.2 s, 7 s cooldown). On foot: sprint | `Boats`, client `Main` |
+| `W A S D` in the driver seat | Drive. `S` against your motion is a brake | `BoatSim`, client `BoatDrive` |
+| `Shift` in the driver seat | **Boost** (2.2 s, 5.5 s cooldown). Gamepad `X` | `Boats`, client `BoatDrive` |
+| Hold `C` in a turn, driver seat | **Drift**: slide round the turn, let go for a speed burst. Gamepad `B` | `BoatSim` |
 | `R` near a boat's winch | Drop or raise the anchor | `Boats` |
 | `E` at a cannon | Fire it where you aim | `Cannons` |
 | `G` | Throw a powder keg (take kegs from keg crates with `E`) | `Kegs` |
-| Hold `Shift` on foot | Sprint (×1.45, carriers ×1.2). Uses stamina; none in water or seats | `Movement` |
-| Click (sword) | Swing. Carriers can swing too: slower, shorter, weaker, and it costs 22 stamina | `Combat` |
-| `F` | Grapple hook: steal loot / carrier, or hook a surface and get pulled. Not while carrying | `Combat`, client `Main` |
+| Hold `Shift` on foot | Sprint (×1.36, carriers ×1.25), on land or swimming. Uses stamina | `Movement` |
+| `C` on foot | **Dash** the way you are moving, ground or air. 18 stamina. Gamepad `B` | client `Main`, `Movement` |
+| `Space` in the air | **Air jump**, once per flight. 12 stamina. Gamepad `A` | client `Main`, `Movement` |
+| Click (sword) | Swing. A carrier's swing is slower, shorter, weaker and costs stamina | `Combat` |
+| `F` | Grapple hook: steal loot / from a carrier, or hook a surface **or a boat** and get pulled (a boat seats you). Carriers can only pull, on a 5 s cooldown | `Combat`, client `Main` |
 | `Q` | Throw held treasure | `Loot` |
 | `E` with no prompt showing | Poltergoblin (cast / early return) | `Poltergoblin` |
 | `E` at a zipline | Ride; jump to let go | client `Main` |
 | `M` | World map | client `Map` |
 | `H` | Help panel | client `Hud` |
 
-Abilities are keyboard and mouse. Prompts and the sword also work on touch and gamepad; the rest is not adapted yet.
+Abilities are keyboard and mouse, with the gamepad buttons above. Prompts and the sword also work on touch; nothing else has touch buttons yet.
 
 ## Systems
 
@@ -64,36 +70,41 @@ All tuning numbers live in `src/shared/Config.lua`. Gameplay modules never hardc
 - **`Archipelago.lua`** (shared) is the one list of islands (id, name, x, z, radius, ring, colour). The server builds terrain from it; the client's map, compass and signs read it. North is -Z.
 - **`World.lua`** builds the environment (sea floor, boundary walls in ≤2000-stud pieces, far-sea horizon slabs, haze), Goblin Cove, and the original islands (Crossroads, Sun Temple, Crystal Isle, Shipwreck Shoals, Gull Rock, Smuggler's Cove, Twin Stacks). **`Islands.lua`** builds the near and middle new islands (Pebble, Coral Atoll, Windmill Hills, Tide Vault, Smuggler's stash). **`IslandsFar.lua`** builds the far ring (Fort Barnacle, Tangle Isle, Ember Isle, Maelstrom Rock, Frost Spire, Leviathan's Rest, Skull Rock). **`WorldKit.lua`** holds the shared helpers (parts, terrain shapes, docks, ladders, signs, cannons, bridges, geysers...).
 - **Builders only describe.** They leave data in `refs` (`breakables`, `barrels`, `kegCrates`, `cannons`, `levers`, `gates`, `spinners`, `geysers`, `lavaZones`, `boostGates`, `navyBases`, `troubleSites`, `targets`) and the mechanism modules run it. Never put logic in a builder.
-- About 2,300 server parts; terrain builds in well under a second.
-- **Folders** under `workspace.LootGoblinsGenerated`: `Ground` (walkable; the Guardian walks on it), `Structures`, `Decor`, `Loot`, `Threats`, `Effects`, `SpiritBodies`, `LaunchPads` (also geyser vents), `Ziplines`, `Landmarks` (persistent: island signs, `HoardMarker`).
+- About 2,300 server parts; terrain builds in well under a second. V3 did not change the map.
+- **Folders** under `workspace.LootGoblinsGenerated`: `Ground` (walkable; the Guardian walks on it), `Structures` (boats live here), `Decor`, `Loot`, `Threats`, `Effects` (also mines and waterspouts), `SpiritBodies`, `LaunchPads` (also geyser vents), `Ziplines`, `Landmarks` (persistent: island signs, `HoardMarker`).
 - **Streaming is on** (`default.project.json`: min 256, target 2048). Loot models, island signs and the Hoard marker are `Persistent`; everything else streams. Client code must never assume far parts exist.
 
-### Sea (`Sea.lua`, `SeaNav.lua`, `Storms.lua`)
+### Sea (`shared/Sea.lua`, `SeaNav.lua`, `Storms.lua`)
 
 - `Sea` is pure math: `waveAt(x, z, t)` (three crossing swells), `currentAt` (wind drift + streams + whirlpools), `stormAt`, `shelterAt`. Swell is calmer beside land (shelter) and wild in a storm. The Terrain water is only the visual surface.
+- **`Sea` is shared** (`ReplicatedStorage.LootGoblins.Sea`) because a driven boat floats on the driver's client. `src/server/Sea.lua` only forwards to it. The server sends the static half once (`ReplicatedStorage.LootGoblinsSea`, a JSON StringValue: streams, whirlpools, the shelter grid as one digit per cell, the boat gates), and `Sea.follow()` on the client keeps the storms and the global roughness current from `workspace.StormData` and `workspace.SeaRough`.
 - **Currents**: the Rushing Strait and Home Stream (readable chevrons), and the Maelstrom whirlpool (strongest at mid-radius, calm in the eye).
-- `SeaNav` builds a 40-stud grid from the finished terrain: water depth per cell, distance to land (shelter), and A* routes. A hull can only use cells deeper than its draft + 1.8, so deep ships cannot cross shallows.
-- **Storms**: moving cells (rough water, wind, lightning). Ambient ones cross the sea every ~2 minutes after a 50 s calm; Maelstrom's treasure calls a squall; FRENZY heat sends a hunting **tempest**; Skull Rock calls **fog**. Published as one string attribute `workspace.StormData`. Lightning is **marked** 1.3 s ahead.
+- `SeaNav` builds a 40-stud grid from the finished terrain: water depth per cell, distance to land (shelter), and A* routes. A hull can only use cells deeper than its draft + 1.8, so deep ships cannot cross shallows. `SeaNav.path` takes a coast weight; the Navy uses a strong one so its fast, wide-turning ships keep off headlands.
+- **Storms**: moving cells (rough water, wind, lightning). Ambient ones cross the sea every ~2 minutes after a 50 s calm, at 16–28 studs/s; Maelstrom's treasure calls a squall; FRENZY heat sends a hunting **tempest** at 42 (slower than any boat, faster than anyone on foot); Skull Rock calls **fog**. Published as one string attribute `workspace.StormData`. Lightning is **marked** 1.3 s ahead.
+- **Waterspouts**: each storm cell carries two (the tempest three) circling its heart. Server parts in `Effects`. One flings any boat or goblin it catches upward and sideways (`SPOUT_*`).
 
-### Boats (`Boats.lua`)
+### Boats (`shared/BoatSim.lua`, `server/Boats.lua`, `client/BoatDrive.lua`)
 
-- Real unanchored physics hulls owned by the server. Forces: buoyancy springs at six hull points toward `Sea.waveAt`, thrust (only while wet), an arcade keel that redirects drift instead of braking, banking into turns, an upright assist, and drag toward the water's own flow (currents carry you).
-- Types in `Config.BOAT_TYPES`: **skiff** (fast, twitchy), **cutter** (heavy, takes a cannon, 3 passengers), **navy** patrol ship (deep draft, AI only).
-- **Hull health**: crashes are measured as an unexplained speed change (capped per hit, short grace). At 0 the boat ejects everyone, goes under, and respawns at its dock after 22 s.
-- **Strategy**: unoccupied boats drift unless anchored (`R`); empty boats far from every player freeze; carried treasure adds weight that cuts thrust; anyone can drive any boat (steal them, strand them).
-- **Gates**: boost hoops (+speed) and kicker ramps (launch a fast boat ~13 studs up) from `refs.boostGates`. Home has a harbor jump; Coral Atoll has a kicker over the reef.
+- **`BoatSim.step(boat, input, dt, t)` is the physics**, shared, and runs on whichever machine owns the hull. Forces: buoyancy springs at six hull points toward `Sea.waveAt`; thrust (only while wet) with a launch punch and a real brake; an arcade keel that redirects drift instead of braking; a yaw-rate target; banking; an upright assist; drag toward the water's own flow. It **measures** how much Roblox's Terrain water slows the hull and cancels it under power, so `maxSpeed` in Config is the speed actually reached, on any hull at any frame rate.
+- **Drift**: `input.drift` held in a turn at speed lowers the grip, swings the hull out to a slide angle and holds it there, and charges `driftCharge`; releasing pays a burst (`BOAT_MINI_KICK`, two levels). **Landing**: after `BOAT_AIR_MIN` seconds off the water, an upright, straight touchdown gives a burst. **Capsize**: a hull upside down for `BOAT_FLIP_TIME` pops upright.
+- **Who simulates** (`Config.BOAT_CLIENT_PHYSICS`, default true): an empty or AI boat, the server; a boat with a driver, **the driver's client** (`BoatDrive` runs `BoatSim` in `PreSimulation`, reading the seat's `ThrottleFloat`/`SteerFloat`). The server calls `hull:SetNetworkOwner(driver)` and sets the model's `Pilot` attribute. With the setting off the server simulates everything, as V2 did.
+- **`Boats.lua` (server) stays in charge:** hull health, crashes, scrapes, repair, sinking, respawn, anchors, seats, boost cooldowns, sleeping far boats. `watchHull` measures crashes on every hull from its velocity (a change over `BOAT_IMPACT_WINDOW` that the engine and keel cannot explain). `police` checks every driven hull each frame (speed, altitude, jumps) and takes it back for `BOAT_RECLAIM_TIME` if it breaks a rule.
+- **Rules for code that touches boats:** to push a hull use `Boats.shove` (a driven hull is pushed by telling its driver's client); to move one use `Boats.place` (it takes the hull back first); to hurt one use `Boats.damage` or a `Blast`. Never write a driven hull's velocity or CFrame directly from the server.
+- Types in `Config.BOAT_TYPES`: **skiff** (108, the best drifter, fragile), **cutter** (86, cannon, 3 passengers, shrugs off crashes, rams hard), **navy** patrol ship (88, wide turns, deep draft, AI only, no bow skid).
+- **Beaching**: player hulls carry an invisible sloped `BowSkid` so they ride up gentle shores and slide to a stop. Out of the water the engine does nothing except a slow shove either way (`BOAT_BEACH_SHOVE`), so a beached boat can be worked back to the sea but cannot drive over an island. Steep edges (Coral's reef) are still walls.
+- **Gates**: boost hoops and kicker ramps from `refs.boostGates`, applied by the simulating machine (`BoatSim.gate`); the server broadcasts the effect.
 - AI boats take `boat.input = {throttle, steer, boost}` (see Navy).
 
 ### Treasure, Heat and consequences
 
 - **Loot** (`Loot.lua`): 16 treasures in `Config.LOOT` (id, island, value, weight, carry speed, heat, respawn, trouble, visual). States `spot`, `carried` (welded above the head), `loose` (server physics; floats), `away` (banked). Steal immunity after any change of hands. **Interest**: untouched treasure gains value (`bonus`); banking pays `item.bankedValue`.
-- **Heat** (`Heat.lua`): shared 0–100, tiers CALM, ALERT (25), HUNTED (50), FRENZY (80). It rises on theft and while carrying outside the ward; falls while nobody carries.
+- **Heat** (`Heat.lua`): shared 0–100, tiers CALM, ALERT (25), HUNTED (50), FRENZY (80). It rises on theft and while carrying outside the ward (faster than V2: trips are shorter); falls while nobody carries.
 - **Escalation** (`Escalation.lua`) is what each tier *does*:
-  - **ALERT**: carriers fire flares every 7 s that every player sees (beam of light); totems and Fort turrets wake; carriers glow through walls.
-  - **HUNTED**: Navy patrol ships sail from Fort Barnacle at the most valuable carrier; the Guardian hunts.
-  - **FRENZY**: a tempest sails in from a flank, steering slowly at the thief (slower than a boat); a second ship; rougher sea everywhere.
-  - Dropping a tier stands the Navy down.
-- **Threats** (`Threats.lua`): the Guardian (kinematic golem; walks Terrain and `Ground`, wades; now **leaps** to a marked circle and **throws boulders** at marked circles, with a grace period after waking), totems, rollers, carrier reveal. Handlers for new trouble plug into `Threats.handlers`.
+  - **ALERT**: carriers fire flares every 6 s that every player sees; totems and Fort turrets wake; carriers glow through walls.
+  - **HUNTED**: a Navy **hunter** comes for the most valuable carrier; the Guardian hunts.
+  - **FRENZY**: a second ship (a **blocker**) takes the way home and lays mines; a tempest steers at the thief; rougher sea everywhere.
+  - Dropping below HUNTED stands the Navy down.
+- **Threats** (`Threats.lua`): the Guardian (kinematic golem; walks Terrain and `Ground`, wades; speed 27, 32 at FRENZY). Its moves, all announced: **stomp** (fists up 0.8 s, then a ring races outward along the ground and hits only players standing on something as it passes: jump it), **leap** to a marked circle, **boulder throw** at a marked circle. Also totems, rollers, carrier reveal. Handlers for new trouble plug into `Threats.handlers`.
 - **Troubles** (`Troubles.lua`) — one per treasure:
 
   | Treasure | Trouble |
@@ -113,57 +124,66 @@ All tuning numbers live in `src/shared/Config.lua`. Gameplay modules never hardc
   | Leviathan Tooth | Tentacles slam up around the island |
   | Skull Chalice | Fog, and a ghost fleet |
 
-- **Navy** (`Navy.lua`): AI patrol ships follow `SeaNav` routes at the most valuable carrier they can *see* (line of sight, range 520, shorter in storms). They hold at 95 studs and shell the carrier: a **marker** closes in over 1.7 s, then the shell lands. They lose you behind islands or in the shallows, search your last position for 22 s, then go home. They can be sunk (cannons, barrels, ramming, lightning). Carriers inside the Hoard ward are unreachable.
-- **Blast** (`Blast.lua`): every explosion goes through `Blast.at` (players, boats, loose loot, destructibles). `Blast.strike` shows a marker first. The blast's owner takes the shove at half strength and no damage (a keg at your feet is a launcher).
+- **Navy** (`Navy.lua`): AI patrol ships on `SeaNav` routes after the most valuable carrier they can *see* (line of sight, range 600, shorter in storms).
+  - **Where they come from:** the fort if it is within `NAVY_BASE_RANGE` of the thief, otherwise open deep water on the horizon, 750–950 studs out, on the thief's side of home and in sight.
+  - **Roles:** a **hunter** sails an intercept (where the thief will be), runs alongside at `NAVY_STATION` firing, and charges. A **blocker** sits `NAVY_BLOCK_AHEAD` studs along the thief's line home and sows **mines** (`Navy.layMine`), then turns hunter when the thief is close. Every second ship is a blocker.
+  - **Shells** land where a marker closes in over 1.5 s; up close it is a spread of three along the thief's course.
+  - **The charge:** a horn (`NavyRam` event), then `NAVY_RAM_TIME` seconds on one bearing aimed where the thief will be if they hold course. It is not corrected, so turning dodges it. Then the ship swings wide before closing again.
+  - **Mines:** bright, still, 40 s lifetime, go off for any hull or swimmer, and any blast sets off the mines it reaches (`Blast.Hit`).
+  - They lose you behind islands or in the shallows, search your last position for 20 s, then leave. They can be sunk. Carriers inside the Hoard ward are unreachable.
+- **Blast** (`Blast.lua`): every explosion goes through `Blast.at` (players, boats, loose loot, destructibles) and fires `Blast.Hit`. `Blast.strike` shows a marker first. The blast's owner takes the shove at half strength and no damage (a keg at your feet is a launcher). A player sitting in a boat is moved with the hull, not separately.
 
 ### Interactive island pieces
 
 - **Destructibles** (`Destructibles.lua`): cracked walls (any blast), gates (cannonball), rope bridges (any blast, or a quake), powder barrels (chain reactions). Broken pieces become debris and are rebuilt from stored copies on reset.
 - **Cannons** (`Cannons.lua`): island emplacements (Fort Barnacle's wall, the home practice range) and the Cutter. `E` fires where you aim; the server validates range, cooldown and aim, solves the arc and flies the ball.
 - **Kegs** (`Kegs.lua`): `KEG_MAX` per player from crates, thrown with `G`, fuse 2 s.
-- **Mechanisms** (`Mechanisms.lua`): the windmill's sweeping blades, the Maelstrom's foam spirals, levers and gates, lava that burns. **Geysers** are animated and launch on the **client** from timestamps (attributes on the vent), so the server does nothing per frame. Boost hoops/kickers live in `Boats`.
+- **Mechanisms** (`Mechanisms.lua`): the windmill's sweeping blades, the Maelstrom's foam spirals, levers and gates, lava that burns. **Geysers** are animated and launch on the **client** from timestamps (attributes on the vent), so the server does nothing per frame.
 
 ### Movement, combat, spirit, raid
 
-- **Movement** (`Movement.lua`): the only writer of `WalkSpeed`; owns stamina (`spend` for heavy swings).
-- **Combat**: sword (carriers swing slowly and tiredly), grapple (unchanged from PR #9).
-- **Poltergoblin**: unchanged.
-- **Raid** (`Raid.lua`): phases, scoring, `resetWorld()` resets every system (loot, Heat, threats, Navy, storms, destructibles, mechanisms, cannons, kegs, boats, flood).
+- **Movement** (`Movement.lua`): the only writer of `WalkSpeed`; owns stamina. Running (28) is free. Stamina pays for sprint, dash, air jump and a carrier's sword swing; `Movement.spend` scales every cost by the held treasure's weight (`CARRY_STAMINA_PER_WEIGHT`). `Movement.request(player, "dash" | "airjump")` is the client asking the server to pay for a move it already played.
+- **Combat**: sword (carriers swing slowly and tiredly), grapple. The grapple pull follows a moving anchor; aim that passes near a moving boat catches the boat (`GRAPPLE_BOAT_ASSIST`), and the server seats the player on the boat it hooked for them (`Combat.hookedBoat`).
+- **Poltergoblin**: unchanged apart from a slightly longer dash and tether.
+- **Raid** (`Raid.lua`): phases, scoring, `resetWorld()` resets every system (loot, Heat, threats, Navy and its mines, storms and their spouts, destructibles, mechanisms, cannons, kegs, boats, flood).
 - `Players.CharacterAutoLoads` is off until the world is built, then everyone is loaded.
 
 ### Client
 
-- `Hud.lua`: timer, Heat bar, sorted treasure board (with interest), feed, banner, objective line (says what the world is doing to a carrier), ability slots (sword, throw, grapple, keg, Poltergoblin, sprint), boat panel (speed, hull, boost, anchor, cargo drag), help.
+- `Hud.lua`: timer, Heat bar, sorted treasure board (with interest), feed, banner, objective line, ability slots (sword, throw, grapple, keg, Poltergoblin; stamina and dash bottom-left), boat panel (speed, hull, boost, **drift meter**, anchor, cargo drag), help.
+- `BoatDrive.lua`: runs `BoatSim` on the boat you drive; boost and drift input; applies server pushes; draws every nearby boat's wake and spray.
 - `Map.lua`: the world map (`M`) and the **compass strip** (Hoard, treasures, storms).
 - `Weather.lua`: reads `StormData`; draws cloud walls, fog, rain and darkening; sets wave size; warns "STORM TO THE NORTH-EAST - 600 STUDS".
-- `Effects.lua`: sounds from `rbxasset://sounds/*`, neon effects, **markers** (a closing ring on the ground: the one visual language for "this lands here"), lightning bolts, flares, shells, tentacles, fireworks.
-- `Main.client.lua`: input, sprint, grapple, zipline/pad/geyser movement, cannon and keg input, event routing.
+- `Effects.lua`: sounds from `rbxasset://sounds/*`, neon effects, **markers** (a closing ring on the ground: the one visual language for "this lands here"), the Guardian's shockwave, lightning bolts, flares, shells, tentacles, fireworks, dash and air-jump puffs. The field of view follows speed (`Effects.setSpeed`) and kicks for a dash or a launch (`punchFov`); one writer per frame.
+- `Main.client.lua`: input, sprint, dash, air jump, grapple, zipline/pad/geyser movement, cannon and keg input, event routing.
 
 ## Architecture
 
 | Repository path | Rojo maps it to | Holds |
 | --- | --- | --- |
 | `src/server/Main.server.lua` | `ServerScriptService.LootGoblinsServer.Main` | Boot, wiring, player lifecycle, the one Heartbeat |
-| `src/server/<Module>.lua` | `...LootGoblinsServer.<Module>` (ModuleScripts) | `Net`, `Util`, `Movement`, `Sea`, `SeaNav`, `WorldKit`, `World`, `Islands`, `IslandsFar`, `Boats`, `Loot`, `Heat`, `Poltergoblin`, `Destructibles`, `Blast`, `Cannons`, `Kegs`, `Mechanisms`, `Combat`, `Threats`, `Storms`, `Navy`, `Troubles`, `Escalation`, `Raid` |
-| `src/client/Main.client.lua` | `StarterPlayerScripts.LootGoblinsClient.Main` | Input, client movement toys, event routing |
-| `src/client/*.lua` | ModuleScripts next to it | `Hud`, `Effects`, `Map`, `Weather` |
-| `src/shared/Config.lua`, `Archipelago.lua` | `ReplicatedStorage.LootGoblins` | Tuning; the island list |
+| `src/server/<Module>.lua` | `...LootGoblinsServer.<Module>` (ModuleScripts) | `Net`, `Util`, `Movement`, `Sea` (forwards to shared), `SeaNav`, `WorldKit`, `World`, `Islands`, `IslandsFar`, `Boats`, `Loot`, `Heat`, `Poltergoblin`, `Destructibles`, `Blast`, `Cannons`, `Kegs`, `Mechanisms`, `Combat`, `Threats`, `Storms`, `Navy`, `Troubles`, `Escalation`, `Raid` |
+| `src/client/Main.client.lua` | `StarterPlayerScripts.LootGoblinsClient.Main` | Input, client movement, event routing |
+| `src/client/*.lua` | ModuleScripts next to it | `Hud`, `Effects`, `Map`, `Weather`, `BoatDrive` |
+| `src/shared/*.lua` | `ReplicatedStorage.LootGoblins` | `Config` (tuning), `Archipelago` (the island list), `Sea` (sea math), `BoatSim` (boat physics) |
 
-- **Plain modules, no framework.** Direct calls and tiny `Util.signal()` events. Require order has no cycles: `Net`/`Util` → `Movement` → `World`/`Boats` → `Loot` → `Heat` → `Poltergoblin` → `Destructibles` → `Blast` → `Cannons`/`Kegs`/`Mechanisms` → `Combat`/`Threats` → `Storms` → `Navy` → `Troubles` → `Escalation` → `Raid` → `Main`. Injections that avoid cycles: `Loot.canBank`, `Destructibles.explode` (set by `Blast`), `Threats.handlers` (filled by `Troubles`).
-- **Remotes** (`ReplicatedStorage.LootGoblinsRemotes`, recreated at boot). Client → server: `ThrowRequest`, `GrappleRequest`, `PoltergoblinRequest`, `SprintRequest`, `BoatBoostRequest`, `CannonRequest(basePart, aimPoint)`, `KegRequest(aimPoint)`.
-- **`GameEvent(kind, payload)`** server → client. Original kinds plus: `Marker`, `Bolt`, `Flare`, `Shell`, `Tentacle`, `Gulls`, `NavySpawn`, `Frenzy`, `GuardianLeap`, `GuardianThrow`, `CannonFire`, `KegLit`, `TargetHit`, `Broke`, `GateMove`, `GatePass`, `BoatImpact`, `BoatSunk`, `BoatBoost`, `Quake`, `Rumble`, `Flood`, `Burn`.
-- **Replicated state is attributes** (times in `workspace:GetServerTimeNow()` units). Player: `CarryingLoot`, `Kegs`, `Stamina`, `Sprinting`, `Winded`, grapple/Poltergoblin timers. Boat model: `BoatType`, `Health`, `MaxHealth`, `Speed`, `Moored`, `BoostEndsAt`, `BoostReadyAt`, `Payload`. `workspace`: `RaidPhase`, `PhaseEndsAt`, `Heat`, `HeatTier`, `GuardianState`, `StormData`. `Loot` folder: `<id>State`, `Carrier`, `CarrierId`, `ReturnAt`, `Bonus`. Vent: `GeyserPeriod/Active/Phase`, `Launch`.
+- **Plain modules, no framework.** Direct calls and tiny `Util.signal()` events. Require order has no cycles: `Net`/`Util` → `Movement` → `Sea`/`SeaNav` → `World`/`Boats` → `Loot` → `Heat` → `Poltergoblin` → `Destructibles` → `Blast` → `Cannons`/`Kegs`/`Mechanisms` → `Combat`/`Threats` → `Storms` → `Navy` → `Troubles` → `Escalation` → `Raid` → `Main`. Injections that avoid cycles: `Loot.canBank`, `Destructibles.explode` (set by `Blast`), `Threats.handlers` (filled by `Troubles`), `Blast.Hit` (Navy's mines listen).
+- **Remotes** (`ReplicatedStorage.LootGoblinsRemotes`, recreated at boot). Client → server: `ThrowRequest`, `GrappleRequest`, `PoltergoblinRequest`, `SprintRequest`, `MoveRequest("dash" | "airjump")`, `BoatBoostRequest`, `BoatDriftRequest(held)`, `BoatFxRequest(kind)`, `BoatBoardRequest`, `CannonRequest(basePart, aimPoint)`, `KegRequest(aimPoint)`.
+- **`GameEvent(kind, payload)`** server → client. V2's kinds plus: `Dash`, `AirJump`, `BoatFx` (a drift burst or clean landing on someone else's boat), `BoatPush` (to a driver: apply this push to your hull), `GuardianStomp`, `NavyRam`, `Spout`.
+- **Replicated state is attributes** (times in `workspace:GetServerTimeNow()` units). Player: `CarryingLoot`, `Kegs`, `Stamina`, `Sprinting`, `Winded`, grapple/Poltergoblin timers. Boat model: `BoatType`, `Health`, `MaxHealth`, `Pilot` (UserId of the client simulating it), `Moored`, `BoostEndsAt`, `BoostReadyAt`, `Payload`. `workspace`: `RaidPhase`, `PhaseEndsAt`, `Heat`, `HeatTier`, `GuardianState`, `StormData`, `SeaRough`. `Loot` folder: `<id>State`, `Carrier`, `CarrierId`, `ReturnAt`, `Bonus`. Vent: `GeyserPeriod/Active/Phase`, `Launch`.
 
 Integration points new code must respect:
 
-- **WalkSpeed:** go through `Movement`. **Player damage:** `Util.damage` + `Poltergoblin.markDamage` (or just use `Blast.at`). **Knocking loot loose:** `Loot.knockLoose` respects immunity; `Loot.dropFor` ignores it. **Teleports/resets:** cancel Poltergoblin, unseat players. **Pushing players:** `Util.knockback`. **Explosions:** `Blast.at` / `Blast.strike`, never ad-hoc. **Telegraphs:** anything dangerous must show a `Marker` first.
+- **WalkSpeed and stamina:** go through `Movement`. **Player damage:** `Util.damage` + `Poltergoblin.markDamage` (or just use `Blast.at`). **Knocking loot loose:** `Loot.knockLoose` respects immunity; `Loot.dropFor` ignores it. **Teleports/resets:** cancel Poltergoblin, unseat players. **Pushing players:** `Util.knockback`. **Pushing or moving boats:** `Boats.shove`, `Boats.place`. **Explosions:** `Blast.at` / `Blast.strike`, never ad-hoc. **Telegraphs:** anything dangerous must show a `Marker` (or its own clear tell) first.
 - **The shared E key:** a visible prompt always wins over Poltergoblin.
+- **The shared C key:** dash on foot, drift in a driver's seat.
 
 ## Who decides what (server vs client)
 
-- **The server owns:** treasure state and possession, steals, banking, scores, raid phases, Heat, every threat, **boat physics**, every blast, cannon/keg counts and firing, gates and levers, damage, cooldowns, WalkSpeed, teleports.
-- **The client owns:** its own character physics (Roblox default): walking, the Poltergoblin dash, ziplines, launch pads, **geyser launches**, and the grapple pull toward a server-chosen anchor, plus HUD and effects.
-- **What clients send:** intent only ("boost", "fire cannon X at point P", "throw keg at P", grapple aim). The server checks range, cooldown, finiteness and that the cannon/boat exists. The client never says who it hit or how much damage.
+- **The server owns:** treasure state and possession, steals, banking, scores, raid phases, Heat, every threat, **boat health, crashes, sinking, boost cooldowns and seats**, every blast, cannon/keg counts and firing, gates and levers, damage, cooldowns, WalkSpeed, stamina, teleports.
+- **The client owns:** its own character physics (Roblox default): walking, dash, air jump, the Poltergoblin dash, ziplines, launch pads, geyser launches and the grapple pull toward a server-chosen anchor; **the physics of the boat it is driving** (checked by the server every frame: speed, altitude, jumps); plus HUD and effects.
+- **What clients send:** intent only ("dash", "boost", "fire cannon X at point P", "throw keg at P", grapple aim, "seat me on the boat you hooked"). The server checks range, cooldown, stamina, finiteness and that the cannon/boat exists. The client never says who it hit, how much damage, or which boat to board.
+- **Known gap:** a modified client driving a boat can gain a little more than a boost's worth of speed inside the server's margins, turn tighter than the physics allow, and avoid crash damage. Blasts, shells, mines and sinking still apply. `BOAT_CLIENT_PHYSICS = false` closes the gap at the cost of steering lag.
 
 ## Important files
 
@@ -171,7 +191,8 @@ Integration points new code must respect:
 | --- | --- |
 | `AGENTS.md` | Rules for every AI session. Read it first. |
 | `README.md` | Player-facing summary and controls |
-| `docs/reports/2026-10-08-v2-archipelago.md` | V2 design reasoning, measured results, tests, limits and the human playtest checklist |
+| `docs/reports/2026-10-11-v3-power-speed-peril.md` | V3 reasoning, before/after numbers, measurements, tests, limits and the human playtest checklist |
+| `docs/reports/2026-10-08-v2-archipelago.md` | V2 design reasoning and its checklist |
 | `docs/reports/2026-10-07-sprint-grapple-bigger-map.md` | Sprint, grapple and the earlier map |
 | `docs/reports/2026-10-06-vertical-slice-foundation.md` | The vertical slice's reasoning |
 | `docs/WORKSTATION.md` | Setup, daily commands, Studio verification, troubleshooting |
@@ -192,9 +213,10 @@ Integration points new code must respect:
 
 - Rojo serves on `127.0.0.1:34872` (our other games use other ports; with several Studio windows open, connect each plugin to the right port by hand).
 - **The Rojo plugin drops its connection each time play mode starts or stops, and Rojo 7.7.1 can crash when a watched file vanishes mid-write.** Run `rojo serve` in a restart loop, reconnect the plugin after each play session, and confirm `#Script.Source` matches the file before trusting a test.
-- **Studio's rendering stalls when the display sleeps** (screenshots time out). Keep the display awake for long sessions.
-- **Use the official Studio MCP only.** Call `list_roblox_studios` first. Studio MCP lists every open Studio to every AI client, so pick the one named `LootGoblinsTest001.rbxlx`. `get_studio_state`, `execute_luau` (Edit/Server/Client), `start_stop_play`, `get_console_output`, `screen_capture` (works during play, with `camera_position` / `look_at_position`), and `user_keyboard_input` all exist.
-- **`require()` from `execute_luau` gives a separate module copy**, so you cannot change the live game's module state that way. For deep tests install a temporary Script in `Workspace` (Studio session only, never committed; Rojo does not manage Workspace) that requires the game's own modules and obeys a `DebugCmd` attribute.
+- **The plugin's Connect button cannot be pressed through MCP.** If the human is away and the plugin is not connected, an Edit-mode `execute_luau` can set `Source` on the mapped scripts itself (the V3 session pulled `src/` from a helper on the loopback address; that needs `HttpService.HttpEnabled` in the disposable built place, switched off again afterwards). Compare sources before trusting a test either way.
+- **Studio caps a background window at 15 frames per second, and stops rendering when the display sleeps.** Client-side timings are then one 67 ms frame coarse, injected keys stop arriving and screenshots time out. Measure the client's frame rate before trusting a client-side number, and say so in the report.
+- **Use the official Studio MCP only.** Call `list_roblox_studios` first. Studio MCP lists every open Studio to every AI client, so pick the one named `LootGoblinsTest001.rbxlx`. `get_studio_state`, `execute_luau` (Edit/Server/Client), `start_stop_play`, `get_console_output`, `screen_capture`, and `user_keyboard_input` all exist.
+- **Never `require()` a game module from `execute_luau`.** It loads a separate copy, and a separate copy of `Net.lua` destroys and recreates `LootGoblinsRemotes`, which cuts the running game off from its own remotes (nothing errors; inputs just stop working). Read attributes and instances instead. For deep tests install a temporary Script in `Workspace` (Studio session only, never committed; Rojo does not manage Workspace) that requires the game's own modules and obeys a `DebugCmd` attribute with fixed, named commands.
 - Never open a second Studio copy of the same place. Never force-kill Studio. Stop play mode when you finish.
 - Cloud sessions have no Studio. Say so plainly.
 
@@ -203,24 +225,27 @@ Integration points new code must respect:
 - Every change: `check.ps1` passes. Gameplay changes also need a Studio playtest with an empty console, then play mode stopped. Report anything you could not test.
 - Timed effects are shorter than MCP round trips: record state in a `task.spawn` loop and read it afterwards.
 - Single-client MCP play cannot test player-vs-player features. Teleporting 1000+ studs under streaming can let a character fall through terrain that has not loaded yet; that is a test artifact, not a game bug.
-- The real validation is the human multiplayer test: **Test > Server & Clients > 4 players > Play**. The V2 report has a checklist.
+- Boat physics run on the test client when it drives. To test them without depending on injected keys, set `boat.input` from a temporary test script (the server then simulates with the same `BoatSim`).
+- Studio's network simulator (`settings():GetService("NetworkSettings").IncomingReplicationLag`) is a Studio-wide setting: put it back to 0.
+- The real validation is the human multiplayer test: **Test > Server & Clients > 4 players > Play**. The V3 report has a checklist.
 
 ## Design philosophy
 
 - Serve the loop. Ugly and fast beats polished and slow. Primitive parts and terrain are fine.
+- **Travel is play, not a toll.** Running and sailing must be fun with nothing else going on. Never restore difficulty by making the player sluggish.
 - Threats target carriers, not players. Holding treasure is what makes you the problem.
-- **Commitment is not difficulty.** Deeper treasure is worth more because it is far, heavy to carry and nasty to leave, not because a lock is harder.
-- **Qualitative escalation.** Heat should change what the world does (ships, storms, closed gates, falling bridges), not just raise damage numbers.
-- **Telegraph everything dangerous** with a marker, and make every effect end. A skilled player can always read it, dodge it or cross it.
+- **Commitment is not difficulty.** Deeper treasure is worth more because it is far, costly to carry and nasty to leave, not because a lock is harder.
+- **A carrier is exposed, not crippled.** Loot costs stamina, fighting power, stealth and boat speed. It does not make walking feel bad.
+- **Qualitative escalation.** Heat should change what the world does (a ship ahead of you, mines across the way home, a storm that chases), not just raise damage numbers.
+- **Telegraph everything dangerous, and make the answer an action.** A ring to leave, a ring to jump, a horn to turn away from. "I saw that coming, tried something, almost made it" is the target; "I have no idea what hit me" is a bug.
 - **Preserve quiet.** Storms come in gaps, not constantly.
-- Every mobility tool must leave carrying treasure home a physical journey.
-- Keep diffs small and local, reuse the patterns, put numbers in `Config.lua`.
+- Deepen what exists before adding content. Keep diffs small and local, reuse the patterns, put numbers in `Config.lua`.
 
 ## Major implementation decisions
 
 - **The world is generated at runtime**, terrain included; builders describe, mechanism modules run.
-- **Boats are server-owned physics**, not kinematic and not client-owned: every player sees the same boat, crashes are real, and the server can enforce damage. The cost is input latency for the driver.
-- **Sea math is separate from the visual water**, so waves, currents and shelter are cheap, deterministic and tunable.
+- **Boat physics are one shared module run by whoever owns the hull.** A driven boat is simulated by its driver's client so steering is immediate (measured: 64 ms key-to-motion against 400 ms server-owned, with 100 ms of lag each way); the server keeps health, crashes, sinking and cooldowns and polices the hull. The cost is the cheating gap described above. One Config flag reverts it.
+- **Sea math is separate from the visual water**, and shared, so waves, currents and shelter are cheap, deterministic and the same on both machines.
 - **Streaming is on**; far parts come and go; key landmarks are persistent.
 - **The Guardian is kinematic** (no collisions, can't push loot off the map) and walks over walls.
 - **Sounds** use only `rbxasset://sounds/` files. No uploaded assets.
@@ -228,14 +253,15 @@ Integration points new code must respect:
 ## Known limitations
 
 - Primitive art; the skull, ribs and fort are blocky.
-- Boats beach hard against vertical sand edges; no wedge beaches yet.
-- Grapple, throw, keg, cannon and Poltergoblin have no touch or gamepad controls.
-- Boats pass through dock posts; the Guardian walks through walls and can't enter tunnels.
-- Not tested with real players, on mobile, or on weaker hardware.
+- Steep shore edges still stop a boat dead; boats pass through dock posts.
+- Dash, drift, boost, grapple, throw, keg, cannon and Poltergoblin have no touch buttons.
+- The Guardian walks through walls and can't enter tunnels.
+- Island routes were designed for V2's movement. V3's jump, air jump, dash and longer grapple were not checked against them.
+- Not tested with more than one player, on mobile, on weaker hardware, or with real latency. Client frame rate in V3 has not been measured.
 
 ## Known bugs
 
-- None confirmed beyond the limits above. Cannon/keg/Navy/Guardian behaviour has been exercised by a single AI client; **player-vs-player effects, windmill blade hits, the ice slide, anchoring and lightning damage were not exercised**.
+- None confirmed. **Never seen on screen:** the V3 boat panel (three meters) and the enlarged help panel (the display was asleep when the AI tried to capture them). **Not exercised:** anything between two players, drift with `BOAT_CLIENT_PHYSICS = false`, the Navy's charge against a cutter, windmill blade hits, the ice slide, anchoring in a current.
 
 ## Keeping this file useful
 
