@@ -6,7 +6,7 @@
 | Request | Ninety's "V4 One-Shot: The Living Archipelago" prompt |
 | Agent | Claude Code (Opus 5.5), local session on Ninety's machine with Roblox Studio MCP |
 | Branch | `feature/v4-living-archipelago`, **stacked on** PR #11's branch `feature/v3-speed-agency-danger` (itself stacked on PR #10, then PR #9) |
-| Pull request | PR_LINK_PLACEHOLDER, base branch is `feature/v3-speed-agency-danger` |
+| Pull request | [#12](https://github.com/EnrikR2002/Loot-Goblins/pull/12), base branch is `feature/v3-speed-agency-danger` |
 | Merge status | **Not merged.** Nothing was merged, including PRs #9, #10 and #11. Needs a human playtest and explicit approval. |
 
 ## 1. Summary
@@ -341,7 +341,7 @@ Say what felt bad, and send a screenshot of any red error. Things I could not ch
 ## 18. Branch, commits, PR
 
 - Branch `feature/v4-living-archipelago`, created from `origin/feature/v3-speed-agency-danger` at `ee4281c`.
-- Pull request: PR_LINK_PLACEHOLDER, base `feature/v3-speed-agency-danger`. **Merge order: #9, #10, #11, then this.**
+- Pull request: [#12](https://github.com/EnrikR2002/Loot-Goblins/pull/12), base `feature/v3-speed-agency-danger`. **Merge order: #9, #10, #11, then this.**
 - **Nothing was merged.** No force-push, no history rewrite. `main` is untouched.
 - `./scripts/check.ps1` passes (formatting, lint, Rojo build, whitespace).
 - Studio was left in Edit mode with the temporary test scripts removed and `HttpService.HttpEnabled` off. The open place has script edits that are not saved; they are all in this branch.
