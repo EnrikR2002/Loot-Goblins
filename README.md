@@ -1,6 +1,6 @@
-# Loot Goblins — V3 prototype: power, speed and peril
+# Loot Goblins — V4 prototype: the living archipelago
 
-An intentionally ugly Roblox prototype. It grew from Test 001 (one idol, one boat) into a **big physical sea**: a 19-island archipelago to explore, boats that float on real waves, storms and currents to read, and treasure that fights back on the way home. V3 makes the goblin and the boats fast and expressive (dash, air jump, drift), and makes the world able to keep up (a Navy that cuts you off, a Guardian you have to jump, storms with waterspouts).
+An intentionally ugly Roblox prototype. It grew from Test 001 (one idol, one boat) into a **big physical sea**: a 19-island archipelago to explore, boats that float on real waves, storms and currents to read, and treasure that fights back on the way home. V3 made the goblin and the boats fast and expressive (dash, air jump, drift), and made the world able to keep up (a Navy that cuts you off, a Guardian you have to jump, storms with waterspouts). V4 makes the world big enough for them: a sea 4.6 times the size, laid out in regions, with bigger islands, reefs, shallows, stack fields and currents between them, and new things to use (a harbor chain, signal beacons, catapults).
 
 **Explore the sea → steal valuable treasure → the world reacts → escape across dangerous water → bank it at home → go again.**
 
@@ -42,35 +42,40 @@ Playtest/review the PR, then approve the AI to sync, check, and merge it. When s
 
 ## How a raid plays
 
-- A **raid** lasts 7 minutes, then a short intermission. Most gold banked wins the raid (`Gold` and `Wins` leaderstats).
-- Goblin Cove is home. **Boats** (press `E` on one) are how you travel: four wait at the home docks, and most mid-ring islands have one. Open `M` for the map; the compass strip along the top shows the Hoard and treasure.
-- **Sixteen treasures**, and the deeper the island, the more it is worth and the nastier the trouble:
+- A **raid** lasts 10 minutes, then a short intermission. Most gold banked wins the raid (`Gold` and `Wins` leaderstats).
+- Goblin Cove is home. **Boats** (press `E` on one) are how you travel: seven wait at home (six at the harbor docks, one at the Back Door cove behind the Hoard), and every island has at least one. Open `M` for the map; the compass strip along the top shows the Hoard and treasure.
+- **The sea has regions.** Home Bay is closed by a reef: sail out through **the Gate** (gold lamps), or through a shallow pass (**green lamps**) if your boat is small. Green lamps always mean the same thing: water too shallow for a patrol ship. The Western Shallows are a whole region of it. By skiff the near islands are 6 to 8 seconds away, the Crossroads 13, the far north 40 to 50.
+- **Nineteen treasures**, and the deeper the island, the more it is worth and the nastier the trouble:
 
   | Treasure | Gold | Where | Trouble when taken |
   | --- | --- | --- | --- |
   | Lost Compass | 1 | Pebble Isle (near home) | Gulls reveal you for 10 s |
   | Giant Pearl | 2 | Coral Atoll | Gulls; the reef and a harbor-style jump to try |
   | Smuggler's Stash | 2 | Smuggler's Cove (behind a cracked wall: use a keg) | The bell reveals you |
-  | Golden Gear | 3 | Windmill Hills (on a balcony the sails sweep) | The mill runs wild |
-  | Lighthouse Lens | 3 | Top of the Crossroads lighthouse | The bell reveals you |
-  | Captain's Chest | 4 | Shipwreck Shoals | The wreck's cannon barrage |
-  | Crystal Heart | 5 | Crystal Isle tunnel | Cave-in |
-  | Jade Frog | 5 | Tangle Isle shrine | Quake: the rope bridges snap |
-  | Pearl of the Deep | 6 | Tide Vault (lever-gated; drain tunnel back door) | Gate slams, chamber floods |
-  | Tempest Trident | 6 | Maelstrom Rock (in a whirlpool) | A squall settles on it |
-  | Admiral's Strongbox | 7 | Fort Barnacle keep | Patrol ships launch |
-  | Ember Crown | 8 | Volcano crater (stepping stones over lava) | Lava bombs rain |
-  | Golden Idol | 10 | Sun Temple ziggurat | The Guardian wakes |
-  | Aurora Gem | 12 | Frost Spire summit | Avalanche |
-  | Leviathan Tooth | 13 | Skull of Leviathan's Rest | Tentacles |
-  | Skull Chalice | 14 | Skull Rock's cranium | Fog and ghost ships |
+  | Golden Gear | 4 | Windmill Hills (on a balcony the sails sweep) | The mill runs wild |
+  | Lighthouse Lens | 4 | Top of the Crossroads lighthouse | The bell reveals you |
+  | Sunken Sextant | 4 | Kelp Cay, in the Western Shallows | Gulls |
+  | Captain's Chest | 6 | Shipwreck Shoals | The wreck's cannon barrage |
+  | Crystal Heart | 8 | Crystal Isle tunnel | Cave-in |
+  | Pearl of the Deep | 9 | Tide Vault (lever-gated; drain tunnel back door) | Gate slams, chamber floods |
+  | Jade Frog | 10 | Tangle Isle shrine | Quake: the rope bridges snap |
+  | Tempest Trident | 10 | Maelstrom Rock (in a whirlpool) | A squall settles on it |
+  | Storm Lantern | 10 | Lantern Key's tower | The bell reveals you |
+  | Castaway's Hoard | 11 | Driftwood Key | Gulls |
+  | Admiral's Strongbox | 15 | Fort Barnacle keep | Patrol ships launch (unless the harbor chain is up: then they wait) |
+  | Ember Crown | 15 | Volcano crater (stepping stones over lava) | Lava bombs rain |
+  | Golden Idol | 16 | Sun Temple ziggurat | The Guardian wakes |
+  | Aurora Gem | 20 | Frost Spire summit | Avalanche |
+  | Leviathan Tooth | 21 | Skull of Leviathan's Rest | Tentacles |
+  | Skull Chalice | 24 | Skull Rock's cranium | Fog and ghost ships |
 
-  Treasure nobody takes grows more valuable (+1 gold per 70 s, up to +3).
+  Treasure nobody takes grows more valuable (about an eighth of its value every 80 s, three times at most).
 - Carry treasure into **the Hoard** (gold ring and beam at Goblin Cove) to bank it. Carrying barely slows you on foot; instead heavy treasure makes every stamina move cost more, and slows the boat you sit in.
 - **You run fast for free.** Stamina pays for the special moves: sprint, a dash (also in the air) and one extra jump per flight. It refills in about three seconds.
 - **Heat** is a shared meter. Stealing adds a chunk, carrying keeps adding, and it cools when nobody carries. At **ALERT** carriers fire flares everyone can see. At **HUNTED** a patrol ship appears on the horizon *ahead* of the thief, shells them, and charges (it sounds a horn first: turn and it misses). At **FRENZY** a second ship takes the water between the thief and home and lays mines across it, and a tempest chases the thief. The world only ever targets **carriers**, every strike is marked with a ring on the ground, and everything can be outrun, out-steered or hidden from.
 - The **Guardian** is as fast as a carrier who only runs. It leaps onto a marked circle, throws boulders, and up close it slams the ground: a ring races outward, and you have to be in the air when it reaches you.
-- The **sea has weather**: storm cells cross it (dark clouds on the horizon, rough water, marked lightning, and **waterspouts** that fling a boat into the air), currents carry boats (the Rushing Strait, the Home Stream, the Maelstrom), and calm water hugs the coasts.
+- The **sea has weather**: storm cells cross it (dark clouds on the horizon, rough water, marked lightning, and **waterspouts** that fling a boat into the air), currents carry boats (chevrons on the water show which way; the Home Stream runs from the Crossroads to the Gate, the Serpent Channel past the fort is the fastest), and calm water hugs the coasts. Storms now start near whoever is out at sea.
+- **Things to use.** Pull the lever on Fort Barnacle's west mole and a **chain** shuts the harbor for 40 seconds: no patrol ship leaves port. Light a **signal beacon** (ten of them, on high places) and every patrol ship in sight sails over to look. Orange pads are **catapults**. Hoops on the water give a boat a kick, and ramps throw it over a sandbar.
 
 ## Controls
 
@@ -82,6 +87,8 @@ Playtest/review the PR, then approve the AI to sync, check, and merge it. When s
 | Hold `C` in a turn, in the driver seat | **Drift**: the boat slides round the turn. Let go for a burst of speed (bigger the longer you held the slide) |
 | `R` near a boat's winch | Drop or raise the anchor |
 | `E` at a cannon | Fire it where you aim |
+| `E` at a lever | Pull it (the Tide Vault's gate, Fort Barnacle's harbor chain) |
+| Hold `E` at a signal beacon | Light it: patrol ships nearby go to look |
 | `G` | Throw a powder keg (take kegs from keg crates with `E`) |
 | Hold `Shift` on foot | Sprint (on land or swimming). Uses stamina |
 | `C` on foot | **Dash** the way you are moving, on the ground or in the air. Uses stamina |
@@ -94,7 +101,7 @@ Playtest/review the PR, then approve the AI to sync, check, and merge it. When s
 | `M` | World map |
 | `H` | Show or hide the how-to-play panel |
 
-Green pads and timed steam geysers launch you. Ladders, ramps and ziplines take you up and across the islands. Home has bounce pads, a practice cannon with floating targets, keg crates and a harbor jump.
+Green pads and timed steam geysers launch you; orange pads are catapults that throw you a long way (dash or jump to drop out early). Ladders, ramps and ziplines take you up and across the islands; tall crags and sea stacks are for the grapple. Home has bounce pads, a practice cannon with floating targets, keg crates and a harbor jump.
 
 ## What NOT to add yet
 
@@ -110,7 +117,8 @@ Afterward make one decision:
 
 ## Known prototype compromises
 
-- V2 had one human playtest (the bigger world was more interesting to explore; the goblin and boats felt too slow). V3 answers that and was tested by an AI in Studio on one client. Whether it feels good, multiplayer fun, mobile performance and balance are unknown. The report lists what to test.
+- V3 had a human playtest (movement and boats felt right; the world felt too small for them). V4 answers that and was tested by an AI in Studio on one client. Whether the bigger sea feels good, multiplayer fun, mobile performance and balance are unknown. The report lists what to test.
+- The world takes about 7 seconds to build when Play starts (it was 3). Nobody spawns until it is ready.
 - A driven boat's physics run on the driver's own computer so steering answers at once; the server watches it and takes the boat back if it moves in a way the physics could not. `BOAT_CLIENT_PHYSICS` in `src/shared/Config.lua` switches back to the old server-run boats for comparison.
 - The Guardian is a kinematic stone golem that walks over terrain instead of using pathfinding. It cannot follow into tunnels.
 - Grapple, throw, keg, cannon and Poltergoblin are keyboard and mouse only. A gamepad also gets sprint (left stick click), dash and drift (`B`), air jump (`A`) and boat boost (`X`). There are no touch buttons for any of these yet.
