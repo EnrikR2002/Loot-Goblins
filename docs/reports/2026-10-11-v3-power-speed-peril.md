@@ -6,7 +6,7 @@
 | Request | Ninety's "V3 One-Shot: Power, Speed & Peril" prompt |
 | Agent | Claude Code (Opus 5.5), local session on Ninety's machine with Roblox Studio MCP |
 | Branch | `feature/v3-speed-agency-danger`, **stacked on** PR #10's branch `feature/v2-archipelago` (itself stacked on PR #9) |
-| Pull request | PR_LINK, base branch is `feature/v2-archipelago` |
+| Pull request | [#11](https://github.com/EnrikR2002/Loot-Goblins/pull/11), base branch is `feature/v2-archipelago` |
 | Merge status | **Not merged.** Nothing was merged, including PR #9 and PR #10. Needs a human playtest and explicit approval. |
 
 ## 1. Summary
