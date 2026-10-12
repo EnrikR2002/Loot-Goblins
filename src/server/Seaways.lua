@@ -1,12 +1,12 @@
--- The water between the islands (V4): reefs, shallows, stack fields, lone rocks, currents and
--- the hoops that mark the sea lanes. The point is that a voyage is never a straight line across
--- nothing: there is always a landmark to steer by and a choice of water to take.
+-- The water between the islands: reefs, shallows, stack fields, lone rocks and currents. The point
+-- is that a voyage is never a straight line across nothing: there is always a landmark to steer
+-- by and a choice of water to take. (Searuns.lua lays the hoops, coins and ramps over all of it.)
 --
 --   WRECKER'S REEF    closes Home Bay. One deep gap (the Gate) that any ship can use, and two
---                     shallow passes (green lights) that only a skiff or a cutter can cross.
---   WESTERN SHALLOWS  a wide sandy shelf around Kelp Cay: too shallow for a patrol ship anywhere,
+--                     shallow passes (green lamps) that only a skiff or a cutter can cross.
+--   WESTERN SHALLOWS  a sandy shelf around Kelp Cay: too shallow for a patrol ship anywhere,
 --                     with dry bars to steer around (or jump: there is a ramp).
---   THE TEETH         a field of sea stacks between the Crossroads and Crystal Isle.
+--   THE TEETH         a field of sea stacks between the Crossroads and Twin Stacks.
 --   SERPENT CHANNEL   the strait between Tangle Isle and Fort Barnacle, narrowed by rocks, with
 --                     the fastest current in the sea running down it.
 --   THE CINDERS       basalt stacks between Ember Isle, Lantern Key and Skull Rock.
@@ -16,7 +16,13 @@
 -- A reef crest is 1.2 deep (everything grounds; a fast skiff scrapes over and pays for it), a
 -- pass is 3.7 deep and the shelf is 4.8.
 --
--- Everything is in world coordinates. Like the island builders, this only describes.
+-- Everything is placed from the islands' positions in shared/Archipelago.lua (an offset from an
+-- island, or a point between two), so the sea follows when the islands move. V4 used fixed world
+-- coordinates and all of it had to be re-laid by hand when V5 pulled the islands in.
+-- Like the island builders, this only describes.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Archipelago = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Archipelago"))
 local Kit = require(script.Parent.WorldKit)
 local Landform = require(script.Parent.Landform)
 
@@ -35,6 +41,12 @@ local function v3(x, y, z)
 	return Vector3.new(x, y, z)
 end
 
+-- An island's center at sea level, plus an offset.
+local function from(id, dx, dz)
+	local island = Archipelago.byId[id]
+	return v3(island.x + (dx or 0), 0, island.z + (dz or 0))
+end
+
 -- A floating label over a place in the sea.
 local function nameplate(position, text, color, distance)
 	local holder = decor("SeaSign", v3(1, 1, 1), CFrame.new(position), Color3.new(1, 1, 1), nil)
@@ -42,7 +54,7 @@ local function nameplate(position, text, color, distance)
 	Kit.sign(holder, text, color or Color3.fromRGB(190, 235, 255), Vector3.zero, distance or 520)
 end
 
--- Sea stacks: { x, z, radius, height } each, standing on a shallow foot. Returns their tops.
+-- Sea stacks: { x, z, radius, height } each (world), standing on a shallow foot.
 local function stacks(name, seed, list, material)
 	local spec = { seed = seed, body = material or M.Rock, cliff = material or M.Rock, lobes = {} }
 	for _, s in ipairs(list) do
@@ -50,6 +62,16 @@ local function stacks(name, seed, list, material)
 		table.insert(spec.lobes, { kind = "hill", x = s[1], z = s[2], r = s[3] * 2.4, h = -6, e = -11, rough = 0 })
 	end
 	Landform.mark(Landform.build(spec), name, HAZE, folders.landmarks)
+end
+
+-- The same, from offsets around a center: { dx, dz, radius, height }.
+local function stackField(name, seed, center, offsets, material)
+	local list = {}
+	for _, s in ipairs(offsets) do
+		table.insert(list, { center.X + s[1], center.Z + s[2], s[3], s[4] })
+	end
+	stacks(name, seed, list, material)
+	return list
 end
 
 -- A lantern on a short pole standing in the water: marks a pass (green) or a gate (gold).
@@ -62,26 +84,31 @@ local function marker(x, z, color, height)
 end
 
 -- Wrecker's Reef ------------------------------------------------------------------------
+-- Offsets from Goblin Cove: from Gull Rock east to Smuggler's Cove. Crest, pass, crest, the Gate,
+-- crest, pass, crest.
+Seaways.GATE = { -50, 170, -658 } -- The Gate's two posts (x offsets) and its line (z offset) from home.
+
 local function buildReef()
-	-- From Gull Rock east to Smuggler's Cove: crest, pass, crest, the Gate, crest, pass, crest.
+	local home = from("Home")
 	local crest, pass = -1.2, -3.7
 	local runs = {
-		{ -440, 1880, -330, 1760, crest },
-		{ -330, 1760, -240, 1715, pass },
-		{ -240, 1715, -50, 1690, crest },
-		{ 170, 1695, 390, 1730, crest },
-		{ 390, 1730, 470, 1760, pass },
-		{ 470, 1760, 590, 1820, crest },
+		{ -440, -470, -330, -590, crest },
+		{ -330, -590, -240, -635, pass },
+		{ -240, -635, -50, -660, crest },
+		{ 170, -655, 390, -620, crest },
+		{ 390, -620, 470, -590, pass },
+		{ 470, -590, 590, -530, crest },
 	}
 	local spec = { seed = 201, lobes = {} }
 	local random = Kit.rng(202)
 	for _, run in ipairs(runs) do
+		local x1, z1, x2, z2 = home.X + run[1], home.Z + run[2], home.X + run[3], home.Z + run[4]
 		table.insert(spec.lobes, {
 			kind = "hill",
-			x = run[1],
-			z = run[2],
-			x2 = run[3],
-			z2 = run[4],
+			x = x1,
+			z = z1,
+			x2 = x2,
+			z2 = z2,
 			r = 34,
 			h = run[5],
 			e = run[5] - 6,
@@ -91,11 +118,11 @@ local function buildReef()
 		})
 		if run[5] == crest then
 			-- Rocks that break the surface along a crest, so the reef can be seen from a boat.
-			local length = math.sqrt((run[3] - run[1]) ^ 2 + (run[4] - run[2]) ^ 2)
+			local length = math.sqrt((x2 - x1) ^ 2 + (z2 - z1) ^ 2)
 			for d = 20, length - 10, 62 do
 				local t = d / length
-				local x = run[1] + (run[3] - run[1]) * t + random:NextNumber(-6, 6)
-				local z = run[2] + (run[4] - run[2]) * t + random:NextNumber(-6, 6)
+				local x = x1 + (x2 - x1) * t + random:NextNumber(-6, 6)
+				local z = z1 + (z2 - z1) * t + random:NextNumber(-6, 6)
 				table.insert(spec.lobes, {
 					kind = "mesa",
 					x = x,
@@ -108,30 +135,37 @@ local function buildReef()
 				Kit.coral(v3(x + 12, -1, z + 6), 300 + d, 3)
 			end
 		else
-			marker(run[1], run[2], GREEN)
-			marker(run[3], run[4], GREEN)
+			marker(x1, z1, GREEN)
+			marker(x2, z2, GREEN)
 		end
 	end
 	Landform.build(spec)
-	-- The Gate: two tall posts with perches (grapple them) and a hoop between.
-	Kit.hookPost(v3(-50, -8, 1690), 30, GOLD)
-	Kit.hookPost(v3(170, -8, 1695), 30, GOLD)
-	nameplate(v3(60, 40, 1692), "THE GATE", GOLD, 700)
-	nameplate(v3(-285, 22, 1738), "GULL PASS (shallow)", GREEN, 420)
-	nameplate(v3(430, 22, 1745), "SMUGGLER'S GAP (shallow)", GREEN, 420)
-	Kit.hoop(v3(60, 5, 1692), v3(0, 0, -1), 12, GOLD)
+	-- The Gate: two tall posts with perches (grapple them).
+	local gate = Seaways.GATE
+	Kit.hookPost(v3(home.X + gate[1], -8, home.Z + gate[3] - 2), 30, GOLD)
+	Kit.hookPost(v3(home.X + gate[2], -8, home.Z + gate[3] + 3), 30, GOLD)
+	nameplate(home + v3(60, 40, gate[3]), "THE GATE", GOLD, 700)
+	nameplate(home + v3(-285, 22, -612), "GULL PASS (shallow)", GREEN, 420)
+	nameplate(home + v3(430, 22, -605), "SMUGGLER'S GAP (shallow)", GREEN, 420)
 end
 
 -- The Western Shallows -------------------------------------------------------------------
+Seaways.SHELF = { -20, 10, 400 } -- The shelf's center (offset from Kelp Cay) and radius.
+-- The thin bar the Sandbar Jump crosses (offsets from the shelf's center), and the way boats jump it.
+Seaways.JUMP_BAR = { -190, -70, -130, -170 }
+Seaways.JUMP_WAY = Vector3.new(0.86, 0, 0.51)
+
 local function buildShallows()
+	local shelf = Seaways.SHELF
+	local c = from("Kelp", shelf[1], shelf[2])
 	local spec = { seed = 211, lobes = {} }
 	local function bar(x, z, x2, z2, h, r)
 		table.insert(spec.lobes, {
 			kind = "hill",
-			x = x,
-			z = z,
-			x2 = x2,
-			z2 = z2,
+			x = c.X + x,
+			z = c.Z + z,
+			x2 = c.X + x2,
+			z2 = c.Z + z2,
 			r = r or 30,
 			h = h,
 			e = h - 6,
@@ -140,147 +174,150 @@ local function buildShallows()
 			slope = 0.22,
 		})
 	end
-	-- The shelf itself: 4.8 studs of water for 400 studs around the cay.
-	table.insert(spec.lobes, { kind = "mesa", x = -2080, z = 1500, r = 520, h = -4.8, e = -9, flat = 0.85, wob = 0.2 })
-	bar(-1790, 1310, -1850, 1430, 1.8, 20) -- Thin enough to jump: the Sandbar Jump crosses it.
-	bar(-2000, 1300, -1880, 1280, -3.7)
-	bar(-2260, 1230, -2100, 1160, 1.8)
-	bar(-2380, 1480, -2250, 1590, -3.7)
-	bar(-2320, 1720, -2210, 1830, 1.8)
-	bar(-1500, 1370, -1380, 1500, 1.8)
-	bar(-2600, 1560, -2500, 1660, 1.8)
+	-- The shelf itself: 4.8 studs of water for 340 studs around its center.
+	table.insert(
+		spec.lobes,
+		{ kind = "mesa", x = c.X, z = c.Z, r = shelf[3], h = -4.8, e = -9, flat = 0.85, wob = 0.2 }
+	)
+	local jump = Seaways.JUMP_BAR
+	bar(jump[1], jump[2], jump[3], jump[4], 1.8, 20) -- Thin enough to jump: the Sandbar Jump crosses it.
+	bar(-60, -250, 70, -250, -3.7)
+	bar(-20, 270, 90, 320, 1.8)
+	bar(170, 120, 120, 220, 1.8)
 	Landform.build(spec)
 	-- Green lamps ring the shelf, the same sign as the reef passes: shallow water, no patrol ships.
-	for k = 0, 15 do
-		local a = k / 16 * math.pi * 2
-		marker(-2080 + math.cos(a) * 450, 1500 + math.sin(a) * 450, GREEN, 10)
+	for k = 0, 13 do
+		local a = k / 14 * math.pi * 2
+		local x, z = c.X + math.cos(a) * 345, c.Z + math.sin(a) * 345
+		if Kit.groundY(x, z, -30) < -2 then
+			marker(x, z, GREEN, 10)
+		end
 	end
-	nameplate(v3(-2080, 60, 1500), "WESTERN SHALLOWS (no patrol ships)", GREEN, 700)
-	-- The Sandbar Jump: a ramp in the deep water in front of the thin bar, pointing at home. (Tried
-	-- with the ramp on the bar itself: a boat stalls on it. It has to be hit from open water.)
-	local homeward = v3(0.89, 0, 0.46)
-	Kit.kicker(v3(-1820, 0, 1370) - homeward * 28, homeward, 16)
-	nameplate(v3(-1845, 18, 1356), "SANDBAR JUMP: go fast!", Color3.fromRGB(255, 220, 90), 320)
-	for _, palmAt in ipairs({ { -1795, 1322 }, { -2180, 1195 }, { -2265, 1775 }, { -1440, 1435 }, { -2550, 1610 } }) do
-		Kit.palm(palmAt[1], palmAt[2], nil, 12)
+	nameplate(c + v3(0, 60, 0), "WESTERN SHALLOWS (no patrol ships)", GREEN, 700)
+	for _, palmAt in ipairs({ { -130, -190 }, { 40, 300 }, { 140, 170 } }) do
+		Kit.palm(c.X + palmAt[1], c.Z + palmAt[2], nil, 12)
 	end
 end
 
 -- The Teeth ------------------------------------------------------------------------------
+-- A stack field east of the Crossroads. Offsets are from its center.
+Seaways.TEETH = { 690, -150 } -- Center, as an offset from Crossroads Ruins.
+Seaways.TEETH_STACKS = {
+	{ -195, 0, 12, 34 },
+	{ -135, -120, 10, 22 },
+	{ -90, 90, 14, 50 },
+	{ -38, -45, 11, 40 },
+	{ 8, -165, 13, 28 },
+	{ 45, 45, 16, 62 },
+	{ 82, -75, 10, 36 },
+	{ 128, 135, 12, 26 },
+	{ 150, 0, 14, 48 },
+	{ 195, -128, 11, 30 },
+	{ -60, 180, 10, 20 },
+}
+
 local function buildTeeth()
-	stacks("TheTeeth", 221, {
-		{ 720, 640, 12, 34 },
-		{ 800, 480, 10, 22 },
-		{ 860, 760, 14, 50 },
-		{ 930, 580, 11, 40 },
-		{ 990, 420, 13, 28 },
-		{ 1040, 700, 16, 62 },
-		{ 1090, 540, 10, 36 },
-		{ 1150, 820, 12, 26 },
-		{ 1180, 640, 14, 48 },
-		{ 1240, 470, 11, 30 },
-		{ 900, 880, 10, 20 },
-	})
-	deck("ToothDeck", v3(1040, 62, 700), 18)
-	deck("ToothDeck", v3(860, 50, 760), 14)
-	deck("ToothDeck", v3(1180, 48, 640), 14)
-	table.insert(refs.kegCrates, Kit.kegCrate(v3(1043, 63, 702)))
-	Kit.breakBridge("TeethBridge", v3(1052, 62.5, 695), v3(1170, 49, 645), 6, 5)
-	Kit.hoop(v3(985, 5, 610), v3(1, 0, -0.1), 12)
-	Kit.hoop(v3(1135, 5, 585), v3(1, 0, -0.2), 12)
-	nameplate(v3(985, 80, 620), "THE TEETH", Color3.fromRGB(235, 235, 240), 600)
+	local c = from("Cross", Seaways.TEETH[1], Seaways.TEETH[2])
+	stackField("TheTeeth", 221, c, Seaways.TEETH_STACKS)
+	deck("ToothDeck", c + v3(45, 62, 45), 18)
+	deck("ToothDeck", c + v3(-90, 50, 90), 14)
+	deck("ToothDeck", c + v3(150, 48, 0), 14)
+	table.insert(refs.kegCrates, Kit.kegCrate(c + v3(48, 63, 47)))
+	Kit.breakBridge("TeethBridge", c + v3(57, 62.5, 40), c + v3(140, 49, 5), 6, 5)
+	nameplate(c + v3(0, 84, 0), "THE TEETH", Color3.fromRGB(235, 235, 240), 600)
 end
 
 -- Serpent Channel --------------------------------------------------------------------------
+-- Returns the channel's middle and its axis (a unit vector along it, pointing north-east).
+function Seaways.serpent()
+	local tangle, fort = from("Tangle"), from("Fort")
+	local across = (tangle - fort).Unit
+	return (tangle + fort) / 2, v3(-across.Z, 0, across.X) * -1, across
+end
+
 local function buildSerpent()
-	local mid = v3(-2275, 0, -750)
-	local axis = v3(0.5, 0, -0.87) -- Along the channel, north-north-east.
-	local across = v3(0.87, 0, 0.5) -- Toward Tangle Isle.
+	local mid, axis, across = Seaways.serpent()
 	local list = {}
 	local random = Kit.rng(231)
-	for _, along in ipairs({ -250, -90, 70, 230 }) do
+	for _, along in ipairs({ -200, -70, 60, 190 }) do
 		for _, side in ipairs({ -1, 1 }) do
-			local at = mid + axis * (along + random:NextNumber(-25, 25)) + across * side * random:NextNumber(115, 150)
-			table.insert(list, { at.X, at.Z, random:NextNumber(11, 17), random:NextNumber(26, 58) })
+			local at = mid + axis * (along + random:NextNumber(-20, 20)) + across * side * random:NextNumber(98, 124)
+			table.insert(list, { at.X, at.Z, random:NextNumber(11, 16), random:NextNumber(26, 58) })
 		end
 	end
 	stacks("SerpentRocks", 232, list)
-	local head, tail = mid + axis * 330, mid - axis * 330
-	Kit.stream("SERPENT CHANNEL", head, tail, 70, 28)
-	Kit.hoop(mid + v3(0, 5, 0), axis, 13, Color3.fromRGB(255, 120, 110))
+	Kit.stream("SERPENT CHANNEL", mid + axis * 270, mid - axis * 270, 60, 28)
 end
 
 -- The Cinders ------------------------------------------------------------------------------
+Seaways.CINDERS = { -100, -520 } -- Center, as an offset from Ember Isle.
+Seaways.CINDER_STACKS = {
+	{ -112, 147, 14, 46 },
+	{ -14, 91, 12, 60 },
+	{ 84, 7, 15, 38 },
+	{ -63, -42, 11, 52 },
+	{ 168, -119, 13, 44 },
+	{ 42, -175, 12, 30 },
+	{ -168, -119, 10, 36 },
+	{ 126, 168, 12, 54 },
+}
+
 local function buildCinders()
-	stacks("TheCinders", 241, {
-		{ 2280, -1180, 14, 46 },
-		{ 2420, -1260, 12, 60 },
-		{ 2560, -1380, 15, 38 },
-		{ 2350, -1450, 11, 52 },
-		{ 2680, -1560, 13, 44 },
-		{ 2500, -1640, 12, 30 },
-		{ 2200, -1560, 10, 36 },
-		{ 2620, -1150, 12, 54 },
-	}, M.Basalt)
-	deck("CinderDeck", v3(2420, 60, -1260), 14)
-	table.insert(refs.kegCrates, Kit.kegCrate(v3(2422, 61, -1258)))
-	Kit.hoop(v3(2470, 5, -1320), v3(0.55, 0, -0.83), 12, Color3.fromRGB(255, 150, 80))
-	nameplate(v3(2450, 84, -1380), "THE CINDERS", Color3.fromRGB(255, 150, 90), 600)
+	local c = from("Ember", Seaways.CINDERS[1], Seaways.CINDERS[2])
+	stackField("TheCinders", 241, c, Seaways.CINDER_STACKS, M.Basalt)
+	deck("CinderDeck", c + v3(-14, 60, 91), 14)
+	table.insert(refs.kegCrates, Kit.kegCrate(c + v3(-12, 61, 93)))
+	nameplate(c + v3(0, 84, 0), "THE CINDERS", Color3.fromRGB(255, 150, 90), 600)
 end
 
 -- Lone rocks -------------------------------------------------------------------------------
+-- One in each stretch of open water, placed between the islands around it.
+Seaways.ROCKS = {
+	OldMan = { "Temple", -640, -160, 18, 96, "THE OLD MAN" },
+	Sisters = { "Temple", 700, -240, 13, 70, "TWO SISTERS" },
+	Anvil = { "Ember", 200, 680, 34, 40, "THE ANVIL" },
+	Lookout = { "Home", -1050, -82, 14, 60, "LOOKOUT STACK" },
+	Chimney = { "Cross", 700, 340, 12, 70, "THE CHIMNEY" },
+	Pillar = { "Temple", -70, -900, 16, 84, "NORTH PILLAR" },
+	Widow = { "Ember", -680, 100, 13, 64, "THE WIDOW" },
+}
+
+function Seaways.rock(name)
+	local rock = Seaways.ROCKS[name]
+	return from(rock[1], rock[2], rock[3]), rock
+end
+
 local function buildSentinels()
-	stacks("OldMan", 251, { { -900, -1150, 18, 96 } })
-	nameplate(v3(-900, 112, -1150), "THE OLD MAN", nil, 520)
-	stacks("TwoSisters", 252, { { 980, -1250, 13, 70 }, { 1030, -1225, 11, 54 } })
-	nameplate(v3(1000, 88, -1240), "TWO SISTERS", nil, 520)
-	stacks("Anvil", 253, { { 2350, 150, 34, 40 } })
-	deck("AnvilDeck", v3(2350, 40, 150), 30)
-	table.insert(refs.kegCrates, Kit.kegCrate(v3(2356, 41, 146)))
-	Kit.beacon(v3(2342, 41, 156), "the Anvil")
-	nameplate(v3(2350, 64, 150), "THE ANVIL", nil, 520)
-	stacks("LookoutStack", 254, { { -1150, 2250, 14, 60 } })
-	nameplate(v3(-1150, 76, 2250), "LOOKOUT STACK", nil, 520)
-	stacks("Chimney", 255, { { 900, 1400, 12, 70 } })
-	nameplate(v3(900, 86, 1400), "THE CHIMNEY", nil, 520)
-	stacks("NorthPillar", 256, { { -100, -1900, 16, 84 } })
-	nameplate(v3(-100, 100, -1900), "NORTH PILLAR", nil, 520)
-	stacks("Widow", 257, { { 1750, -350, 13, 64 } })
-	nameplate(v3(1750, 80, -350), "THE WIDOW", nil, 520)
-end
-
--- Currents and lanes -----------------------------------------------------------------------
-local function buildCurrents()
-	-- Out of the Crossroads and down to the Gate: treasure runs ride it home.
-	Kit.stream("HOME STREAM v", v3(150, 0, 1290), v3(70, 0, 1660), 55, 18)
-	-- From the Shoals toward the Crossroads, fast.
-	Kit.stream("RUSHING STRAIT >", v3(-1230, 0, 1010), v3(-470, 0, 930), 60, 24)
-	-- North up the Long Reach, toward the temple.
-	Kit.stream("TEMPLE DRIFT ^", v3(-170, 0, 440), v3(-170, 0, -380), 55, 18)
-	-- Out of the Cinders toward Twin Stacks: the way back from Ember Isle.
-	Kit.stream("CINDER RUN", v3(2230, 0, -430), v3(1680, 0, 230), 55, 20)
-	-- Along the top of the map, from Frost Spire to Leviathan's Rest.
-	Kit.stream("NORTHERN DRIFT <", v3(640, 0, -2330), v3(-800, 0, -2330), 60, 20)
-	-- From Windmill Hills into Home Bay.
-	Kit.stream("MILL RACE", v3(1330, 0, 1990), v3(800, 0, 2230), 50, 18)
-end
-
-local function buildLanes()
-	-- Hoops on the open-water legs: they push whichever way you are going.
-	local lanes = {
-		{ 0, 1985, 0, -1 }, -- outside the harbor mouth
-		{ -640, 1560, -1, -0.5 }, -- Gull Pass to the Shoals
-		{ 1000, 2090, 1, -0.3 }, -- Home Bay to Windmill Hills
-		{ -30, 380, 0, -1 }, -- the Long Reach
-		{ 620, -1700, 0.75, -0.66 }, -- the temple to Frost Spire
-		{ -620, -1650, -0.7, -0.7 }, -- the temple to Leviathan's Rest
-		{ 2300, 520, 1, 0.5 }, -- Crystal Isle to Maelstrom Rock
-		{ -1150, 320, -0.5, -0.85 }, -- the Crossroads to Tangle Isle
-		{ -1500, -1500, -0.85, -0.5 }, -- Tangle Isle to Driftwood Key
-	}
-	for _, lane in ipairs(lanes) do
-		Kit.hoop(v3(lane[1], 5, lane[2]), v3(lane[3], 0, lane[4]), 12)
+	-- In a fixed order, so every rock gets the same seed (and so the same shape) every raid.
+	for index, name in ipairs({ "OldMan", "Sisters", "Anvil", "Lookout", "Chimney", "Pillar", "Widow" }) do
+		local rock = Seaways.ROCKS[name]
+		local seed = 250 + index
+		local at = from(rock[1], rock[2], rock[3])
+		local list = { { at.X, at.Z, rock[4], rock[5] } }
+		if name == "Sisters" then
+			table.insert(list, { at.X + 50, at.Z + 25, 11, 54 })
+		end
+		stacks(name, seed, list)
+		nameplate(at + v3(0, rock[5] + 16, 0), rock[6], nil, 520)
 	end
+	local anvil = Seaways.rock("Anvil")
+	deck("AnvilDeck", anvil + v3(0, 40, 0), 30)
+	table.insert(refs.kegCrates, Kit.kegCrate(anvil + v3(6, 41, -4)))
+	Kit.beacon(anvil + v3(-8, 41, 6), "the Anvil")
+end
+
+-- Currents ---------------------------------------------------------------------------------
+local function buildCurrents()
+	-- From the Shoals toward the Crossroads, fast.
+	Kit.stream("RUSHING STRAIT >", from("Shoals", 300, -40), from("Cross", -500, 40), 55, 24)
+	-- North up the west side of the Long Reach, toward the temple.
+	Kit.stream("TEMPLE DRIFT ^", from("Cross", -330, -270), from("Temple", -330, 530), 50, 18)
+	-- Out of Ember Isle's water toward Twin Stacks: the way back from the Cinders.
+	Kit.stream("CINDER RUN", from("Ember", -220, 310), from("Crystal", -110, -390), 50, 20)
+	-- Along the top of the map, from Frost Spire to Leviathan's Rest.
+	Kit.stream("NORTHERN DRIFT <", from("Frost", -440, -220), from("Bone", 320, -240), 55, 20)
+	-- From Windmill Hills into Home Bay.
+	Kit.stream("MILL RACE", from("Windmill", -430, 230), from("Home", 520, 38), 45, 18)
 end
 
 function Seaways.build()
@@ -293,7 +330,6 @@ function Seaways.build()
 	task.wait()
 	buildSentinels()
 	buildCurrents()
-	buildLanes()
 end
 
 return Seaways

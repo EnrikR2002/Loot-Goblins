@@ -50,6 +50,7 @@ local Islands = require(script.Parent.Islands)
 local IslandsFar = require(script.Parent.IslandsFar)
 local Outlands = require(script.Parent.Outlands)
 local Seaways = require(script.Parent.Seaways)
+local Searuns = require(script.Parent.Searuns)
 local Landform = require(script.Parent.Landform)
 local Archipelago = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Archipelago"))
 local terrain = Kit.terrain
@@ -1381,6 +1382,7 @@ function World.build()
 	refs.troubleSites = {}
 	refs.targets = {}
 	refs.beacons = {}
+	refs.buildWarnings = {} -- Things a builder noticed about its own work (a hoop over a shoal...).
 	folders.root.Parent = workspace
 
 	table.clear(Sea.streams)
@@ -1414,6 +1416,9 @@ function World.build()
 	Outlands.buildPlaces()
 	Seaways.build()
 	stage("places and seaways")
+	-- Hoops, coins and ramps go on last: they check the water they stand in.
+	Searuns.build()
+	stage("sea runs")
 	pourSea()
 	stage("water")
 	refs.buildTimings = table.concat(timings, ", ")

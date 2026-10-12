@@ -515,6 +515,7 @@ local function attach(item, player, root)
 	weld.Parent = core
 
 	item.weld = weld
+	item.held = nil
 	item.carrier = player
 	item.lastHolder = player
 	item.immuneUntil = t + Config.STEAL_IMMUNITY
@@ -735,7 +736,42 @@ end
 -- Loot comes back in one piece: used between raids.
 function Loot.resetAll()
 	for _, item in ipairs(Loot.items) do
+		item.held = nil
 		returnToSpot(item, nil)
+	end
+end
+
+-- Creatures can carry treasure (Creatures.lua). The item stays "loose" the whole time: anyone can
+-- still grab it out of the creature's grip, and the bounds check and the Hoard keep working. It
+-- does not time out while held. Returns false if the item is not loose.
+function Loot.hold(item, cframe)
+	if item.state ~= "loose" then
+		return false
+	end
+	local core = item.core
+	core.Anchored = true
+	core.CanCollide = false
+	core.AssemblyLinearVelocity = Vector3.zero
+	core.AssemblyAngularVelocity = Vector3.zero
+	core.CFrame = cframe
+	item.looseSince = now()
+	item.held = true
+	return true
+end
+
+-- The creature lets go: the item falls free again, with a push.
+function Loot.letGo(item, velocity)
+	if item.state == "loose" and item.held then
+		item.held = nil
+		release(item, velocity or Vector3.zero)
+	end
+end
+
+-- A creature puts loose treasure back where it belongs. `reason` reaches Loot.Returned.
+function Loot.sendHome(item, reason)
+	if item.state == "loose" then
+		item.held = nil
+		returnToSpot(item, reason)
 	end
 end
 

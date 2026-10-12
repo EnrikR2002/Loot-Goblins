@@ -33,9 +33,10 @@ local gates = {}
 local sim, simHull = nil, nil
 local driftHeld = false
 local predictedReadyAt = 0 -- Our own guess at the boost cooldown until the server's arrives.
+local seenRefund = 0 -- The boat's BoostRefund total when we last looked (coins hand cooldown back).
 local input = { throttle = 0, steer = 0, drift = false }
 local info = { driving = false, speed = 0, charge = 0, level = 0, drifting = false }
-local onEvent = function(_kind, _position) end
+local onEvent = function(_kind, _position, _chain) end
 
 local function now()
 	return workspace:GetServerTimeNow()
@@ -55,7 +56,8 @@ local function seatAndModel()
 	return nil, nil
 end
 
--- Main sets this: function(kind, position) for "mini1", "mini2", "landing", "splash", "hoop", "kick".
+-- Main sets this: function(kind, position, chain) for "mini1", "mini2", "landing", "splash", "hoop",
+-- "kick". chain is how many hoops in a row this one makes (hoops only).
 function BoatDrive.onEvent(callback)
 	onEvent = callback
 end
@@ -124,6 +126,13 @@ RunService.PreSimulation:Connect(function(dt)
 	if simHull ~= hull then
 		sim = BoatSim.new(hull, Config.BOAT_TYPES[model:GetAttribute("BoatType")])
 		simHull = hull
+		seenRefund = model:GetAttribute("BoostRefund") or 0
+	end
+	-- The server handed some boost cooldown back (a coin, salvage): our own guess follows.
+	local refund = model:GetAttribute("BoostRefund") or 0
+	if refund ~= seenRefund then
+		predictedReadyAt -= math.max(refund - seenRefund, 0)
+		seenRefund = refund
 	end
 	local t = now()
 	sim.moored = model:GetAttribute("Moored") == true
@@ -142,7 +151,7 @@ RunService.PreSimulation:Connect(function(dt)
 	end
 	local gate = BoatSim.gate(sim, gates, t, true)
 	if gate then
-		onEvent(gate == "boost" and "hoop" or "kick", hull.Position)
+		onEvent(gate == "boost" and "hoop" or "kick", hull.Position, sim.chain or 1)
 	end
 end)
 

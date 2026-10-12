@@ -48,6 +48,10 @@ local Storms = require(script.Parent.Storms)
 local Navy = require(script.Parent.Navy)
 local Troubles = require(script.Parent.Troubles)
 local Escalation = require(script.Parent.Escalation)
+local Coins = require(script.Parent.Coins)
+local Creatures = require(script.Parent.Creatures)
+require(script.Parent.Bestiary)
+require(script.Parent.BestiaryMinor)
 local Raid = require(script.Parent.Raid)
 
 Players.RespawnTime = Config.RESPAWN_TIME
@@ -80,14 +84,26 @@ Destructibles.build(refs)
 Cannons.build(refs)
 Kegs.build(refs)
 Mechanisms.build(refs)
+Coins.build(refs)
 Threats.build(refs)
 Storms.build(refs)
 Navy.build(refs)
 Troubles.build(refs)
 Escalation.build(refs)
+Creatures.build(refs)
 Combat.init(refs)
 Raid.init(refs)
 Storms.reset()
+
+-- Salvage: a crate floats where a patrol ship went down, and where a storm blew itself out.
+Boats.Sunk:Connect(function(boat)
+	if boat.typeName == "navy" then
+		Coins.dropSalvage(boat.hull.Position, "a patrol ship went down")
+	end
+end)
+Storms.Spent:Connect(function(x, z)
+	Coins.dropSalvage(Vector3.new(x, 0, z), "a storm blew itself out")
+end)
 
 -- A lit signal beacon turns the patrol ships that can see it.
 Mechanisms.BeaconLit:Connect(function(beacon, player)
@@ -113,6 +129,10 @@ Mechanisms.BeaconLit:Connect(function(beacon, player)
 	)
 end)
 
+for _, warning in ipairs(refs.buildWarnings or {}) do
+	warn("[LootGoblins] world: " .. warning)
+end
+
 -- Spirits can't bank; the Hoard's ward also pulls them back before they reach it.
 Loot.canBank = function(player)
 	return not Poltergoblin.isSpirit(player)
@@ -121,6 +141,7 @@ end
 -- What happened to the loot, told to everyone ----------------------------------------
 Loot.Taken:Connect(function(item, player, fromSpot, fromPlayer)
 	local def = item.def
+	Creatures.onTaken(item, player, fromSpot)
 	if fromSpot then
 		Heat.add(def.heat)
 		Net.broadcast("Stolen", {
@@ -158,6 +179,13 @@ local LOOSE_TEXT = {
 	lava = "%s burned and dropped the %s!",
 	lightning = "%s was struck by lightning and dropped the %s!",
 	death = "%s died and dropped the %s",
+	watcher = "A Watcher caught %s: the %s is on the ground!",
+	echo = "%s ran into an Echo and dropped the %s!",
+	crab = "Old Clacker came up under %s: the %s went flying!",
+	ram = "Bramble tossed %s and the %s!",
+	eel = "The Warden eel shocked %s: the %s is in the water!",
+	imp = "An imp snatched the %s!",
+	marine = "The Garrison threw %s out: the %s stayed behind!",
 	shatter = "%s's spirit was shattered and dropped the %s",
 	left = "%s left and dropped the %s",
 }
@@ -172,6 +200,8 @@ Loot.Loosened:Connect(function(item, reason, byPlayer, fromPlayer)
 		text = string.format(LOOSE_TEXT.sword, byPlayer and byPlayer.DisplayName or "Someone", def.name, holder)
 	elseif reason == "guardian" then
 		text = string.format(LOOSE_TEXT.guardian, def.name, holder)
+	elseif reason == "imp" then
+		text = string.format(LOOSE_TEXT.imp, def.name)
 	else
 		text = string.format(LOOSE_TEXT[reason] or "%s dropped the %s", holder, def.name)
 	end
@@ -183,6 +213,9 @@ Loot.Returned:Connect(function(item, reason)
 	local def = item.def
 	if reason == "respawn" then
 		Net.feed("The " .. def.name .. " is back at " .. def.place .. ".", def.color)
+	elseif string.sub(reason, 1, 6) == "taken:" then
+		-- A creature put it back (Creatures.lua).
+		Net.feed(string.sub(reason, 7) .. " put the " .. def.name .. " back at " .. def.place .. ".", def.color)
 	else
 		Net.feed("The " .. def.name .. " vanished back to " .. def.place .. ".", def.color)
 	end
@@ -243,6 +276,7 @@ Players.PlayerRemoving:Connect(function(player)
 	Combat.forget(player)
 	Kegs.forget(player)
 	Mechanisms.forget(player)
+	Coins.forget(player)
 end)
 
 Net.Throw.OnServerEvent:Connect(function(player)
@@ -318,6 +352,8 @@ RunService.Heartbeat:Connect(function(dt)
 	Cannons.tick(dt)
 	Kegs.tick()
 	Mechanisms.tick(dt)
+	Coins.tick(dt, active)
+	Creatures.tick(dt)
 	Poltergoblin.tick()
 	Movement.tick(dt)
 	Raid.tick()

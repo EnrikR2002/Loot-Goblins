@@ -982,18 +982,27 @@ function Kit.hoop(center, direction, radius, color, oneWay)
 	radius = radius or 10
 	color = color or Color3.fromRGB(120, 255, 230)
 	local look = CFrame.lookAt(center, center + direction)
-	for i = 0, 15 do
-		local a = i / 16 * math.pi * 2
-		local at = look * CFrame.new(math.cos(a) * radius, math.sin(a) * radius, 0)
-		neon(decor("HoopLight", Vector3.new(1.8, 1.8, 1.8), at, color, Enum.Material.Neon))
+	-- Eight bars of light: an octagon reads as a ring at boat speed and costs half the parts of the
+	-- sixteen cubes V4 used (there are about a hundred hoops now).
+	local sides = 8
+	local length = 2 * radius * math.tan(math.pi / sides) + 0.6
+	for i = 0, sides - 1 do
+		local a = (i + 0.5) / sides * math.pi * 2
+		local at = (look * CFrame.new(math.cos(a) * radius, math.sin(a) * radius, 0)).Position
+		local along = look:VectorToWorldSpace(Vector3.new(-math.sin(a), math.cos(a), 0))
+		neon(
+			decor("HoopLight", Vector3.new(1.2, 1.2, length), CFrame.lookAt(at, at + along), color, Enum.Material.Neon)
+		)
 	end
-	table.insert(refs.boostGates, {
+	local gate = {
 		position = Vector3.new(center.X, 1, center.Z) + shift,
 		radius = radius + 1,
 		kind = "boost",
 		direction = direction,
 		both = not oneWay,
-	})
+	}
+	table.insert(refs.boostGates, gate)
+	return gate
 end
 
 -- A ramp in the water: hit it fast and the boat flies. `at` is the middle of the ramp at sea

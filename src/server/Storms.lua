@@ -24,6 +24,8 @@ local Blast = require(script.Parent.Blast)
 local Loot = require(script.Parent.Loot)
 
 local Storms = {}
+
+Storms.Spent = Util.signal() -- (x, z): an ambient storm just blew itself out here.
 Storms.cells = {}
 
 local refs
@@ -386,6 +388,9 @@ function Storms.tick(dt, raidActive)
 		local cell = Storms.cells[i]
 		if t >= cell.endsAt then
 			remove(cell)
+			if cell.kind == "storm" and raidActive then
+				Storms.Spent:Fire(cell.x, cell.z)
+			end
 		else
 			-- A hunting storm steers toward its thief, slowly enough to outrun.
 			if cell.hunt then

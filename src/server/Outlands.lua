@@ -305,7 +305,7 @@ function places.Crystal(i)
 		local glow = Kit.glow(P(s[1], s[4] + 5, s[2]), Color3.fromRGB(215, 110, 255), 26)
 		glow.Size = v3(2.4, 2.4, 2.4)
 	end
-	zipFromCrag("ShardZipline", tall, P(165, 17, 195), 9)
+	zipFromCrag("ShardZipline", tall, P(165, 25, 195), 9)
 	grove(i, 49, 14, 180, 300, "palm")
 end
 

@@ -1136,9 +1136,128 @@ local function boatFx(kind, position, mine)
 	end
 end
 
-BoatDrive.onEvent(function(kind, position)
+BoatDrive.onEvent(function(kind, position, chain)
 	boatFx(kind, position, true)
+	if kind == "hoop" and (chain or 1) >= 2 then
+		-- A chain of hoops: say so (in the boat panel), and let the note climb with it.
+		Hud.chain(chain)
+		Effects.sound("blip", { speed = 1 + math.min(chain, 8) * 0.14, volume = 0.8 })
+	end
 end)
+
+-- Coins -------------------------------------------------------------------------------------
+-- The server decides who took a coin (Coins.lua). So that it feels instant at boat speed, this
+-- client hides a coin the moment its own boat or goblin is in reach; the server's answer follows
+-- a moment later and makes it real (or, rarely, the coin comes back).
+do
+	local coinsFolder = generated:WaitForChild("Coins", 600)
+	local hidden = {}
+	local nextCheck = 0
+	RunService.Heartbeat:Connect(function()
+		local t = os.clock()
+		if not coinsFolder or t < nextCheck then
+			return
+		end
+		nextCheck = t + 0.04
+		local _, humanoid, root = getCharacter()
+		if not root then
+			return
+		end
+		local position, reach = root.Position, Config.COIN_FOOT_REACH
+		local seat = humanoid.SeatPart
+		local hull = seat and seat.Parent and seat.Parent:FindFirstChild("Hull")
+		if hull then
+			position, reach = hull.Position, Config.COIN_BOAT_REACH
+		end
+		for _, coin in ipairs(coinsFolder:GetChildren()) do
+			if coin.Name == "Coin" and coin.Transparency < 0.5 and not hidden[coin] then
+				local offset = coin.Position - position
+				if
+					offset.X * offset.X + offset.Z * offset.Z <= reach * reach
+					and math.abs(offset.Y) <= Config.COIN_HEIGHT
+				then
+					hidden[coin] = true
+					coin.LocalTransparencyModifier = 1
+					task.delay(2, function()
+						hidden[coin] = nil
+						if coin.Parent then
+							coin.LocalTransparencyModifier = 0
+						end
+					end)
+				end
+			end
+		end
+	end)
+end
+
+-- Island creatures (Creatures.lua on the server). One sound and one puff per kind of thing they do.
+local CREATURE_FX = {
+	thud = { "thud", 0.7, 1, Color3.fromRGB(200, 200, 190) },
+	stone = { "thud", 0.45, 0.9, Color3.fromRGB(170, 170, 165) },
+	shatter = { "blip", 2.6, 0.9, Color3.fromRGB(215, 120, 255) },
+	chime = { "blip", 0.7, 0.8, Color3.fromRGB(215, 120, 255) },
+	erupt = { "boom", 1.5, 0.8, Color3.fromRGB(230, 200, 140) },
+	rumble = { "boom", 0.5, 0.5, Color3.fromRGB(230, 200, 140) },
+	bleat = { "rise", 1.6, 0.9, Color3.fromRGB(235, 228, 210) },
+	zap = { "blip", 3.2, 0.9, Color3.fromRGB(120, 235, 255) },
+	shriek = { "rise", 2.4, 0.9, Color3.fromRGB(96, 190, 84) },
+	whistle = { "blip", 2.9, 1, Color3.fromRGB(255, 230, 120) },
+	steam = { "splash", 1.8, 0.8, Color3.fromRGB(230, 235, 240) },
+	chill = { "blip", 0.5, 0.7, Color3.fromRGB(190, 235, 255) },
+	eye = { "rise", 0.5, 0.9, Color3.fromRGB(150, 90, 220) },
+	splash = { "splash", 1, 0.8, Color3.fromRGB(220, 240, 255) },
+}
+
+function handlers.Creature(p)
+	local fx = CREATURE_FX[p.kind]
+	if not fx or typeof(p.position) ~= "Vector3" then
+		return
+	end
+	Effects.sound(fx[1], { position = p.position, speed = fx[2], volume = fx[3], range = 320 })
+	Effects.burst(p.position, fx[4], 14, 18)
+	if p.kind == "erupt" or p.kind == "thud" then
+		Effects.shakeAt(p.position, 0.4, 0.5, 70)
+	end
+end
+
+function handlers.Coin(p)
+	if p.salvage then
+		Effects.chime(Effects.CHIME_GOOD, 0.8)
+		Effects.burst(p.position, GOLD, 30, 26)
+	else
+		Effects.sound("blip", { speed = (p.value or 1) > 1 and 2.4 or 1.9, volume = 0.55 })
+		Effects.burst(p.position, GOLD, (p.value or 1) > 1 and 14 or 6, 16)
+	end
+end
+
+function handlers.CoinsBanked(p)
+	Hud.banner(
+		string.format("PURSE CASHED IN: +%d GOLD (%d of %d from coins this raid)", p.gold, p.total, p.cap),
+		GOLD,
+		3
+	)
+	Effects.chime(Effects.CHIME_GOOD, 0.8)
+end
+
+function handlers.Run(p)
+	if p.started then
+		Hud.toast(string.format("%s: GO! par %.1f s", p.name, p.par))
+		Effects.sound("blip", { speed = 1.5, volume = 0.8 })
+		return
+	end
+	local line = string.format("%s in %.1f s", p.name, p.time)
+	if p.underPar then
+		line ..= "  UNDER PAR!"
+	end
+	if p.best then
+		line ..= "  BEST TIME"
+	end
+	if (p.coins or 0) > 0 then
+		line ..= string.format("  +%d coins", p.coins)
+	end
+	Hud.banner(line, p.underPar and GOLD or Color3.fromRGB(255, 185, 80), 3)
+	Effects.chime(p.underPar and Effects.CHIME_GOOD or { 1, 1.26 }, 0.8)
+end
 
 function handlers.GatePass(p)
 	-- Our own boat's gate was already drawn by BoatDrive, unless the server is simulating it.

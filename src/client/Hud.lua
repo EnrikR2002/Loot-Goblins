@@ -41,6 +41,8 @@ local waypoint, waypointLabel
 local hoardPart
 local shownHeat = 0
 local shownStamina = Config.STAMINA_MAX
+local coinPanel, coinLabel
+local chainCount, chainUntil = 0, 0 -- The run of hoops the boat is on (shown in the boat panel).
 local bannerToken, toastToken, hintToken = 0, 0, 0
 
 -- Construction helpers ---------------------------------------------------------------
@@ -292,6 +294,21 @@ local function buildAbilities()
 	slots.dash.frame.Position = UDim2.new(0, 238, 1, -12)
 	slots.dash.frame.Size = UDim2.fromOffset(160, 52)
 	slots.dash.frame.Parent = gui
+
+	-- The coin purse, just above: what you have picked up at sea and what it has paid this raid.
+	coinPanel = panel(gui, {
+		Name = "Coins",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 12, 1, -70),
+		Size = UDim2.fromOffset(386, 24),
+	})
+	coinLabel = text(coinPanel, {
+		Position = UDim2.fromOffset(8, 2),
+		Size = UDim2.new(1, -16, 1, -4),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = Color3.fromRGB(255, 215, 60),
+		Text = "COINS 0",
+	})
 end
 
 -- Shown only while you sit in a boat: speed, hull health, boost, anchor and what the cargo costs you.
@@ -406,7 +423,7 @@ end
 
 local HELP_LINES = {
 	{ "STEAL", "Hold E on a glowing treasure to pry it off its spot. That causes TROUBLE. M opens the map." },
-	{ "BANK", "Carry it to THE HOARD (gold beam at Goblin Cove). Deeper treasure is worth more." },
+	{ "BANK", "Carry it to THE HOARD (gold beam at Goblin Cove). Deeper treasure is worth more. Most gold wins." },
 	{
 		"BOATS",
 		"E boards. W/S/A/D drive (S brakes), SHIFT boosts. Hold C in a turn to DRIFT; let go for a speed burst.",
@@ -426,10 +443,13 @@ local HELP_LINES = {
 		"G throws a keg (from keg crates). E fires a cannon, pulls a lever, or lights a beacon: the Navy goes to look.",
 	},
 	{ "POLTERGOBLIN", "E: leave your body, run as a spirit, snap back. Loot you grab comes back with you." },
-	{ "DANGER", "A ring on the ground = something lands there: move. The Guardian's ring races outward: jump it." },
+	{
+		"DANGER",
+		"A ring on the ground = something lands there: move. Every island has something living on it: watch it, learn it.",
+	},
 	{
 		"SEA",
-		"Green lamps: water too shallow for patrol ships. Hoops and currents are fast lanes. Most gold at the end wins.",
+		"Hoops kick your boat: chain them. Coins: 10 = 1 gold at the Hoard. Green lamps: too shallow for patrol ships.",
 	},
 }
 
@@ -591,6 +611,11 @@ function Hud.toast(message)
 			TweenService:Create(toast, TweenInfo.new(0.4), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
 		end
 	end)
+end
+
+-- The boat just took its `count`-th hoop in a row.
+function Hud.chain(count)
+	chainCount, chainUntil = count, os.clock() + Config.BOAT_CHAIN_WINDOW
 end
 
 function Hud.flash(color, strength)
@@ -763,18 +788,38 @@ local function updateAbilities(now, root, carrying)
 		setSlot(slots.grapple, 1, carrying and "pull only (hands full)" or "hook / steal", true)
 	end
 
+	local purse = player:GetAttribute("Coins") or 0
+	local coinGold = player:GetAttribute("CoinGold") or 0
+	if coinGold >= Config.COIN_GOLD_CAP then
+		coinLabel.Text = string.format("COINS %d   (the Hoard has paid all %d gold it will this raid)", purse, coinGold)
+	else
+		coinLabel.Text = string.format(
+			"COINS %d   %d = 1 gold at the Hoard  (%d of %d paid)",
+			purse,
+			Config.COINS_PER_GOLD,
+			coinGold,
+			Config.COIN_GOLD_CAP
+		)
+	end
+
 	local winded = player:GetAttribute("Winded") == true
+	local chilled = player:GetAttribute("Chilled") == true
 	local sprinting = player:GetAttribute("Sprinting") == true
 	local stamina = player:GetAttribute("Stamina") or Config.STAMINA_MAX
 	shownStamina += (stamina - shownStamina) * 0.3
 	setSlot(
 		slots.sprint,
 		shownStamina / Config.STAMINA_MAX,
-		winded and "OUT OF BREATH" or (sprinting and "sprinting!" or "stamina: sprint, dash, air jump"),
+		winded and "OUT OF BREATH"
+			or (
+				chilled and "CHILLED: stamina draining"
+				or (sprinting and "sprinting!" or "stamina: sprint, dash, air jump")
+			),
 		not winded
 	)
-	slots.sprint.fill.BackgroundColor3 = winded and WINDED or STAMINA
-	slots.sprint.stroke.Color = winded and WINDED or STAMINA
+	local staminaColor = winded and WINDED or (chilled and Color3.fromRGB(150, 220, 255) or STAMINA)
+	slots.sprint.fill.BackgroundColor3 = staminaColor
+	slots.sprint.stroke.Color = staminaColor
 
 	-- Loot makes every stamina cost bigger, by its weight: the dash slot shows the real price.
 	local dashCost = Config.DASH_COST * (1 + (LOOT_WEIGHT[carrying] or 0) * Config.CARRY_STAMINA_PER_WEIGHT)
@@ -841,6 +886,9 @@ local function updateBoatPanel(now)
 		boatBoost.Text = "SHIFT: BOOST"
 	end
 	local notes = {}
+	if os.clock() < chainUntil then
+		table.insert(notes, "HOOP CHAIN x" .. chainCount)
+	end
 	if model:GetAttribute("Moored") then
 		table.insert(notes, "ANCHORED (R)")
 	end

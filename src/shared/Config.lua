@@ -4,7 +4,7 @@ local Config = {}
 
 -- Raid -----------------------------------------------------------------------
 -- A raid is one timed match. Bank the most gold before the timer runs out.
-Config.RAID_DURATION = 600 -- The sea is 2.2x wider in V4: the farthest round trip is about 3 minutes, and three should fit. (V3: 420)
+Config.RAID_DURATION = 540 -- V5's sea is 30% narrower than V4's: the farthest round trip is a little over 2 minutes. (V4: 600, V3: 420)
 Config.LAST_CALL = 60 -- The HUD turns red for the final stretch.
 Config.INTERMISSION = 12
 Config.FIRST_INTERMISSION = 6 -- Gives the first players time to load in.
@@ -50,8 +50,10 @@ Config.AIR_JUMP_POWER = 52
 -- trouble is what the world does the moment it leaves its spot (Threats / Troubles).
 -- island is the Archipelago id. visual picks the model (Loot.lua).
 -- The rule of the map: more gold means farther, harder to carry and nastier trouble.
--- V4 values follow travel time on the bigger sea: a near treasure earns about 2.5 gold a minute
--- for a goblin working alone, a middle one 4 to 5, a far one 6 to 8 (and far ones go wrong).
+-- Values follow travel time: a near treasure earns about 2.5 gold a minute for a goblin working
+-- alone, a middle one 4 to 5, a far one 6 to 8 (and far ones go wrong). V5 pulled the islands in
+-- by 30%, so the far values came down from V4's; they are still well above V3's, because every
+-- big island now has something living on it that makes leaving with the treasure harder.
 Config.LOOT = {
 	{
 		id = "Compass",
@@ -143,7 +145,7 @@ Config.LOOT = {
 		place = "the Shipwreck",
 		island = "Shoals",
 		visual = "chest",
-		value = 6,
+		value = 5,
 		weight = 4,
 		carrySpeed = 23.5,
 		heat = 20,
@@ -157,7 +159,7 @@ Config.LOOT = {
 		place = "Crystal Isle",
 		island = "Crystal",
 		visual = "orb",
-		value = 8,
+		value = 7,
 		weight = 3,
 		carrySpeed = 24.5,
 		heat = 25,
@@ -171,7 +173,7 @@ Config.LOOT = {
 		place = "Tangle Isle",
 		island = "Tangle",
 		visual = "idol",
-		value = 10,
+		value = 9,
 		weight = 2,
 		carrySpeed = 25,
 		heat = 22,
@@ -185,7 +187,7 @@ Config.LOOT = {
 		place = "the Tide Vault",
 		island = "Tide",
 		visual = "orb",
-		value = 9,
+		value = 8,
 		weight = 3,
 		carrySpeed = 24.5,
 		heat = 26,
@@ -199,7 +201,7 @@ Config.LOOT = {
 		place = "Maelstrom Rock",
 		island = "Maelstrom",
 		visual = "gem",
-		value = 10,
+		value = 8,
 		weight = 3,
 		carrySpeed = 24.5,
 		heat = 24,
@@ -213,7 +215,7 @@ Config.LOOT = {
 		place = "Lantern Key",
 		island = "Lantern",
 		visual = "gem",
-		value = 10,
+		value = 9,
 		weight = 2,
 		carrySpeed = 25.5,
 		heat = 22,
@@ -227,7 +229,7 @@ Config.LOOT = {
 		place = "Driftwood Key",
 		island = "Driftwood",
 		visual = "chest",
-		value = 11,
+		value = 9,
 		weight = 4,
 		carrySpeed = 23.5,
 		heat = 24,
@@ -241,7 +243,7 @@ Config.LOOT = {
 		place = "Fort Barnacle",
 		island = "Fort",
 		visual = "chest",
-		value = 15,
+		value = 13,
 		weight = 5,
 		carrySpeed = 22.5,
 		heat = 30,
@@ -255,7 +257,7 @@ Config.LOOT = {
 		place = "the Volcano",
 		island = "Ember",
 		visual = "crown",
-		value = 15,
+		value = 13,
 		weight = 3,
 		carrySpeed = 24,
 		heat = 32,
@@ -269,7 +271,7 @@ Config.LOOT = {
 		place = "the Sun Temple",
 		island = "Temple",
 		visual = "idol",
-		value = 16,
+		value = 14,
 		weight = 4,
 		carrySpeed = 23.5,
 		heat = 40,
@@ -283,7 +285,7 @@ Config.LOOT = {
 		place = "Frost Spire",
 		island = "Frost",
 		visual = "gem",
-		value = 20,
+		value = 17,
 		weight = 4,
 		carrySpeed = 23.5,
 		heat = 38,
@@ -297,7 +299,7 @@ Config.LOOT = {
 		place = "Leviathan's Rest",
 		island = "Bone",
 		visual = "tooth",
-		value = 21,
+		value = 17,
 		weight = 6,
 		carrySpeed = 21.5,
 		heat = 42,
@@ -311,7 +313,7 @@ Config.LOOT = {
 		place = "Skull Rock",
 		island = "Skull",
 		visual = "chalice",
-		value = 24,
+		value = 20,
 		weight = 5,
 		carrySpeed = 22.5,
 		heat = 45,
@@ -328,7 +330,7 @@ Config.LOOT = {
 -- between "now, with company" and "later".
 Config.LOOT_INTEREST_EVERY = 80
 Config.LOOT_INTEREST_MAX = 3
-Config.LOOT_INTEREST_SHARE = 0.12 -- The Skull Chalice (24) gains 3 a step, up to +9.
+Config.LOOT_INTEREST_SHARE = 0.12 -- The Skull Chalice (20) gains 2 a step, up to +6.
 
 Config.PICKUP_DISTANCE = 10
 Config.STEAL_HOLD = 0.6 -- Holding E to pry loot off its spot.
@@ -346,9 +348,10 @@ Config.WARD_RADIUS = 55 -- Around the Hoard: no Poltergoblin, no Guardian.
 
 -- Out of bounds. Loot past these returns to its spot. Invisible walls stand at
 -- the X/Z edges, built from several parts because one part can't pass 2048 studs.
--- V4: 6900 x 5840 studs, 4.6 times the area of V3's sea (3200 x 2740).
-Config.BOUNDS_MIN = Vector3.new(-3400, -45, -2800)
-Config.BOUNDS_MAX = Vector3.new(3500, 600, 3040)
+-- V5: 5080 x 4390 studs. V3's sea was 3200 x 2740 and V4's 6900 x 5840; the V4 playtest found
+-- that too spread out, so this is 55% of V4's area (2.5 times V3's).
+Config.BOUNDS_MIN = Vector3.new(-2560, -45, -2040)
+Config.BOUNDS_MAX = Vector3.new(2520, 600, 2350)
 
 -- Heat -----------------------------------------------------------------------
 -- One shared meter. Stealing and carrying raise it, quiet time lowers it.
@@ -375,12 +378,12 @@ Config.HEAT_TIERS = {
 		hint = "A second ship mines the way home. A tempest chases the thief.",
 	},
 }
--- V4: trips home are two to three times longer than in V3, so each second of carrying heats the
--- world less. The aim is the same shape as before over a longer run: a middle treasure ends its
--- trip at ALERT, a far one is HUNTED for most of the way and reaches FRENZY near home if the
--- thief dawdles or is caught up in a fight.
-Config.HEAT_CARRY_RATE = 0.48 -- Per carrier outside the ward, per second, for a 25-heat treasure (scaled by its heat). (V3: 0.8)
-Config.HEAT_CARRY_RATE_CAP = 1.4 -- (V3: 2.0)
+-- Heat per second of carrying follows trip length: V3's short trips used 0.8, V4's long ones
+-- 0.48, V5's sit between. The aim is the same shape each time: a middle treasure ends its trip
+-- at ALERT, a far one is HUNTED for most of the way and reaches FRENZY near home if the thief
+-- dawdles or is caught up in a fight.
+Config.HEAT_CARRY_RATE = 0.62 -- Per carrier outside the ward, per second, for a 25-heat treasure (scaled by its heat). (V4: 0.48, V3: 0.8)
+Config.HEAT_CARRY_RATE_CAP = 1.7 -- (V4: 1.4, V3: 2.0)
 Config.HEAT_DECAY_RATE = 0.5 -- Per second while nobody carries loot. (V3: 0.6)
 Config.REVEAL_TIER = 2 -- ALERT and up: carriers are visible through walls.
 
@@ -577,6 +580,12 @@ Config.BOAT_MINI_MULT = 1.16 -- Top speed while a burst runs.
 -- Hoops and kickers.
 Config.BOAT_HOOP_KICK = 30 -- Speed a boost hoop adds along its arrow.
 Config.BOAT_HOOP_TIME = 2 -- A hoop also boosts for this long.
+-- Chains: a hoop taken within BOAT_CHAIN_WINDOW seconds of the last one kicks harder, by
+-- BOAT_CHAIN_KICK for each hoop in the chain so far, up to BOAT_CHAIN_MAX steps (30, 35, ... 50).
+Config.BOAT_CHAIN_WINDOW = 4
+Config.BOAT_CHAIN_KICK = 5
+Config.BOAT_CHAIN_MAX = 4
+Config.BOAT_CHAIN_TOP = 6 -- A kick stops at the boat's boosted top speed plus this per link (a skiff: 151 to 175).
 Config.BOAT_KICK_SPEED = 76 -- Upward speed a kicker ramp gives a fast boat.
 Config.BOAT_KICK_MIN_SPEED = 34 -- Slower than this and a kicker is only a bump.
 
@@ -641,7 +650,7 @@ Config.KEG_BOAT_PUSH = 55
 Config.GATE_OPEN_TIME = 28 -- A pulled lever holds its gate open this long.
 Config.CHAIN_HOLD_TIME = 40 -- Fort Barnacle's harbor chain stays up this long: no ship leaves port.
 -- Signal beacons: light one and every patrol ship within BEACON_RANGE sails over to look.
-Config.BEACON_RANGE = 1500
+Config.BEACON_RANGE = 1100 -- (V4: 1500, on a wider sea)
 Config.BEACON_TIME = 16 -- Seconds a ship ignores carriers while it goes to look.
 Config.BEACON_BURN = 20 -- Seconds the fire shows.
 Config.BEACON_COOLDOWN = 75 -- Before the same beacon can be lit again.
@@ -653,9 +662,9 @@ Config.STORM_FIRST_DELAY = 50 -- Quiet time at the start of a raid.
 Config.STORM_GAP_MIN = 45 -- Seconds between new ambient storms (each lasts 90-125 s). (V3: 95-140, one at a time)
 Config.STORM_GAP_MAX = 75
 Config.STORM_MAX_AMBIENT = 3 -- At once. The sea is big; one storm would never be met.
-Config.STORM_NEAR_MIN = 700 -- A storm starts this far from someone out at sea...
-Config.STORM_NEAR_MAX = 1300 -- ...and blows back across their water.
-Config.STORM_HOME_CLEAR = 800 -- Never seeded this close to the Hoard, or on a goblin this close to it.
+Config.STORM_NEAR_MIN = 600 -- A storm starts this far from someone out at sea...
+Config.STORM_NEAR_MAX = 1050 -- ...and blows back across their water.
+Config.STORM_HOME_CLEAR = 750 -- Never seeded this close to the Hoard, or on a goblin this close to it.
 Config.STORM_SPEED_MIN = 16
 Config.STORM_SPEED_MAX = 28 -- A boat does 86-108, so you can always outrun one.
 Config.STORM_FADE = 10 -- Seconds a storm takes to build and to fade.
@@ -699,7 +708,7 @@ Config.NAVY_COAST_WEIGHT = 3 -- How hard their routes keep off the coasts (a fas
 Config.NAVY_DISPATCH_GAP = 20
 -- Where they come from: the fort if it is this close to the thief, otherwise the horizon, on
 -- the side the thief has to sail home through.
-Config.NAVY_BASE_RANGE = 1500 -- Navy Waters: Tangle Isle, Driftwood Key and the Serpent Channel are the fort's (V3: 900).
+Config.NAVY_BASE_RANGE = 1150 -- Navy Waters: Tangle Isle, Driftwood Key and the Serpent Channel are the fort's (V4: 1500 on a wider sea).
 Config.NAVY_SPAWN_MIN = 750 -- Far enough that you see it coming and have time to choose a course.
 Config.NAVY_SPAWN_MAX = 950
 Config.NAVY_LEAD_MAX = 5 -- A hunter aims at most this many seconds ahead of the thief.
@@ -766,6 +775,148 @@ Config.KRAKEN_DELAY = 1.6
 Config.GHOST_SHIPS = 2
 Config.GHOST_FOG_TIME = 80
 Config.QUAKE_DELAY = 1.6
+
+-- Island creatures (Creatures.lua, Bestiary.lua, BestiaryMinor.lua) --------------------------
+-- One table per inhabitant. Speeds are studs/s: a goblin runs at 28, sprints at 38, and a
+-- carrier runs at 21.5 to 27, so anything faster than 27 has to be out-thought, not outrun.
+Config.CREATURES = {
+	-- Crossroads Ruins. Statues that move only while nobody faces them, and carry treasure back.
+	Watcher = {
+		speed = 30,
+		carrySpeed = 13, -- With treasure in its arms it is slow, and it moves whether watched or not.
+		sight = 170, -- A goblin this close who is facing it holds it still...
+		gaze = 0.35, -- ...where "facing" is this dot product or better (about 70 degrees either side).
+		reach = 5,
+		island = 340, -- They wake for carriers this close to the island's center, and never go farther.
+		topple = 8, -- Seconds on its back after a blast.
+		restAfter = 6, -- With no carrier about for this long they go back to their plinths.
+	},
+	-- Crystal Isle. A double that retraces a carrier's exact path, `delay` seconds behind.
+	Echo = { delay = 3, reach = 4.5, damage = 16, push = 42, reform = 5, max = 3, island = 340 },
+	-- Shipwreck Shoals. A crab that travels under the sand and comes up beneath carriers.
+	Crab = {
+		speed = 34,
+		island = 370,
+		erupt = 0.85, -- Seconds of warning ring before it comes up.
+		radius = 10,
+		toss = 72,
+		damage = 10,
+		exposed = 4, -- Seconds it sits above ground afterwards: the time to hit it.
+		retreat = 20, -- Seconds it stays away after being blasted.
+		grab = 1.2, -- Seconds it takes to rebury loose treasure it has reached.
+	},
+	-- Windmill Hills. A ram that charges in straight lines and tosses whatever it hits.
+	Ram = {
+		notice = 55,
+		windup = 0.9,
+		speed = 72,
+		range = 115,
+		toss = 88,
+		lift = 56,
+		damage = 6,
+		rest = 3, -- Seconds between charges.
+		stun = 3.5, -- Seconds dazed after charging into a cliff.
+		roam = 70,
+		rage = 25, -- Seconds of temper after the Golden Gear is taken: it charges without resting.
+	},
+	-- Tide Vault. An eel that circles the shallows and hunts whoever is in the water after a theft.
+	Eel = {
+		radius = 78,
+		speed = 26,
+		huntSpeed = 40,
+		reach = 12,
+		damage = 12,
+		lift = 34,
+		hunt = 30, -- Seconds it hunts after the pearl is taken.
+		leash = 172,
+		stun = 5,
+		waterY = 5, -- A goblin whose root is below this is in the water.
+	},
+	-- Tangle Isle. Imps that snatch treasure in the canopy and run off to a nest with it.
+	Imp = {
+		notice = 105, -- A carrier this close, up in the canopy, is fair game.
+		leap = 1.1, -- Seconds from shriek to landing: the time to get off the mark.
+		reach = 7,
+		hold = 18, -- Seconds it sits on the treasure at the nest before putting it back.
+		scare = 9, -- Get this close and it drops the treasure and bolts.
+		rest = 6,
+		hop = 95, -- Studs/s between perches.
+	},
+	-- Fort Barnacle. Marines who throw intruders over the wall.
+	Marine = {
+		patrol = 12,
+		chase = 34,
+		sight = 62,
+		cone = 35, -- Degrees either side of where it faces.
+		whistle = 0.7, -- Seconds between the whistle and the charge.
+		reach = 5,
+		throw = 105,
+		lift = 82,
+		chaseTime = 5,
+		rest = 3,
+		stun = 5,
+	},
+	-- Ember Isle. Cinderlings that run ahead of a carrier and set fire to the path.
+	Cinder = {
+		speed = 34,
+		island = 250,
+		ahead = 2.2, -- Seconds of the carrier's own movement they aim in front of.
+		patch = 0.45, -- Seconds between fire patches.
+		radius = 5.5,
+		life = 5,
+		burn = 8, -- Damage per half second standing in a patch.
+		respawn = 25,
+		quench = 20, -- A carrier standing in the sea this close: the cinderling jumps in after them and goes out.
+	},
+	-- Frost Spire. A drifting cold that drains stamina.
+	Chill = { speed = 15, carrierSpeed = 21, aura = 30, wakeHeight = 30, leash = 270, scatter = 12 },
+	-- Leviathan's Rest. Something under the water that wakes to the noise of fast boats.
+	Sleeper = {
+		range = 240,
+		quiet = 45, -- A boat slower than this makes no noise.
+		rise = 0.9, -- Awareness per second from a boat at full noise: a skiff at top speed wakes it in about 2 s.
+		fall = 0.12,
+		strikes = 3,
+		gap = 0.9,
+		rest = 8,
+		delay = 1.6,
+		hull = 45,
+		damage = 24,
+	},
+	-- Skull Rock. The Captain's shade dozes: the skull's eyes go dark. Steal then for a head start.
+	Shade = { awake = 16, asleep = 9, headStart = 18 },
+	-- Maelstrom Rock. A fin that circles the whirlpool and shoves boats along.
+	Maw = { radius = 150, speed = 30, reach = 20, push = 70 },
+	-- Coral Atoll. The pearl's clam opens and shuts.
+	Clam = { open = 5, shut = 3, toss = 58, damage = 8, reach = 6.5 },
+	-- Goblin Cove. Gobbo the dockhand hands out kegs and shouts warnings.
+	Gobbo = { kegEvery = 25, warnEvery = 30, navyRange = 900, stormRange = 850 },
+}
+Config.CHILL_REGEN = 0 -- Stamina regen multiplier inside the Chill: none comes back.
+Config.CHILL_DRAIN = 6 -- Stamina lost per second inside it: a full bar is gone in 17 s.
+
+-- Coins, runs and salvage (Coins.lua) ------------------------------------------------
+-- Coins are picked up by passing through them. They are a reason to take the interesting line,
+-- not a second economy: ten make 1 gold at the Hoard, and a raid pays out at most COIN_GOLD_CAP.
+Config.COIN_BOAT_REACH = 13 -- A hull this close takes the coin: generous, so it works at full boost.
+Config.COIN_FOOT_REACH = 7
+Config.COIN_HEIGHT = 16 -- ...and within this height of it (the coins over a ramp hang high).
+Config.COIN_RESPAWN = 80 -- Seconds before a taken coin comes back, for the next goblin along.
+Config.COIN_BOOST_REFUND = 0.5 -- Seconds off the boat's boost cooldown, per coin.
+Config.COIN_REPAIR = 1.5 -- Hull points patched, per coin.
+Config.COINS_PER_GOLD = 10
+Config.COIN_GOLD_CAP = 6 -- Gold from coins in one raid: about one middle treasure.
+-- Timed runs.
+Config.RUN_REACH = 20 -- A hull this close to a run's hoop has passed it.
+Config.RUN_COINS = 6 -- Finishing a run, once a raid.
+Config.RUN_PAR_COINS = 10 -- On top, the first time it is finished under par in a raid.
+Config.RUN_GIVE_UP = 2.5 -- A run abandoned for this many times its par is forgotten.
+-- Salvage crates.
+Config.SALVAGE_MAX = 8 -- Afloat at once.
+Config.SALVAGE_LIFETIME = 150
+Config.SALVAGE_COINS = 8
+Config.SALVAGE_REPAIR = 60
+Config.SALVAGE_ADRIFT = 4 -- Set adrift on the runs at the start of each raid.
 
 -- Traversal ------------------------------------------------------------------
 Config.ZIPLINE_SPEED = 110 -- The long lines are 550 studs: five seconds (V3: 90).

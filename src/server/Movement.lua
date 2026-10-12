@@ -101,8 +101,20 @@ local function publish(player, s)
 	end
 end
 
+-- The Chill (Frost Spire's inhabitant): for `seconds`, stamina comes back at a crawl and
+-- leaks away. It is the one thing in the game that attacks stamina instead of health.
+local chillUntil = {}
+
+function Movement.chill(player, seconds)
+	chillUntil[player] = math.max(chillUntil[player] or 0, os.clock() + seconds)
+end
+
 local function tickStamina(player, root, humanoid, dt, t)
 	local s = staminaOf(player)
+	local chilled = (chillUntil[player] or 0) > t
+	if (player:GetAttribute("Chilled") == true) ~= chilled then
+		player:SetAttribute("Chilled", chilled or nil)
+	end
 	local velocity = root.AssemblyLinearVelocity
 	local moving = Vector3.new(velocity.X, 0, velocity.Z).Magnitude > MOVING_SPEED
 	s.sprinting = sprintHeld[player] == true and moving and not s.winded and s.value > 0 and humanoid.SeatPart == nil
@@ -113,7 +125,11 @@ local function tickStamina(player, root, humanoid, dt, t)
 			s.winded = true
 		end
 	elseif t - s.lastSpendAt >= Config.STAMINA_REGEN_DELAY then
-		s.value = math.min(s.value + Config.STAMINA_REGEN * dt, Config.STAMINA_MAX)
+		s.value =
+			math.min(s.value + Config.STAMINA_REGEN * (chilled and Config.CHILL_REGEN or 1) * dt, Config.STAMINA_MAX)
+	end
+	if chilled then
+		s.value = math.max(s.value - Config.CHILL_DRAIN * dt, 0)
 	end
 	if s.winded and s.value >= Config.STAMINA_RECOVER then
 		s.winded = false

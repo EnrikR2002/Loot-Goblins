@@ -536,6 +536,25 @@ function Boats.damage(boat, amount, cause)
 	end
 end
 
+-- Hands back some of a boost's cooldown (coins and salvage do this). BoostRefund is a running
+-- total the driver's client watches, because it predicts its own cooldown.
+function Boats.refund(boat, seconds)
+	local t = now()
+	if boat.boostReadyAt > t then
+		boat.boostReadyAt = math.max(t, boat.boostReadyAt - seconds)
+		boat.model:SetAttribute("BoostReadyAt", boat.boostReadyAt)
+		boat.model:SetAttribute("BoostRefund", (boat.model:GetAttribute("BoostRefund") or 0) + seconds)
+	end
+end
+
+-- Patches a floating hull, never above full health.
+function Boats.patch(boat, amount)
+	if boat.state == "float" and boat.health < boat.spec.health then
+		boat.health = math.min(boat.spec.health, boat.health + amount)
+		boat.model:SetAttribute("Health", math.floor(boat.health))
+	end
+end
+
 -- The boat a part belongs to, if any.
 function Boats.boatOf(part)
 	for _, boat in ipairs(Boats.list) do

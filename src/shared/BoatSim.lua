@@ -309,15 +309,26 @@ function BoatSim.gate(boat, gates, t, apply)
 			if gate.kind == "boost" then
 				boat.gateAt[index] = t
 				boat.boostUntil = math.max(boat.boostUntil, t + Config.BOAT_HOOP_TIME)
+				-- A CHAIN: each hoop taken within BOAT_CHAIN_WINDOW of the last kicks a little harder,
+				-- up to a cap, so holding a line through a run is worth more than clipping one hoop.
+				boat.chain = (t - (boat.chainAt or -math.huge) <= Config.BOAT_CHAIN_WINDOW) and (boat.chain or 0) + 1
+					or 1
+				boat.chainAt = t
 				if apply then
 					-- A hoop on a sea lane (gate.both) pushes whichever way the boat is already going.
 					local way = 1
 					if gate.both and velocity.X * gate.dx + velocity.Z * gate.dz < 0 then
 						way = -1
 					end
-					hull:ApplyImpulse(
-						Vector3.new(gate.dx, 0, gate.dz) * way * hull.AssemblyMass * Config.BOAT_HOOP_KICK
-					)
+					local links = math.min(boat.chain - 1, Config.BOAT_CHAIN_MAX)
+					local kick = Config.BOAT_HOOP_KICK + links * Config.BOAT_CHAIN_KICK
+					-- A kick never takes the hull past a ceiling: its boosted top speed, plus a little
+					-- for each link of the chain. Without it five hoops and a current reached 257
+					-- studs/s: unreadable, and faster than the server's speed check allows.
+					local ceiling = boat.spec.maxSpeed * Config.BOAT_BOOST_MULT + links * Config.BOAT_CHAIN_TOP
+					local already = (velocity.X * gate.dx + velocity.Z * gate.dz) * way
+					kick = math.clamp(ceiling - already, 0, kick)
+					hull:ApplyImpulse(Vector3.new(gate.dx, 0, gate.dz) * way * hull.AssemblyMass * kick)
 				end
 				return "boost"
 			elseif Vector3.new(velocity.X, 0, velocity.Z).Magnitude > Config.BOAT_KICK_MIN_SPEED then

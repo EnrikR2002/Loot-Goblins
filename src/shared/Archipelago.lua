@@ -6,42 +6,46 @@
 -- ring: 0 home, 1 near (easy, cheap loot), 2 middle (real trips), 3 far (commitment).
 -- Loot value, danger and distance rise with the ring; the geography does the rest.
 --
--- The sea is laid out in regions, not rings (V4). Distances were chosen from travel time: a
--- skiff does 108 studs a second, so 1000 studs is about nine seconds of sailing.
+-- The sea is laid out in regions, not rings (V4), and was pulled in again in V5 after a playtest
+-- found V4's sea too spread out: the near islands kept their distance, everything else came about
+-- 30% closer. Distances are chosen from travel time: a skiff does 108 studs a second, so 1000
+-- studs is about nine seconds of sailing.
 --
 --   HOME BAY         Goblin Cove behind a reef arc, with four small islands 6-8 s away.
---   THE CROSSING     Crossroads Ruins, 13 s out: the hub every northern route passes.
---   WESTERN SHALLOWS Shipwreck Shoals and the Tide Vault in a maze of sandbars (20-23 s).
---   EASTERN REACH    Windmill Hills, Crystal Isle and Twin Stacks as a cluster (16-23 s),
---                    and Maelstrom Rock alone in open water beyond them (29 s).
---   NAVY WATERS      Tangle Isle and Fort Barnacle, either side of the Serpent Channel (31-41 s).
---   THE FAR NORTH    The Sun Temple (31 s), then Ember Isle, Frost Spire, Leviathan's Rest and
---                    Skull Rock at the edge of the map (37-49 s), with small keys on the long
---                    crossings to rest at.
+--   THE CROSSING     Crossroads Ruins, 10 s out, just beyond the Gate: the hub of the map.
+--   WESTERN SHALLOWS Shipwreck Shoals and the Tide Vault round a sandy shelf (14-18 s).
+--   EASTERN REACH    Windmill Hills, Crystal Isle and Twin Stacks as a cluster (13-17 s),
+--                    and Maelstrom Rock alone in open water beyond them (20 s).
+--   NAVY WATERS      Tangle Isle and Fort Barnacle, either side of the Serpent Channel (21-30 s).
+--   THE FAR NORTH    The Sun Temple (22 s), then Frost Spire and Leviathan's Rest at the top of
+--                    the map (30 s), with small keys on the crossings.
+--   CINDER SEA       Ember Isle, Lantern Key and Skull Rock in the north-east (26-35 s).
 --
 -- The eight original islands were moved, not rebuilt; World.lua asserts that each moved by a
--- multiple of 4 studs, so change their x and z in steps of 4.
+-- multiple of 4 studs, so change their x and z in steps of 4. Twin Stacks must keep its offset
+-- from Crystal Isle (a zipline joins them). Seaways.lua places the reef, the shelf, the stack
+-- fields and the currents from these positions, so they follow when an island moves.
 local Archipelago = {}
 
 Archipelago.islands = {
-	{ id = "Home", name = "GOBLIN COVE", x = 0, z = 2350, r = 430, ring = 0, color = Color3.fromRGB(255, 205, 50) },
+	{ id = "Home", name = "GOBLIN COVE", x = 0, z = 1702, r = 430, ring = 0, color = Color3.fromRGB(255, 205, 50) },
 	-- Home Bay: a short boat ride from home.
 	{
 		id = "Pebble",
 		name = "PEBBLE ISLE",
-		x = -600,
-		z = 2640,
+		x = -540,
+		z = 1972,
 		r = 110,
 		ring = 1,
 		color = Color3.fromRGB(245, 225, 170),
 	},
-	{ id = "Coral", name = "CORAL ATOLL", x = 720, z = 2660, r = 160, ring = 1, color = Color3.fromRGB(255, 150, 130) },
-	{ id = "Gull", name = "GULL ROCK", x = -520, z = 1928, r = 80, ring = 1, color = Color3.fromRGB(235, 235, 240) },
+	{ id = "Coral", name = "CORAL ATOLL", x = 640, z = 1990, r = 160, ring = 1, color = Color3.fromRGB(255, 150, 130) },
+	{ id = "Gull", name = "GULL ROCK", x = -520, z = 1280, r = 80, ring = 1, color = Color3.fromRGB(235, 235, 240) },
 	{
 		id = "Smuggler",
 		name = "SMUGGLER'S COVE",
 		x = 680,
-		z = 1880,
+		z = 1232,
 		r = 150,
 		ring = 1,
 		color = Color3.fromRGB(190, 170, 140),
@@ -51,7 +55,7 @@ Archipelago.islands = {
 		id = "Cross",
 		name = "CROSSROADS RUINS",
 		x = 0,
-		z = 900,
+		z = 600,
 		r = 400,
 		ring = 2,
 		color = Color3.fromRGB(255, 245, 220),
@@ -60,8 +64,8 @@ Archipelago.islands = {
 	{
 		id = "Windmill",
 		name = "WINDMILL HILLS",
-		x = 1700,
-		z = 1850,
+		x = 1330,
+		z = 1420,
 		r = 330,
 		ring = 2,
 		color = Color3.fromRGB(190, 235, 120),
@@ -69,18 +73,18 @@ Archipelago.islands = {
 	{
 		id = "Crystal",
 		name = "CRYSTAL ISLE",
-		x = 1900,
-		z = 700,
+		x = 1360,
+		z = 520,
 		r = 330,
 		ring = 2,
 		color = Color3.fromRGB(215, 110, 255),
 	},
-	{ id = "Twin", name = "TWIN STACKS", x = 1550, z = 420, r = 70, ring = 2, color = Color3.fromRGB(235, 235, 240) },
+	{ id = "Twin", name = "TWIN STACKS", x = 1010, z = 240, r = 70, ring = 2, color = Color3.fromRGB(235, 235, 240) },
 	{
 		id = "Maelstrom",
 		name = "MAELSTROM ROCK",
-		x = 2950,
-		z = 1450,
+		x = 2100,
+		z = 1050,
 		r = 120,
 		ring = 2,
 		color = Color3.fromRGB(150, 190, 255),
@@ -89,20 +93,20 @@ Archipelago.islands = {
 	{
 		id = "Shoals",
 		name = "SHIPWRECK SHOALS",
-		x = -1660,
-		z = 1000,
+		x = -1180,
+		z = 740,
 		r = 360,
 		ring = 2,
 		color = Color3.fromRGB(255, 160, 70),
 	},
-	{ id = "Tide", name = "TIDE VAULT", x = -2500, z = 2000, r = 300, ring = 2, color = Color3.fromRGB(110, 230, 255) },
-	{ id = "Kelp", name = "KELP CAY", x = -2080, z = 1560, r = 90, ring = 2, color = Color3.fromRGB(150, 210, 140) },
+	{ id = "Tide", name = "TIDE VAULT", x = -1900, z = 1420, r = 300, ring = 2, color = Color3.fromRGB(110, 230, 255) },
+	{ id = "Kelp", name = "KELP CAY", x = -1540, z = 1100, r = 90, ring = 2, color = Color3.fromRGB(150, 210, 140) },
 	-- Navy Waters.
 	{
 		id = "Tangle",
 		name = "TANGLE ISLE",
-		x = -1750,
-		z = -450,
+		x = -1180,
+		z = -260,
 		r = 380,
 		ring = 2,
 		color = Color3.fromRGB(110, 230, 110),
@@ -110,8 +114,8 @@ Archipelago.islands = {
 	{
 		id = "Fort",
 		name = "FORT BARNACLE",
-		x = -2800,
-		z = -1050,
+		x = -2040,
+		z = -780,
 		r = 380,
 		ring = 3,
 		color = Color3.fromRGB(255, 110, 100),
@@ -121,20 +125,20 @@ Archipelago.islands = {
 	{
 		id = "Pilgrim",
 		name = "PILGRIM'S ROCK",
-		x = 120,
-		z = -340,
+		x = 110,
+		z = -80,
 		r = 80,
 		top = 30,
 		ring = 2,
 		color = Color3.fromRGB(255, 230, 150),
 	},
-	{ id = "Temple", name = "SUN TEMPLE", x = 0, z = -960, r = 460, ring = 3, color = Color3.fromRGB(255, 205, 40) },
-	{ id = "Ember", name = "EMBER ISLE", x = 2600, z = -650, r = 400, ring = 3, color = Color3.fromRGB(255, 120, 50) },
+	{ id = "Temple", name = "SUN TEMPLE", x = 0, z = -660, r = 460, ring = 3, color = Color3.fromRGB(255, 205, 40) },
+	{ id = "Ember", name = "EMBER ISLE", x = 1860, z = -440, r = 400, ring = 3, color = Color3.fromRGB(255, 120, 50) },
 	{
 		id = "Lantern",
 		name = "LANTERN KEY",
-		x = 1900,
-		z = -1400,
+		x = 1380,
+		z = -960,
 		r = 100,
 		ring = 3,
 		color = Color3.fromRGB(255, 200, 110),
@@ -142,8 +146,8 @@ Archipelago.islands = {
 	{
 		id = "Frost",
 		name = "FROST SPIRE",
-		x = 1100,
-		z = -2250,
+		x = 800,
+		z = -1480,
 		r = 380,
 		ring = 3,
 		color = Color3.fromRGB(170, 230, 255),
@@ -151,8 +155,8 @@ Archipelago.islands = {
 	{
 		id = "Bone",
 		name = "LEVIATHAN'S REST",
-		x = -1150,
-		z = -2200,
+		x = -820,
+		z = -1460,
 		r = 360,
 		ring = 3,
 		color = Color3.fromRGB(240, 235, 215),
@@ -160,8 +164,8 @@ Archipelago.islands = {
 	{
 		id = "Driftwood",
 		name = "DRIFTWOOD KEY",
-		x = -2050,
-		z = -1780,
+		x = -1450,
+		z = -1240,
 		r = 100,
 		ring = 3,
 		color = Color3.fromRGB(200, 170, 130),
@@ -169,8 +173,8 @@ Archipelago.islands = {
 	{
 		id = "Skull",
 		name = "SKULL ROCK",
-		x = 2850,
-		z = -2100,
+		x = 2030,
+		z = -1420,
 		r = 300,
 		ring = 3,
 		color = Color3.fromRGB(150, 255, 190),
@@ -179,14 +183,14 @@ Archipelago.islands = {
 
 -- Region names for the world map: where you are in the sea, in a word.
 Archipelago.regions = {
-	{ name = "HOME BAY", x = 0, z = 2950 },
-	{ name = "THE CROSSING", x = -800, z = 1420 },
-	{ name = "WESTERN SHALLOWS", x = -2560, z = 1260 },
-	{ name = "EASTERN REACH", x = 2440, z = 1230 },
-	{ name = "NAVY WATERS", x = -2500, z = -300 },
-	{ name = "THE LONG REACH", x = 780, z = 60 },
-	{ name = "THE FAR NORTH", x = 60, z = -1900 },
-	{ name = "THE CINDERS", x = 2500, z = -1380 },
+	{ name = "HOME BAY", x = 0, z = 2270 },
+	{ name = "THE CROSSING", x = -640, z = 1110 },
+	{ name = "WESTERN SHALLOWS", x = -1960, z = 1020 },
+	{ name = "EASTERN REACH", x = 1900, z = 800 },
+	{ name = "NAVY WATERS", x = -1800, z = -200 },
+	{ name = "THE LONG REACH", x = 600, z = -60 },
+	{ name = "THE FAR NORTH", x = -20, z = -1800 },
+	{ name = "THE CINDERS", x = 1560, z = -1240 },
 }
 
 Archipelago.byId = {}
