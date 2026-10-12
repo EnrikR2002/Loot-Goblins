@@ -6,7 +6,7 @@
 | Request | Ninety's "V5 One-Shot: Living Threats & Playful Seas" prompt |
 | Agent | Claude Code (Opus 5.5), local session on Ninety's machine with Roblox Studio MCP |
 | Branch | `feature/v5-living-threats-playful-seas`, **stacked on** PR #12's branch `feature/v4-living-archipelago` (then #11, #10, #9) |
-| Pull request | PR_LINK_PLACEHOLDER, base branch is `feature/v4-living-archipelago` |
+| Pull request | [#13](https://github.com/EnrikR2002/Loot-Goblins/pull/13), base branch is `feature/v4-living-archipelago` |
 | Merge status | **Not merged.** Nothing was merged, including PRs #9 to #12. Needs a human playtest and explicit approval. |
 
 ## 1. Summary
@@ -349,7 +349,7 @@ Run **Test > Server & Clients > 4 players > Play** if you can. Press `H` first: 
 ## 18. Branch, commits, PR
 
 - Branch `feature/v5-living-threats-playful-seas`, created from `origin/feature/v4-living-archipelago` at `ec120e9`.
-- Pull request: PR_LINK_PLACEHOLDER, base `feature/v4-living-archipelago`. **Merge order: #9, #10, #11, #12, then this.**
+- Pull request: [#13](https://github.com/EnrikR2002/Loot-Goblins/pull/13), base `feature/v4-living-archipelago`. **Merge order: #9, #10, #11, #12, then this.**
 - **Nothing was merged.** No force-push, no history rewrite. `main` is untouched.
 - `./scripts/check.ps1` passes (formatting, lint, Rojo build, whitespace).
 - Studio was left in Edit mode with the temporary test scripts removed and `HttpService.HttpEnabled` off. The open place has script edits that are not saved; they are all in this branch.
