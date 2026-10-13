@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "stand-in-player-for-solo-pvp-rules",
+  "title": "Test player-versus-player rules with a stand-in when only one client exists",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-13",
+  "topics": [
+    "multiplayer",
+    "testing",
+    "exploit-resistance"
+  ],
+  "rubric_checks": [
+    "CL-35",
+    "CL-39"
+  ],
+  "observation": "A single-client Studio session cannot create a second Player. The catch, knockdown, immunity and close-range steal rules were still exercised on the server with the real goblin as victim and a stand-in table (a rig plus the few Player members the code uses) as the thief. It found the order and timing mistakes in the test, refused a steal on a standing target, a steal from too far, and a catch inside a protected zone.",
+  "recommendation": "Write server rules so they take the player objects as arguments, then drive them from a temporary test hook with a stand-in. State plainly in the report that replication, latency, prompts and real input were not covered.",
+  "applies_when": [
+    "Adding a rule between two players",
+    "Only one client is available to test with"
+  ],
+  "limits": [
+    "A stand-in does not test replication, latency, client prompts or real input",
+    "A real two-client or multi-client session is still required before calling the feature multiplayer-ready"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/8ec8a81fa6678f1c77b3bd5285d33cf1e98b0f34/docs/reports/2026-10-13-v7-skyfall-competitive-archipelago.md",
+      "detail": "Section 10 lists the stand-in thief tests and what they did not cover."
+    }
+  ]
+}
