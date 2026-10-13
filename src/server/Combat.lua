@@ -2,9 +2,11 @@
 --
 -- Sword (everyone spawns with one): click to swing. A hit on a carrier knocks
 -- their loot loose. A carrier's own swing is a slow, short, tiring bash.
--- Grapple (F): one hook, two jobs.
---   * Aimed at loot or near a carrier (aim is forgiving): steal it, if nothing
---     solid is in the way. Cover and tunnels still protect carriers.
+-- Grapple (F): one hook, three jobs.
+--   * Aimed at LOOSE loot (aim is forgiving): grab it, if nothing solid is in the way.
+--   * Aimed at a CARRIER within GRAPPLE_PVP_RANGE (V7): catch them. They are yanked toward you and
+--     fall for CATCH_DOWN_TIME. Nothing is stolen: you run up and press E (Combat.stealFrom, within
+--     STEAL_RANGE, on a goblin who is down). Cover and tunnels still protect carriers.
 --   * Aimed anywhere else: hook the first solid thing along your aim and the
 --     client reels you in. Cliffs, masts, the beach, or a boat: a hook on something
 --     that moves follows it, and from a boat seat it yanks you out of the seat.
@@ -29,6 +31,8 @@ local Combat = {}
 local refs
 local lastSwing = {}
 local lastGrapple = {}
+local stealReadyAt = {} -- thief -> time
+local downToken = {} -- victim -> counter: a stale stand-up timer must not stand someone up twice
 local boatHook = {} -- player -> { boat, at }: the boat their hook just caught.
 local GUARD_OFFSET = CFrame.new(0, 0, -1)
 local GRAPPLE_SPAM_GAP = 0.25 -- Misses are free, so ignore requests faster than this.
@@ -236,6 +240,146 @@ local function setCooldown(player, seconds)
 	player:SetAttribute("GrappleCooldown", seconds)
 end
 
+-- Caught and stealing (V7) ------------------------------------------------------------------
+local function inWard(position)
+	return Util.flatDistance(position, refs.hoard.position) <= Config.WARD_RADIUS
+end
+
+-- Gets a goblin back on their feet and (for a while) uncatchable. Safe to call twice.
+function Combat.standUp(victim, immunity)
+	downToken[victim] = (downToken[victim] or 0) + 1
+	local _, humanoid = Util.getCharacterParts(victim)
+	if humanoid then
+		humanoid.PlatformStand = false
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+	end
+	victim:SetAttribute("DownedUntil", nil)
+	victim:SetAttribute("DownedBy", nil)
+	if immunity and immunity > 0 then
+		victim:SetAttribute("CatchImmuneUntil", workspace:GetServerTimeNow() + immunity)
+	end
+end
+
+local function knockDown(victim, humanoid, root, attacker, attackerRoot)
+	local t = workspace:GetServerTimeNow()
+	local token = (downToken[victim] or 0) + 1
+	downToken[victim] = token
+	victim:SetAttribute("DownedUntil", t + Config.CATCH_DOWN_TIME)
+	victim:SetAttribute("DownedAt", t)
+	victim:SetAttribute("DownedBy", attacker.UserId)
+	humanoid.PlatformStand = true
+	Movement.setSprintHeld(victim, false)
+	local toward = attackerRoot.Position - root.Position
+	toward = Vector3.new(toward.X, 0, toward.Z)
+	toward = toward.Magnitude > 1 and toward.Unit or Vector3.zero
+	-- A yank, but never past the thrower: stop a stride short.
+	local gap = math.max(0, (attackerRoot.Position - root.Position).Magnitude - 4)
+	local speed = math.min(Config.CATCH_PULL_SPEED, gap / 0.25)
+	Util.knockback(root, toward * speed + Vector3.new(0, 16, 0), 0.25)
+	Net.toast(victim, "CAUGHT by " .. attacker.DisplayName .. "! Space to get up.")
+	task.delay(Config.CATCH_DOWN_TIME, function()
+		if downToken[victim] == token and victim.Parent then
+			Combat.standUp(victim, Config.CATCH_IMMUNITY)
+		end
+	end)
+end
+
+-- The hook found a carrier. Returns true when the throw is spent (caught, or refused with a reason).
+function Combat.catch(attacker, victim, origin)
+	local t = workspace:GetServerTimeNow()
+	local attackerRoot = Util.aliveRoot(attacker)
+	local root, humanoid = Util.aliveRoot(victim)
+	if not attackerRoot or not root or humanoid.SeatPart then
+		return false -- a goblin in a boat is hooked as the boat
+	end
+	if inWard(root.Position) then
+		Net.toast(attacker, "The Hoard's ward protects them.")
+		setCooldown(attacker, Config.GRAPPLE_FAIL_COOLDOWN)
+		return true
+	end
+	if t < (victim:GetAttribute("DownedUntil") or 0) then
+		Net.toast(attacker, "They are already down: run up and press E.")
+		return true
+	end
+	if t < (victim:GetAttribute("CatchImmuneUntil") or 0) then
+		Net.toast(attacker, "They only just got up: the hook slips off.")
+		setCooldown(attacker, Config.GRAPPLE_FAIL_COOLDOWN)
+		return true
+	end
+	knockDown(victim, humanoid, root, attacker, attackerRoot)
+	setCooldown(attacker, Config.CATCH_COOLDOWN)
+	Net.broadcast("GrappleFX", {
+		kind = "catch",
+		from = origin,
+		to = root.Position,
+		userId = attacker.UserId,
+		victim = victim.UserId,
+	})
+	return true
+end
+
+-- E on a goblin who is down, from close by. Everything is checked here: who, how far, what is in
+-- the way, what they hold. The client only says who it is looking at.
+function Combat.stealFrom(thief, victim)
+	if typeof(victim) ~= "Instance" or not victim:IsA("Player") or victim == thief then
+		return
+	end
+	local t = workspace:GetServerTimeNow()
+	if t < (stealReadyAt[thief] or 0) then
+		return
+	end
+	stealReadyAt[thief] = t + Config.STEAL_COOLDOWN
+	local thiefRoot, thiefHumanoid = Util.aliveRoot(thief)
+	local victimRoot = Util.aliveRoot(victim)
+	if not thiefRoot or not victimRoot or thiefHumanoid.SeatPart or Poltergoblin.isSpirit(thief) then
+		return
+	end
+	local item = Loot.itemOf(victim)
+	if not item or Loot.itemOf(thief) then
+		return
+	end
+	if t >= (victim:GetAttribute("DownedUntil") or 0) then
+		Net.toast(thief, "They are on their feet. Catch them with F first.")
+		return
+	end
+	if (victimRoot.Position - thiefRoot.Position).Magnitude > Config.STEAL_RANGE then
+		Net.toast(thief, "Too far. Get right up to them.")
+		return
+	end
+	if not clearLine(thiefRoot.Position + Vector3.new(0, 1.5, 0), victimRoot.Position, ignoreList()) then
+		return -- a wall between you
+	end
+	if not Loot.steal(item, thief) then
+		Net.toast(thief, "It slipped off: loot cannot be taken right after it changes hands.")
+		return
+	end
+	Combat.standUp(victim, Config.CATCH_IMMUNITY * 0.6)
+	Net.broadcast("GrappleFX", {
+		kind = "steal",
+		from = thiefRoot.Position,
+		to = victimRoot.Position,
+		success = true,
+		userId = thief.UserId,
+	})
+end
+
+-- Space while down, once CATCH_MIN_DOWN has passed.
+function Combat.getUp(player)
+	local t = workspace:GetServerTimeNow()
+	local until_ = player:GetAttribute("DownedUntil")
+	if until_ and t >= until_ - Config.CATCH_DOWN_TIME + Config.CATCH_MIN_DOWN then
+		Combat.standUp(player, Config.CATCH_IMMUNITY * 0.6)
+	end
+end
+
+function Combat.reset()
+	for _, player in ipairs(Players:GetPlayers()) do
+		Combat.standUp(player, 0)
+		player:SetAttribute("CatchImmuneUntil", nil)
+	end
+	table.clear(stealReadyAt)
+end
+
 local function grapple(player, hitPosition, target)
 	if typeof(hitPosition) ~= "Vector3" or (target ~= nil and typeof(target) ~= "Instance") then
 		return
@@ -258,8 +402,21 @@ local function grapple(player, hitPosition, target)
 	aim = aim.Magnitude > 0.01 and aim.Unit or root.CFrame.LookVector
 	local ignore = ignoreList()
 
-	-- 1. Steal: loot near the aim, in range, with nothing solid in between. Full hands can't.
+	-- 1. Loose loot near the aim, in range, with nothing solid in between, is grabbed. A carrier is
+	-- caught (and only when close). Full hands can do neither.
 	local item = not carrying and stealTarget(player, origin, aim, target) or nil
+	if item and item.state == "carried" and item.carrier then
+		local victimRoot = Util.aliveRoot(item.carrier)
+		if
+			victimRoot
+			and (victimRoot.Position - origin).Magnitude <= Config.GRAPPLE_PVP_RANGE
+			and clearLine(origin, victimRoot.Position, ignore)
+			and Combat.catch(player, item.carrier, origin)
+		then
+			return
+		end
+		item = nil -- too far, or behind cover: the hook flies on to whatever is in the way
+	end
 	if item then
 		local targetPos = item.core.Position
 		if (targetPos - origin).Magnitude <= Config.GRAPPLE_RANGE and clearLine(origin, targetPos, ignore) then
@@ -377,6 +534,8 @@ function Combat.forget(player)
 	boatHook[player] = nil
 	lastSwing[player] = nil
 	lastGrapple[player] = nil
+	stealReadyAt[player] = nil
+	downToken[player] = nil
 end
 
 return Combat

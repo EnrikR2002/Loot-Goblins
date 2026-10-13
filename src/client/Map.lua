@@ -19,6 +19,8 @@ local GOLD = Color3.fromRGB(255, 205, 50)
 local MAP_W, MAP_H = 700, 600
 local panel, canvas, youMarker
 local islandViews = {}
+local selector = nil -- set while choosing where to land: function(islandId)
+local titleLabel
 local lootViews = {}
 local stormViews = {}
 local hoardMarker
@@ -82,7 +84,7 @@ function Map.build(gui, hoard)
 	}, gui)
 	make("UICorner", { CornerRadius = UDim.new(0, 10) }, panel)
 	make("UIStroke", { Color = GOLD, Thickness = 2 }, panel)
-	make("TextLabel", {
+	titleLabel = make("TextLabel", {
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(14, 6),
 		Size = UDim2.new(1, -28, 0, 22),
@@ -122,7 +124,10 @@ function Map.build(gui, hoard)
 
 	for _, island in ipairs(Archipelago.islands) do
 		local size = math.max(10, island.r * 2 / spanX * MAP_W * 0.8)
-		local dot = make("Frame", {
+		local info = Config.ISLAND_INFO[island.id]
+		local dot = make("TextButton", {
+			Text = "",
+			AutoButtonColor = false,
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = toMap(island.x, island.z),
 			Size = UDim2.fromOffset(size, size * (spanX / spanZ) * (MAP_H / MAP_W)),
@@ -140,9 +145,31 @@ function Map.build(gui, hoard)
 			Text = island.name,
 			TextColor3 = WHITE,
 			TextStrokeTransparency = 0.3,
-			TextSize = 9,
+			TextSize = info and info.major and 10 or 8,
+			TextTransparency = info and info.major and 0 or 0.35,
 			ZIndex = 23,
 		}, dot)
+		-- How dangerous, in a word and a colour (computed from the island's factors: Config.ISLAND_INFO).
+		if info and info.major then
+			make("TextLabel", {
+				BackgroundTransparency = 1,
+				AnchorPoint = Vector2.new(0.5, 0),
+				Position = UDim2.new(0.5, 0, 1, 11),
+				Size = UDim2.fromOffset(120, 11),
+				Font = Enum.Font.GothamBlack,
+				Text = Config.TIER_NAMES[info.tier] .. (info.gear and "  + GEAR" or ""),
+				TextColor3 = Config.TIER_COLORS[info.tier],
+				TextStrokeTransparency = 0.2,
+				TextSize = 8,
+				ZIndex = 23,
+			}, dot)
+		end
+		make("UIStroke", { Name = "Chosen", Color = GOLD, Thickness = 3, Enabled = false }, dot)
+		dot.MouseButton1Click:Connect(function()
+			if selector and info and info.major then
+				selector(island.id)
+			end
+		end)
 		islandViews[island.id] = dot
 	end
 	hoardMarker = make("TextLabel", {
@@ -294,6 +321,29 @@ function Map.toggle()
 	panel.Visible = visible
 end
 
+-- Open or close the map, and turn island-picking on (the skyship) or off.
+function Map.show(open)
+	visible = open == true
+	if panel then
+		panel.Visible = visible
+	end
+end
+
+function Map.setSelector(callback)
+	selector = callback
+end
+
+function Map.isOpen()
+	return visible
+end
+
+-- The map's heading: it says what a click does while an island is being chosen.
+function Map.setTitle(text)
+	if titleLabel then
+		titleLabel.Text = text or "THE GOBLIN SEA        (M closes)"
+	end
+end
+
 local function wrap(degrees)
 	return (degrees + 180) % 360 - 180
 end
@@ -312,6 +362,13 @@ local function place(label, heading, x, z, from)
 end
 
 function Map.update(now)
+	local chosen = player:GetAttribute("DeployDest")
+	for id, view in pairs(islandViews) do
+		local stroke = view:FindFirstChild("Chosen")
+		if stroke then
+			stroke.Enabled = id == chosen
+		end
+	end
 	local camera = workspace.CurrentCamera
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")

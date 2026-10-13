@@ -5,7 +5,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
-local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Loot = require(script.Parent.Loot)
 local Heat = require(script.Parent.Heat)
@@ -23,6 +22,9 @@ local Navy = require(script.Parent.Navy)
 local Storms = require(script.Parent.Storms)
 local Troubles = require(script.Parent.Troubles)
 local Escalation = require(script.Parent.Escalation)
+local Recall = require(script.Parent.Recall)
+local Combat = require(script.Parent.Combat)
+local Skyship = require(script.Parent.Skyship)
 
 local Raid = {}
 Raid.phase = "intermission"
@@ -58,26 +60,6 @@ function Raid.setupPlayer(player)
 	leaderstats.Parent = player
 end
 
--- Everyone back to the cove, off any boat seat.
-local function teleportHome()
-	for i, player in ipairs(Players:GetPlayers()) do
-		local root, humanoid = Util.aliveRoot(player)
-		if root then
-			local seat = humanoid.SeatPart
-			if seat then
-				local seatWeld = seat:FindFirstChild("SeatWeld")
-				if seatWeld then
-					seatWeld:Destroy()
-				end
-				humanoid.Sit = false
-			end
-			local points = refs.homePoints
-			root.CFrame = points[(i - 1) % #points + 1]
-			root.AssemblyLinearVelocity = Vector3.zero
-		end
-	end
-end
-
 -- Puts every system back to the start-of-raid state.
 local function resetWorld()
 	Poltergoblin.cancelAll()
@@ -94,13 +76,17 @@ local function resetWorld()
 	Cannons.reset()
 	Kegs.reset()
 	Boats.reset()
+	Recall.reset()
+	Combat.reset()
 	Coins.reset()
 	Creatures.reset()
 end
 
 function Raid.start()
 	resetWorld()
-	teleportHome()
+	-- V7: the match starts aboard the skyship (nobody walks out of the cove). Anyone who is still at
+	-- home (a late spawn, a death in the intermission) is put on the deck first.
+	Skyship.boardAll()
 	for _, player in ipairs(Players:GetPlayers()) do
 		local gold = stat(player, "Gold")
 		if gold then
@@ -110,6 +96,7 @@ function Raid.start()
 	lastCallSent = false
 	setPhase("raid", now() + Config.RAID_DURATION)
 	Loot.setEnabled(true)
+	Skyship.open()
 	Net.broadcast("RaidStart", { endsAt = phaseEndsAt })
 end
 
@@ -142,6 +129,8 @@ function Raid.finish()
 	-- Loot still out there is lost; the world goes quiet until the next raid.
 	resetWorld()
 	setPhase("intermission", now() + Config.INTERMISSION)
+	Skyship.reset()
+	Skyship.boardAll() -- the intermission is spent on the deck, choosing where to land
 	Net.broadcast("RaidEnd", { results = results, winners = winners, endsAt = phaseEndsAt })
 end
 
