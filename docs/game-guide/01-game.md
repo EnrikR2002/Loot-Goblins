@@ -2,7 +2,7 @@
 
 Loot Goblins is a social possession-and-escape game: steal ridiculous treasure from dangerous islands and other players, then somehow get it home. The desired rhythm is explore with awe, take something valuable, feel the world react, improvise an escape, bank the reward, and choose another risk. Fast movement and boat handling should be enjoyable before a reward appears. Danger challenges that power rather than restoring difficulty by making ordinary travel sluggish.
 
-This guide describes the V6 development line at gameplay revision 8f399c7. It does not describe current main: V6 is stacked on V5, V4, V3, V2, and the sprint/grapple branch. Those gameplay PRs still have their own approval and merge sequence. The memory-system PR is based on V6 as Enrik requested, so its changes can travel with that version. Nothing here authorizes or performs those gameplay merges.
+This guide describes the complete V6 code at gameplay revision 8f399c7, including the sprint/grapple, V2, V3, V4, and V5 development history. Enrik explicitly approved integrating this latest version and the shared-memory system into main on October 12, 2026. PR #14 is the integration record; consult GitHub for its actual merge state. The portable guide retains historical reports as history, while these current chapters and the current context describe the latest code. Approval to integrate does not certify outstanding gameplay tests.
 
 ## The first raid from a player's perspective
 

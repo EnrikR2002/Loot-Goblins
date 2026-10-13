@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "fingerprint": "6cf5a2005d433157c5f506bb49a58aa3c8c58950bef3da60fd99dae175326647",
+  "fingerprint": "7a56b66b067d58355c17a68022493cc0db6b676ee19dafbfeadcf5a4ad07bc69",
   "source_baseline": {
     "src/client/BoatDrive.lua": "160494ffca06e5269c140131bc5c2e3640a1227707c4c25ea87af57c6c5a684b",
     "src/client/Effects.lua": "743338eecc2160ddb7bbfe1414a964d0c9f08245388c5d2c4afa4bb5f9caa60c",
@@ -49,9 +49,9 @@
     "default.project.json": "9fb828dd6c23f4351950c7fae8134f3c58e32a1b40379ced561ace167170b94d"
   },
   "inputs": {
-    "docs/game-guide/01-game.md": "5d6d8655a243fb549fe249632b7ea6964ad8799f6feebdd88bd4808710580b40",
+    "docs/game-guide/01-game.md": "ce69d46eda9ffb9d8ef0f8de67394f9619c28a2f09852ed6f3cf58a0e6247374",
     "docs/game-guide/02-system-contracts.md": "0fa8b6a446e34da4526d29e1f7de4eff1737999909b2009c5b58e5105fc296aa",
-    "docs/AI_CONTEXT.md": "d32845a1035d14893eefdf22d7d868193ca28bbde9c54699720a6ad036273bfe",
+    "docs/AI_CONTEXT.md": "d9a07c90820bccd339025a6083a370f2aebfc99494c229df76616a4273fde19c",
     "README.md": "204b2204cb9d10dd58326c433b595b15685f4f7212c1269a137c57368943c1a3",
     "docs/DESIGN_THESIS.txt": "a8e2b81b361cb770dc5b842a18d4c760caaf7f3f092225b1631cd574648a08f8",
     "src/shared/Config.lua": "75f6b9d023a67cc94c56cbeef9c9fd9a7504c48c3447ed063520b1d629934a0d",

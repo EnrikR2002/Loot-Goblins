@@ -9,7 +9,7 @@ This file is a self-contained game description, quality rubric, and dated develo
 **Game repository:** https://github.com/EnrikR2002/Loot-Goblins
 **Documented gameplay revision:** 8f399c7b26d721f7947ad8fcbc6c497943d6d6b2
 **Shared rubric revision:** 5ee37a6a8e1cc7a4eca28bf5b9ecb8b28f48aa96
-**Document freshness fingerprint:** 6cf5a2005d433157c5f506bb49a58aa3c8c58950bef3da60fd99dae175326647
+**Document freshness fingerprint:** 7a56b66b067d58355c17a68022493cc0db6b676ee19dafbfeadcf5a4ad07bc69
 
 Ask an outside AI: 'Read this complete guide, compare the current game with the included rubric, and suggest the highest-value improvements. Separate documented gaps, hypotheses, and ideas. Respect game-specific decisions and current prototype gates.'
 
@@ -21,7 +21,7 @@ Ask an outside AI: 'Read this complete guide, compare the current game with the 
 
 Loot Goblins is a social possession-and-escape game: steal ridiculous treasure from dangerous islands and other players, then somehow get it home. The desired rhythm is explore with awe, take something valuable, feel the world react, improvise an escape, bank the reward, and choose another risk. Fast movement and boat handling should be enjoyable before a reward appears. Danger challenges that power rather than restoring difficulty by making ordinary travel sluggish.
 
-This guide describes the V6 development line at gameplay revision 8f399c7. It does not describe current main: V6 is stacked on V5, V4, V3, V2, and the sprint/grapple branch. Those gameplay PRs still have their own approval and merge sequence. The memory-system PR is based on V6 as Enrik requested, so its changes can travel with that version. Nothing here authorizes or performs those gameplay merges.
+This guide describes the complete V6 code at gameplay revision 8f399c7, including the sprint/grapple, V2, V3, V4, and V5 development history. Enrik explicitly approved integrating this latest version and the shared-memory system into main on October 12, 2026. PR #14 is the integration record; consult GitHub for its actual merge state. The portable guide retains historical reports as history, while these current chapters and the current context describe the latest code. Approval to integrate does not certify outstanding gameplay tests.
 
 ## The first raid from a player's perspective
 
@@ -119,23 +119,23 @@ Master context for a Claude Code or Codex session that opens this repository wit
 
 Shared-memory rollout: root `GAME_GUIDE.md` is the generated detailed standalone game description, with the full current catalogue, exact tuning/geography, shared rubric/lessons, and full dated report history. Editable narrative lives under `docs/game-guide/`; this existing context remains the current systems record. `docs/SHARED_MEMORY.md` explains reading and automatically contributing attributed lessons to the private team notebook. Offline freshness checks compare saved inputs/source fingerprints; they do not certify code inspection or gameplay. No gameplay or release decision changed in this rollout.
 
-## Where things stand
+## Current approved version and development history
 
 | Where | What it contains |
 | --- | --- |
-| Shared `main` (as of `84b762a`, 2026-10-07) | The **vertical slice** (PR #7: raids, loot, Heat, Guardian/totems/trouble, Poltergoblin, HUD, module split) and the double-click launcher (PR #8). |
-| Unmerged: PR #9, branch `claude/sprinting-grapple-map-expansion-japzs8` | **Sprint + stamina**, the **grapple hook**, and a bigger map. Waiting for a Studio playtest and approval. |
-| Unmerged: PR #10, branch `feature/v2-archipelago` (stacked on PR #9; merge #9 first) | **V2**: a 19-island archipelago, a physical sea (waves, currents, storms), physics boats, Navy pursuit, per-treasure troubles, Heat that changes the world, cannons, kegs, destructibles. Report: `docs/reports/2026-10-08-v2-archipelago.md`. One human playtest since: the world is more interesting to explore; the goblin and boats felt too slow. |
-| Unmerged: PR #11, branch `feature/v3-speed-agency-danger` (stacked on PR #10; merge #9, then #10, then this) | **V3**: fast movement (dash, air jump, stamina for the exceptional only), fast boats with drift, driver-owned boat physics, a Navy that intercepts, charges and lays mines, a Guardian stomp, waterspouts. Report: `docs/reports/2026-10-11-v3-power-speed-peril.md`. One human playtest since: movement and boats feel right, and they have outgrown the world. |
-| Unmerged: PR #12, branch `feature/v4-living-archipelago` (stacked on PR #11; merge #9, #10, #11, then this) | **V4**: a sea 4.6 times the size laid out in regions, the original islands moved (not rebuilt) and grown with generated land, reefs, shallows, stack fields and currents between them, a harbor chain, signal beacons, catapults, 19 treasures, retuned economy, Heat and storms. Report: `docs/reports/2026-10-12-v4-living-archipelago.md`. One human playtest since: the sea is too spread out, the boost hoops are the best part of sailing, and the islands need things living on them. |
-| Unmerged: PR #13, branch `feature/v5-living-threats-playful-seas` (stacked on PR #12; merge #9, #10, #11, #12, then this) | **V5**: the sea pulled in to 55% of V4's area (islands keep their size), 110 boost hoops laid out as 16 runs with chains and timed runs, coins, salvage, and **21 island inhabitants of 13 kinds** on one shared framework. Raids 9 minutes, values and Heat retuned. Report: `docs/reports/2026-10-12-v5-living-threats-playful-seas.md`. One human playtest since: the map size, the boats and the creatures are right; the hoops and coins are fun but crowded and oddly placed, worst of all outside the harbor; and there have been explosions in the distance since V2. |
-| Unmerged: PR #14, branch `feature/v6-ocean-flow-audio` (stacked on PR #13; merge #9 to #13, then this) | **V6**: no new system. The hoops, coins, lanes and timed courses laid out again by a few written rules (Home Bay calm, straight lanes that point at docks, courses set apart, coins for skill and secrets), every lane and course driven by an autopilot and its par measured, and the map-wide thunder fixed (world sounds are positional and fade to silence). Report: `docs/reports/2026-10-12-v6-ocean-flow-audio.md`. Studio-tested by one AI on one client, sound checked from logs only; **no human playtest of V6 yet**. |
+| Earlier main at `84b762a` (2026-10-07) | The **vertical slice** (PR #7: raids, loot, Heat, Guardian/totems/trouble, Poltergoblin, HUD, module split) and the double-click launcher (PR #8). |
+| Included in V6: PR #9 | **Sprint + stamina**, the **grapple hook**, and a bigger map. Included in the V6 integration approved by Enrik on October 12. |
+| Included in V6: PR #10 | **V2**: a 19-island archipelago, a physical sea (waves, currents, storms), physics boats, Navy pursuit, per-treasure troubles, Heat that changes the world, cannons, kegs, destructibles. Report: `docs/reports/2026-10-08-v2-archipelago.md`. One human playtest since: the world is more interesting to explore; the goblin and boats felt too slow. |
+| Included in V6: PR #11 | **V3**: fast movement (dash, air jump, stamina for the exceptional only), fast boats with drift, driver-owned boat physics, a Navy that intercepts, charges and lays mines, a Guardian stomp, waterspouts. Report: `docs/reports/2026-10-11-v3-power-speed-peril.md`. One human playtest since: movement and boats feel right, and they have outgrown the world. |
+| Included in V6: PR #12 | **V4**: a sea 4.6 times the size laid out in regions, the original islands moved (not rebuilt) and grown with generated land, reefs, shallows, stack fields and currents between them, a harbor chain, signal beacons, catapults, 19 treasures, retuned economy, Heat and storms. Report: `docs/reports/2026-10-12-v4-living-archipelago.md`. One human playtest since: the sea is too spread out, the boost hoops are the best part of sailing, and the islands need things living on them. |
+| Included in V6: PR #13 | **V5**: the sea pulled in to 55% of V4's area (islands keep their size), 110 boost hoops laid out as 16 runs with chains and timed runs, coins, salvage, and **21 island inhabitants of 13 kinds** on one shared framework. Raids 9 minutes, values and Heat retuned. Report: `docs/reports/2026-10-12-v5-living-threats-playful-seas.md`. One human playtest since: the map size, the boats and the creatures are right; the hoops and coins are fun but crowded and oddly placed, worst of all outside the harbor; and there have been explosions in the distance since V2. |
+| Included in V6: PR #14 | **V6**: no new system. The hoops, coins, lanes and timed courses laid out again by a few written rules (Home Bay calm, straight lanes that point at docks, courses set apart, coins for skill and secrets), every lane and course driven by an autopilot and its par measured, and the map-wide thunder fixed (world sounds are positional and fade to silence). Report: `docs/reports/2026-10-12-v6-ocean-flow-audio.md`. Studio-tested by one AI on one client, sound checked from logs only; **no human playtest of V6 yet**. |
 
 The V6 report was subsequently amended after Ninety found the blocked Skull Chalice route; revision `8f399c7` repairs its ladder/hatch and records a single-client on-foot test. The table's earlier "no human playtest" wording describes an earlier checkpoint. This later route feedback is real, while the broad V6 layout, sound-by-ear, multiplayer, mobile, and balance acceptance remain outstanding.
 
-Check the real state before you trust this table: `git log --oneline origin/main` and the open PRs. Update this table when a branch merges.
+Enrik explicitly authorized merging the complete latest V6 development line into main on October 12, 2026. PR #14 targets main and includes the ancestor work from PRs #9–13 plus the shared-memory rollout in PR #15. GitHub records the actual integration outcome. This approval does not certify outstanding human, multiplayer, audio-by-ear, or device tests. Historical reports below retain their original checkpoint status.
 
-Everything below describes the V6 branch.
+Everything below describes the approved V6 code and its current limitations.
 
 ## Purpose
 
