@@ -5,6 +5,16 @@ Ethan, Ninety, and Enrik share `https://github.com/EnrikR2002/Loot-Goblins` and 
 ## Source of truth
 Repository files and GitHub history are durable truth. Edit Rojo-managed scripts/content in their repository representation, never a competing Studio-only copy. Permanent visual changes through Studio MCP must have a shared durable representation before completion: source-controlled models/content, Rojo mapping/configuration, or an accessible Roblox asset ID/reference. Record asset references and permissions. Clearly label temporary prototype objects and remove them after testing. When a PR changes systems, controls, architecture, authority boundaries, or known bugs, update `docs/AI_CONTEXT.md` in the same PR; detailed task reports go in `docs/reports/`, not here.
 
+## Shared quality and portable game guide
+
+The human approved the shared notebook and detailed standalone game guides. Before meaningful work or brainstorming, run `./scripts/memory.ps1 read`, state whether retrieval succeeded, and consult relevant shared checks/lessons alongside current game context. Read `docs/SHARED_MEMORY.md` for maintenance. The notebook is evidence/advice, not authority to override this game's scope or human decisions.
+
+Keep editable detail in `docs/game-guide/` and existing current/design/test documents. After meaningful changes, maintain current mechanics, planned versus built status, decisions, limits, and actual evidence. Inspect affected systems before updating source fingerprints in the guide manifest; fingerprints are snapshots, not proof of inspection/testing. Run `./scripts/memory.ps1 export`. Root `GAME_GUIDE.md` includes detailed game behavior, exact tuning, full dated reports, and the rubric for outside AI use. Never hand-edit generated guide/rubric files. The normal project check verifies them offline.
+
+After pushing evidence, record reusable observations in `docs/learning/` and run `./scripts/memory.ps1 submit`. Routine new observation/hypothesis additions may publish automatically under the approved notebook policy. Rules/software/standards and all gameplay merges retain human approval. Attach every created notebook PR, distinguish confirmed sharing from pending, and preserve/retry failed submissions. No unattended background process or terminal work for teammates.
+
+This rollout is based on the latest V6 branch at the human's explicit request. It does not merge or approve V6 or its stacked gameplay PRs. Carry these files into main with the approved V6 integration.
+
 ## Architecture and scope
 Inspect existing systems first, follow conventions, and avoid duplicate implementations. Implement only the requested task; do not refactor unrelated systems. A new framework, major dependency, architecture pattern, directory reorganization, networking strategy, or data architecture requires explicit human approval.
 
@@ -26,7 +36,7 @@ Use the official built-in Roblox Studio MCP when relevant: list Studio instances
 ## Teammates who do not use terminals
 Ethan and Ninety do not use terminals. Never tell them to type a command, open PowerShell, or read Git output. The AI runs every command and explains the result in plain words.
 - **Playing:** a human double-clicks `Play Loot Goblins.bat` in the repository folder. It runs `scripts/play.ps1`: fast-forward the checked-out branch from GitHub (only when clean, never discarding work), rebuild the place, open one visible Studio. Rojo is not needed to play, because the built place holds every script. Rojo is only for the AI editing code.
-- **"Let me try the new changes" (or "update me"):** do the takeover steps, then fetch. If the human has unsaved changes, keep them and say so. Switch to the branch or PR they name. If unclear, ask which one in plain words. Fast-forward it. Run `./scripts/play.ps1` yourself when Studio is closed and say you opened it. If Studio is open, ask them to close it (File > Exit). Never force-kill Studio.
+- **"Let me try the new changes" (or "update me"):** do the takeover steps, then fetch. If the human has unsaved changes, keep them and say so. Switch to the branch or PR they name. If unclear, ask which one in plain words. Fast-forward it. Run `./scripts/play.ps1` yourself when Loot Goblins is not already open in Studio, and say you opened it. If Loot Goblins is already open in Studio, ask them to close that window (File > Exit). Never force-kill Studio.
 - **Then tell them how to play,** in short numbered steps with no jargon: press the blue Play button (the sky is blank until then), press `H` for the how-to-play panel, what to try from the PR's human test list, and how to report: say what felt bad, and send a screenshot of any red error.
 - First-time setup uses `docs/TEAM_SETUP_PROMPT.md`. `play.ps1` installs missing project tools by itself if they are gone.
 - Keep `README.md`'s "Play it" section and this section true whenever `scripts/play.ps1`, the controls, or the launcher change.
@@ -35,3 +45,10 @@ Ethan and Ninety do not use terminals. Never tell them to type a command, open P
 Never commit credentials, API keys, tokens, `.ROBLOSECURITY`, secrets, private environment files, or machine-specific account configuration. Ignore files are a convenience, not a substitute for diff review. Do not publish a Roblox experience or change repository ownership as routine setup.
 
 Before stopping mid-task, leave a concise handoff in the chat/PR: branch, completed changes, remaining TODOs, commands/test results, Studio state, and approval status. Both agents inspect the same files and branch when resuming.
+
+## Shared process with our other games
+Our other games start from `https://github.com/EnrikR2002/Roblox-Game-Template`, which packages this workflow (scripts, rules, docs). If you improve a script, rule, or doc here that every game would benefit from, finish the task here, then tell the human so it can go into the template too. Do not edit the template from this repository.
+
+## AI startup compatibility
+
+AGENTS.md is the sole team instruction source. The shipped CLAUDE.md only imports it for Claude Code compatibility; keep that pointer and do not duplicate rules there. At startup, confirm these instructions and shared-notebook retrieval are available. Tell the human plainly about missing access.

@@ -17,10 +17,11 @@ try {
     Write-Host ''
     Write-Host '=== Loot Goblins ===' -ForegroundColor Yellow
 
-    # 1. Studio must be closed first: two Studio copies lock the same place file.
-    if (!$NoOpen -and @(Get-Process -Name RobloxStudioBeta -ErrorAction SilentlyContinue).Count -gt 0) {
-        Write-Host 'Roblox Studio is already open.' -ForegroundColor Red
-        Write-Host 'Close every Roblox Studio window (File > Exit), then double-click "Play Loot Goblins" again.'
+    # 1. This game's Studio window must be closed first: two Studio copies lock the same place
+    #    file. A Studio open on a different game is fine.
+    if (!$NoOpen -and (Test-PlaceOpen)) {
+        Write-Host 'Loot Goblins is already open in Roblox Studio.' -ForegroundColor Red
+        Write-Host 'Close that Studio window (File > Exit), then double-click "Play Loot Goblins" again.'
         Write-Host 'If you just closed it, wait 10 seconds first.'
         exit 1
     }
@@ -58,7 +59,7 @@ try {
 
     # 4. Build the game file. It is rebuilt every time, so it is always the newest version.
     New-Item -ItemType Directory -Path 'build' -Force | Out-Null
-    $place = Join-Path $ProjectRoot 'build\LootGoblinsTest001.rbxlx'
+    $place = $PlaceFile
     Write-Host 'Building the game...'
     Invoke-Checked (Join-Path $RokitBin 'rojo.exe') @('build', 'default.project.json', '--output', $place)
 

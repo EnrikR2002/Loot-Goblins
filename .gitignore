@@ -1,5 +1,7 @@
 # Generated development places, builds, and local reports
 /build/
+__pycache__/
+*.pyc
 /.local/
 *.rbxl.lock
 *.rbxlx.lock

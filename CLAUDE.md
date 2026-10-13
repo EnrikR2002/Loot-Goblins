@@ -1,0 +1,3 @@
+# Team instructions
+
+@AGENTS.md

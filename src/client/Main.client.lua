@@ -1,6 +1,8 @@
 -- Loot Goblins client: input, the bits of movement the client owns (the
--- Poltergoblin dash, ziplines, launch pads), and turning server events into
--- HUD messages and effects. The server decides everything that matters.
+-- Poltergoblin dash, ziplines, launch pads, the grapple pull), and turning
+-- server events into HUD messages and effects. The server decides everything
+-- that matters, including sprint speed and stamina.
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,28 +12,50 @@ local UserInputService = game:GetService("UserInputService")
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Hud = require(script.Parent.Hud)
 local Effects = require(script.Parent.Effects)
+local Weather = require(script.Parent.Weather)
+local BoatDrive = require(script.Parent.BoatDrive)
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
 local throwRemote = remotes:WaitForChild("ThrowRequest")
 local grappleRemote = remotes:WaitForChild("GrappleRequest")
 local polterRemote = remotes:WaitForChild("PoltergoblinRequest")
+local sprintRemote = remotes:WaitForChild("SprintRequest")
+local moveRemote = remotes:WaitForChild("MoveRequest")
+local boatBoardRemote = remotes:WaitForChild("BoatBoardRequest")
+local cannonRemote = remotes:WaitForChild("CannonRequest")
+local kegRemote = remotes:WaitForChild("KegRequest")
 local eventRemote = remotes:WaitForChild("GameEvent")
 
 local generated = workspace:WaitForChild("LootGoblinsGenerated")
-local hoardPart = generated:WaitForChild("Ground"):WaitForChild("Hoard")
+local hoardPart = generated:WaitForChild("Landmarks"):WaitForChild("HoardMarker"):WaitForChild("Hoard")
 
 local SPIRIT_COLOR = Color3.fromRGB(120, 255, 170)
 local MARK_COLOR = Color3.fromRGB(190, 90, 255)
 local GOLD = Color3.fromRGB(255, 205, 50)
 local DANGER = Color3.fromRGB(255, 80, 60)
+local ROPE_COLOR = Color3.fromRGB(230, 200, 140)
 
 local LOOT_COLORS = {}
+local LOOT_WEIGHT = {}
 for _, def in ipairs(Config.LOOT) do
 	LOOT_COLORS[def.id] = def.color
+	LOOT_WEIGHT[def.id] = def.weight or 1
 end
 
 Hud.init(hoardPart)
+
+-- Storm warnings: name the heading so the player can steer around it.
+local COMPASS_NAMES = { "NORTH", "NORTH-EAST", "EAST", "SOUTH-EAST", "SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST" }
+Weather.init(function(dx, dz, distance)
+	local degrees = math.deg(math.atan2(dx, -dz)) % 360
+	local name = COMPASS_NAMES[math.floor((degrees + 22.5) / 45) % 8 + 1]
+	Hud.banner(
+		string.format("STORM TO THE %s - %d STUDS. SAIL AROUND IT!", name, distance),
+		Color3.fromRGB(170, 190, 255),
+		3.5
+	)
+end)
 Hud.showHelp(14)
 
 local function now()
@@ -142,8 +166,9 @@ end)
 
 -- Launch pads -------------------------------------------------------------------------
 local lastLaunch = 0
+local flight = nil -- A catapult throw in progress (see the loop after `airborne`).
 local function hookPad(pad)
-	if not pad:IsA("BasePart") then
+	if not pad:IsA("BasePart") or pad.Name == "GeyserVent" then
 		return
 	end
 	pad.Touched:Connect(function(hit)
@@ -157,6 +182,15 @@ local function hookPad(pad)
 		end
 		lastLaunch = os.clock()
 		root.AssemblyLinearVelocity = launch
+		local carry = pad:GetAttribute("Carry")
+		if typeof(carry) == "number" then
+			-- A catapult: the throw keeps its sideways speed for this long.
+			flight = {
+				velocity = Vector3.new(launch.X, 0, launch.Z),
+				startedAt = os.clock(),
+				untilAt = os.clock() + carry,
+			}
+		end
 		Effects.sound("whoosh", { speed = 0.7, volume = 0.8 })
 		Effects.burst(pad.Position, Color3.fromRGB(120, 255, 130), 25, 20)
 		Effects.punchFov(82)
@@ -167,6 +201,435 @@ for _, pad in ipairs(pads:GetChildren()) do
 	hookPad(pad)
 end
 pads.ChildAdded:Connect(hookPad)
+
+-- Geysers: a steam vent that fires on a timer anyone can read. Quiet puffs warn a second ahead; then
+-- a jet launches whoever stands on it. The server does nothing per frame (the numbers are attributes).
+local geyserEmitters = {}
+RunService.Heartbeat:Connect(function()
+	local t = now()
+	local _, _, root = getCharacter()
+	for _, vent in ipairs(pads:GetChildren()) do
+		if vent.Name == "GeyserVent" then
+			local period = vent:GetAttribute("GeyserPeriod") or 8
+			local activeTime = vent:GetAttribute("GeyserActive") or 1.8
+			local phase = vent:GetAttribute("GeyserPhase") or 0
+			local cycle = (t + phase) % period
+			local emitter = geyserEmitters[vent]
+			if not emitter then
+				emitter = Instance.new("ParticleEmitter")
+				emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
+				emitter.Color = ColorSequence.new(Color3.fromRGB(235, 240, 245))
+				emitter.Size =
+					NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(1, 12) })
+				emitter.Transparency =
+					NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+				emitter.Lifetime = NumberRange.new(0.9, 1.5)
+				emitter.Speed = NumberRange.new(40, 70)
+				emitter.EmissionDirection = Enum.NormalId.Top
+				emitter.SpreadAngle = Vector2.new(6, 6)
+				emitter.Rate = 0
+				emitter.Parent = vent
+				geyserEmitters[vent] = emitter
+			end
+			local active = cycle < activeTime
+			emitter.Rate = active and 70 or (cycle > period - 1 and 10 or 0)
+			if active and root then
+				local launch = vent:GetAttribute("Launch")
+				local offset = root.Position - vent.Position
+				if
+					typeof(launch) == "Vector3"
+					and Vector3.new(offset.X, 0, offset.Z).Magnitude < 5.5
+					and offset.Y > -3
+					and offset.Y < 9
+					and os.clock() - lastLaunch > 0.8
+				then
+					lastLaunch = os.clock()
+					root.AssemblyLinearVelocity =
+						Vector3.new(root.AssemblyLinearVelocity.X * 0.5, launch.Y, root.AssemblyLinearVelocity.Z * 0.5)
+					Effects.sound("whoosh", { speed = 0.6, volume = 0.9 })
+					Effects.burst(vent.Position, Color3.fromRGB(240, 245, 255), 35, 26)
+					Effects.punchFov(84)
+				end
+			end
+		end
+	end
+end)
+
+-- Grapple ---------------------------------------------------------------------------------
+-- F sends where you aim. The server picks: steal loot near your aim, or hook the
+-- first solid thing and pull you to it. The pull runs here, because each client
+-- moves its own character (like ziplines and launch pads).
+local pull = nil
+local aimParams = RaycastParams.new()
+aimParams.FilterType = Enum.RaycastFilterType.Exclude
+aimParams.IgnoreWater = false
+
+local function aimPoint()
+	local camera = workspace.CurrentCamera
+	local mouseAt = UserInputService:GetMouseLocation()
+	local ray = camera:ViewportPointToRay(mouseAt.X, mouseAt.Y)
+	-- Never aim at yourself or at the boat you are sitting in.
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	local seat = humanoid and humanoid.SeatPart
+	aimParams.FilterDescendantsInstances = { player.Character, seat and seat.Parent }
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 1000, aimParams)
+	if hit then
+		return hit.Position, hit.Instance
+	end
+	return ray.Origin + ray.Direction * 1000, nil
+end
+
+local airJumpUsed = false -- One air jump per flight; a pull hands it back (see the moves below).
+
+local function stopPull(pop)
+	if not pull then
+		return
+	end
+	local current = pull
+	pull = nil
+	current.holder:Destroy()
+	current.rope:Destroy()
+	local _, _, root = getCharacter()
+	if not root or not pop then
+		return
+	end
+	local v = root.AssemblyLinearVelocity
+	if current.part and current.part.Parent then
+		-- Hooked something that moves: let go at its speed, not ours, so it does not sail out
+		-- from under us.
+		local carry = current.part.AssemblyLinearVelocity
+		root.AssemblyLinearVelocity = Vector3.new(carry.X, 8, carry.Z)
+		return
+	end
+	-- A hop at the end, so a hook on a ledge lifts you over its lip. You keep most of the
+	-- swing, so a pull flows straight into a run, a jump or a dash.
+	local keep = Config.GRAPPLE_KEEP_SPEED
+	root.AssemblyLinearVelocity = Vector3.new(v.X * keep, Config.GRAPPLE_POP_SPEED, v.Z * keep)
+end
+
+-- Where the hook is right now. A hook on a boat rides the boat.
+local function pullGoal(current)
+	if not current.part then
+		return current.goal
+	end
+	if not current.part.Parent then
+		return nil
+	end
+	return current.part.CFrame:PointToWorldSpace(current.offset) + Vector3.new(0, 4, 0)
+end
+
+-- to, normal: the hook point. part, offset: set when the hook is on something that moves.
+local function startPull(to, normal, part, offset, tries)
+	local _, humanoid, root = getCharacter()
+	if not root then
+		return
+	end
+	if humanoid.SeatPart then
+		-- Hooked from a boat seat: the server lets go of the seat; wait for that to arrive.
+		humanoid.Sit = false
+		if (tries or 0) < 8 then
+			task.delay(0.05, startPull, to, normal, part, offset, (tries or 0) + 1)
+		end
+		return
+	end
+	stopRide(false)
+	stopPull(false)
+	-- Aim a little off the surface: a floor lands you on it, a wall leaves you at it.
+	local current = { part = part, offset = offset, goal = to + normal * 2 + Vector3.new(0, 2.5, 0) }
+	-- A hook anywhere on a boat reels you to the middle of its deck, and you take a seat.
+	local boatModel = part and part:FindFirstAncestorOfClass("Model")
+	local hull = boatModel and boatModel:GetAttribute("BoatType") and boatModel:FindFirstChild("Hull")
+	if hull then
+		current.part, current.offset, current.boat = hull, Vector3.new(0, hull.Size.Y / 2 - 1, 0), true
+	end
+	local goal = pullGoal(current)
+	if not goal then
+		return
+	end
+	local distance = (goal - root.Position).Magnitude
+	if distance < 3 then
+		return -- Already there (and .Unit of a zero vector is NaN).
+	end
+	local holder = Instance.new("Attachment")
+	holder.Name = "GrapplePull"
+	holder.Parent = root
+	local push = Instance.new("LinearVelocity")
+	push.Attachment0 = holder
+	push.MaxForce = 1e6
+	push.RelativeTo = Enum.ActuatorRelativeTo.World
+	push.VectorVelocity = (goal - root.Position).Unit * Config.GRAPPLE_PULL_SPEED
+	push.Parent = holder
+	local t = os.clock()
+	current.root = root
+	current.holder = holder
+	current.push = push
+	current.rope = Effects.rope(root, to, ROPE_COLOR, 5, part, offset)
+	current.startedAt = t
+	current.endsAt = t + distance / Config.GRAPPLE_PULL_SPEED + 0.6
+	current.best = distance
+	current.bestAt = t
+	pull = current
+	airJumpUsed = false
+	Effects.sound("whoosh", { speed = 1.5, volume = 0.6 })
+	Effects.punchFov(84)
+end
+
+RunService.Heartbeat:Connect(function()
+	if not pull then
+		return
+	end
+	local _, humanoid, root = getCharacter()
+	local goal = pullGoal(pull)
+	if root ~= pull.root or humanoid.SeatPart or not goal then
+		stopPull(false)
+		return
+	end
+	local offset = goal - root.Position
+	local distance = offset.Magnitude
+	local t = os.clock()
+	local carry = pull.part and pull.part.AssemblyLinearVelocity or Vector3.zero
+	if pull.holdUntil then
+		-- Over a boat's deck: ride along with it until the server seats us (the top of this
+		-- function ends the pull the moment it does), or let go onto the deck if it is full.
+		if t > pull.holdUntil then
+			stopPull(true)
+		else
+			pull.push.VectorVelocity = offset * 8 + carry
+		end
+		return
+	end
+	if distance < 3 or t > pull.endsAt then
+		if pull.boat and distance < 12 then
+			pull.holdUntil = t + 0.7
+			boatBoardRemote:FireServer()
+		else
+			stopPull(true)
+		end
+		return
+	end
+	if distance < pull.best - 0.5 then
+		pull.best, pull.bestAt = distance, t
+	elseif t - pull.bestAt > 0.3 then
+		-- Snagged on something on the way.
+		stopPull(true)
+		return
+	end
+	-- Ease in over the last few studs instead of slamming into the wall. A moving hook adds
+	-- its own speed, so you close on a fleeing boat as fast as on a cliff.
+	pull.push.VectorVelocity = offset.Unit * math.min(Config.GRAPPLE_PULL_SPEED, 30 + distance * 6) + carry
+end)
+
+UserInputService.JumpRequest:Connect(function()
+	-- Jump lets go of the rope mid-pull and keeps your swing.
+	if pull and os.clock() - pull.startedAt > 0.15 then
+		stopPull(false)
+	end
+end)
+
+local function pressGrapple()
+	local _, _, root = getCharacter()
+	if not root then
+		return
+	end
+	if now() < (player:GetAttribute("GrappleReadyAt") or 0) then
+		Hud.toast("Grapple is recharging")
+		return
+	end
+	local hitPosition, target = aimPoint()
+	grappleRemote:FireServer(hitPosition, target)
+	Effects.sound("whoosh", { speed = 2.2, volume = 0.35 })
+end
+
+-- Cannons: E at a cannon's prompt fires it where you aim; the server checks everything.
+ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	if prompt.Name == "CannonPrompt" then
+		local hitPosition = aimPoint()
+		cannonRemote:FireServer(prompt.Parent, hitPosition)
+	end
+end)
+
+-- G throws a powder keg where you aim.
+local function pressKeg()
+	local _, _, root = getCharacter()
+	if not root then
+		return
+	end
+	if (player:GetAttribute("Kegs") or 0) <= 0 then
+		Hud.toast("No kegs. Find a keg crate (hold E).")
+		return
+	end
+	kegRemote:FireServer((aimPoint()))
+end
+
+-- In a boat's driver seat, Shift boosts the boat instead of sprinting.
+local function seatedInBoat()
+	local _, humanoid = getCharacter()
+	local seat = humanoid and humanoid.SeatPart
+	return seat ~= nil and seat:IsA("VehicleSeat")
+end
+
+-- Sprint ------------------------------------------------------------------------------
+-- Hold Shift (or click the left stick to toggle). The server owns speed and stamina.
+local sprintHeld = false
+local function setSprint(held)
+	if held ~= sprintHeld then
+		sprintHeld = held
+		sprintRemote:FireServer(held)
+	end
+end
+
+UserInputService.WindowFocusReleased:Connect(function()
+	setSprint(false)
+end)
+UserInputService.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.LeftShift then
+		setSprint(false)
+	elseif input.KeyCode == Enum.KeyCode.C or input.KeyCode == Enum.KeyCode.ButtonB then
+		BoatDrive.setDrift(false)
+	end
+end)
+player:GetAttributeChangedSignal("Winded"):Connect(function()
+	if player:GetAttribute("Winded") then
+		Hud.toast("Out of breath! You still run - sprint comes back when stamina refills.")
+	end
+end)
+
+-- Dash and air jump --------------------------------------------------------------------
+-- Both are played here at once, on your own character, so the key feels instant. The server
+-- takes the stamina and keeps the cooldown (Movement.request).
+local lastDash = -math.huge
+local lastGroundedAt = os.clock()
+
+-- What a move costs right now: loot makes every stamina cost bigger, by its weight.
+local function staminaCost(base)
+	local held = player:GetAttribute("CarryingLoot")
+	return base * (1 + (held and LOOT_WEIGHT[held] or 0) * Config.CARRY_STAMINA_PER_WEIGHT)
+end
+
+local function hasStamina(cost)
+	return (player:GetAttribute("Stamina") or Config.STAMINA_MAX) >= cost
+end
+
+local function airborne(humanoid)
+	return humanoid.FloorMaterial == Enum.Material.Air and humanoid:GetState() ~= Enum.HumanoidStateType.Swimming
+end
+
+-- A catapult throw. A goblin's own air control would stop the flight short, so the sideways
+-- speed is held until the throw has run its time or they touch down. Dash, air jump, a grapple
+-- or a zipline ends it early, so the flight can still be steered out of.
+RunService.Heartbeat:Connect(function()
+	if not flight then
+		return
+	end
+	local _, humanoid, root = getCharacter()
+	local t = os.clock()
+	if
+		not root
+		or ride
+		or pull
+		or humanoid.SeatPart
+		or t >= flight.untilAt
+		or (t - flight.startedAt > 0.35 and not airborne(humanoid))
+	then
+		flight = nil
+		return
+	end
+	local v = root.AssemblyLinearVelocity
+	root.AssemblyLinearVelocity = Vector3.new(flight.velocity.X, v.Y, flight.velocity.Z)
+end)
+
+local function pressDash()
+	local _, humanoid, root = getCharacter()
+	if not root or humanoid.SeatPart or ride or pull then
+		return
+	end
+	local t = os.clock()
+	if t - lastDash < Config.DASH_COOLDOWN then
+		return
+	end
+	if not hasStamina(staminaCost(Config.DASH_COST)) then
+		Hud.toast("Not enough stamina to dash")
+		return
+	end
+	-- Dash where you are steering, or where you face when standing still.
+	local direction = humanoid.MoveDirection
+	if direction.Magnitude < 0.1 then
+		direction = root.CFrame.LookVector
+	end
+	direction = Vector3.new(direction.X, 0, direction.Z)
+	if direction.Magnitude < 0.01 then
+		return
+	end
+	direction = direction.Unit
+	lastDash = t
+	flight = nil
+	moveRemote:FireServer("dash")
+
+	local inAir = airborne(humanoid)
+	local attachment = Instance.new("Attachment")
+	attachment.Name = "Dash"
+	attachment.Parent = root
+	local push = Instance.new("LinearVelocity")
+	push.Attachment0 = attachment
+	push.RelativeTo = Enum.ActuatorRelativeTo.World
+	push.ForceLimitMode = Enum.ForceLimitMode.PerAxis
+	-- In the air the dash also cancels your fall, so it reaches across gaps.
+	push.MaxAxesForce = Vector3.new(1e6, inAir and 1e6 or 0, 1e6)
+	push.VectorVelocity = direction * Config.DASH_SPEED + Vector3.new(0, inAir and Config.DASH_AIR_LIFT or 0, 0)
+	push.Parent = attachment
+	task.delay(Config.DASH_TIME, function()
+		attachment:Destroy()
+		if root.Parent then
+			-- Leave the dash a little faster than a run, so it flows into the next move.
+			local v = root.AssemblyLinearVelocity
+			root.AssemblyLinearVelocity = direction * humanoid.WalkSpeed * 1.15 + Vector3.new(0, v.Y, 0)
+		end
+	end)
+	Effects.dash(root.Position, direction)
+	Effects.punchFov(82)
+end
+
+local function tryAirJump(minAirTime)
+	local _, humanoid, root = getCharacter()
+	if not root or airJumpUsed or humanoid.SeatPart or ride or pull then
+		return
+	end
+	if not airborne(humanoid) or os.clock() - lastGroundedAt < (minAirTime or 0.1) then
+		return
+	end
+	if not hasStamina(staminaCost(Config.AIR_JUMP_COST)) then
+		return
+	end
+	airJumpUsed = true
+	flight = nil
+	moveRemote:FireServer("airjump")
+	humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+	local function lift()
+		if root.Parent then
+			local v = root.AssemblyLinearVelocity
+			root.AssemblyLinearVelocity = Vector3.new(v.X, Config.AIR_JUMP_POWER, v.Z)
+		end
+	end
+	lift()
+	task.defer(lift) -- The state change applies its own jump a moment later; ours wins.
+	Effects.airJump(root.Position)
+end
+
+RunService.Heartbeat:Connect(function()
+	local _, humanoid = getCharacter()
+	if humanoid and not airborne(humanoid) then
+		lastGroundedAt = os.clock()
+		airJumpUsed = false
+	end
+end)
+
+UserInputService.JumpRequest:Connect(function()
+	-- Touch has no key-down to catch, so a second tap of the jump button counts once you have
+	-- been in the air for a moment.
+	if UserInputService:GetLastInputType() == Enum.UserInputType.Touch then
+		tryAirJump(0.3)
+	end
+end)
 
 -- Poltergoblin --------------------------------------------------------------------------
 -- The server owns the spirit. The client only plays its own dash at once so the
@@ -232,14 +695,19 @@ local function pressPoltergoblin()
 		return
 	end
 	stopRide(false)
+	stopPull(false)
 	lastPolterCast = t
 	polterRemote:FireServer()
 	playDash(root, humanoid)
 end
 
--- Spirit form tints the screen for the spirit only.
+-- Spirit form tints the screen for the spirit only. Snapping back cuts a grapple.
 player:GetAttributeChangedSignal("PolterEndsAt"):Connect(function()
-	Effects.setSpirit(player:GetAttribute("PolterEndsAt") ~= nil)
+	local spirit = player:GetAttribute("PolterEndsAt") ~= nil
+	Effects.setSpirit(spirit)
+	if not spirit then
+		stopPull(false)
+	end
 end)
 
 local function soulSlash(position)
@@ -258,25 +726,41 @@ local function soulSlash(position)
 end
 
 -- Input ------------------------------------------------------------------------------------
-local mouse = player:GetMouse()
-
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
 	end
-	if input.KeyCode == Enum.KeyCode.Q then
+	if input.KeyCode == Enum.KeyCode.LeftShift then
+		if seatedInBoat() then
+			BoatDrive.boost()
+		else
+			setSprint(true)
+		end
+	elseif input.KeyCode == Enum.KeyCode.ButtonX and seatedInBoat() then
+		BoatDrive.boost()
+	elseif input.KeyCode == Enum.KeyCode.C or input.KeyCode == Enum.KeyCode.ButtonB then
+		-- One key, two jobs: a dash on foot, a drift at the wheel.
+		if seatedInBoat() then
+			BoatDrive.setDrift(true)
+		else
+			pressDash()
+		end
+	elseif input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.ButtonA then
+		tryAirJump()
+	elseif input.KeyCode == Enum.KeyCode.G then
+		pressKeg()
+	elseif input.KeyCode == Enum.KeyCode.M then
+		Hud.toggleMap()
+	elseif input.KeyCode == Enum.KeyCode.ButtonL3 then
+		setSprint(not sprintHeld)
+	elseif input.KeyCode == Enum.KeyCode.Q then
 		if player:GetAttribute("CarryingLoot") then
 			throwRemote:FireServer()
 		else
 			Hud.toast("Nothing to throw. Grab some loot first.")
 		end
 	elseif input.KeyCode == Enum.KeyCode.F then
-		if now() < (player:GetAttribute("GrappleReadyAt") or 0) then
-			Hud.toast("Grapple is recharging")
-			return
-		end
-		mouse.TargetFilter = player.Character
-		grappleRemote:FireServer(mouse.Hit.Position, mouse.Target)
+		pressGrapple()
 	elseif input.KeyCode == Enum.KeyCode.E then
 		pressPoltergoblin()
 	elseif input.KeyCode == Enum.KeyCode.H then
@@ -293,6 +777,10 @@ applyHeatTint()
 
 RunService.RenderStepped:Connect(function()
 	Hud.update(now())
+	-- The faster you travel (on foot or in a boat), the wider the view.
+	local _, _, root = getCharacter()
+	local v = root and root.AssemblyLinearVelocity or Vector3.zero
+	Effects.setSpeed(Vector3.new(v.X, 0, v.Z).Magnitude)
 end)
 
 -- Server events --------------------------------------------------------------------------
@@ -377,6 +865,11 @@ function handlers.Banked(p)
 		end)
 	end
 	Effects.ring(p.position, GOLD, 22, 0.8)
+	for i = 1, 6 do
+		task.delay(0.3 + i * 0.28, function()
+			Effects.firework(p.position, (i % 2 == 0) and color or GOLD)
+		end)
+	end
 	Effects.sound("boom", { position = p.position, volume = 0.5, speed = 1.4 })
 end
 
@@ -429,7 +922,7 @@ function handlers.TotemFire(p)
 end
 
 function handlers.Blast(p)
-	Effects.explosion(p.position, p.radius)
+	Effects.explosion(p.position, p.radius, p.silent)
 	Effects.shakeAt(p.position, 1, 0.35, 60)
 end
 
@@ -439,9 +932,38 @@ function handlers.CaveIn(p)
 end
 
 function handlers.GrappleFX(p)
-	Effects.line(p.from, p.to, p.success and GOLD or Color3.fromRGB(255, 245, 140), 0.22, 0.25)
+	if p.kind == "pull" then
+		if isMe(p) then
+			startPull(p.to, p.normal or Vector3.yAxis, p.part, p.offset)
+		else
+			local other = Players:GetPlayerByUserId(p.userId or 0)
+			local root = other and other.Character and other.Character:FindFirstChild("HumanoidRootPart")
+			if root then
+				Effects.rope(root, p.to, ROPE_COLOR, p.duration, p.part, p.offset)
+			end
+		end
+		Effects.ball(p.to, ROPE_COLOR, 2.5, 0.3)
+		Effects.sound("thud", { position = p.to, speed = 1.7, volume = 0.6 })
+		return
+	end
+	-- A steal, or a miss that only the thrower sees.
+	local color = p.success and GOLD or Color3.fromRGB(255, 245, 140)
+	Effects.line(p.from, p.to, color, p.kind == "miss" and 0.12 or 0.22, 0.25)
 	if p.success then
 		Effects.burst(p.to, GOLD, 15, 12)
+	end
+end
+
+-- Other players' moves (your own are drawn the moment you press the key).
+function handlers.Dash(p)
+	if not isMe(p) then
+		Effects.dash(p.position, nil)
+	end
+end
+
+function handlers.AirJump(p)
+	if not isMe(p) then
+		Effects.airJump(p.position)
 	end
 end
 
@@ -469,6 +991,350 @@ function handlers.Polter(p)
 			soulSlash(position)
 		end
 	end
+end
+
+-- The new world: telegraphs, weather, boats, mechanisms ---------------------------------------
+function handlers.Marker(p)
+	Effects.marker(p.position, p.radius or 12, p.duration or 1.5, p.color, p.style)
+end
+
+function handlers.Bolt(p)
+	Effects.bolt(p.position)
+end
+
+function handlers.Flare(p)
+	local own = isMe(p)
+	Effects.flare(p.position, p.color or GOLD, own and 3 or 4.5)
+	if not own then
+		Hud.feed(string.format("FLARE: %s is carrying!", p.name or "a thief"), p.color)
+	end
+end
+
+function handlers.Shell(p)
+	Effects.shell(p.from, p.to, p.duration or 1.5)
+end
+
+function handlers.Tentacle(p)
+	Effects.tentacle(p.position, p.delay or 1.5)
+end
+
+function handlers.Gulls(p)
+	Effects.gulls(p.position)
+end
+
+function handlers.NavySpawn(p)
+	Effects.sound("boom", { position = p.position, speed = 0.5, volume = 1, range = 1200 })
+	Effects.chime(Effects.CHIME_ALARM, 0.8)
+end
+
+function handlers.Frenzy()
+	Hud.flash(DANGER, 0.3)
+	Effects.chime(Effects.CHIME_ALARM, 0.9)
+end
+
+function handlers.GuardianLeap(p)
+	Effects.sound("boom", { position = p.position, speed = 0.4, volume = 1, range = 700 })
+end
+
+function handlers.GuardianThrow(p)
+	Effects.shell(p.from, p.to, p.duration or 1.6)
+end
+
+function handlers.GuardianStomp(p)
+	Effects.shockwave(p.position, p.radius or 70, p.windup or 0.8, p.speed or 55)
+	local _, _, root = getCharacter()
+	if root and (root.Position - p.position).Magnitude < (p.radius or 70) + 15 then
+		Hud.banner("STOMP! BE IN THE AIR WHEN THE RING REACHES YOU", DANGER, 1.6)
+	end
+end
+
+-- A patrol ship has lined you up and is coming through.
+function handlers.NavyRam(p)
+	for i = 0, 2 do
+		task.delay(i * 0.22, function()
+			Effects.sound("rise", { position = p.position, speed = 0.45, volume = 1, range = 900 })
+		end)
+	end
+	if isMe(p) then
+		Hud.banner("RAMMING SPEED! TURN HARD OR DRIFT OUT OF ITS WAY", DANGER, 2.2)
+		Hud.flash(DANGER, 0.2)
+	end
+end
+
+-- A waterspout caught something.
+function handlers.Spout(p)
+	Effects.spray(p.position, 0.8)
+	Effects.sound("whoosh", { position = p.position, speed = 0.5, volume = 1, range = 400 })
+end
+
+function handlers.CannonFire(p)
+	Effects.burst(p.position, Color3.fromRGB(255, 200, 120), 30, 28)
+	Effects.ball(p.position, Color3.fromRGB(255, 190, 90), 6, 0.2)
+	Effects.sound("boom", { position = p.position, speed = 0.9, volume = 1, range = 700 })
+	Effects.shakeAt(p.position, 0.7, 0.25, 60)
+end
+
+function handlers.KegLit(p)
+	Effects.sound("blip", { position = p.position, speed = 0.8, volume = 0.7, range = 200 })
+end
+
+function handlers.TargetHit(p)
+	Effects.ring(p.position, GOLD, 12, 0.6)
+	Effects.chime(Effects.CHIME_GOOD, 0.6)
+end
+
+function handlers.Broke(p)
+	Effects.burst(p.position, Color3.fromRGB(190, 170, 140), 40, 28)
+	Effects.sound("boom", { position = p.position, speed = 0.6, volume = 0.9, range = 500 })
+	Effects.shakeAt(p.position, 0.9, 0.5, 120)
+end
+
+function handlers.GateMove(p)
+	Effects.sound("thud", { position = p.position, speed = 0.5, volume = 1, range = 300 })
+	Effects.shakeAt(p.position, 0.5, 0.8, 80)
+end
+
+function handlers.Beacon(p)
+	Effects.sound("whoosh", { position = p.position, speed = 0.6, volume = 1, range = 500 })
+	Effects.burst(p.position, Color3.fromRGB(255, 160, 70), 40, 30)
+end
+
+-- What a boat just did, drawn where it happened. mine: this client is driving that boat, so the
+-- camera kicks too. Your own boat reports through BoatDrive the frame it happens; other
+-- players' boats arrive from the server.
+local MINI_COLORS = { mini1 = Color3.fromRGB(120, 220, 255), mini2 = Color3.fromRGB(255, 170, 70) }
+
+local function boatFx(kind, position, mine)
+	if kind == "mini1" or kind == "mini2" then
+		local strong = kind == "mini2"
+		Effects.burst(position, MINI_COLORS[kind], strong and 60 or 35, strong and 40 or 28)
+		Effects.ring(position, MINI_COLORS[kind], strong and 22 or 14, 0.4)
+		Effects.sound("rise", { position = position, speed = strong and 1.5 or 1.9, volume = 0.8, range = 300 })
+		if mine then
+			Effects.punchFov(strong and 96 or 90)
+		end
+	elseif kind == "landing" then
+		Effects.spray(position, 0.5)
+		Effects.ring(position, Color3.fromRGB(190, 255, 220), 16, 0.4)
+		if mine then
+			Effects.punchFov(88)
+			Hud.toast("Clean landing! Speed burst.")
+		end
+	elseif kind == "splash" then
+		Effects.spray(position, 0.35)
+	elseif kind == "hoop" or kind == "boost" then
+		Effects.burst(position, Color3.fromRGB(120, 255, 230), 40, 30)
+		Effects.sound("rise", { position = position, speed = 1.8, volume = 0.8, range = 300 })
+		if mine then
+			Effects.punchFov(92)
+		end
+	elseif kind == "kick" then
+		Effects.burst(position, Color3.fromRGB(255, 220, 90), 50, 34)
+		Effects.sound("whoosh", { position = position, speed = 0.8, volume = 1, range = 300 })
+		if mine then
+			Effects.punchFov(94)
+		end
+	end
+end
+
+BoatDrive.onEvent(function(kind, position, chain)
+	boatFx(kind, position, true)
+	if kind == "hoop" and (chain or 1) >= 2 then
+		-- A chain of hoops: say so (in the boat panel), and let the note climb with it.
+		Hud.chain(chain)
+		Effects.sound("blip", { speed = 1 + math.min(chain, 8) * 0.14, volume = 0.8 })
+	end
+end)
+
+-- Signs ---------------------------------------------------------------------------------------
+-- A floating sign is meant to show within its MaxDistance of the camera. Roblox measures that
+-- along the line of sight, not to the sign, so anything far off to one side still showed: from
+-- the harbor a dozen island names stood on the horizon, most of them islands a long way away.
+-- This hides every sign that is really out of range (the server tags them: WorldKit's sign()).
+task.spawn(function()
+	while true do
+		local eye = workspace.CurrentCamera.CFrame.Position
+		for _, sign in ipairs(CollectionService:GetTagged("RangedSign")) do
+			local holder = sign.Parent
+			if holder and holder:IsA("BasePart") then
+				sign.Enabled = (holder.Position - eye).Magnitude <= sign.MaxDistance
+			end
+		end
+		task.wait(0.4)
+	end
+end)
+
+-- Coins -------------------------------------------------------------------------------------
+-- The server decides who took a coin (Coins.lua). So that it feels instant at boat speed, this
+-- client hides a coin the moment its own boat or goblin is in reach; the server's answer follows
+-- a moment later and makes it real (or, rarely, the coin comes back).
+do
+	local coinsFolder = generated:WaitForChild("Coins", 600)
+	local hidden = {}
+	local nextCheck = 0
+	RunService.Heartbeat:Connect(function()
+		local t = os.clock()
+		if not coinsFolder or t < nextCheck then
+			return
+		end
+		nextCheck = t + 0.04
+		local _, humanoid, root = getCharacter()
+		if not root then
+			return
+		end
+		local position, reach = root.Position, Config.COIN_FOOT_REACH
+		local seat = humanoid.SeatPart
+		local hull = seat and seat.Parent and seat.Parent:FindFirstChild("Hull")
+		if hull then
+			position, reach = hull.Position, Config.COIN_BOAT_REACH
+		end
+		for _, coin in ipairs(coinsFolder:GetChildren()) do
+			if coin.Name == "Coin" and coin.Transparency < 0.5 and not hidden[coin] then
+				local offset = coin.Position - position
+				if
+					offset.X * offset.X + offset.Z * offset.Z <= reach * reach
+					and math.abs(offset.Y) <= Config.COIN_HEIGHT
+				then
+					hidden[coin] = true
+					coin.LocalTransparencyModifier = 1
+					task.delay(2, function()
+						hidden[coin] = nil
+						if coin.Parent then
+							coin.LocalTransparencyModifier = 0
+						end
+					end)
+				end
+			end
+		end
+	end)
+end
+
+-- Island creatures (Creatures.lua on the server). One sound and one puff per kind of thing they do.
+local CREATURE_FX = {
+	thud = { "thud", 0.7, 1, Color3.fromRGB(200, 200, 190) },
+	stone = { "thud", 0.45, 0.9, Color3.fromRGB(170, 170, 165) },
+	shatter = { "blip", 2.6, 0.9, Color3.fromRGB(215, 120, 255) },
+	chime = { "blip", 0.7, 0.8, Color3.fromRGB(215, 120, 255) },
+	erupt = { "boom", 1.5, 0.8, Color3.fromRGB(230, 200, 140) },
+	rumble = { "boom", 0.5, 0.5, Color3.fromRGB(230, 200, 140) },
+	bleat = { "rise", 1.6, 0.9, Color3.fromRGB(235, 228, 210) },
+	zap = { "blip", 3.2, 0.9, Color3.fromRGB(120, 235, 255) },
+	shriek = { "rise", 2.4, 0.9, Color3.fromRGB(96, 190, 84) },
+	whistle = { "blip", 2.9, 1, Color3.fromRGB(255, 230, 120) },
+	steam = { "splash", 1.8, 0.8, Color3.fromRGB(230, 235, 240) },
+	chill = { "blip", 0.5, 0.7, Color3.fromRGB(190, 235, 255) },
+	eye = { "rise", 0.5, 0.9, Color3.fromRGB(150, 90, 220) },
+	splash = { "splash", 1, 0.8, Color3.fromRGB(220, 240, 255) },
+}
+
+function handlers.Creature(p)
+	local fx = CREATURE_FX[p.kind]
+	if not fx or typeof(p.position) ~= "Vector3" then
+		return
+	end
+	Effects.sound(fx[1], { position = p.position, speed = fx[2], volume = fx[3], range = 320 })
+	Effects.burst(p.position, fx[4], 14, 18)
+	if p.kind == "erupt" or p.kind == "thud" then
+		Effects.shakeAt(p.position, 0.4, 0.5, 70)
+	end
+end
+
+function handlers.Coin(p)
+	if p.salvage then
+		Effects.chime(Effects.CHIME_GOOD, 0.8)
+		Effects.burst(p.position, GOLD, 30, 26)
+	else
+		Effects.sound("blip", { speed = (p.value or 1) > 1 and 2.4 or 1.9, volume = 0.55 })
+		Effects.burst(p.position, GOLD, (p.value or 1) > 1 and 14 or 6, 16)
+	end
+end
+
+function handlers.CoinsBanked(p)
+	Hud.banner(
+		string.format("PURSE CASHED IN: +%d GOLD (%d of %d from coins this raid)", p.gold, p.total, p.cap),
+		GOLD,
+		3
+	)
+	Effects.chime(Effects.CHIME_GOOD, 0.8)
+end
+
+function handlers.Run(p)
+	if p.started then
+		Hud.toast(
+			string.format(p.loop and "%s: GO! one lap, either way. par %.1f s" or "%s: GO! par %.1f s", p.name, p.par)
+		)
+		Effects.sound("blip", { speed = 1.5, volume = 0.8 })
+		return
+	end
+	local line = string.format("%s in %.1f s", p.name, p.time)
+	if p.underPar then
+		line ..= "  UNDER PAR!"
+	end
+	if p.best then
+		line ..= "  BEST TIME"
+	end
+	if (p.coins or 0) > 0 then
+		line ..= string.format("  +%d coins", p.coins)
+	end
+	Hud.banner(line, p.underPar and GOLD or Color3.fromRGB(255, 185, 80), 3)
+	Effects.chime(p.underPar and Effects.CHIME_GOOD or { 1, 1.26 }, 0.8)
+end
+
+function handlers.GatePass(p)
+	-- Our own boat's gate was already drawn by BoatDrive, unless the server is simulating it.
+	if isMe(p) then
+		return
+	end
+	local _, _, root = getCharacter()
+	local mine = BoatDrive.isDriving() and root ~= nil and (p.position - root.Position).Magnitude < 30
+	boatFx(p.kind, p.position, mine)
+end
+
+function handlers.BoatFx(p)
+	if not isMe(p) then
+		boatFx(p.kind, p.position, false)
+	end
+end
+
+function handlers.BoatPush(p)
+	BoatDrive.push(p)
+end
+
+function handlers.BoatImpact(p)
+	Effects.spray(p.position, p.power or 0.3)
+end
+
+function handlers.BoatSunk(p)
+	Effects.spray(p.position, 1)
+	Effects.sound("boom", { position = p.position, speed = 0.7, volume = 1, range = 500 })
+end
+
+function handlers.BoatBoost(p)
+	Effects.burst(p.position, Color3.fromRGB(255, 200, 120), 30, 30)
+	Effects.sound("whoosh", { position = p.position, speed = 1.2, volume = 0.9, range = 300 })
+	if isMe(p) then
+		Effects.punchFov(94)
+	end
+end
+
+function handlers.Quake(p)
+	Effects.shakeAt(p.position, 1.8, 2.2, 600)
+	Effects.sound("boom", { position = p.position, speed = 0.4, volume = 1, range = 900 })
+end
+
+function handlers.Rumble(p)
+	Effects.shakeAt(p.position, 0.7, 0.8, 300)
+	Effects.sound("boom", { position = p.position, speed = 0.45, volume = 0.8, range = 700 })
+end
+
+function handlers.Flood(p)
+	Effects.sound("splash", { position = p.position, speed = 0.5, volume = 1, range = 300 })
+	Effects.shakeAt(p.position, 0.8, 1, 120)
+end
+
+function handlers.Burn()
+	Hud.flash(Color3.fromRGB(255, 110, 40), 0.4)
+	Effects.sound("ouch", { volume = 0.9 })
 end
 
 function handlers.RaidStart()

@@ -41,10 +41,12 @@ function Heat.add(amount)
 	publish()
 end
 
--- carriersOutside: how many players carry loot outside the Hoard ward.
-function Heat.tick(dt, carriersOutside)
-	if carriersOutside > 0 then
-		Heat.add(math.min(carriersOutside * Config.HEAT_CARRY_RATE, Config.HEAT_CARRY_RATE_CAP) * dt)
+-- carryRate: heat per second from everyone carrying loot outside the Hoard ward (each carrier
+-- contributes in proportion to how hot their treasure is, so a cheap trinket stays quiet and a
+-- deep treasure escalates fast). Zero means nobody is carrying: Heat cools.
+function Heat.tick(dt, carryRate)
+	if carryRate > 0 then
+		Heat.add(math.min(carryRate, Config.HEAT_CARRY_RATE_CAP) * dt)
 	else
 		Heat.add(-Config.HEAT_DECAY_RATE * dt)
 	end

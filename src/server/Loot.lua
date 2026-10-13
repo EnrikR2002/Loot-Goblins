@@ -66,24 +66,30 @@ end
 
 local GOLD = Color3.fromRGB(255, 200, 40)
 
+-- One builder per look (Config.LOOT's `visual`). Each resizes the core and welds on decoration;
+-- the treasure's own color (def.color) tints it, so one look can serve several treasures.
+local function lighten(color, amount)
+	return color:Lerp(Color3.new(1, 1, 1), amount)
+end
+
 local builders = {
-	Lens = function(core)
+	disc = function(core, def)
 		core.Shape = Enum.PartType.Cylinder
 		core.Size = Vector3.new(1.2, 4.4, 4.4)
 		core.Material = Enum.Material.Glass
 		core.Transparency = 0.2
 		decorate(
 			core,
-			"LensGlow",
+			"DiscGlow",
 			Vector3.new(1.3, 3, 3),
 			CFrame.new(),
-			Color3.fromRGB(255, 250, 200),
+			lighten(def.color, 0.6),
 			Enum.Material.Neon,
 			Enum.PartType.Cylinder
 		)
 		decorate(
 			core,
-			"LensRim",
+			"DiscRim",
 			Vector3.new(0.8, 4.8, 4.8),
 			CFrame.new(),
 			Color3.fromRGB(190, 140, 60),
@@ -92,16 +98,16 @@ local builders = {
 		).Transparency =
 			0.5
 	end,
-	Chest = function(core)
+	chest = function(core, def)
 		core.Size = Vector3.new(4.4, 3.2, 3)
 		core.Material = Enum.Material.WoodPlanks
-		core.Color = Color3.fromRGB(130, 80, 40)
+		core.Color = def.color:Lerp(Color3.fromRGB(70, 40, 20), 0.55)
 		decorate(
 			core,
 			"Lid",
 			Vector3.new(4.6, 0.8, 3.2),
 			CFrame.new(0, 1.3, 0),
-			Color3.fromRGB(100, 60, 30),
+			core.Color:Lerp(Color3.new(0, 0, 0), 0.2),
 			Enum.Material.WoodPlanks
 		)
 		for _, x in ipairs({ -1.6, 1.6 }) do
@@ -111,17 +117,17 @@ local builders = {
 		decorate(core, "Spill", Vector3.new(3.6, 0.5, 2.4), CFrame.new(0, 1.8, 0), GOLD, Enum.Material.Neon).Transparency =
 			0.3
 	end,
-	Heart = function(core)
+	orb = function(core, def)
 		core.Shape = Enum.PartType.Ball
 		core.Size = Vector3.new(3.8, 3.8, 3.8)
 		core.Material = Enum.Material.Glass
 		core.Transparency = 0.25
 		decorate(
 			core,
-			"HeartGlow",
+			"OrbGlow",
 			Vector3.new(2.4, 2.4, 2.4),
 			CFrame.new(),
-			Color3.fromRGB(240, 150, 255),
+			lighten(def.color, 0.35),
 			Enum.Material.Neon,
 			Enum.PartType.Ball
 		)
@@ -129,25 +135,25 @@ local builders = {
 			local a = i / 4 * math.pi * 2
 			decorate(
 				core,
-				"HeartShard",
+				"OrbShard",
 				Vector3.new(0.6, 2.2, 0.6),
 				CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -1.8) * CFrame.Angles(0.5, 0, 0),
-				Color3.fromRGB(110, 230, 255),
+				lighten(def.color, 0.5),
 				Enum.Material.Neon
 			)
 		end
 	end,
-	Idol = function(core)
+	idol = function(core, def)
 		core.Size = Vector3.new(3, 4.6, 3)
 		core.Material = Enum.Material.Metal
-		core.Color = GOLD
+		core.Color = def.color
 		core.Reflectance = 0.15
 		decorate(
 			core,
 			"IdolHead",
 			Vector3.new(2.6, 2.6, 2.6),
 			CFrame.new(0, 1.2, 0),
-			GOLD,
+			def.color,
 			Enum.Material.Metal,
 			Enum.PartType.Ball
 		)
@@ -173,6 +179,119 @@ local builders = {
 			)
 		end
 	end,
+	gear = function(core, def)
+		core.Shape = Enum.PartType.Cylinder
+		core.Size = Vector3.new(1.2, 4, 4)
+		core.Material = Enum.Material.Metal
+		core.Color = def.color
+		for i = 0, 7 do
+			local a = i / 8 * math.pi * 2
+			decorate(
+				core,
+				"GearTooth",
+				Vector3.new(1.2, 1.1, 1.1),
+				CFrame.new(0, math.cos(a) * 2.2, math.sin(a) * 2.2),
+				def.color,
+				Enum.Material.Metal
+			)
+		end
+		decorate(
+			core,
+			"GearHub",
+			Vector3.new(1.6, 1.4, 1.4),
+			CFrame.new(),
+			Color3.fromRGB(255, 250, 200),
+			Enum.Material.Neon,
+			Enum.PartType.Cylinder
+		)
+	end,
+	crown = function(core, def)
+		core.Shape = Enum.PartType.Cylinder
+		core.Size = Vector3.new(1.6, 4, 4)
+		core.Material = Enum.Material.Metal
+		core.Color = def.color
+		core.Orientation = Vector3.new(0, 0, 90)
+		for i = 0, 6 do
+			local a = i / 7 * math.pi * 2
+			decorate(
+				core,
+				"CrownSpike",
+				Vector3.new(1, 1, 0.8),
+				CFrame.new(0, math.cos(a) * 2, math.sin(a) * 2) * CFrame.Angles(a, 0, 0),
+				Color3.fromRGB(255, 220, 90),
+				Enum.Material.Neon
+			)
+		end
+	end,
+	gem = function(core, def)
+		core.Size = Vector3.new(2.6, 2.6, 2.6)
+		core.Material = Enum.Material.Glass
+		core.Transparency = 0.15
+		core.Color = def.color
+		decorate(
+			core,
+			"GemFacet",
+			Vector3.new(2.6, 2.6, 2.6),
+			CFrame.Angles(math.rad(45), math.rad(45), 0),
+			lighten(def.color, 0.3),
+			Enum.Material.Glass
+		).Transparency =
+			0.2
+		decorate(core, "GemGlow", Vector3.new(1.4, 1.4, 1.4), CFrame.new(), Color3.new(1, 1, 1), Enum.Material.Neon)
+		decorate(
+			core,
+			"GemTop",
+			Vector3.new(0.7, 2, 0.7),
+			CFrame.new(0, 2.2, 0),
+			lighten(def.color, 0.5),
+			Enum.Material.Neon
+		)
+	end,
+	tooth = function(core, def)
+		core.Size = Vector3.new(2.6, 5.4, 2.6)
+		core.Material = Enum.Material.Marble
+		core.Color = def.color
+		decorate(core, "ToothTip", Vector3.new(1.5, 2.4, 1.5), CFrame.new(0, 3.6, 0), def.color, Enum.Material.Marble)
+		decorate(
+			core,
+			"ToothRoot",
+			Vector3.new(3.2, 1, 3.2),
+			CFrame.new(0, -2.8, 0),
+			Color3.fromRGB(190, 180, 150),
+			Enum.Material.Marble
+		)
+	end,
+	chalice = function(core, def)
+		core.Size = Vector3.new(1.4, 3.4, 1.4)
+		core.Material = Enum.Material.Metal
+		core.Color = Color3.fromRGB(190, 190, 205)
+		decorate(
+			core,
+			"ChaliceCup",
+			Vector3.new(3.4, 3.4, 3.4),
+			CFrame.new(0, 2.2, 0),
+			Color3.fromRGB(200, 205, 220),
+			Enum.Material.Metal,
+			Enum.PartType.Ball
+		)
+		decorate(
+			core,
+			"ChaliceFlame",
+			Vector3.new(2, 2, 2),
+			CFrame.new(0, 3.4, 0),
+			def.color,
+			Enum.Material.Neon,
+			Enum.PartType.Ball
+		)
+		decorate(
+			core,
+			"ChaliceBase",
+			Vector3.new(3, 0.6, 3),
+			CFrame.new(0, -1.8, 0),
+			Color3.fromRGB(150, 150, 165),
+			Enum.Material.Metal
+		)
+	end,
 }
 
 local function makeTag(core, def)
@@ -181,7 +300,7 @@ local function makeTag(core, def)
 	gui.Size = UDim2.fromOffset(190, 52)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, core.Size.Y / 2 + 3.2, 0)
 	gui.AlwaysOnTop = true
-	gui.MaxDistance = 1500
+	gui.MaxDistance = 3000 -- Readable across the whole map.
 	gui.LightInfluence = 0
 
 	local title = Instance.new("TextLabel")
@@ -239,6 +358,7 @@ end
 local function buildItem(def, spot, parent)
 	local model = Instance.new("Model")
 	model.Name = def.id
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent -- Light pillars and tags must show from anywhere.
 
 	local core = Instance.new("Part")
 	core.Name = "Core"
@@ -252,7 +372,8 @@ local function buildItem(def, spot, parent)
 	core.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.6, 0.2)
 	core.Parent = model
 	model.PrimaryPart = core
-	builders[def.id](core)
+	local build = builders[def.visual] or builders.orb
+	build(core, def)
 	-- The builder may have resized the core; recenter it on the spot.
 	core.CFrame = spot
 
@@ -300,6 +421,9 @@ local function buildItem(def, spot, parent)
 		pillarTop = pillarTop,
 		sparkles = sparkles,
 		state = "spot",
+		bonus = 0, -- Interest: gold added while nobody takes it.
+		unclaimedSince = 0,
+		title = tag:FindFirstChild("Title"),
 		carrier = nil,
 		weld = nil,
 		lastHolder = nil,
@@ -344,6 +468,20 @@ local function setState(item, state)
 	publish(item)
 end
 
+-- The tag and prompt show what the item is worth right now (base value + interest).
+local function setBonus(item, bonus)
+	item.bonus = bonus
+	local value = item.def.value + bonus
+	item.title.Text =
+		string.format("%s  %dg%s", string.upper(item.def.name), value, bonus > 0 and (" +" .. bonus) or "")
+	item.prompt.ObjectText = item.def.name .. " (" .. value .. " gold)"
+	refs.folders.loot:SetAttribute(item.id .. "Bonus", bonus)
+end
+
+function Loot.valueOf(item)
+	return item.def.value + item.bonus
+end
+
 local function clearCarrier(item)
 	if item.weld then
 		item.weld:Destroy()
@@ -352,7 +490,7 @@ local function clearCarrier(item)
 	local carrier = item.carrier
 	if carrier then
 		carrying[carrier] = nil
-		Movement.setCarrySpeed(carrier, nil)
+		Movement.setCarry(carrier, nil)
 		carrier:SetAttribute("CarryingLoot", nil)
 	end
 	item.carrier = nil
@@ -377,6 +515,7 @@ local function attach(item, player, root)
 	weld.Parent = core
 
 	item.weld = weld
+	item.held = nil
 	item.carrier = player
 	item.lastHolder = player
 	item.immuneUntil = t + Config.STEAL_IMMUNITY
@@ -384,7 +523,7 @@ local function attach(item, player, root)
 	carrying[player] = item
 	-- The carrier doesn't need their own tag floating over their head.
 	item.tag.PlayerToHideFrom = player
-	Movement.setCarrySpeed(player, item.def.carrySpeed)
+	Movement.setCarry(player, item.def.carrySpeed, item.def.weight)
 	player:SetAttribute("CarryingLoot", item.id)
 	setState(item, "carried")
 end
@@ -414,6 +553,9 @@ local function placeAtSpot(item)
 	core.CFrame = item.spot
 	item.model.Parent = refs.folders.loot
 	item.pillarTop.Position = item.spot.Position + Vector3.new(0, 300, 0)
+	-- Each treasure's interest clock starts at a different point, so the +1s don't all land at once.
+	item.unclaimedSince = now() - (#item.id * 17 % 60)
+	setBonus(item, 0)
 end
 
 local function returnToSpot(item, reason)
@@ -429,10 +571,12 @@ end
 
 local function bank(item, player)
 	clearCarrier(item)
+	item.bankedValue = item.def.value + item.bonus
 	item.model.Parent = nil
 	item.returnAt = now() + item.def.respawn
 	setState(item, "away")
 	Loot.Banked:Fire(item, player)
+	setBonus(item, 0)
 end
 
 local function flatUnit(v)
@@ -592,7 +736,42 @@ end
 -- Loot comes back in one piece: used between raids.
 function Loot.resetAll()
 	for _, item in ipairs(Loot.items) do
+		item.held = nil
 		returnToSpot(item, nil)
+	end
+end
+
+-- Creatures can carry treasure (Creatures.lua). The item stays "loose" the whole time: anyone can
+-- still grab it out of the creature's grip, and the bounds check and the Hoard keep working. It
+-- does not time out while held. Returns false if the item is not loose.
+function Loot.hold(item, cframe)
+	if item.state ~= "loose" then
+		return false
+	end
+	local core = item.core
+	core.Anchored = true
+	core.CanCollide = false
+	core.AssemblyLinearVelocity = Vector3.zero
+	core.AssemblyAngularVelocity = Vector3.zero
+	core.CFrame = cframe
+	item.looseSince = now()
+	item.held = true
+	return true
+end
+
+-- The creature lets go: the item falls free again, with a push.
+function Loot.letGo(item, velocity)
+	if item.state == "loose" and item.held then
+		item.held = nil
+		release(item, velocity or Vector3.zero)
+	end
+end
+
+-- A creature puts loose treasure back where it belongs. `reason` reaches Loot.Returned.
+function Loot.sendHome(item, reason)
+	if item.state == "loose" then
+		item.held = nil
+		returnToSpot(item, reason)
 	end
 end
 
@@ -636,6 +815,16 @@ function Loot.tick()
 			end
 		elseif item.state == "away" and t >= item.returnAt then
 			returnToSpot(item, "respawn")
+		elseif item.state == "spot" and enabled then
+			-- Interest: treasure nobody takes keeps growing, up to a cap.
+			-- Each step is a share of what the treasure is worth, so waiting matters for a far prize too.
+			local steps =
+				math.min(Config.LOOT_INTEREST_MAX, math.floor((t - item.unclaimedSince) / Config.LOOT_INTEREST_EVERY))
+			local earned = steps * math.max(1, math.floor(item.def.value * Config.LOOT_INTEREST_SHARE + 0.5))
+			if earned ~= item.bonus then
+				setBonus(item, earned)
+				Net.feed("The " .. item.def.name .. " is worth " .. Loot.valueOf(item) .. " gold now!", item.def.color)
+			end
 		end
 	end
 end

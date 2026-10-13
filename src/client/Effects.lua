@@ -4,14 +4,28 @@
 -- Sounds use files that ship inside every Roblox client (rbxasset://sounds/...),
 -- so they need no uploaded assets or permissions. Pitch changes turn the same
 -- few files into chimes, alarms and thuds.
+--
+-- There are two kinds of sound, and the difference matters:
+--   INTERFACE  a chime when you bank, the alarm when Heat rises. Played in your ears.
+--   WORLD      thunder, a keg, a cannon. It happened at a place: it is played there, it fades
+--              with distance, and past its range it is not played at all.
+-- From V2 to V5 thunder was played as an interface sound with a floor on its volume, so every
+-- bolt of every storm on the map boomed in every goblin's ears: about one a second with three
+-- storms out. That was the "explosions in the distance". World sounds also used Roblox's
+-- default rolloff, which never reaches silence: it cuts off dead at the maximum distance.
 local Debris = game:GetService("Debris")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
+local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+
 local Effects = {}
+
+local AUDIO = Config.AUDIO
 
 local SOUNDS = {
 	boom = "rbxasset://sounds/impact_explosion_03.mp3",
@@ -25,26 +39,132 @@ local SOUNDS = {
 
 local camera = workspace.CurrentCamera
 
--- name: key of SOUNDS. options: volume, speed, position (3D sound), range.
+-- Where this player hears from (Roblox's default listener is the camera).
+local function listener()
+	return camera.CFrame.Position
+end
+
+-- How far this player is from a point in the world.
+function Effects.distanceTo(position)
+	return (listener() - position).Magnitude
+end
+
+-- Sound groups: one for the world, one for the interface. The world's has a compressor, so a
+-- pile of blasts at once (a barrage, a chain of powder barrels) is held down instead of adding up.
+local function soundGroup(name)
+	local old = SoundService:FindFirstChild(name)
+	if old then
+		old:Destroy()
+	end
+	local group = Instance.new("SoundGroup")
+	group.Name = name
+	group.Parent = SoundService
+	return group
+end
+
+local worldGroup = soundGroup("LootGoblinsWorld")
+local interfaceGroup = soundGroup("LootGoblinsInterface")
+do
+	local squash = Instance.new("CompressorSoundEffect")
+	squash.Threshold = AUDIO.COMPRESS_THRESHOLD
+	squash.Ratio = AUDIO.COMPRESS_RATIO
+	squash.Attack = 0.005
+	squash.Release = 0.2
+	squash.Parent = worldGroup
+end
+
+-- How loud a world sound is at a distance, from 1 (inside `near`) to 0 (at `range` and beyond).
+-- It is the shape Roblox's InverseTapered rolloff has: an inverse falloff that is pulled down to
+-- nothing as the range runs out. Used to decide what is worth playing; Roblox does the mixing.
+local function heardAt(distance, near, range)
+	if distance <= near then
+		return 1
+	elseif distance >= range then
+		return 0
+	end
+	local taper = (range - distance) / (range - near)
+	return near / distance * taper * taper
+end
+Effects.heardAt = heardAt
+
+-- At most VOICE_LIMIT world sounds of one kind may start within VOICE_WINDOW seconds. One more
+-- only gets in if it would be louder here than all of those (the keg at your feet still sounds
+-- in the middle of a distant barrage).
+local voices = {} -- sound name -> { { at, loudness }, ... }
+
+local function admit(name, loudness)
+	local now = os.clock()
+	local list = voices[name]
+	if not list then
+		list = {}
+		voices[name] = list
+	end
+	local loudest = 0
+	for i = #list, 1, -1 do
+		if now - list[i].at > AUDIO.VOICE_WINDOW then
+			table.remove(list, i)
+		else
+			loudest = math.max(loudest, list[i].loudness)
+		end
+	end
+	if #list >= AUDIO.VOICE_LIMIT and loudness <= loudest then
+		return false
+	end
+	table.insert(list, { at = now, loudness = loudness })
+	return true
+end
+
+-- name: key of SOUNDS. options:
+--   volume, speed
+--   position   makes it a WORLD sound, played at that point
+--   range      silent from this distance on (default AUDIO.RANGE): beyond it nothing is played
+--   near       full volume inside this distance (default AUDIO.NEAR)
+--   muffle     true: the far half of the range loses its treble, like distant thunder
+-- Without a position it is an INTERFACE sound.
 function Effects.sound(name, options)
 	options = options or {}
-	local sound = Instance.new("Sound")
-	sound.SoundId = SOUNDS[name]
-	sound.Volume = options.volume or 0.6
-	sound.PlaybackSpeed = options.speed or 1
-	if options.position then
-		local holder = Instance.new("Attachment")
-		holder.Name = "SoundAt"
-		holder.Position = options.position
-		holder.Parent = workspace.Terrain
-		sound.RollOffMaxDistance = options.range or 350
-		sound.RollOffMinDistance = 15
-		sound.Parent = holder
-		Debris:AddItem(holder, 5)
-	else
+	local volume = options.volume or 0.6
+	if not options.position then
+		local sound = Instance.new("Sound")
+		sound.SoundId = SOUNDS[name]
+		sound.Volume = volume
+		sound.PlaybackSpeed = options.speed or 1
+		sound.SoundGroup = interfaceGroup
 		sound.Parent = SoundService
 		Debris:AddItem(sound, 5)
+		sound:Play()
+		return
 	end
+	local near, range = options.near or AUDIO.NEAR, options.range or AUDIO.RANGE
+	local distance = (listener() - options.position).Magnitude
+	local loudness = volume * heardAt(distance, near, range)
+	if loudness < AUDIO.FLOOR or not admit(name, loudness) then
+		return -- Too far to hear, or one too many at once: not played at all.
+	end
+	local holder = Instance.new("Attachment")
+	holder.Name = "SoundAt"
+	holder.Position = options.position
+	holder.Parent = workspace.Terrain
+	local sound = Instance.new("Sound")
+	sound.SoundId = SOUNDS[name]
+	sound.Volume = volume
+	sound.PlaybackSpeed = options.speed or 1
+	sound.RollOffMode = Enum.RollOffMode.InverseTapered
+	sound.RollOffMinDistance = near
+	sound.RollOffMaxDistance = range
+	sound.SoundGroup = worldGroup
+	if options.muffle then
+		local far = math.clamp((distance - near) / (range - near) * 2, 0, 1)
+		if far > 0.05 then
+			local muffle = Instance.new("EqualizerSoundEffect")
+			muffle.LowGain = 0
+			muffle.MidGain = -10 * far
+			muffle.HighGain = -30 * far
+			muffle.Parent = sound
+		end
+	end
+	sound.Parent = holder
+	Debris:AddItem(holder, 5)
 	sound:Play()
 end
 
@@ -133,15 +253,21 @@ function Effects.burst(position, color, count, speed)
 	Debris:AddItem(holder, 2)
 end
 
--- Visual-only explosion (no push, nothing breaks).
-function Effects.explosion(position, radius)
+-- Visual-only explosion (no push, nothing breaks). silent: something else is its sound (a bolt
+-- of lightning has its thunder).
+function Effects.explosion(position, radius, silent)
+	if Effects.distanceTo(position) > AUDIO.DRAW_BLAST then
+		return -- Across the sea: nothing to see or hear from here.
+	end
 	local explosion = Instance.new("Explosion")
 	explosion.Position = position
 	explosion.BlastRadius = radius or 6
 	explosion.BlastPressure = 0
 	explosion.DestroyJointRadiusPercent = 0
 	explosion.Parent = workspace
-	Effects.sound("boom", { position = position, volume = 0.8 })
+	if not silent then
+		Effects.sound("boom", { position = position, volume = 0.8, near = AUDIO.BLAST_NEAR, range = AUDIO.BLAST_RANGE })
+	end
 end
 
 -- Camera shake --------------------------------------------------------------------
@@ -209,9 +335,309 @@ function Effects.setSpirit(active)
 	}):Play()
 end
 
+-- Speed widens the field of view (running, sprinting, a boat at full tilt); punches (a dash, a
+-- launch) kick it wider for a moment and settle back. One writer, every frame, so the two
+-- never fight.
+local BASE_FOV = 70
+local speedFov, shownFov, punch = BASE_FOV, BASE_FOV, 0
+
+-- speed: how fast the local character is travelling, in studs/s.
+function Effects.setSpeed(speed)
+	speedFov = BASE_FOV + 24 * (1 - math.exp(-math.max(0, speed - 22) / 70))
+end
+
 function Effects.punchFov(fov)
-	camera.FieldOfView = fov
-	TweenService:Create(camera, TweenInfo.new(0.4, Enum.EasingStyle.Quint), { FieldOfView = 70 }):Play()
+	punch = math.max(punch, fov - shownFov)
+end
+
+RunService.RenderStepped:Connect(function(dt)
+	shownFov += (speedFov - shownFov) * (1 - math.exp(-dt * 5))
+	punch *= math.exp(-dt * 4.5)
+	camera.FieldOfView = shownFov + punch
+end)
+
+-- A grapple rope from a moving part to a point, for a few seconds. The point can ride another
+-- part (a boat): pass that part and the hook's position in its space. Returns the holder so
+-- the caller can cut it early.
+function Effects.rope(part, to, color, duration, hookPart, hookOffset)
+	local holder = Instance.new("Attachment")
+	holder.Name = "GrappleRope"
+	holder.Parent = part
+	local anchor = Instance.new("Attachment")
+	anchor.Name = "GrappleHook"
+	if hookPart and hookPart.Parent then
+		anchor.Parent = hookPart
+		anchor.Position = hookOffset or Vector3.zero
+	else
+		anchor.Parent = workspace.Terrain
+		anchor.WorldPosition = to
+	end
+	local beam = Instance.new("Beam")
+	beam.Attachment0 = holder
+	beam.Attachment1 = anchor
+	beam.Color = ColorSequence.new(color)
+	beam.LightEmission = 0.6
+	beam.FaceCamera = true
+	beam.Width0 = 0.35
+	beam.Width1 = 0.2
+	beam.Segments = 1
+	beam.Parent = holder
+	-- The hook end lives in Terrain, so it goes with the holder.
+	holder.Destroying:Connect(function()
+		anchor:Destroy()
+	end)
+	Debris:AddItem(holder, duration or 2)
+	return holder
+end
+
+-- A dash: streaks trailing back from where it started. direction is nil for another player's
+-- dash (we only know where it began), which draws a puff instead.
+function Effects.dash(position, direction)
+	local color = Color3.fromRGB(190, 235, 255)
+	if direction then
+		local side = Vector3.new(-direction.Z, 0, direction.X)
+		for _, offset in ipairs({ -1.4, 0, 1.4 }) do
+			local from = position + side * offset + Vector3.new(0, offset == 0 and 1 or -0.5, 0)
+			Effects.line(from - direction * 7, from + direction * 5, color, 0.35, 0.22)
+		end
+	else
+		Effects.ring(position - Vector3.new(0, 2.5, 0), color, 7, 0.3)
+	end
+	Effects.sound("whoosh", { position = position, speed = 1.9, volume = 0.55, range = 120 })
+end
+
+-- An air jump: a ring kicked off under the feet.
+function Effects.airJump(position)
+	Effects.ring(position - Vector3.new(0, 2.8, 0), Color3.fromRGB(190, 235, 255), 6, 0.3)
+	Effects.sound("whoosh", { position = position, speed = 1.3, volume = 0.45, range = 100 })
+end
+
+-- Danger markers ------------------------------------------------------------------------------
+-- A marked circle on the ground: a faint full disc, with a bright one that grows to fill it. When
+-- it is full, the blast lands. Every telegraphed attack in the game (the Guardian's leap, Navy
+-- shells, lava bombs, lightning, tentacles) uses this, so one visual language means "get out".
+local MARKER_COLORS = {
+	stomp = Color3.fromRGB(255, 150, 60),
+	lava = Color3.fromRGB(255, 100, 30),
+	kraken = Color3.fromRGB(190, 110, 255),
+	lightning = Color3.fromRGB(215, 230, 255),
+}
+
+function Effects.marker(position, radius, duration, color, style)
+	if Effects.distanceTo(position) > AUDIO.DRAW_MARKER then
+		return -- Too far to matter to this player, or to be seen.
+	end
+	color = color or MARKER_COLORS[style] or Color3.fromRGB(255, 80, 60)
+	local flat = CFrame.new(position + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	local base = fxPart(Vector3.new(0.3, radius * 2, radius * 2), flat, color, Enum.PartType.Cylinder)
+	base.Transparency = 0.8
+	local fill = fxPart(Vector3.new(0.4, 1, 1), flat, color, Enum.PartType.Cylinder)
+	fill.Transparency = 0.35
+	TweenService
+		:Create(
+			fill,
+			TweenInfo.new(duration, Enum.EasingStyle.Linear),
+			{ Size = Vector3.new(0.4, radius * 2, radius * 2) }
+		)
+		:Play()
+	Debris:AddItem(fill, duration + 0.15)
+	Debris:AddItem(base, duration + 0.15)
+	-- A faint column so a marker far away still reads.
+	local column =
+		fxPart(Vector3.new(radius * 0.25, 60, radius * 0.25), CFrame.new(position + Vector3.new(0, 30, 0)), color)
+	column.Transparency = 0.75
+	Debris:AddItem(column, duration + 0.15)
+	Effects.sound("blip", { position = position, speed = 1.4, volume = 0.5, range = 250 })
+end
+
+-- The Guardian's stomp. While its fists are up the whole reach of the ring shows faintly; then
+-- the ring itself races out along the ground. Its leading edge is what you jump.
+function Effects.shockwave(position, radius, windup, speed)
+	local color = Color3.fromRGB(255, 150, 60)
+	local flat = CFrame.new(position + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	local travel = radius / speed
+	local reach = fxPart(Vector3.new(0.3, radius * 2, radius * 2), flat, color, Enum.PartType.Cylinder)
+	reach.Transparency = 0.9
+	Debris:AddItem(reach, windup + travel)
+	Effects.sound("blip", { position = position, speed = 0.5, volume = 1, range = 300 })
+	task.delay(windup, function()
+		local ring = fxPart(Vector3.new(1.4, 2, 2), flat, color, Enum.PartType.Cylinder)
+		ring.Transparency = 0.4
+		TweenService:Create(
+			ring,
+			TweenInfo.new(travel, Enum.EasingStyle.Linear),
+			{ Size = Vector3.new(1.4, radius * 2, radius * 2), Transparency = 0.82 }
+		):Play()
+		Debris:AddItem(ring, travel + 0.1)
+		Effects.sound("boom", { position = position, speed = 0.5, volume = 1, range = 400 })
+		Effects.shakeAt(position, 1.6, 0.5, 150)
+	end)
+end
+
+-- The sky lighting up for a moment. strength 0 to 1. (The resting colour is remembered once per
+-- flash and restored by the last one to end: V5 let each bolt restore whatever it had found, so
+-- two bolts close together could leave the world lit.)
+local flashing, flashToken, restAmbient = false, 0, nil
+
+local function skyFlash(strength)
+	if strength < 0.03 then
+		return
+	end
+	if not flashing then
+		restAmbient = Lighting.Ambient
+		flashing = true
+	end
+	flashToken += 1
+	local token = flashToken
+	Lighting.Ambient = restAmbient:Lerp(Color3.fromRGB(230, 235, 255), strength)
+	task.delay(0.12, function()
+		if token == flashToken then
+			Lighting.Ambient = restAmbient
+			flashing = false
+		end
+	end)
+end
+
+-- Thunder: a WORLD sound at the strike, late by the time sound takes to arrive. Loud inside the
+-- storm, a muffled rumble as one comes near, and nothing at all from a storm across the sea.
+function Effects.thunder(position)
+	local distance = Effects.distanceTo(position)
+	if distance >= AUDIO.THUNDER_RANGE then
+		return
+	end
+	task.delay(math.min(distance / 340, 3), function()
+		Effects.sound("boom", {
+			position = position,
+			speed = 0.5,
+			volume = 1,
+			near = AUDIO.THUNDER_NEAR,
+			range = AUDIO.THUNDER_RANGE,
+			muffle = true,
+		})
+	end)
+end
+
+-- Lightning: a jagged bolt from the clouds, a flash of sky and thunder that arrives late.
+function Effects.bolt(position)
+	local distance = Effects.distanceTo(position)
+	if distance <= AUDIO.DRAW_BOLT then
+		local top = position + Vector3.new(math.random(-30, 30), 320, math.random(-30, 30))
+		local from = top
+		for i = 1, 8 do
+			local nextPoint = position:Lerp(top, 1 - i / 8)
+				+ Vector3.new(math.random(-14, 14), 0, math.random(-14, 14)) * (i < 8 and 1 or 0)
+			Effects.line(from, nextPoint, Color3.fromRGB(235, 240, 255), 2.2, 0.28)
+			from = nextPoint
+		end
+		Effects.ball(position, Color3.fromRGB(235, 240, 255), 18, 0.3)
+	end
+	-- The sky flickers for a storm in the distance and goes white for one overhead.
+	skyFlash(math.clamp(1 - (distance - AUDIO.FLASH_FULL) / (AUDIO.FLASH_NONE - AUDIO.FLASH_FULL), 0, 1))
+	Effects.thunder(position)
+	Effects.shakeAt(position, 0.8, 0.3, 90)
+end
+
+-- A signal flare from a carrier: a rocket, a burst, and a beam of light for a few seconds.
+function Effects.flare(position, color, duration)
+	local top = position + Vector3.new(0, 110, 0)
+	Effects.line(position, top, color, 0.7, 0.8)
+	task.delay(0.55, function()
+		Effects.burst(top, color, 60, 34)
+		Effects.ball(top, color, 12, 0.5)
+		Effects.sound("rise", { position = top, speed = 1.7, volume = 0.6, range = 600 })
+	end)
+	local beam = fxPart(Vector3.new(2.6, 420, 2.6), CFrame.new(position + Vector3.new(0, 210, 0)), color)
+	beam.Transparency = 0.45
+	fadeOut(beam, duration or 3.5, { Size = Vector3.new(0.4, 420, 0.4) })
+end
+
+-- A Navy or Guardian shell arcing in over the marker.
+function Effects.shell(from, to, duration)
+	local ball = fxPart(Vector3.new(2.6, 2.6, 2.6), CFrame.new(from), Color3.fromRGB(40, 40, 46), Enum.PartType.Ball)
+	ball.Material = Enum.Material.Metal
+	ball.Transparency = 0
+	local lift = math.max(40, (to - from).Magnitude * 0.25)
+	local started = os.clock()
+	local connection
+	connection = RunService.RenderStepped:Connect(function()
+		local a = math.clamp((os.clock() - started) / duration, 0, 1)
+		ball.Position = from:Lerp(to, a) + Vector3.new(0, math.sin(math.pi * a) * lift, 0)
+		if a >= 1 then
+			connection:Disconnect()
+			ball:Destroy()
+		end
+	end)
+	Effects.sound("whoosh", { position = from, speed = 0.7, volume = 0.9, range = 500 })
+	Effects.burst(from, Color3.fromRGB(255, 220, 160), 18, 14)
+end
+
+-- A tentacle slamming up out of the sea at a marker.
+function Effects.tentacle(position, delay)
+	task.delay(delay, function()
+		local color = Color3.fromRGB(110, 60, 150)
+		for i = 0, 5 do
+			local seg = fxPart(
+				Vector3.new(7 - i * 0.8, 9, 7 - i * 0.8),
+				CFrame.new(position + Vector3.new(math.sin(i) * 3, 3 + i * 8, math.cos(i) * 3)),
+				color,
+				Enum.PartType.Ball
+			)
+			seg.Material = Enum.Material.SmoothPlastic
+			seg.Transparency = 0.05
+			TweenService:Create(
+				seg,
+				TweenInfo.new(0.9, Enum.EasingStyle.Quad),
+				{ Transparency = 1, Position = seg.Position - Vector3.new(0, 24, 0) }
+			):Play()
+			Debris:AddItem(seg, 1)
+		end
+		Effects.burst(position, Color3.fromRGB(190, 230, 255), 40, 30)
+		Effects.sound("splash", { position = position, speed = 0.6, volume = 1, range = 500 })
+	end)
+end
+
+-- Fireworks over the Hoard when someone banks.
+function Effects.firework(position, color)
+	local top = position + Vector3.new(math.random(-14, 14), 70 + math.random(0, 30), math.random(-14, 14))
+	Effects.line(position + Vector3.new(0, 8, 0), top, color, 0.5, 0.45)
+	task.delay(0.4, function()
+		Effects.burst(top, color, 70, 36)
+		Effects.burst(top, Color3.new(1, 1, 1), 30, 22)
+		Effects.sound("boom", { position = top, speed = 1.8, volume = 0.5, range = 500 })
+	end)
+end
+
+-- Spray and a thud when a boat hits something, a splash when one is wrecked.
+function Effects.spray(position, power)
+	Effects.burst(
+		position + Vector3.new(0, 2, 0),
+		Color3.fromRGB(235, 245, 255),
+		math.floor(20 + power * 50),
+		20 + power * 20
+	)
+	Effects.sound("splash", { position = position, speed = 1 - power * 0.3, volume = 0.5 + power * 0.5, range = 300 })
+	Effects.shakeAt(position, power * 1.2, 0.3, 80)
+end
+
+-- A flock of gulls bursting off the island.
+function Effects.gulls(position)
+	for _ = 1, 14 do
+		local gull = fxPart(
+			Vector3.new(2.4, 0.2, 1),
+			CFrame.new(position + Vector3.new(math.random(-6, 6), 2, math.random(-6, 6))),
+			Color3.new(1, 1, 1)
+		)
+		gull.Material = Enum.Material.SmoothPlastic
+		gull.Transparency = 0
+		local goal = gull.Position + Vector3.new(math.random(-60, 60), math.random(50, 110), math.random(-60, 60))
+		TweenService:Create(gull, TweenInfo.new(3, Enum.EasingStyle.Sine), { Position = goal, Transparency = 1 }):Play()
+		Debris:AddItem(gull, 3.2)
+	end
+	for i = 0, 3 do
+		task.delay(i * 0.25, function()
+			Effects.sound("whoosh", { position = position, speed = 2.4, volume = 0.5, range = 400 })
+		end)
+	end
 end
 
 return Effects

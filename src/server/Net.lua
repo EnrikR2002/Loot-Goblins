@@ -1,5 +1,7 @@
 -- Remotes and the one server -> client broadcast channel.
--- Clients only ever send intent ("throw", "grapple here", "Poltergoblin").
+-- Clients only ever send intent ("throw", "grapple here", "Poltergoblin",
+-- "Shift is held").
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Net = {}
@@ -22,6 +24,14 @@ end
 Net.Throw = remote("ThrowRequest")
 Net.Grapple = remote("GrappleRequest")
 Net.Poltergoblin = remote("PoltergoblinRequest")
+Net.Sprint = remote("SprintRequest")
+Net.Move = remote("MoveRequest") -- "dash" | "airjump": pay stamina for a move the client played.
+Net.BoatBoost = remote("BoatBoostRequest")
+Net.BoatDrift = remote("BoatDriftRequest") -- (held): the driver's drift key.
+Net.BoatFx = remote("BoatFxRequest") -- (kind): the driver's boat did something worth showing.
+Net.BoatBoard = remote("BoatBoardRequest") -- A grapple reeled the player onto a boat: seat them.
+Net.Cannon = remote("CannonRequest")
+Net.Keg = remote("KegRequest")
 Net.GameEvent = remote("GameEvent")
 folder.Parent = ReplicatedStorage
 
@@ -32,6 +42,20 @@ end
 
 function Net.send(player, kind, payload)
 	Net.GameEvent:FireClient(player, kind, payload or {})
+end
+
+-- Something that happened at a place, sent only to the goblins within `range` of it (and to
+-- anyone with no body just now: their client decides). A storm on the far side of the sea is
+-- nobody's business at home. The client still decides what to draw and play from where its own
+-- camera is, so `range` only has to be generous.
+function Net.broadcastNear(position, range, kind, payload)
+	for _, player in ipairs(Players:GetPlayers()) do
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if not root or (root.Position - position).Magnitude <= range then
+			Net.GameEvent:FireClient(player, kind, payload or {})
+		end
+	end
 end
 
 -- The big banner at the top of everyone's screen.
