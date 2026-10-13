@@ -29,9 +29,9 @@ class MemoryTests(unittest.TestCase):
 
     def game(self):
         memory.write(self.root / "src/server/Main.lua", "return {}\n")
-        memory.write(self.root / "docs/game-guide/identity.md", "# Current game\nA playable route game.\n")
-        memory.write(self.root / "docs/AI_CONTEXT.md", "# Current state\nHuman fun is not tested.\n")
-        config = {"schema_version": 1, "game_name": "Test Game", "repository": "Example/Game", "knowledge_repository": "Example/Notebook", "reviewed_gameplay_ref": "a" * 40, "chapters": ["docs/game-guide/identity.md"], "appendices": ["docs/AI_CONTEXT.md"], "source_baseline": memory.source_hashes(self.root)}
+        memory.write(self.root / "docs/GAME_DESIGN.md", "# Current game\nA playable route game.\n")
+        memory.write(self.root / "docs/PROTOTYPE_TEST.md", "# Current state\nHuman fun is not tested.\n")
+        config = {"schema_version": 1, "game_name": "Test Game", "repository": "Example/Game", "knowledge_repository": "Example/Notebook", "reviewed_gameplay_ref": "a" * 40, "chapters": ["docs/GAME_DESIGN.md"], "appendices": ["docs/PROTOTYPE_TEST.md"], "source_baseline": memory.source_hashes(self.root)}
         memory.write(self.root / "docs/game-guide/manifest.json", memory.json_text(config))
         memory.write(self.root / "docs/team-memory-snapshot.json", memory.json_text(self.snapshot))
 
@@ -138,7 +138,7 @@ class MemoryTests(unittest.TestCase):
 
     def test_document_windows_newlines_do_not_make_ci_stale(self):
         self.game(); memory.export(self.root)
-        chapter = self.root / "docs/game-guide/identity.md"
+        chapter = self.root / "docs/GAME_DESIGN.md"
         chapter.write_bytes(chapter.read_bytes().replace(b"\n", b"\r\n"))
         memory.export(self.root, check=True)
 

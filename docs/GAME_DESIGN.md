@@ -1,10 +1,44 @@
-# Loot Goblins — AI context
+# Loot Goblins: game design and current systems
 
-Master context for a Claude Code or Codex session that opens this repository with no history. It explains what the game is, how the code works, and how we build and test it.
+This is the single editable source for this game's vision, current mechanics, controls, architecture, design decisions, bugs, and limitations. Read AGENTS.md for team rules. Current code and dated evidence determine what is implemented; ideas and historical proposals do not authorize new features.
 
-**`AGENTS.md` holds the rules** (branching, approval, safety). This file is background only. If they ever disagree, `AGENTS.md` wins, and you should fix this file.
+The AI updates affected sections here, records task evidence under docs/reports/, and runs the existing guide export. Generated root GAME_GUIDE.md packages this document, exact tuning, the shared quality rubric and lessons, and full dated reports into one attachment for another AI. Do not edit that generated file. The manifest and freshness files under docs/game-guide/ are export metadata, not additional game descriptions.
 
-Shared-memory rollout: root `GAME_GUIDE.md` is the generated detailed standalone game description, with the full current catalogue, exact tuning/geography, shared rubric/lessons, and full dated report history. Editable narrative lives under `docs/game-guide/`; this existing context remains the current systems record. `docs/SHARED_MEMORY.md` explains reading and automatically contributing attributed lessons to the private team notebook. Offline freshness checks compare saved inputs/source fingerprints; they do not certify code inspection or gameplay. No gameplay or release decision changed in this rollout.
+## Loot Goblins V6: identity, journey, and current scope
+
+Loot Goblins is a social possession-and-escape game: steal ridiculous treasure from dangerous islands and other players, then somehow get it home. The desired rhythm is explore with awe, take something valuable, feel the world react, improvise an escape, bank the reward, and choose another risk. Fast movement and boat handling should be enjoyable before a reward appears. Danger challenges that power rather than restoring difficulty by making ordinary travel sluggish.
+
+This guide describes the complete V6 code at gameplay revision 8f399c7, including the sprint/grapple, V2, V3, V4, and V5 development history. Enrik explicitly approved integrating this latest version and the shared-memory system into main on October 12, 2026. PR #14 is the integration record; consult GitHub for its actual merge state. The portable guide retains historical reports as history, while these current chapters and the current context describe the latest code. Approval to integrate does not certify outstanding gameplay tests.
+
+### The first raid from a player's perspective
+
+The world generates when Play starts, taking several seconds on the reported development machine; players are loaded after world construction. Goblin Cove is home. The Hoard is the visible gold ring/beam where treasure and coin proceeds are banked. Home also has boats, keg access, a practice cannon, movement toys, and a harbor jump. The intended introductory line is the harbor jump, the teal Gate Run, and the passage through the reef to the Crossroads. Home Bay deliberately leaves calm water and visual breathing room.
+
+The near islands offer inexpensive short trips. Middle destinations add longer journeys and characteristic trouble. Far islands offer larger treasure with heavier carrying costs and harder return routes. A treasure pillar/name and the map/compass help choose a destination; the physical geography gives currents, reef passes, cover, high ground, and alternate routes that influence pursuit. A thief normally carries one treasure at a time. The personal decision is which treasure is worth exposing oneself for, and how to return without being robbed or stopped by the world.
+
+A raid lasts nine minutes with a short intermission; the first intermission is six seconds. Banking adds Gold for that raid. At its end, every player tied for the highest positive Gold receives a Win; a zero-score raid has no winner. Gold resets next raid, and the world resets its systems. Wins are session values, not saved progression. Loose or carried treasure not banked in time does not become score. Death drops carried treasure and respawns the player at home after three seconds, allowing others to recover the object.
+
+Taking treasure triggers its own trouble and adds shared Heat. Continuing to carry outside the home ward raises Heat; when nobody carries, Heat cools. Other players and world threats create exposure. The intended social result is improvised chases, theft, escape, group reactions, and another raid. Existing solo mechanical observations and some human feedback do not establish full multiplayer fun or fairness.
+
+### Player verbs and tradeoffs
+
+Run, sprint, dash, air-jump, grapple, board, steer, brake, drift, boost, anchor, steal, throw, swing, light a beacon, raise a chain, launch a keg, fire a cannon, hide, and bank. Not every verb needs a new system. The shared E key favors an actual visible prompt over spirit casting; C means dash on foot and drift while driving.
+
+Running at 28 is free. Stamina pays for sprinting and exceptional moves; carrying treasure increases their costs and slightly slows the carrier. A carrier can defend themselves with a weaker, slower, shorter, tiring sword swing, and can grapple to surfaces/boats but cannot use the grapple to steal another treasure. Boats trade speed, durability, draft, handling, capacity, and cannon access. Geography can separate a shallow-water player route from a deep-draft Navy route. A beacon diverts nearby Navy, and the fort chain prevents new departures from its harbor for a period.
+
+The score remains treasure. Coins encourage taking a skillful or interesting route, repair a little hull, and refund some boost cooldown; ten convert to one Gold when banked, with at most six Gold from coins in a raid. Timed courses provide a different movement challenge and a local best-time sign. Their presence should not turn every quiet crossing into a course.
+
+### What has evolved through feedback
+
+V2's world was worth exploring but travel and danger felt weak. V3 made movement and boats more powerful and changed threats to intercept, commit, and leave actionable tells. V4 enlarged and differentiated the world; a subsequent human playtest found the sea too spread out. V5 brought it closer and added inhabitants and sea activities; its feedback praised the map, boats, and creatures but found hoops/coins crowded and oddly placed. V6 rearranged the same offers, measured routes, and repaired global thunder. These are attributed historical findings, not controlled causal experiments or a guarantee of broad player preference.
+
+V6's report was later amended after Ninety discovered the blocked Skull Chalice approach. The source now contains the ladder/hatch repair. Its earlier 'nobody has played V6' wording describes an earlier checkpoint; it must not erase that later feedback. Broader V6 layout, sound-by-ear, multiplayer, mobile, and balance acceptance remain outstanding.
+
+### Current guardrails and absent features
+
+No shops, XP, pet system, rarity economy, monetization, trading, boat upgrade tree, saved progress, or production architecture is implemented or authorized by this documentation task. The original long-term design vision appears later, explicitly as future direction. Rough geometry, primitive creature models, built-in sounds, and incomplete advertised input coverage are prototype compromises; they are not proof of release readiness.
+
+An outside AI should deepen possession and escape, preserve movement agency, compare ideas against existing verbs, distinguish current V6 from historical configurations, and propose a small experiment behind the active gate. A mechanic rejected for another game is not automatically rejected here. A larger map, more inhabitants, or permanent progression requires an actual reason and human scope approval.
 
 ## Current approved version and development history
 
@@ -32,7 +66,7 @@ The loop: **explore (awe) → steal treasure → the world reacts → escape (pa
 
 The design principle is **active novelty**: surprises the player participates in (a geyser to time, a ring to jump, a charge to dodge, a storm to steer around), not things that just happen on screen.
 
-`docs/DESIGN_THESIS.txt` holds the long-term vision. That vision is **not** permission to build shops, XP, pets, monetization, rarity tables, trading, or saved progress.
+`docs/GAME_DESIGN.md` holds the long-term vision. That vision is **not** permission to build shops, XP, pets, monetization, rarity tables, trading, or saved progress.
 
 ## Core loop
 
@@ -252,65 +286,6 @@ Integration points new code must respect:
 - **What clients send:** intent only ("dash", "boost", "fire cannon X at point P", "throw keg at P", grapple aim, "seat me on the boat you hooked"). The server checks range, cooldown, stamina, finiteness and that the cannon/boat exists. The client never says who it hit, how much damage, or which boat to board.
 - **Known gap:** a modified client driving a boat can gain a little more than a boost's worth of speed inside the server's margins, turn tighter than the physics allow, and avoid crash damage. Blasts, shells, mines and sinking still apply. `BOAT_CLIENT_PHYSICS = false` closes the gap at the cost of steering lag.
 
-## Important files
-
-| File | Why it matters |
-| --- | --- |
-| `AGENTS.md` | Rules for every AI session. Read it first. |
-| `README.md` | Player-facing summary and controls |
-| `docs/reports/2026-10-12-v6-ocean-flow-audio.md` | V6: what was wrong with V5's layout, the layout rules, every lane and course with its measured time, the sound fault and its fix, before and after maps and pictures, tests, limits and the human playtest checklist |
-| `docs/reports/2026-10-12-v5-living-threats-playful-seas.md` | V5: the compressed layout and travel table, the runs, coins, the creature roster and each one's counterplay, measurements, tests, limits and the human playtest checklist |
-| `docs/reports/2026-10-12-v4-living-archipelago.md` | V4: the layout and why, what each island gained, the travel table, measurements, tests, limits and the human playtest checklist |
-| `docs/reports/2026-10-11-v3-power-speed-peril.md` | V3 reasoning, before/after numbers, measurements, tests, limits |
-| `docs/reports/2026-10-08-v2-archipelago.md` | V2 design reasoning and its checklist |
-| `docs/reports/2026-10-07-sprint-grapple-bigger-map.md` | Sprint, grapple and the earlier map |
-| `docs/reports/2026-10-06-vertical-slice-foundation.md` | The vertical slice's reasoning |
-| `docs/WORKSTATION.md` | Setup, daily commands, Studio verification, troubleshooting |
-| `docs/DESIGN_THESIS.txt` | Long-term vision (not current scope) |
-| `Play Loot Goblins.bat`, `scripts/play.ps1` | One-click play for Ethan and Ninety |
-| `scripts/bootstrap.ps1`, `dev.ps1`, `check.ps1`, `common.ps1` | Tool install, Rojo build/serve, checks |
-| `rokit.toml` | Pinned Rojo 7.7.1, StyLua 2.5.2, Selene 0.32.0 |
-
-## Development workflow
-
-`AGENTS.md` is the authority. In short: sync `main`, then work on one short-lived task branch. Run checks and Studio tests, open a PR, and **never merge without explicit human approval**. PR descriptions follow `.github/pull_request_template.md`.
-
-- **Ethan and Ninety do not use terminals.** They double-click `Play Loot Goblins.bat`. You run the Git steps and `./scripts/play.ps1` for them.
-- `./scripts/check.ps1 -Fix` runs StyLua, Selene, a Rojo build and `git diff --check`. CI runs the same script.
-- `check.ps1` and `dev.ps1` rebuild `build/LootGoblinsTest001.rbxlx`, a disposable output.
-
-## Rojo and Studio MCP
-
-- Rojo serves on `127.0.0.1:34872` (our other games use other ports; with several Studio windows open, connect each plugin to the right port by hand).
-- **The Rojo plugin drops its connection each time play mode starts or stops, and Rojo 7.7.1 can crash when a watched file vanishes mid-write.** Run `rojo serve` in a restart loop, reconnect the plugin after each play session, and confirm `#Script.Source` matches the file before trusting a test.
-- **The plugin's Connect button cannot be pressed through MCP.** If the human is away and the plugin is not connected, an Edit-mode `execute_luau` can set `Source` on the mapped scripts itself (the V3 session pulled `src/` from a helper on the loopback address; that needs `HttpService.HttpEnabled` in the disposable built place, switched off again afterwards). Compare sources before trusting a test either way.
-- **Studio caps a background window at 15 frames per second, and stops rendering when the display sleeps.** Client-side timings are then one 67 ms frame coarse, injected keys stop arriving and screenshots time out. Measure the client's frame rate before trusting a client-side number, and say so in the report.
-- **Use the official Studio MCP only.** Call `list_roblox_studios` first. Studio MCP lists every open Studio to every AI client, so pick the one named `LootGoblinsTest001.rbxlx`. `get_studio_state`, `execute_luau` (Edit/Server/Client), `start_stop_play`, `get_console_output`, `screen_capture`, and `user_keyboard_input` all exist.
-- **Never `require()` a game module from `execute_luau`.** It loads a separate copy, and a separate copy of `Net.lua` destroys and recreates `LootGoblinsRemotes`, which cuts the running game off from its own remotes (nothing errors; inputs just stop working). Read attributes and instances instead. For deep tests install a temporary Script in `Workspace` (Studio session only, never committed; Rojo does not manage Workspace) that requires the game's own modules and obeys a `DebugCmd` attribute with fixed, named commands.
-- **A raycast on terrain nothing has touched makes the engine build that terrain's collision** (about 90 microseconds each, the first time). Never probe the whole map with raycasts at start-up.
-- **Terrain is found about two studs above the height a voxel fill suggests** (a block filled to -28 is at -26 to a raycast). `Landform` compensates; the old fill helpers do not. Measure a depth with a raycast before trusting it.
-- **Test a treasure's route on foot, not by teleport.** The Skull Chalice was unreachable from V2 to V6 and every test passed, because every test teleported to it. A ladder needs clear air over the climber on the side they climb, and **a floor to walk onto on the far side of its top** (that is the way off a Roblox ladder: moving away from it climbs down). Cut a terrain shaft at least 8 studs wide: terrain is 4-stud cells, and a 4.5-stud round hole left rock across it. A client-side test can walk a goblin with `Humanoid:Move` bound just after the control script's render step.
-- **After moving or adding world geometry, check it by machine:** known objects by name near where they should be, no part far from every island, every boat's hull over at least 3.2 studs of water, every zipline's line clear (sweep a sphere along it).
-- **Designing a layout (V6's method).** Survey the sea once by raycast on a 10-stud grid from a test command and post it to a loopback helper (223,000 rays take 2 seconds). Draw it, with every hoop and coin dumped from `refs`, as a picture you can look at. Lay new routes out in a script that uses the same curve maths as `Searuns.lua` and checks them against the survey, then build, dump again and compare. It is far quicker than a play session per idea, and the picture shows what a list of coordinates hides.
-- **Drive what you lay.** A test command can seat the goblin in a skiff with `Config.BOAT_CLIENT_PHYSICS` off and set `boat.input` each frame, so the server drives the hoops with the real `BoatSim`: steer at a point 45 to 100 studs ahead along the course, boost when pointing the right way. It found every fault listed in the V6 report, section 13. It is not a person: it says whether a route can be followed, not whether it is clear or fun.
-- **A `Sound` with a position uses `RollOffMode.Inverse` by default**, which never reaches silence and cuts off dead at `RollOffMaxDistance`. `InverseTapered` fades to nothing at the range. A client-side logger on `SoundService.ChildAdded` and `workspace.Terrain.DescendantAdded` shows every sound the game plays, with its settings and distance: the way to check audio without ears.
-- **`BillboardGui.MaxDistance` is measured along the camera's line of sight**, not to the adornee.
-- **When Studio's window is in front the client runs at 60 frames a second** and injected keys arrive. Measure the client's frame rate first, every session, and take client readings when it says 60.
-- **Keep a shell command under about 8,000 characters** on Windows: a longer one is cut off and fails with a quoting error. Write long scripts and edits to a file and run the file.
-- **Never build a text replacement from positions without checking their order.** An empty search string replaces between every character (it turned a 23 KB file into 12 MB; taking the inserted text back out restored it). Assert that the text to replace is found exactly once.
-- Never open a second Studio copy of the same place. Never force-kill Studio. Stop play mode when you finish.
-- Cloud sessions have no Studio. Say so plainly.
-
-## Testing expectations
-
-- Every change: `check.ps1` passes. Gameplay changes also need a Studio playtest with an empty console, then play mode stopped. Report anything you could not test.
-- Timed effects are shorter than MCP round trips: record state in a `task.spawn` loop and read it afterwards.
-- Single-client MCP play cannot test player-vs-player features. Teleporting 1000+ studs under streaming can let a character fall through terrain that has not loaded yet; that is a test artifact, not a game bug.
-- Boat physics run on the test client when it drives. To test them without depending on injected keys, set `boat.input` from a temporary test script (the server then simulates with the same `BoatSim`).
-- Studio's network simulator (`settings():GetService("NetworkSettings").IncomingReplicationLag`) is a Studio-wide setting: put it back to 0.
-- The real validation is the human multiplayer test: **Test > Server & Clients > 4 players > Play**. The V6 report has a checklist.
-- A sleeping creature is not ticked. To test one, put a goblin within its `wake` radius first; `Creatures.active()` says how many are awake.
-
 ## Design philosophy
 
 - Serve the loop. Ugly and fast beats polished and slow. Primitive parts and terrain are fine.
@@ -365,6 +340,346 @@ Integration points new code must respect:
 
 - **Two ladders come up under a floor on every side** (found by a raycast scan, not climbed): the windmill's `MillLadder` under `MillGallery` (the Golden Gear is still reachable by grapple) and the fort's `WallLadder` under its `CannonStand`. They need the hatch the skull's ladder got. **Not exercised in V6:** whether any of the new layout is clearer or more fun to a person; **any sound by ear** (checked from logs of what was played and how loud by the falloff formula); the final blast range (20 to 600 studs) by log; any ramp; the coin trail across the Western Shelf; laps by hand (the autopilot's were not all clean); a patrol ship catching a carrier on a lane; anything with two players. **Not exercised in V5, and still open:** any creature against a player who moves or dodges, or with two players (a Watcher held by one goblin while it chases another, an Echo hurting a rival); driving the runs by hand apart from the Gate Run, so every par; Gobbo's keg and warnings; Bramble's rage after the Gear is taken; a cinderling going out in the sea; salvage from a real sunk patrol ship or spent storm; a coin coming back after 80 s; reaching the 6-gold cap. **Not exercised in V4, and the islands have moved since:** walking any of the new land, riding any zipline, driving by hand through the reef passes, inlets, the rib run or the Serpent Channel, fifteen of the sixteen new hoops, the new guns, the river of fire, taking the three new treasures, a patrol ship meeting the raised chain. **Still not exercised from V3:** anything between two players, drift with `BOAT_CLIENT_PHYSICS = false`, the Navy's charge against a cutter, windmill blade hits, the ice slide, anchoring in a current. **Unexplained:** Studio's process grew by 2.3 GB over a 67-minute unattended run while the game's own script memory and instance counts stayed flat (V4 report, section 11).
 
-## Keeping this file useful
+## Additional system contracts for portable understanding
 
-Update this file in the same PR whenever systems, controls, architecture, authority boundaries, or known bugs change. Keep it short and current. Session narratives belong in PR descriptions or `docs/reports/YYYY-MM-DD-<topic>.md`.
+The complete current system catalogue, controls, creature roster, remote/state inventory, architecture, and exact tuning are embedded later. This chapter supplies context that a standalone AI must not infer from words such as 'unchanged'.
+
+### Treasure states and banking
+
+Treasure is a server-owned object with spot, carried, loose, and away states. Taking it from its spot involves a 0.6-second hold, triggers trouble, and assigns ownership. Loose treasure can be grabbed. A carry change gives temporary steal immunity; attacks should use the existing knock-loose path so that immunity is respected. Throwing, death, disconnect, boarding, spirit return, and reset must preserve one authoritative owner and avoid duplicate payment.
+
+Untaken treasure gains interest in discrete eighty-second steps, at most three steps, using its value and the configured share; the exact tuning is included below. Its bankedValue stores the payout used by the score code. A carrier entering the Hoard ring banks it unless excluded by the ward/spirit rules. The object becomes away and returns later after its own respawn time. Gold is earned only when the server accepts a bank, not just when a client sees a pickup animation.
+
+Creatures that carry treasure do not add a new ownership state: the item remains loose while Loot.hold pins it to the creature. A player can still grab it using existing rules. Loot.letGo releases it, and Loot.sendHome restores its spot. The distinction prevents a second inventory/possession implementation. A recently thrown item landing inside the Hoard can also bank for its last holder within THROWN_BANK_WINDOW; bank credit is still decided by the server. Lost or long-abandoned loose objects return to their spots under the existing bounds/timeout rules.
+
+### Poltergoblin in full
+
+Poltergoblin is a temporary spirit excursion, not a death/ghost mode. Press E without an active prompt to dash out of your body. The body stays frozen as a visible vulnerable copy. For five seconds, the spirit can move faster, fight, grapple, and grab treasure, then returns to the body's original position. E can request early return after a brief recast delay. The ten-second cooldown begins at casting; a ninety-stud tether also forces an early return.
+
+Loot rides back along the tether, so the ability is a grab-and-rewind tool rather than advancing carried loot toward home. A sword hit on the abandoned body shatters the spirit: it returns hurt, its held loot drops where the spirit stood, and no damage echo is paid. A normal return repeats 35% of the spirit's accumulated damage on marked victims. Death and cancellation have distinct cleanup outcomes. The home ward blocks casting, pulls an entering spirit back, and prevents spirit banking.
+
+The server owns body state, timers, damage marks, returns, and possession; the client predicts its own initial dash for responsiveness. Any system moving/respawning a player must cancel the ability appropriately. Its real player-versus-player behavior still needs human multiplayer acceptance.
+
+### Player and boat motion boundaries
+
+Movement is the single server writer of WalkSpeed and stamina. Ordinary running, carried speed, water scaling, sprint, and spirit bonuses compose through it. The client predicts dash/air-jump and sends intent; the server charges stamina and enforces eligibility/cooldowns. Regeneration pauses after spending, and exhausting the meter creates a winded recovery threshold. Chill suppresses regeneration and drains stamina.
+
+BoatSim is shared physics code. Driven boats normally run on their driver's client, while empty and AI boats run on the server. Buoyancy samples six hull points against deterministic wave math; powered thrust, braking, grip, yaw, drift, bank, recovery, current drag, and controlled bursts determine motion. Server Boats owns seats, anchors, health, crash/scrape damage, sinking, respawn, boost cooldowns, and coarse motion policing. Setting BOAT_CLIENT_PHYSICS false returns driven simulation to the server for comparison.
+
+The documented policing gap matters: a modified driver may exploit speed margins, turn tighter, or avoid crash damage. Do not describe all boat motion as fully trusted just because damage and scoring are server-owned. Real-latency and multi-driver acceptance remain separate from single-client measurements. New movement strategies or authority changes require the human's architecture approval.
+
+Use existing Boats.shove and Boats.place APIs for pushes and relocations; writing a client-driven hull's CFrame or velocity directly from the server can conflict with its owner. Empty unanchored boats drift. Far unoccupied boats sleep. Anchoring, theft, abandonment, sinking, and rediscovery are gameplay choices rather than private player ownership.
+
+### Threats and player-readable counters
+
+Heat moves from CALM to ALERT at 25, HUNTED at 50, and FRENZY at 80. The escalation should change decisions: visible carrier flares, a pursuing/intercepting hunter, a blocker/mines on the return line, and a carrier-following tempest. Navy uses deep-water routes, visibility, committed charges, and search/retreat rather than omniscient permanent homing. A charge announces a horn and holds a bearing; changing course is the intended answer. Shelled target circles close before impact. Islands, shallows, the home ward, a beacon, or the fort chain can change pursuit.
+
+The Guardian has marked leaps and boulders plus a ground shockwave that invites jumping. Individual island inhabitants each teach a rule: watched statues, a delayed path echo, a burrowing crab, straight-line charging ram, water-bound eel, treasure-snatching imps, throwing marines, fire laying ahead of movement, stamina-draining cold, a noise-sensitive sleeper, a dozing shade, a shoving whirlpool fin, and a timed clam. The current roster and parameters later in the guide describe each. Gobbo is a friendly dockhand with kegs and proximity warnings.
+
+Most dangers target possession, routes, or terrain rather than adding identical health bars. Telegraphs must leave an actionable response. Onboarding should teach those counters through encounters and readable cues rather than relying only on the help panel. A reported single-client creature action does not prove behavior when two people face a Watcher or interact with an Echo.
+
+### Sea activity grammar and sound
+
+A teal hoop line offers transit toward a dock. Orange hoops mark separate timed courses. Coins mark skillful lines, jump arcs, or secrets. Boost chains raise speed enough that tight turns may become impossible; routes were changed after real-physics autopilot tests. Those tests establish mechanical feasibility, not how a beginner interprets or enjoys them. Placement must preserve calm home water and optional routes.
+
+World sounds belong to a position with distance falloff and a finite range; interface chimes belong to the player. V6 also bounds simultaneous repeated voices and compresses the world sound group. Thunder, blasts, distant markers, and lightning use tuned hearing/drawing/sending distances. Their values are current source, not universal recommended distances. V6's audio measurements came from logs and calculations; the author could not hear the result. A human still needs to listen.
+
+### Cleanup and integration
+
+One server Heartbeat coordinates modules; builder modules describe geometry and references while mechanism modules run behavior. Raid reset cancels spirits; resets loot, Heat, threats, blasts, trouble, Navy/mines, storms/spouts, escalation, destructibles, mechanisms, cannon/keg state, boats, coins/salvage, and creatures. Joining, leaving, death, and three successive raids need real lifecycle tests. World generation and shared-state attributes must work under streaming, with no duplicate authority or second implementation.
+
+Game-specific designs and facts stay in this repository. Reusable observations go to the shared notebook. This guide embeds current records and full report history, allowing an outside AI to evaluate mechanics without the original chat. Historical commands and versions in those reports are evidence context, not instructions to bypass the current team's rules.
+
+## Game-specific test observations and methods
+
+These notes came from earlier development sessions. Verify present tool capabilities and use the current AGENTS.md rules; historical testing workarounds are not permission to bypass durable-source or Studio safety requirements.
+
+### Rojo and Studio MCP
+
+- Rojo serves on `127.0.0.1:34872` (our other games use other ports; with several Studio windows open, connect each plugin to the right port by hand).
+- **The Rojo plugin drops its connection each time play mode starts or stops, and Rojo 7.7.1 can crash when a watched file vanishes mid-write.** Run `rojo serve` in a restart loop, reconnect the plugin after each play session, and confirm `#Script.Source` matches the file before trusting a test.
+- **The plugin's Connect button cannot be pressed through MCP.** If the human is away and the plugin is not connected, an Edit-mode `execute_luau` can set `Source` on the mapped scripts itself (the V3 session pulled `src/` from a helper on the loopback address; that needs `HttpService.HttpEnabled` in the disposable built place, switched off again afterwards). Compare sources before trusting a test either way.
+- **Studio caps a background window at 15 frames per second, and stops rendering when the display sleeps.** Client-side timings are then one 67 ms frame coarse, injected keys stop arriving and screenshots time out. Measure the client's frame rate before trusting a client-side number, and say so in the report.
+- **Use the official Studio MCP only.** Call `list_roblox_studios` first. Studio MCP lists every open Studio to every AI client, so pick the one named `LootGoblinsTest001.rbxlx`. `get_studio_state`, `execute_luau` (Edit/Server/Client), `start_stop_play`, `get_console_output`, `screen_capture`, and `user_keyboard_input` all exist.
+- **Never `require()` a game module from `execute_luau`.** It loads a separate copy, and a separate copy of `Net.lua` destroys and recreates `LootGoblinsRemotes`, which cuts the running game off from its own remotes (nothing errors; inputs just stop working). Read attributes and instances instead. For deep tests install a temporary Script in `Workspace` (Studio session only, never committed; Rojo does not manage Workspace) that requires the game's own modules and obeys a `DebugCmd` attribute with fixed, named commands.
+- **A raycast on terrain nothing has touched makes the engine build that terrain's collision** (about 90 microseconds each, the first time). Never probe the whole map with raycasts at start-up.
+- **Terrain is found about two studs above the height a voxel fill suggests** (a block filled to -28 is at -26 to a raycast). `Landform` compensates; the old fill helpers do not. Measure a depth with a raycast before trusting it.
+- **Test a treasure's route on foot, not by teleport.** The Skull Chalice was unreachable from V2 to V6 and every test passed, because every test teleported to it. A ladder needs clear air over the climber on the side they climb, and **a floor to walk onto on the far side of its top** (that is the way off a Roblox ladder: moving away from it climbs down). Cut a terrain shaft at least 8 studs wide: terrain is 4-stud cells, and a 4.5-stud round hole left rock across it. A client-side test can walk a goblin with `Humanoid:Move` bound just after the control script's render step.
+- **After moving or adding world geometry, check it by machine:** known objects by name near where they should be, no part far from every island, every boat's hull over at least 3.2 studs of water, every zipline's line clear (sweep a sphere along it).
+- **Designing a layout (V6's method).** Survey the sea once by raycast on a 10-stud grid from a test command and post it to a loopback helper (223,000 rays take 2 seconds). Draw it, with every hoop and coin dumped from `refs`, as a picture you can look at. Lay new routes out in a script that uses the same curve maths as `Searuns.lua` and checks them against the survey, then build, dump again and compare. It is far quicker than a play session per idea, and the picture shows what a list of coordinates hides.
+- **Drive what you lay.** A test command can seat the goblin in a skiff with `Config.BOAT_CLIENT_PHYSICS` off and set `boat.input` each frame, so the server drives the hoops with the real `BoatSim`: steer at a point 45 to 100 studs ahead along the course, boost when pointing the right way. It found every fault listed in the V6 report, section 13. It is not a person: it says whether a route can be followed, not whether it is clear or fun.
+- **A `Sound` with a position uses `RollOffMode.Inverse` by default**, which never reaches silence and cuts off dead at `RollOffMaxDistance`. `InverseTapered` fades to nothing at the range. A client-side logger on `SoundService.ChildAdded` and `workspace.Terrain.DescendantAdded` shows every sound the game plays, with its settings and distance: the way to check audio without ears.
+- **`BillboardGui.MaxDistance` is measured along the camera's line of sight**, not to the adornee.
+- **When Studio's window is in front the client runs at 60 frames a second** and injected keys arrive. Measure the client's frame rate first, every session, and take client readings when it says 60.
+- **Keep a shell command under about 8,000 characters** on Windows: a longer one is cut off and fails with a quoting error. Write long scripts and edits to a file and run the file.
+- **Never build a text replacement from positions without checking their order.** An empty search string replaces between every character (it turned a 23 KB file into 12 MB; taking the inserted text back out restored it). Assert that the text to replace is found exactly once.
+- Never open a second Studio copy of the same place. Never force-kill Studio. Stop play mode when you finish.
+- Cloud sessions have no Studio. Say so plainly.
+
+### Testing expectations
+
+- Every change: `check.ps1` passes. Gameplay changes also need a Studio playtest with an empty console, then play mode stopped. Report anything you could not test.
+- Timed effects are shorter than MCP round trips: record state in a `task.spawn` loop and read it afterwards.
+- Single-client MCP play cannot test player-vs-player features. Teleporting 1000+ studs under streaming can let a character fall through terrain that has not loaded yet; that is a test artifact, not a game bug.
+- Boat physics run on the test client when it drives. To test them without depending on injected keys, set `boat.input` from a temporary test script (the server then simulates with the same `BoatSim`).
+- Studio's network simulator (`settings():GetService("NetworkSettings").IncomingReplicationLag`) is a Studio-wide setting: put it back to 0.
+- The real validation is the human multiplayer test: **Test > Server & Clients > 4 players > Play**. The V6 report has a checklist.
+- A sleeping creature is not ticked. To test one, put a goblin within its `wake` radius first; `Creatures.active()` says how many are awake.
+
+## Human prototype experiment and decision
+
+No shops, XP, pets, rarity tables, monetization, trading, boat trees, hideout decorating, or saved progress. The loot values and `Wins` exist only to score a raid.
+
+For a local multiplayer test: **top-left Test dropdown > Server & Clients > set player count to 3 > blue Play button**. Play several raids with Ethan, Ninety, and Enrik. The checklist in the latest report under `docs/reports/` says what to look for.
+
+Afterward make one decision:
+
+- **KILL** — possession/escape isn't fun.
+- **RE-PROTOTYPE** — fun exists but a core variable is weak.
+- **GREENLIGHT** — the loop creates yelling, betrayal, improvisation, tension, and "one more raid."
+
+The complete V6 line was approved for integration into main; this does not record a production GREENLIGHT or establish multiplayer fun. Record the human's actual decision and supporting playtest evidence here when it happens.
+
+## Original long-term vision: historical proposal, not implemented scope
+
+The following original design text is preserved in full as attributed design history. Its suggestions and assignments are not current instructions, approval, or a list of built features. Current implemented systems above and actual human decisions take precedence.
+
+```text
+TL;DR
+We lock Concept 1.
+Working title: Loot Goblins.
+The game is a colorful social extraction sandbox where you sail between bizarre islands, steal increasingly stupid valuables, trigger escalating chaos, and desperately get the loot home before another player steals it from you.
+The emotional loop is the product:
+“I shouldn't do this” → steal → OH SHIT → chase gets worse → almost home → someone tries to rob me → barely make it → YESSS HAHAHA → put trophy in collection → go after something harder.
+Do not build the progression game yet. First prove that stealing one object and escaping with friends/enemies is hilarious.
+
+LOOT GOBLINS — Game Thesis v0.1
+The fantasy
+You are a tiny, greedy creature sailing around an enormous colorful archipelago filled with things that absolutely do not belong to you.
+Ancient treasure. Giant eggs. Royal crowns. Weird animals. Alien technology. Haunted furniture. Enormous gems. Entire statues.
+Your response to nearly everything is:
+Can I steal that?
+The world has the adventurous discovery of an ocean journey, the playful visual absurdity of a toybox platformer, and the emergent sandbox chaos of a physics-heavy multiplayer game.
+But it needs its own identity.
+Cute world. Criminal intentions.
+That contrast is strong.
+
+The core loop
+SAIL → DISCOVER → STEAL → CAUSE TROUBLE → ESCAPE → BANK → FLEX / SELL / TRADE → EVOLVE → STEAL SOMETHING WORSE
+The key difference from normal collection games:
+Acquiring the item does not end the challenge.
+It starts it.
+You finally pull the legendary crown off the sleeping king?
+Great.
+Now the castle alarm activates.
+Guards pour out.
+Another player sees the crown icon.
+Your boat is parked on the other side of the island.
+Ninety has stolen your boat.
+You're carrying the crown while chasing him.
+Enrik grapples onto the back.
+Someone accidentally blows up the dock.
+That is Loot Goblins.
+
+The rule that makes the whole game work
+Every valuable object has two attributes:
+Value determines why you want it.
+Trouble determines what happens once you take it.
+A cheap coconut might cause almost nothing.
+A massive golden egg might summon its mother.
+A cursed sword might possess whoever carries it.
+Alien technology might attract a UFO.
+A royal crown might put a giant bounty marker above your head.
+A sleeping monster's tooth might require you to physically yank it out without waking him.
+So rarity isn't merely:
+0.01% drop rate.
+Rarity can mean:
+This thing is fucking difficult to get home.
+Much better.
+
+The HEAT system
+Stealing important things increases Heat.
+At low Heat, maybe a few NPCs chase you.
+Then things escalate.
+More guards. More aggressive creatures. Doors locking. Cannons firing. Your position becoming visible. Bounty rewards for other players interfering. Island-wide hazards activating.
+And crucially:
+Heat follows the stolen item.
+Not necessarily the player.
+If Ethan drops the crown and Ninety grabs it:
+Congratulations Ninety.
+You're the problem now.
+That creates incredible physical comedy.
+
+Player theft without making people uninstall
+We need theft.
+But permanent destruction of hours of progress will turn the funny game into a rage-quit machine.
+So:
+Banked loot is safe.
+Once something reaches your hideout and gets deposited, ownership is secure.
+What can be stolen is unbanked loot currently being transported.
+That gives us all the:
+GIVE ME THAT
+GET THE FUCK AWAY FROM ME
+HE TOOK IT
+CATCH HIM
+without someone waking up tomorrow and discovering their three-week collection is gone.
+This is a very important floor-versus-ceiling decision.
+The ceiling of total theft is hilarious.
+The human floor is children quitting because someone erased their favorite pet.
+Keep the chaos. Remove the misery.
+
+Getting home should physically matter
+Don't make extraction:
+Stand inside green circle for 3 seconds.
+Your hideout is a physical location.
+You need to actually transport the object there.
+Small objects can be carried.
+Medium objects might require dragging.
+Huge objects could require boats, carts, balloons, cranes, friends, tow cables, or completely stupid improvised solutions.
+That means the treasure itself changes gameplay.
+Stealing a crown and stealing a grand piano shouldn't feel identical.
+Imagine four players trying to shove a giant golden statue onto a tiny sailboat while guards attack them.
+Now the treasure is also a physics toy.
+
+Your sandbox toys
+This is where the Halo 3 influence becomes valuable.
+Don't design hundreds of canned jokes.
+Design objects that create jokes.
+Your grappling hook pulls players, treasure and vehicles.
+Your spring trap launches anything standing on it.
+Your sticky rocket can attach to objects.
+Your magnet can yank metallic treasure toward you.
+Your decoy creates fake valuables.
+Your smoke bomb creates confusion.
+Your tow hook connects objects together.
+Now combinations emerge.
+Rocket + boat.
+Grapple + crown.
+Spring trap + giant chicken.
+Tow cable + enemy vehicle.
+Players produce the clips for us.
+
+Boats are your first major evolution fantasy
+I think this should be one of the game's signature progression systems.
+You begin with something pathetic.
+Tiny raft.
+Eventually players are cruising around in ridiculous ships that visibly communicate status.
+Not just:
++17% movement speed.
+Your ship physically changes.
+More storage.
+More tow capacity.
+Different traversal options.
+More gadget slots.
+Maybe eventually gliding, diving, ghost sailing, alien propulsion.
+Someone should enter the server and you immediately think:
+What the fuck is THAT boat?
+That's status.
+
+Your hideout is the trophy case
+Every player gets a small island hideout.
+This becomes the physical record of their career.
+Not a menu saying:
+73/200 collectibles.
+I want to walk through your shit.
+Your enormous stolen dragon skull is mounted above the entrance.
+Your legendary UFO is parked outside.
+Your rare creatures wander around.
+Your Crown of Whatever is inside a glass case.
+Your boat sits at the dock.
+Visitors should understand your accomplishments without opening a stats page.
+That's status + collection working together.
+
+Sell versus Keep becomes an actual decision
+You return with something extremely rare.
+Now:
+SELL IT
+Get lots of currency toward upgrades.
+Or:
+KEEP IT
+Add it permanently to your collection and flex it.
+Or:
+TRADE IT
+Maybe someone wants it badly enough to give you something better.
+That makes objects feel like objects rather than XP packets.
+
+The world
+The archipelago structure is perfect for Roblox because it gives us expandable content without rebuilding the game.
+Your starting sea might have:
+Goblin Cove as the safe home region.
+Royal Isle where players steal valuables from a pompous kingdom.
+Critter Island full of strange creatures and dangerous eggs.
+Ghost Graveyard with cursed treasure and abandoned ships.
+Skyfall Atoll containing mysterious high-tech ruins, vehicles and physics toys.
+Later we can get much stranger.
+Every island asks a slightly different question:
+How the hell do I steal THIS?
+That prevents the loop from becoming mechanically flat.
+
+The viral engine
+This game should naturally manufacture sentences kids want to tell their friends:
+BRO I STOLE THE KING'S CROWN.
+COME HELP ME MOVE THIS THING.
+HE FUCKING TOOK IT FROM ME.
+GET IN THE BOAT.
+DON'T TOUCH THAT.
+WHY IS THAT CHICKEN SO BIG?
+I'M ALMOST HOME.
+NO NO NO NO—
+YESSSSS.
+That's stronger than designing around “TikTok moments” artificially.
+The mechanic itself creates stories.
+
+The first prototype
+And now we show discipline.
+Your team's own operating system says the prototype's job is to answer the riskiest fun question cheaply, not build Game Version 0.1. How we build games v1 - Mickey …
+So Ninety should NOT build Loot Goblins.
+He should build:
+LOOT GOBLINS TEST 001
+Three players.
+One tiny island.
+One tiny home island.
+One shitty boat.
+One valuable golden idol.
+Basic physics carrying.
+Players can grab/drop the idol.
+Players can knock/grapple it away from each other.
+Stealing it wakes one giant NPC creature.
+Creature chases whoever possesses the idol.
+Get the idol physically onto your boat.
+Sail home.
+Cross your dock carrying it.
+BANKED.
+Round resets.
+That's fucking it.
+No XP.
+No shop.
+No pets.
+No rarity system.
+No trading.
+No elaborate UI.
+No huge map.
+No monetization.
+No thirty gadgets.
+We are answering one question:
+When three idiots fight over something valuable while being chased and try to get it home, do we start screaming and laughing?
+If the answer is yes, you've found the nucleus.
+Then Enrik turns that experiment into something structurally real, exactly as your workflow calls for after greenlight. How we build games v1 - Mickey …
+If the answer is no, we change the mechanic instead of spending three months explaining why it will eventually become fun.
+The greenlight test
+I want all three of you to play ten rounds.
+By the end, you should naturally be doing things we didn't explicitly tell you to do.
+Betraying each other.
+Blocking boats.
+Pretending to cooperate.
+Intercepting treasure.
+Laughing when somebody gets fucked over.
+Taking risky shortcuts.
+Trying stupid physics tricks.
+Wanting one more round.
+If that's happening, we've got something.
+Next Actions
+Ethan: lock this one-sentence thesis: “Steal ridiculous treasure from dangerous islands and other players, then somehow get it home.”
+Ninety: build Loot Goblins Test 001 exactly around steal → chase → player interference → extraction. Nothing else.
+Enrik: stay out of production architecture until the prototype proves the emotional loop. Explore first. Then we earn complexity.
+```
