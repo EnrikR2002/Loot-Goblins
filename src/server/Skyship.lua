@@ -518,6 +518,14 @@ function Skyship.load(player, cannon)
 		player:SetAttribute("DeployDest", s.dest)
 		Net.toast(player, "No island chosen: " .. Archipelago.byId[s.dest].name .. ". (Open the map with M to pick.)")
 	end
+	local toward = destinationPosition(s.dest) - cannon.from
+	toward = Vector3.new(toward.X, 0, toward.Z)
+	if toward.Magnitude > 1 and toward.Unit:Dot(Vector3.new(cannon.rest.X, 0, cannon.rest.Z).Unit) < -0.3 then
+		Net.toast(
+			player,
+			"This cannon faces away from your island: it shoots across the deck. The ones on the other side shoot straight out."
+		)
+	end
 	cannon.occupant = player
 	cannon.prompt.Enabled = false
 	s.cannon = cannon

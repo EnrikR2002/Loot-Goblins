@@ -35,6 +35,7 @@ Raid.phase = "intermission"
 local refs
 local phaseEndsAt = 0
 local lastCallSent = false
+local rushSent = false
 
 local function now()
 	return workspace:GetServerTimeNow()
@@ -100,6 +101,7 @@ function Raid.start()
 		end
 	end
 	lastCallSent = false
+	rushSent = false
 	setPhase("raid", now() + Config.RAID_DURATION)
 	Loot.setEnabled(true)
 	Skyship.open()
@@ -154,6 +156,14 @@ end
 
 function Raid.onBanked(item, player)
 	local value = item.bankedValue or item.def.value
+	if Raid.phase == "raid" and phaseEndsAt - now() <= Config.FINAL_RUSH then
+		local rushed = math.floor(value * Config.FINAL_RUSH_MULT + 0.5)
+		Net.feed(
+			string.format("FINAL RUSH: +%d extra gold for %s.", rushed - value, player.DisplayName),
+			Color3.fromRGB(255, 120, 70)
+		)
+		value = rushed
+	end
 	local gold = stat(player, "Gold")
 	if gold then
 		gold.Value += value
@@ -172,6 +182,17 @@ end
 function Raid.tick()
 	local t = now()
 	if Raid.phase == "raid" then
+		if not rushSent and phaseEndsAt - t <= Config.FINAL_RUSH then
+			rushSent = true
+			Net.message(
+				string.format(
+					"FINAL RUSH: BANKING PAYS %d%% MORE!",
+					math.floor((Config.FINAL_RUSH_MULT - 1) * 100 + 0.5)
+				),
+				4,
+				Color3.fromRGB(255, 120, 70)
+			)
+		end
 		if not lastCallSent and phaseEndsAt - t <= Config.LAST_CALL then
 			lastCallSent = true
 			Net.broadcast("LastCall", { seconds = Config.LAST_CALL })

@@ -163,8 +163,40 @@ end
 
 -- The aiming camera: behind and above the cannon, looking where it points.
 local aimCamera = false
+local sailParts
+local function seeThrough(on)
+	-- The sails, masts and wings hide the sky from a cannon that shoots across the deck: fade them while aiming.
+	if not sailParts then
+		sailParts = {}
+		local generated = workspace:FindFirstChild("LootGoblinsGenerated")
+		local landmarks = generated and generated:FindFirstChild("Landmarks")
+		local ship = landmarks and landmarks:FindFirstChild("Skyship")
+		for _, p in ipairs(ship and ship:GetChildren() or {}) do
+			if
+				p:IsA("BasePart")
+				and string.match(p.Name, "^[SMYEW]")
+				and (
+					string.find(p.Name, "Sail")
+					or string.find(p.Name, "Mast")
+					or string.find(p.Name, "Yard")
+					or string.find(p.Name, "Emblem")
+					or string.find(p.Name, "Wing")
+				)
+			then
+				table.insert(sailParts, p)
+			end
+		end
+	end
+	for _, p in ipairs(sailParts) do
+		p.LocalTransparencyModifier = on and 0.88 or 0
+	end
+end
+
 local function aimView(root, aim)
 	local camera = workspace.CurrentCamera
+	if not aimCamera then
+		seeThrough(true)
+	end
 	aimCamera = true
 	camera.CameraType = Enum.CameraType.Scriptable
 	local back = aim.Unit
@@ -175,6 +207,7 @@ end
 local function releaseView()
 	if aimCamera then
 		aimCamera = false
+		seeThrough(false)
 		workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
 	end
 end
@@ -199,7 +232,7 @@ local function dot(i)
 			CastShadow = false,
 			Shape = Enum.PartType.Ball,
 			Material = Enum.Material.Neon,
-			Size = Vector3.new(2.2, 2.2, 2.2),
+			Size = Vector3.new(4.5, 4.5, 4.5),
 		}, workspace)
 		preview[i] = p
 	end
@@ -240,7 +273,7 @@ local function drawPreview(origin, v0)
 	local used = 0
 	local function arc(glide, color, markerIndex)
 		local points, landing = Dive.predict(origin, v0, glide, groundAt, nil)
-		for i = 1, #points, 2 do
+		for i = 1, #points do
 			used += 1
 			local p = dot(used)
 			p.Color = color
@@ -468,6 +501,7 @@ local function update()
 		end
 	elseif player:GetAttribute("Diving") then
 		releaseView()
+		Map.setTitle()
 		local _, _, root = character()
 		local distance = ""
 		if island and root then
@@ -482,6 +516,7 @@ local function update()
 		hidePreview()
 	else
 		releaseView()
+		Map.setTitle()
 		setBanner(nil)
 		hidePreview()
 		nudgeYaw, nudgeTilt = 0, 0
@@ -597,6 +632,8 @@ function Skyship.start()
 		elseif state == "loaded" then
 			Map.show(false)
 			nudgeYaw, nudgeTilt = 0, 0
+		elseif state == "fuse" or state == "diving" then
+			Map.show(false) -- the choice is made: the sky is the thing to look at
 		end
 		lastState = state
 	end)

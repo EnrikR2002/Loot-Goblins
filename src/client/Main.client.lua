@@ -453,6 +453,74 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt)
 	end
 end)
 
+-- Cannon aiming aid (V7): while a cannon's prompt is showing, a ring marks where the shot will go (green when
+-- it can fire, red while it reloads) and the cannon says READY or how long is left. Every cannon in the
+-- game works this way (the skyship's deployment cannons have their own aim view: client/Skyship.lua).
+do
+	local ring, tag
+	local function ensure()
+		if not ring then
+			ring = Instance.new("Part")
+			ring.Name = "CannonAimRing"
+			ring.Shape = Enum.PartType.Cylinder
+			ring.Size = Vector3.new(0.4, 14, 14)
+			ring.Anchored = true
+			ring.CanCollide = false
+			ring.CanQuery = false
+			ring.CanTouch = false
+			ring.CastShadow = false
+			ring.Material = Enum.Material.Neon
+			ring.Transparency = 0.45
+		end
+		if not tag then
+			tag = Instance.new("BillboardGui")
+			tag.Name = "CannonStatus"
+			tag.Size = UDim2.fromOffset(150, 30)
+			tag.StudsOffset = Vector3.new(0, 5, 0)
+			tag.AlwaysOnTop = true
+			tag.MaxDistance = 60
+			local label = Instance.new("TextLabel")
+			label.Name = "Text"
+			label.Size = UDim2.fromScale(1, 1)
+			label.BackgroundTransparency = 1
+			label.Font = Enum.Font.GothamBlack
+			label.TextSize = 18
+			label.TextStrokeTransparency = 0.3
+			label.Parent = tag
+		end
+	end
+	RunService.RenderStepped:Connect(function()
+		local active
+		for prompt in pairs(shownPrompts) do
+			if prompt.Name == "CannonPrompt" and prompt.Parent then
+				active = prompt
+				break
+			end
+		end
+		if not active then
+			if ring then
+				ring.Parent = nil
+				tag.Parent = nil
+			end
+			return
+		end
+		ensure()
+		local base = active.Parent
+		local readyAt = base:GetAttribute("ReadyAt") or 0
+		local left = readyAt - now()
+		local ready = left <= 0
+		local hit = aimPoint()
+		ring.Color = ready and Color3.fromRGB(110, 255, 150) or Color3.fromRGB(255, 90, 80)
+		ring.CFrame = CFrame.new(hit + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		ring.Parent = workspace
+		tag.Adornee = base
+		tag.Parent = base
+		local text = tag:FindFirstChild("Text")
+		text.Text = ready and "READY" or string.format("RELOADING %.1f", left)
+		text.TextColor3 = ready and Color3.fromRGB(110, 255, 150) or Color3.fromRGB(255, 120, 100)
+	end)
+end
+
 -- G throws a powder keg where you aim.
 local function pressKeg()
 	local _, _, root = getCharacter()
@@ -795,6 +863,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		pressPoltergoblin()
 	elseif input.KeyCode == Enum.KeyCode.H then
 		Hud.toggleHelp()
+	elseif input.KeyCode == Enum.KeyCode.T then
+		Hud.toggleBoard()
 	end
 end)
 

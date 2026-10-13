@@ -6,6 +6,11 @@ local Config = {}
 -- A raid is one timed match. Bank the most gold before the timer runs out.
 Config.RAID_DURATION = 720 -- V7: twelve minutes for a server of up to 32, a sixteen-island sea and a deployment from the skyship. (V5/V6: 540, V4: 600, V3: 420)
 Config.LAST_CALL = 60 -- The HUD turns red for the final stretch.
+-- V7, the final rush: in the last FINAL_RUSH seconds every treasure banked pays FINAL_RUSH_MULT times its gold. It
+-- gives everybody a reason to run for the Hoard at the end, and lets a goblin who is behind catch up with one big
+-- run; it is a multiplier on what is banked, never on what is held, so a rival still has to be robbed to profit.
+Config.FINAL_RUSH = 90
+Config.FINAL_RUSH_MULT = 1.25
 Config.INTERMISSION = 12
 Config.FIRST_INTERMISSION = 6 -- Gives the first players time to load in.
 Config.RESPAWN_TIME = 3

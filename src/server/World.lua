@@ -420,7 +420,8 @@ local function buildHome()
 	-- Spawn. A short force field stops instant spawn kills, not carrying.
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "HomeSpawn"
-	spawn.Size = Vector3.new(12, 1, 12)
+	-- V7: 28 wide (was 12): a server of 32 respawns here, and Roblox spreads them over the pad.
+	spawn.Size = Vector3.new(28, 1, 28)
 	spawn.CFrame = W(CFrame.new(0, 6.6, 690))
 	spawn.Anchored = true
 	spawn.Neutral = true

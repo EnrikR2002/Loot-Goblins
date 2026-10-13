@@ -22,10 +22,12 @@ local STAMINA = Color3.fromRGB(120, 220, 255)
 local WINDED = Color3.fromRGB(255, 90, 80)
 
 local gui, scale
-local timer, heatFill, heatLabel, heatHint, banner, feedList, board, objective, toast, flash
+local timer, heatFill, heatLabel, heatHint, banner, feedList, board, boardTitle, objective, toast, flash
 local results, resultsTitle, resultsList, resultsFooter, help
 local slots = {}
 local boardRows = {}
+local boardOrder = {} -- ids, richest first
+local boardFull = false -- T: every treasure; by default only what is loose or carried
 local boatPanel, boatSpeed, boatHull, boatHullFill, boatBoost, boatBoostFill, boatDrift, boatDriftFill, boatNote
 local LOOT_WEIGHT = {}
 for _, def in ipairs(Config.LOOT) do
@@ -173,7 +175,7 @@ local function buildBoard()
 		Position = UDim2.new(1, -10, 0.46, 0),
 		Size = UDim2.fromOffset(300, 26 + rowsCount * BOARD_ROW),
 	})
-	text(board, {
+	boardTitle = text(board, {
 		Position = UDim2.fromOffset(10, 3),
 		Size = UDim2.new(1, -20, 0, 20),
 		Text = "TREASURE  (gold value)",
@@ -216,7 +218,8 @@ local function buildBoard()
 			TextScaled = false,
 			TextSize = 11,
 		})
-		boardRows[def.id] = { status = status, name = name, dot = dot, def = def }
+		boardRows[def.id] = { status = status, name = name, dot = dot, def = def, frame = row }
+		table.insert(boardOrder, def.id)
 	end
 end
 
@@ -422,27 +425,42 @@ local function buildResults()
 end
 
 local HELP_LINES = {
-	{ "STEAL", "Hold E on a glowing treasure to pry it off its spot. That causes TROUBLE. M opens the map." },
+	{
+		"START",
+		"You begin on the SKYSHIP: pick an island on the map (M), climb into a cannon (E), SPACE fires. Hold SPACE to glide.",
+	},
+	{
+		"STEAL",
+		"Hold E on a glowing treasure to pry it off its spot. That causes TROUBLE. Some islands need gear: look for caches on the keys.",
+	},
 	{ "BANK", "Carry it to THE HOARD (gold beam at Goblin Cove). Deeper treasure is worth more. Most gold wins." },
 	{
 		"BOATS",
-		"E boards. W/S/A/D drive (S brakes), SHIFT boosts. Hold C in a turn to DRIFT; let go for a speed burst.",
+		"E boards, X leaves. W/S/A/D drive, SHIFT boosts, SPACE hops, hold C in a turn to DRIFT. B calls a boat if you are stranded.",
 	},
 	{
 		"MOVE",
 		"You run fast for free. Stamina buys SHIFT sprint, C dash (also in the air) and a second jump in the air.",
 	},
 	{ "HOOK", "F on a cliff, crag, mast or a passing boat reels you to it. Jump lets go. Orange pads are catapults." },
+	{
+		"MAP",
+		"M: islands, how dangerous each is, who is on guard (red ring). Carrying treasure? The arrow on the screen points home.",
+	},
 	{ "HEAT", "Stealing and carrying raise Heat. High Heat sends flares, the Navy and a tempest after the CARRIER." },
 	{
 		"FIGHT",
-		"Sword hits knock loot loose. F near loot or a carrier steals it. Loot makes every stamina cost bigger.",
+		"Sword hits knock loot loose. F on a carrier within 40 studs CATCHES them: run up and press E to steal (Space gets you up).",
 	},
 	{
 		"TOYS",
 		"G throws a keg (from keg crates). E fires a cannon, pulls a lever, or lights a beacon: the Navy goes to look.",
 	},
 	{ "POLTERGOBLIN", "E: leave your body, run as a spirit, snap back. Loot you grab comes back with you." },
+	{
+		"LOCKER",
+		"P: your Shinies (kept for good), pets and starting gear. T: all the treasure, not just what is loose or carried.",
+	},
 	{
 		"DANGER",
 		"A ring on the ground = something lands there: move. Every island has something living on it: watch it, learn it.",
@@ -458,7 +476,7 @@ local function buildHelp()
 		Name = "Help",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(760, 480),
+		Size = UDim2.fromOffset(760, 580),
 		BackgroundTransparency = 0.1,
 		Visible = false,
 		ZIndex = 8,
@@ -474,7 +492,7 @@ local function buildHelp()
 	})
 	for i, line in ipairs(HELP_LINES) do
 		text(help, {
-			Position = UDim2.fromOffset(20, 50 + (i - 1) * 36),
+			Position = UDim2.fromOffset(20, 50 + (i - 1) * 34),
 			Size = UDim2.fromOffset(140, 30),
 			Text = line[1],
 			Font = Enum.Font.GothamBlack,
@@ -483,7 +501,7 @@ local function buildHelp()
 			ZIndex = 9,
 		})
 		text(help, {
-			Position = UDim2.fromOffset(176, 50 + (i - 1) * 36),
+			Position = UDim2.fromOffset(176, 50 + (i - 1) * 34),
 			Size = UDim2.new(1, -196, 0, 30),
 			Text = line[2],
 			Font = Enum.Font.GothamMedium,
@@ -723,8 +741,16 @@ local function updateTop(now, phase, phaseEndsAt)
 end
 
 local function updateBoard(now, folder)
-	for id, row in pairs(boardRows) do
+	local shown = 0
+	for _, id in ipairs(boardOrder) do
+		local row = boardRows[id]
 		local state = folder and folder:GetAttribute(id .. "State") or "spot"
+		local visible = boardFull or state == "carried" or state == "loose"
+		row.frame.Visible = visible
+		if visible then
+			row.frame.Position = UDim2.fromOffset(8, 24 + shown * BOARD_ROW)
+			shown += 1
+		end
 		local bonus = folder and folder:GetAttribute(id .. "Bonus") or 0
 		local status
 		local color = Color3.fromRGB(200, 200, 210)
@@ -751,6 +777,13 @@ local function updateBoard(now, folder)
 			string.format("%s  %dg%s", row.def.name, row.def.value + bonus, bonus > 0 and ("+" .. bonus) or "")
 		row.dot.BackgroundTransparency = state == "away" and 0.7 or 0
 	end
+	board.Size = UDim2.fromOffset(300, 28 + math.max(shown, 0) * BOARD_ROW)
+	boardTitle.Text = boardFull and "TREASURE  (gold value)  T: fewer"
+		or (shown > 0 and "LOOSE OR CARRIED  T: all treasure" or "T: all treasure")
+end
+
+function Hud.toggleBoard()
+	boardFull = not boardFull
 end
 
 local function setSlot(slot, fill, sub, active)
