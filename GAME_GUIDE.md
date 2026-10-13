@@ -8,8 +8,8 @@ This file is a self-contained game description, quality rubric, and dated develo
 
 **Game repository:** https://github.com/EnrikR2002/Loot-Goblins
 **Documented gameplay revision:** 8f399c7b26d721f7947ad8fcbc6c497943d6d6b2
-**Shared rubric revision:** 5ee37a6a8e1cc7a4eca28bf5b9ecb8b28f48aa96
-**Document freshness fingerprint:** 202b7f87c7025e59e5e3efbbd0327587806f0b5407538759f5154b23b4424fa7
+**Shared rubric revision:** 5678eb1ebf31d0bee9644d12b023efb998ec29f4
+**Document freshness fingerprint:** 126d47e60423a19b0a23792839bcbf0a619a2350e239a3d8b26f0e36b99ef4bb
 
 Ask an outside AI: 'Read this complete guide, compare the current game with the included rubric, and suggest the highest-value improvements. Separate documented gaps, hypotheses, and ideas. Respect game-specific decisions and current prototype gates.'
 

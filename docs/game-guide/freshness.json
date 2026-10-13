@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "fingerprint": "202b7f87c7025e59e5e3efbbd0327587806f0b5407538759f5154b23b4424fa7",
+  "fingerprint": "126d47e60423a19b0a23792839bcbf0a619a2350e239a3d8b26f0e36b99ef4bb",
   "source_baseline": {
     "src/client/BoatDrive.lua": "160494ffca06e5269c140131bc5c2e3640a1227707c4c25ea87af57c6c5a684b",
     "src/client/Effects.lua": "743338eecc2160ddb7bbfe1414a964d0c9f08245388c5d2c4afa4bb5f9caa60c",
@@ -65,5 +65,5 @@
     "docs/reports/2026-10-03-yone-e-test.md": "e65828d401927d8b907b211fbefa624325a0dafa6ac183401d693cc150ebe74f",
     "docs/reports/2026-10-03-setup-verification.md": "56527ccdc0716c33c0aa0584e884d15b6b7d6cd8dc9672a17dc9d71f53c21c0a"
   },
-  "knowledge_revision": "5ee37a6a8e1cc7a4eca28bf5b9ecb8b28f48aa96"
+  "knowledge_revision": "5678eb1ebf31d0bee9644d12b023efb998ec29f4"
 }
