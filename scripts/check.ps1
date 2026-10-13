@@ -3,6 +3,8 @@ param([switch]$Fix)
 Push-Location $ProjectRoot
 try {
     Assert-ProjectTools
+    & (Join-Path $PSScriptRoot 'memory.ps1') check
+    & (Join-Path $PSScriptRoot 'memory.ps1') test
     if ($Fix) { Invoke-Checked (Join-Path $RokitBin 'stylua.exe') @('--verify', 'src') }
     Invoke-Checked (Join-Path $RokitBin 'stylua.exe') @('--check', 'src')
     Invoke-Checked (Join-Path $RokitBin 'selene.exe') @('src')

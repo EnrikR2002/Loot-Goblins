@@ -4,6 +4,8 @@ Master context for a Claude Code or Codex session that opens this repository wit
 
 **`AGENTS.md` holds the rules** (branching, approval, safety). This file is background only. If they ever disagree, `AGENTS.md` wins, and you should fix this file.
 
+Shared-memory rollout: root `GAME_GUIDE.md` is the generated detailed standalone game description, with the full current catalogue, exact tuning/geography, shared rubric/lessons, and full dated report history. Editable narrative lives under `docs/game-guide/`; this existing context remains the current systems record. `docs/SHARED_MEMORY.md` explains reading and automatically contributing attributed lessons to the private team notebook. Offline freshness checks compare saved inputs/source fingerprints; they do not certify code inspection or gameplay. No gameplay or release decision changed in this rollout.
+
 ## Where things stand
 
 | Where | What it contains |
@@ -15,6 +17,8 @@ Master context for a Claude Code or Codex session that opens this repository wit
 | Unmerged: PR #12, branch `feature/v4-living-archipelago` (stacked on PR #11; merge #9, #10, #11, then this) | **V4**: a sea 4.6 times the size laid out in regions, the original islands moved (not rebuilt) and grown with generated land, reefs, shallows, stack fields and currents between them, a harbor chain, signal beacons, catapults, 19 treasures, retuned economy, Heat and storms. Report: `docs/reports/2026-10-12-v4-living-archipelago.md`. One human playtest since: the sea is too spread out, the boost hoops are the best part of sailing, and the islands need things living on them. |
 | Unmerged: PR #13, branch `feature/v5-living-threats-playful-seas` (stacked on PR #12; merge #9, #10, #11, #12, then this) | **V5**: the sea pulled in to 55% of V4's area (islands keep their size), 110 boost hoops laid out as 16 runs with chains and timed runs, coins, salvage, and **21 island inhabitants of 13 kinds** on one shared framework. Raids 9 minutes, values and Heat retuned. Report: `docs/reports/2026-10-12-v5-living-threats-playful-seas.md`. One human playtest since: the map size, the boats and the creatures are right; the hoops and coins are fun but crowded and oddly placed, worst of all outside the harbor; and there have been explosions in the distance since V2. |
 | Unmerged: PR #14, branch `feature/v6-ocean-flow-audio` (stacked on PR #13; merge #9 to #13, then this) | **V6**: no new system. The hoops, coins, lanes and timed courses laid out again by a few written rules (Home Bay calm, straight lanes that point at docks, courses set apart, coins for skill and secrets), every lane and course driven by an autopilot and its par measured, and the map-wide thunder fixed (world sounds are positional and fade to silence). Report: `docs/reports/2026-10-12-v6-ocean-flow-audio.md`. Studio-tested by one AI on one client, sound checked from logs only; **no human playtest of V6 yet**. |
+
+The V6 report was subsequently amended after Ninety found the blocked Skull Chalice route; revision `8f399c7` repairs its ladder/hatch and records a single-client on-foot test. The table's earlier "no human playtest" wording describes an earlier checkpoint. This later route feedback is real, while the broad V6 layout, sound-by-ear, multiplayer, mobile, and balance acceptance remain outstanding.
 
 Check the real state before you trust this table: `git log --oneline origin/main` and the open PRs. Update this table when a branch merges.
 
