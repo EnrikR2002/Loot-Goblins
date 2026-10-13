@@ -30,6 +30,7 @@ local visible = false
 -- Compass
 local COMPASS_FOV = 170
 local compass
+local waypoint, waypointArrow, waypointText
 local compassLoot = {}
 local compassHoard, compassStorm = nil, {}
 local cardinals = {}
@@ -165,6 +166,7 @@ function Map.build(gui, hoard)
 			}, dot)
 		end
 		make("UIStroke", { Name = "Chosen", Color = GOLD, Thickness = 3, Enabled = false }, dot)
+		make("UIStroke", { Name = "Alarm", Color = Color3.fromRGB(255, 70, 50), Thickness = 0 }, dot)
 		dot.MouseButton1Click:Connect(function()
 			if selector and info and info.major then
 				selector(island.id)
@@ -287,6 +289,41 @@ function Map.build(gui, hoard)
 		ZIndex = 3,
 	}, compass)
 	make("UICorner", { CornerRadius = UDim.new(0, 4) }, compassHoard)
+	-- The way home: while you carry treasure, an arrow on a ring round the middle of the screen points at the
+	-- Hoard, wherever the camera faces. It stays off the middle, where the action is.
+	waypoint = make("Frame", {
+		Name = "HoardWaypoint",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(110, 62),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 15,
+	}, gui)
+	waypointArrow = make("TextLabel", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0),
+		Size = UDim2.fromOffset(40, 40),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBlack,
+		Text = "^",
+		TextColor3 = GOLD,
+		TextStrokeTransparency = 0,
+		TextSize = 46,
+		ZIndex = 15,
+	}, waypoint)
+	waypointText = make("TextLabel", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 1),
+		Size = UDim2.fromOffset(110, 20),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBlack,
+		Text = "HOARD",
+		TextColor3 = GOLD,
+		TextStrokeTransparency = 0,
+		TextSize = 15,
+		ZIndex = 15,
+	}, waypoint)
 	for _, def in ipairs(Config.LOOT) do
 		local dot = make("TextLabel", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -368,6 +405,10 @@ function Map.update(now)
 		if stroke then
 			stroke.Enabled = id == chosen
 		end
+		local alarm = view:FindFirstChild("Alarm")
+		if alarm then
+			alarm.Thickness = (workspace:GetAttribute("Alert_" .. id) or 0) * 2
+		end
 	end
 	local camera = workspace.CurrentCamera
 	local character = player.Character
@@ -393,15 +434,32 @@ function Map.update(now)
 				compassHoard.Size = carrying and UDim2.fromOffset(96, 22) or UDim2.fromOffset(86, 20)
 			end
 		end
+		if waypoint then
+			local toHoard = hoardPosition and Vector3.new(hoardPosition.X - from.X, 0, hoardPosition.Z - from.Z) or nil
+			if carrying and toHoard and toHoard.Magnitude > Config.WAYPOINT_HIDE_WITHIN then
+				local bearing = math.deg(math.atan2(toHoard.X, -toHoard.Z))
+				local delta = math.rad(wrap(bearing - heading))
+				waypoint.Visible = true
+				waypoint.Position = UDim2.new(0.5, math.sin(delta) * 300, 0.5, -math.cos(delta) * 190)
+				waypointArrow.Rotation = math.deg(delta)
+				waypointText.Text = string.format("HOARD %d", toHoard.Magnitude)
+			else
+				waypoint.Visible = false
+			end
+		end
 		for _, def in ipairs(Config.LOOT) do
 			local label = compassLoot[def.id]
 			local state = folder and folder:GetAttribute(def.id .. "State") or "spot"
+			local x, z = lootPosition(def, state, folder)
+			local near = Vector3.new(x - from.X, 0, z - from.Z).Magnitude <= Config.COMPASS_LOOT_RANGE
 			if
-				state == "away" or (state == "carried" and folder:GetAttribute(def.id .. "CarrierId") == player.UserId)
+				state == "away"
+				or carrying
+				or not near
+				or (state == "carried" and folder:GetAttribute(def.id .. "CarrierId") == player.UserId)
 			then
 				label.Visible = false
 			else
-				local x, z = lootPosition(def, state, folder)
 				if place(label, heading, x, z, from) then
 					label.BackgroundTransparency = state == "spot" and 0.15 or 0
 					local pulse = state == "loose" and (math.sin(now * 8) > 0)

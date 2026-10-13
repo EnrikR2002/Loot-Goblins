@@ -24,6 +24,7 @@ local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Loot = require(script.Parent.Loot)
 local Movement = require(script.Parent.Movement)
+local Gear = require(script.Parent.Gear)
 local Poltergoblin = require(script.Parent.Poltergoblin)
 local Boats = require(script.Parent.Boats)
 
@@ -304,6 +305,14 @@ function Combat.catch(attacker, victim, origin)
 	if t < (victim:GetAttribute("CatchImmuneUntil") or 0) then
 		Net.toast(attacker, "They only just got up: the hook slips off.")
 		setCooldown(attacker, Config.GRAPPLE_FAIL_COOLDOWN)
+		return true
+	end
+	if Gear.petIs(victim, "Tortoise") and t >= (victim:GetAttribute("ShellReadyAt") or 0) then
+		-- The shell takes the first catch, then needs a rest.
+		victim:SetAttribute("ShellReadyAt", t + Config.PET_TORTOISE_REST)
+		Net.toast(victim, "Your tortoise's shell shrugged off the hook!")
+		Net.toast(attacker, "The hook bounced off a shell.")
+		setCooldown(attacker, Config.CATCH_COOLDOWN * 0.6)
 		return true
 	end
 	knockDown(victim, humanoid, root, attacker, attackerRoot)

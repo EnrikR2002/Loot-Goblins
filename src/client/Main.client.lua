@@ -16,6 +16,7 @@ local Effects = require(script.Parent.Effects)
 local Weather = require(script.Parent.Weather)
 local BoatDrive = require(script.Parent.BoatDrive)
 local Skyship = require(script.Parent.Skyship)
+local Shop = require(script.Parent.Shop)
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
@@ -820,6 +821,7 @@ end
 local handlers = {}
 Skyship.install(handlers)
 Skyship.start()
+Shop.start()
 
 function handlers.Message(p)
 	Hud.banner(p.text or "", p.color, p.duration)

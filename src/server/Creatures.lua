@@ -26,6 +26,7 @@ local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Loot = require(script.Parent.Loot)
 local Blast = require(script.Parent.Blast)
+local Alerts = require(script.Parent.Alerts)
 
 local Creatures = {}
 
@@ -264,6 +265,7 @@ end
 --        reset(self), onTaken(self, item, player, fromSpot), onBlast(self, position, radius) }
 function Creatures.add(def)
 	def.position = def.home
+	def.island = def.island or select(1, Archipelago.nearest(def.home.X, def.home.Z)).id
 	def.yaw = def.yaw or 0
 	def.awake = false
 	def.busy = false -- Set by a creature that must keep ticking with nobody near (returning home...).
@@ -316,7 +318,7 @@ function Creatures.tick(dt)
 		for _, creature in ipairs(Creatures.list) do
 			local near = false
 			for _, position in ipairs(roots) do
-				if Util.flatDistance(position, creature.home) <= creature.wake then
+				if Util.flatDistance(position, creature.home) <= creature.wake * Alerts.wakeFactor(creature.island) then
 					near = true
 					break
 				end

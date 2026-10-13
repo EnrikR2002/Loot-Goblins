@@ -256,6 +256,44 @@ local function buildBoat(spawn)
 	model.PrimaryPart = hull
 	buildVisuals(spec, typeName, model, hull, trim)
 
+	-- V7: the Navy is WHITE, so a patrol ship stands out against pirate wood and the sea: white hull and
+	-- superstructure, a deep blue stripe and sails, brass trim. (An original livery: no real-world flag.)
+	if typeName == "navy" then
+		local WHITE, BLUE, BRASS =
+			Color3.fromRGB(246, 248, 252), Color3.fromRGB(30, 70, 160), Color3.fromRGB(230, 190, 80)
+		for _, p in ipairs(model:GetDescendants()) do
+			if p:IsA("BasePart") and p.Transparency < 0.9 then
+				local n = p.Name
+				if n == "Sail" or n == "Flag" then
+					p.Color, p.Material = BLUE, Enum.Material.Fabric
+				elseif n == "Cannon" or n == "Anchor" then
+					p.Color = Color3.fromRGB(60, 62, 72)
+				else
+					p.Color, p.Material = WHITE, Enum.Material.SmoothPlastic
+				end
+			end
+		end
+		hull.Color, hull.Material = WHITE, Enum.Material.SmoothPlastic
+		detail(
+			model,
+			hull,
+			"Stripe",
+			Vector3.new(size.X + 0.2, 0.9, size.Z * 0.8),
+			CFrame.new(0, 0.4, 0),
+			BLUE,
+			Enum.Material.SmoothPlastic
+		)
+		detail(
+			model,
+			hull,
+			"BowPlate",
+			Vector3.new(size.X * 0.5, 1.4, 1.6),
+			CFrame.new(0, 0.9, -size.Z / 2 - 0.2),
+			BRASS,
+			Enum.Material.Metal
+		)
+	end
+
 	-- The bow's underside slopes up, so a hull that meets a beach rides up onto it instead of
 	-- hitting it like a wall. (An upside-down wedge in front of the hull box.) Players' boats
 	-- only: an AI ship that overshoots should bump the shore, not climb the island.

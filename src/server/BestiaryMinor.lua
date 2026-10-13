@@ -20,6 +20,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
+local Gear = require(script.Parent.Gear)
+local Leviathan = require(script.Parent.Leviathan)
 local Loot = require(script.Parent.Loot)
 local Boats = require(script.Parent.Boats)
 local Movement = require(script.Parent.Movement)
@@ -66,7 +68,11 @@ local function tickPatches(t)
 	local burned = {}
 	for _, patch in ipairs(patches) do
 		for _, entry in ipairs(C.players(patch.position, k.radius)) do
-			if not burned[entry.player] and math.abs(entry.root.Position.Y - patch.position.Y) < 7 then
+			if
+				not burned[entry.player]
+				and not Gear.fireproof(entry.player)
+				and math.abs(entry.root.Position.Y - patch.position.Y) < 7
+			then
 				burned[entry.player] = true
 				Util.damage(entry.humanoid, k.burn)
 				Net.send(entry.player, "Burn", {})
@@ -277,7 +283,16 @@ end
 local function sleeper()
 	local k = K.Sleeper
 	local DEEP = Color3.fromRGB(150, 90, 220)
-	return C.add({
+	local creature
+	Blast.Hit:Connect(function(position, radius)
+		local head = Leviathan.headPosition()
+		if creature and head and (head - position).Magnitude < radius + 28 then
+			Leviathan.recoil()
+			creature.flinched = true
+			creature.restUntil += k.rest -- twice the usual rest
+		end
+	end)
+	creature = C.add({
 		name = "Sleeper",
 		home = C.at("Bone", 330, -2.4, 70),
 		wake = k.range + 160,
@@ -295,6 +310,7 @@ local function sleeper()
 				},
 			})
 			self.iris = self.model.Iris
+			Leviathan.build(C.refs().folders.threats, self.home)
 		end,
 
 		show = function(self)
@@ -306,10 +322,13 @@ local function sleeper()
 
 		reset = function(self)
 			self.awareness, self.restUntil, self.warnedAt = 0, 0, 0
+			self.flinched = false
+			Leviathan.reset()
 			self:show()
 		end,
 
 		tick = function(self, dt, t)
+			Leviathan.update(dt, self.awareness)
 			-- The loudest boat with someone at the wheel. Empty boats and goblins on foot make no noise.
 			local loudest, loudness, helmsman = nil, 0, nil
 			for _, entry in ipairs(C.players(self.home, k.range)) do
@@ -334,16 +353,17 @@ local function sleeper()
 			end
 			if loudest and self.awareness >= 1 then
 				self.awareness, self.restUntil = 0.3, t + k.rest
+				self.flinched = false
 				local generation = C.generation
 				for strike = 0, k.strikes - 1 do
 					task.delay(strike * k.gap, function()
-						if generation ~= C.generation or loudest.state ~= "float" then
+						if generation ~= C.generation or loudest.state ~= "float" or self.flinched then
 							return
 						end
 						local velocity = flat(loudest.hull.AssemblyLinearVelocity)
 						local at = loudest.hull.Position + velocity * k.delay * 0.9
 						at = v3(at.X, 0, at.Z)
-						Net.broadcast("Tentacle", { position = at, delay = k.delay })
+						Leviathan.slam(at, k.delay)
 						Blast.strike(at, k.delay, {
 							radius = 16,
 							damage = k.damage,
@@ -361,6 +381,7 @@ local function sleeper()
 			end
 		end,
 	})
+	return creature
 end
 
 -- THE CAPTAIN'S SHADE (Skull Rock) -----------------------------------------------------------

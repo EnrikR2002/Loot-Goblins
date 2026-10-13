@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
+local Gear = require(script.Parent.Gear)
 local Boats = require(script.Parent.Boats)
 local Loot = require(script.Parent.Loot)
 local Poltergoblin = require(script.Parent.Poltergoblin)
@@ -38,7 +39,7 @@ function Blast.at(position, opts)
 			if distance <= radius then
 				local falloff = 1 - 0.55 * distance / radius
 				local isOwner = player == owner
-				if (opts.damage or 0) > 0 and not isOwner then
+				if (opts.damage or 0) > 0 and not isOwner and not (opts.fire and Gear.fireproof(player)) then
 					local dealt = Util.damage(humanoid, opts.damage * falloff)
 					if owner then
 						Poltergoblin.markDamage(owner, humanoid, dealt)

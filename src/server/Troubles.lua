@@ -128,7 +128,7 @@ Threats.handlers.Flood = function()
 		task.wait(Config.FLOOD_TIME)
 		fill(Enum.Material.Air)
 		if generation == Threats.generation() then
-			Mechanisms.openGate(site.gate, 8)
+			Mechanisms.openGate(site.gate, site.gate.startOpen and 1e9 or 8)
 			Net.feed("The vault drains and the gate rumbles open again.", Color3.fromRGB(110, 230, 255))
 		end
 	end)
@@ -191,6 +191,7 @@ Threats.handlers.Eruption = function()
 			boatPush = 50,
 			lootReason = "boulder",
 			cause = "a lava bomb",
+			fire = true,
 			markerColor = Color3.fromRGB(255, 120, 40),
 			style = "lava",
 			color = Color3.fromRGB(255, 130, 40),

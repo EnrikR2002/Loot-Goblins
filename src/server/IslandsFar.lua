@@ -267,7 +267,9 @@ local function buildFort()
 	table.insert(refs.kegCrates, Kit.kegCrate(v3(cx + 14, top, cz + 30)))
 	ground("CannonStand", v3(10, 1, 10), CFrame.new(cx - 26, top + 15.6, cz - 6), DARK_STONE, Enum.Material.Slate)
 	Kit.cannon(v3(cx - 26, top + 16.1, cz - 6), v3(cx - 26, top, cz + 200), "Fort cannon")
-	ladder("WallLadder", v3(cx - 26, top, cz - 1), 16)
+	-- Beside the stand, on its west edge, topping out just above it: a climber steps east onto it. (V2 to V6 put it
+	-- under the stand's south edge, which blocked every way off.)
+	ladder("WallLadder", v3(cx - 33.2, top, cz - 6), 20)
 	-- The Navy sits in the harbor, one ship each side of the basin.
 	table.insert(refs.navyBases, {
 		id = "Fort",
@@ -385,9 +387,13 @@ local function buildEmber()
 	fillColumn(cx, cz, -30, 8, 170, Enum.Material.Basalt)
 	Kit.cone(cx, cz, 6, 56, 166, 104, Enum.Material.Basalt, 0.1, 811, Enum.Material.Basalt)
 	Kit.cone(cx, cz, 54, 124, 98, 46, Enum.Material.Basalt, 0.08, 812, Enum.Material.Basalt)
-	-- The crater: a funnel (walkable walls, so you can climb back out) down to a lava pool.
-	for i = 0, 8 do
-		terrain:FillCylinder(CFrame.new(cx, 108 + i * 2 + 1, cz), 2.2, 22 + i * 2.1, AIR)
+	-- The crater: a funnel (walkable walls, so you can climb back out) down to a lava pool. The funnel has to
+	-- reach the cone's real summit (about y 130, the engine's two extra studs and the cone's own noise): through
+	-- V6 it stopped at y 126 and left a 4-stud lid of rock over the crater, so nobody could get in.
+	-- (An air fill thinner than one 4-stud terrain cell removes NOTHING: the V4 to V6 funnel was a stack of 2.2-stud
+	-- slabs, so the crater was never hollowed at all. Slabs six studs thick, two apart, make the same funnel.)
+	for i = 0, 13 do
+		terrain:FillCylinder(CFrame.new(cx, 111 + i * 2, cz), 6, 22 + i * 2.1, AIR)
 	end
 	terrain:FillCylinder(CFrame.new(cx, 104, cz), 8, 24, Enum.Material.CrackedLava)
 	fillColumn(cx, cz, 100, 111, 6, Enum.Material.Basalt) -- the pedestal

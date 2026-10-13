@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
+local Gear = require(script.Parent.Gear)
 local Movement = require(script.Parent.Movement)
 
 local Loot = {}
@@ -613,6 +614,13 @@ function Loot.build(worldRefs)
 		table.insert(Loot.items, item)
 		Loot.byId[def.id] = item
 		item.prompt.Triggered:Connect(function(player)
+			if item.state == "spot" then
+				local allowed, why = Gear.allows(player, def.island)
+				if not allowed then
+					Net.toast(player, why)
+					return
+				end
+			end
 			Loot.tryGrab(item, player)
 		end)
 		placeAtSpot(item)

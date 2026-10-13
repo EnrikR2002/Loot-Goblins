@@ -51,6 +51,10 @@ local Escalation = require(script.Parent.Escalation)
 local Coins = require(script.Parent.Coins)
 local Recall = require(script.Parent.Recall)
 local Skyship = require(script.Parent.Skyship)
+local Gear = require(script.Parent.Gear)
+local Alerts = require(script.Parent.Alerts)
+local Progress = require(script.Parent.Progress)
+local Monetization = require(script.Parent.Monetization)
 local Creatures = require(script.Parent.Creatures)
 require(script.Parent.Bestiary)
 require(script.Parent.BestiaryMinor)
@@ -81,6 +85,7 @@ print(
 )
 Boats.build(refs)
 Skyship.build(refs)
+Gear.build(refs)
 Loot.build(refs)
 Poltergoblin.init(refs)
 Destructibles.build(refs)
@@ -96,6 +101,8 @@ Escalation.build(refs)
 Creatures.build(refs)
 Combat.init(refs)
 Raid.init(refs)
+Progress.init()
+Monetization.init()
 Storms.reset()
 
 -- Salvage: a crate floats where a patrol ship went down, and where a storm blew itself out.
@@ -146,6 +153,7 @@ Loot.Taken:Connect(function(item, player, fromSpot, fromPlayer)
 	local def = item.def
 	Creatures.onTaken(item, player, fromSpot)
 	if fromSpot then
+		Alerts.stolen(def.island, player)
 		Heat.add(def.heat)
 		Net.broadcast("Stolen", {
 			name = player.DisplayName,
@@ -284,6 +292,7 @@ Players.PlayerRemoving:Connect(function(player)
 	Coins.forget(player)
 	Recall.forget(player)
 	Skyship.forget(player)
+	Progress.forget(player)
 end)
 
 Net.Throw.OnServerEvent:Connect(function(player)
@@ -332,6 +341,13 @@ Net.Deploy.OnServerEvent:Connect(function(player, action, a, b)
 		Skyship.leaveCannon(player)
 	end
 end)
+Net.Shop.OnServerEvent:Connect(function(player, action, id)
+	if action == "robux" then
+		Monetization.prompt(player, id)
+	else
+		Progress.handle(player, action, id)
+	end
+end)
 Net.Steal.OnServerEvent:Connect(function(player, target)
 	Combat.stealFrom(player, target)
 end)
@@ -372,12 +388,14 @@ RunService.Heartbeat:Connect(function(dt)
 	Boats.tick(dt)
 	Recall.tick()
 	Skyship.tick(dt)
+	Progress.tick(dt, active)
 	if active then
 		Loot.tick()
 		Heat.tick(dt, carryHeatRate())
 		Threats.tick(dt)
 		Navy.tick()
 		Escalation.tick()
+		Alerts.tick(dt)
 	end
 	Storms.tick(dt, active)
 	Cannons.tick(dt)

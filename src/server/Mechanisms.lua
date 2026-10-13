@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
+local Gear = require(script.Parent.Gear)
 local Loot = require(script.Parent.Loot)
 
 local Mechanisms = {}
@@ -178,7 +179,7 @@ local function tickLava()
 	for _, zone in ipairs(refs.lavaZones) do
 		for _, player in ipairs(Players:GetPlayers()) do
 			local root, humanoid = Util.aliveRoot(player)
-			if root then
+			if root and not Gear.fireproof(player) then
 				local local_ = zone.part.CFrame:PointToObjectSpace(root.Position)
 				local half = zone.part.Size / 2
 				if math.abs(local_.X) < half.X and math.abs(local_.Y) < half.Y and math.abs(local_.Z) < half.Z then
@@ -244,11 +245,11 @@ end
 
 function Mechanisms.reset()
 	for _, gate in ipairs(refs.gates) do
-		gate.progress = 0
-		gate.target = 0
+		gate.progress = gate.startOpen and 1 or 0
+		gate.target = gate.progress
 		gate.closeAt = nil
 		gate.lockedUntil = nil
-		gate.model:PivotTo(gate.closed)
+		gate.model:PivotTo(gate.closed:Lerp(gate.open, gate.progress))
 	end
 	for _, spinner in ipairs(refs.spinners) do
 		spinner.speed = spinner.baseSpeed or spinner.speed

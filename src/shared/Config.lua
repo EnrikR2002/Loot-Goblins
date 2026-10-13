@@ -887,6 +887,8 @@ Config.TIER_COLORS = {
 -- Gear (V7): found in the world, never sold for Robux. Each piece changes one island's hazard a lot, and the treasure
 -- on that island cannot be pried loose without it. A cache on a key island hands it out for the rest of the raid, once
 -- per goblin (Lantern Key offers boots OR claws: you carry one at a time, so you choose). Shinies can buy "start with it".
+Config.REBREATHER_SWIM = 1.4 -- Swim speed with the rebreather, as a multiple.
+Config.CLAWS_CHILL = 0.25 -- The Chill's drain with frost claws, as a multiple.
 Config.GEAR = {
 	Rebreather = {
 		name = "Diver's Rebreather",
@@ -912,6 +914,112 @@ Config.GEAR = {
 		effect = "The Chill drains a quarter as much stamina, and ice cannot throw you.",
 		color = Color3.fromRGB(170, 230, 255),
 	},
+}
+
+-- Regional alerts (V7, server/Alerts.lua). A theft puts its island on guard (level 0 to 3), and the
+-- islands it is linked to by LINKS[island][other] times as much. Levels fall by DECAY per second.
+Config.ALERT = {
+	STEAL = 1.0, -- Level added to the robbed island.
+	DECAY = 1 / 40, -- A level lasts about 40 seconds.
+	WAKE_PER_LEVEL = 0.3, -- Creatures notice you from this much farther per level.
+	NAVY_LEVEL = 2, -- At this level the Navy comes.
+	NAVY_RANGE = 1800, -- Every patrol ship this close turns toward the island...
+	NAVY_TIME = 35, -- ...for this long.
+	CALL_GAP = 30,
+	LINKS = {
+		Tangle = { Fort = 0.8, Shoals = 0.5 },
+		Fort = { Tangle = 0.8, Shoals = 0.4, Tide = 0.4 },
+		Shoals = { Tide = 0.6, Kelp = 0.4, Tangle = 0.4 },
+		Tide = { Shoals = 0.6, Kelp = 0.6 },
+		Cross = { Pilgrim = 0.7, Temple = 0.6 },
+		Temple = { Cross = 0.7, Pilgrim = 0.5, Frost = 0.4 },
+		Windmill = { Crystal = 0.6, Smuggler = 0.4 },
+		Crystal = { Windmill = 0.6, Twin = 0.6, Maelstrom = 0.4 },
+		Maelstrom = { Crystal = 0.4, Windmill = 0.4 },
+		Ember = { Skull = 0.6, Lantern = 0.6 },
+		Skull = { Ember = 0.6, Lantern = 0.5 },
+		Frost = { Bone = 0.6, Lantern = 0.4, Temple = 0.4 },
+		Bone = { Frost = 0.6, Driftwood = 0.6, Temple = 0.3 },
+		Smuggler = { Coral = 0.5, Pebble = 0.3 },
+		Coral = { Smuggler = 0.5, Pebble = 0.4 },
+		Pebble = { Coral = 0.4, Gull = 0.4 },
+	},
+}
+
+-- Lasting progress (V7, server/Progress.lua) -------------------------------------------------------------
+-- SHINIES are what a goblin keeps; raid GOLD is what wins a raid. A raid pays PARTICIPATION to
+-- everyone who was there for MIN_PRESENT seconds, PER_GOLD for each gold banked (up to GOLD_CAP), a WIN
+-- bonus for the winner (a tie shares it) and an UNDERDOG bonus to a goblin who banked something and sits at or
+-- below the middle. At most RAID_CAP a raid. A pet costs 120 to 200: two to five raids.
+Config.PROGRESS = {
+	STORE = "LootGoblinsProfile_v1",
+	PARTICIPATION = 10,
+	PER_GOLD = 1,
+	GOLD_CAP = 30,
+	WIN = 25,
+	UNDERDOG = 5,
+	RAID_CAP = 70,
+	MIN_PRESENT = 90,
+	AUTOSAVE = 120,
+}
+Config.KIT_PRICE = 90 -- Starting a raid already carrying one piece of gear.
+-- Five pets, each a different VERB rather than a different percentage. Equipped one at a time.
+Config.PETS = {
+	Crab = {
+		name = "Tug Crab",
+		price = 120,
+		color = Color3.fromRGB(235, 110, 90),
+		effect = "Boat calls arrive on a 40% shorter wait.",
+	},
+	Gull = {
+		name = "Scout Gull",
+		price = 150,
+		color = Color3.fromRGB(240, 240, 245),
+		effect = "Shows how far the nearest waiting treasure is.",
+	},
+	Frog = {
+		name = "Spring Frog",
+		price = 140,
+		color = Color3.fromRGB(110, 220, 110),
+		effect = "Your dash recharges 35% faster.",
+	},
+	Tortoise = {
+		name = "Shell Tortoise",
+		price = 180,
+		color = Color3.fromRGB(110, 150, 90),
+		effect = "The first grapple catch on you each 30 s bounces off.",
+	},
+	Ghost = {
+		name = "Pocket Ghost",
+		price = 200,
+		color = Color3.fromRGB(190, 220, 255),
+		effect = "Poltergoblin recharges 25% faster.",
+	},
+}
+Config.PET_CRAB_RECALL = 0.6 -- Recall cooldown multiple.
+Config.PET_FROG_DASH = 0.65 -- Dash cooldown multiple.
+Config.PET_GHOST_COOLDOWN = 0.75 -- Poltergoblin cooldown multiple.
+Config.PET_TORTOISE_REST = 30 -- Seconds before the shell works again.
+Config.PET_GULL_RANGE = 1400 -- How far the gull sees.
+-- Robux. EMPTY until a human creates Developer Products and pastes their ids here:
+--   [123456789] = { pet = "Gull" },
+Config.MONETIZATION = { PRODUCTS = {} }
+
+-- Navigation (V7). The compass strip only lists treasure this close (all nineteen across the top was the
+-- clutter), and a carrier gets a waypoint arrow toward the Hoard.
+Config.COMPASS_LOOT_RANGE = 1300
+Config.WAYPOINT_HIDE_WITHIN = 90 -- The arrow goes away this close to the Hoard: you are there.
+
+-- The Leviathan's body (server/Leviathan.lua): drawn by the Sleeper's tick, no health, no AI of its own.
+Config.LEVIATHAN = {
+	HUMPS = 7,
+	NECK = 12,
+	RADIUS = 150, -- Of the circle its back swims.
+	SWIM_SPEED = 22,
+	LURK_MIN = 0.25, -- How much of its back shows when the Sleeper is hardly aware.
+	GAP = 0.12, -- Radians between humps.
+	ARC_HEIGHT = 75,
+	NECK_GAP = 0.05,
 }
 
 -- Recall (B): a boat for a goblin with none. See server/Recall.lua.

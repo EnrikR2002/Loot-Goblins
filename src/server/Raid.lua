@@ -25,6 +25,9 @@ local Escalation = require(script.Parent.Escalation)
 local Recall = require(script.Parent.Recall)
 local Combat = require(script.Parent.Combat)
 local Skyship = require(script.Parent.Skyship)
+local Gear = require(script.Parent.Gear)
+local Alerts = require(script.Parent.Alerts)
+local Progress = require(script.Parent.Progress)
 
 local Raid = {}
 Raid.phase = "intermission"
@@ -77,6 +80,8 @@ local function resetWorld()
 	Kegs.reset()
 	Boats.reset()
 	Recall.reset()
+	Gear.reset()
+	Alerts.reset()
 	Combat.reset()
 	Coins.reset()
 	Creatures.reset()
@@ -87,6 +92,7 @@ function Raid.start()
 	-- V7: the match starts aboard the skyship (nobody walks out of the cove). Anyone who is still at
 	-- home (a late spawn, a death in the intermission) is put on the deck first.
 	Skyship.boardAll()
+	Progress.onRaidStart()
 	for _, player in ipairs(Players:GetPlayers()) do
 		local gold = stat(player, "Gold")
 		if gold then
@@ -126,6 +132,14 @@ function Raid.finish()
 			end
 		end
 	end
+	-- What the goblins keep: Shinies, once each (Progress guards a second payout for the same raid).
+	local awardList = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		local gold = stat(player, "Gold")
+		local value = gold and gold.Value or 0
+		table.insert(awardList, { player = player, gold = value, won = best > 0 and value == best })
+	end
+	Progress.award(awardList)
 	-- Loot still out there is lost; the world goes quiet until the next raid.
 	resetWorld()
 	setPhase("intermission", now() + Config.INTERMISSION)

@@ -22,12 +22,13 @@ local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local SeaNav = require(script.Parent.SeaNav)
 local Boats = require(script.Parent.Boats)
+local Gear = require(script.Parent.Gear)
 
 local Recall = {}
 
 -- Pets and other modifiers set this: function(player) -> cooldown seconds.
-Recall.cooldownFor = function(_player)
-	return Config.RECALL_COOLDOWN
+Recall.cooldownFor = function(player)
+	return Config.RECALL_COOLDOWN * (Gear.petIs(player, "Crab") and Config.PET_CRAB_RECALL or 1)
 end
 
 local readyAt = {} -- player -> server time
