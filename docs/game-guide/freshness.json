@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "fingerprint": "2ed3def7a360e819e7e2fa874fba05584c8448b69011fdad35aec07d8f1c59f7",
+  "fingerprint": "6cf5a2005d433157c5f506bb49a58aa3c8c58950bef3da60fd99dae175326647",
   "source_baseline": {
     "src/client/BoatDrive.lua": "160494ffca06e5269c140131bc5c2e3640a1227707c4c25ea87af57c6c5a684b",
     "src/client/Effects.lua": "743338eecc2160ddb7bbfe1414a964d0c9f08245388c5d2c4afa4bb5f9caa60c",
@@ -60,12 +60,12 @@
     "docs/reports/2026-10-12-v6-ocean-flow-audio.md": "318094acb65635f639c00ad11c5c19d3f4381b198812607db2800a07823924b3",
     "docs/reports/2026-10-12-v5-living-threats-playful-seas.md": "addcfc62514b8b8f623db2f1263d09b6329c12988ee5c2b524f078499c0d802b",
     "docs/reports/2026-10-12-v4-living-archipelago.md": "ad515b319bac90c9c931bdaf6f0b75a9b781d7b7afd4d6dcda74606fc99ec142",
-    "docs/reports/2026-10-12-shared-game-memory.md": "1385c6d3849ab7b03b4db8e4b8cd570f60aa4128de2b833ad898109296a17e33",
+    "docs/reports/2026-10-12-shared-game-memory.md": "0af81f6322fd35e918e1d7cb23e7025210269a62c2f92f96f82fec3dee5e6c95",
     "docs/reports/2026-10-11-v3-power-speed-peril.md": "f7b8ca45ea350c2b24ccf41c17d4a05716c0e03fa91ec065cb2bc4922ced85d5",
     "docs/reports/2026-10-08-v2-archipelago.md": "b0b81f00687f32df739a2f9468f85468cbcd62020a43971b8788ea448ada96e7",
     "docs/reports/2026-10-07-sprint-grapple-bigger-map.md": "85f3ba512ec12dcd62d1ce3789dbceb4f5abc8d9e595c89f4643f3da2645b12d",
     "docs/reports/2026-10-06-vertical-slice-foundation.md": "ea09c2f23624ec986ba0eda9acad1b9a6c2486dbb304be44fdc09c25b2ec7010",
     "docs/reports/2026-10-03-yone-e-test.md": "e65828d401927d8b907b211fbefa624325a0dafa6ac183401d693cc150ebe74f"
   },
-  "knowledge_revision": "7bf6aa3207f8fe67543a9c84dd937105953f0a49"
+  "knowledge_revision": "5ee37a6a8e1cc7a4eca28bf5b9ecb8b28f48aa96"
 }

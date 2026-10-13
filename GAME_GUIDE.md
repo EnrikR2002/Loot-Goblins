@@ -8,8 +8,8 @@ This file is a self-contained game description, quality rubric, and dated develo
 
 **Game repository:** https://github.com/EnrikR2002/Loot-Goblins
 **Documented gameplay revision:** 8f399c7b26d721f7947ad8fcbc6c497943d6d6b2
-**Shared rubric revision:** 7bf6aa3207f8fe67543a9c84dd937105953f0a49
-**Document freshness fingerprint:** 2ed3def7a360e819e7e2fa874fba05584c8448b69011fdad35aec07d8f1c59f7
+**Shared rubric revision:** 5ee37a6a8e1cc7a4eca28bf5b9ecb8b28f48aa96
+**Document freshness fingerprint:** 6cf5a2005d433157c5f506bb49a58aa3c8c58950bef3da60fd99dae175326647
 
 Ask an outside AI: 'Read this complete guide, compare the current game with the included rubric, and suggest the highest-value improvements. Separate documented gaps, hypotheses, and ideas. Respect game-specific decisions and current prototype gates.'
 
@@ -3515,6 +3515,10 @@ The AI's existing task routine now retrieves relevant shared checks/lessons and 
 Open this game in the coding AI, describe desired work or what felt bad, and follow its playtest steps. The AI operates GitHub and notebook files. For another AI, ask it to open GAME_GUIDE.md and attach it; the complete guide includes the shared evaluation lens and historical reports. Code/Studio bug confirmation requires more than the guide.
 
 The task PR targets V6. It does not merge, approve, or reorder PRs #9–14. Normal game/software/template merges require explicit human review. Routine new attributed notebook observations/hypotheses publish under the user's approved automatic policy, with confirmed versus pending publication clearly distinguished.
+
+## Final rollout authorization
+
+Enrik explicitly approved committing and merging this rollout on October 12, including installing on Ninety's latest V6 and merging that development line into Loot Goblins main. Earlier pending-approval statements above describe the previous checkpoint; GitHub records the actual merge outcome. This approval does not certify outstanding multiplayer, device, or fun tests. A shipped import-only CLAUDE.md loads the same AGENTS.md for Claude Code; no second rule set was introduced. Teammates still need to accept the private notebook invitations using their own accounts once. Temporary integration workspace and completed branches are to be removed after confirmed integration, preserving unrelated work.
 
 ---
 

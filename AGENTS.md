@@ -48,3 +48,7 @@ Before stopping mid-task, leave a concise handoff in the chat/PR: branch, comple
 
 ## Shared process with our other games
 Our other games start from `https://github.com/EnrikR2002/Roblox-Game-Template`, which packages this workflow (scripts, rules, docs). If you improve a script, rule, or doc here that every game would benefit from, finish the task here, then tell the human so it can go into the template too. Do not edit the template from this repository.
+
+## AI startup compatibility
+
+AGENTS.md is the sole team instruction source. The shipped CLAUDE.md only imports it for Claude Code compatibility; keep that pointer and do not duplicate rules there. At startup, confirm these instructions and shared-notebook retrieval are available. Tell the human plainly about missing access.

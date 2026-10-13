@@ -22,3 +22,7 @@ The AI's existing task routine now retrieves relevant shared checks/lessons and 
 Open this game in the coding AI, describe desired work or what felt bad, and follow its playtest steps. The AI operates GitHub and notebook files. For another AI, ask it to open GAME_GUIDE.md and attach it; the complete guide includes the shared evaluation lens and historical reports. Code/Studio bug confirmation requires more than the guide.
 
 The task PR targets V6. It does not merge, approve, or reorder PRs #9–14. Normal game/software/template merges require explicit human review. Routine new attributed notebook observations/hypotheses publish under the user's approved automatic policy, with confirmed versus pending publication clearly distinguished.
+
+## Final rollout authorization
+
+Enrik explicitly approved committing and merging this rollout on October 12, including installing on Ninety's latest V6 and merging that development line into Loot Goblins main. Earlier pending-approval statements above describe the previous checkpoint; GitHub records the actual merge outcome. This approval does not certify outstanding multiplayer, device, or fun tests. A shipped import-only CLAUDE.md loads the same AGENTS.md for Claude Code; no second rule set was introduced. Teammates still need to accept the private notebook invitations using their own accounts once. Temporary integration workspace and completed branches are to be removed after confirmed integration, preserving unrelated work.
