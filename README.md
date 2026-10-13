@@ -155,3 +155,7 @@ These are deliberate. Production architecture comes after the loop proves itself
 The [original design thesis](docs/DESIGN_THESIS.txt) preserves the broader vision and future ideas. Those ideas are not authorization to expand the prototype; follow the requested task and `AGENTS.md`. [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) describes the current systems.
 
 The redundant original ZIP and duplicate README were removed from the current tree. The original distribution remains recoverable from Git history in baseline commit `a3d7185`; the active project is `src/` plus `default.project.json`.
+
+## Game guide and shared lessons
+
+Ask your AI to open GAME_GUIDE.md when you want another AI to understand this V6 game. It includes the current systems, exact tuning, shared quality rubric, and dated change/test history. Your coding AI maintains it and shares reusable observations through the team notebook. See [the simple guide](docs/SHARED_MEMORY.md). You do not need to maintain GitHub files yourself.
