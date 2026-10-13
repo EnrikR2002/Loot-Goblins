@@ -5,13 +5,9 @@
   "knowledge_repository": "EnrikR2002/Roblox-Team-Knowledge",
   "reviewed_gameplay_ref": "8f399c7b26d721f7947ad8fcbc6c497943d6d6b2",
   "chapters": [
-    "docs/game-guide/01-game.md",
-    "docs/game-guide/02-system-contracts.md"
+    "docs/GAME_DESIGN.md"
   ],
   "appendices": [
-    "docs/AI_CONTEXT.md",
-    "README.md",
-    "docs/DESIGN_THESIS.txt",
     "src/shared/Config.lua",
     "src/shared/Archipelago.lua",
     "default.project.json"

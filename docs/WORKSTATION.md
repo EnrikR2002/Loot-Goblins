@@ -1,6 +1,6 @@
 # Loot Goblins workstation
 
-One repository: https://github.com/EnrikR2002/Loot-Goblins. One task branch and PR at a time. One instruction file: `AGENTS.md`.
+One repository: https://github.com/EnrikR2002/Loot-Goblins. One task branch and PR at a time. One instruction source: `AGENTS.md`; `CLAUDE.md` only imports it.
 
 For AI-led onboarding, paste the [teammate setup prompt](TEAM_SETUP_PROMPT.md) into Codex or Claude Code. The agent should use the existing helpers and only ask you for steps that require your account or GUI approval.
 
