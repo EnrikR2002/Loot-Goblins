@@ -218,7 +218,12 @@ local function spawnAmbient()
 	local sailors = {}
 	for _, player in ipairs(Players:GetPlayers()) do
 		local root = Util.aliveRoot(player)
-		if root and Util.flatDistance(root.Position, home) > Config.STORM_HOME_CLEAR then
+		-- (Not a goblin still up on the skyship or on its way down: V8.)
+		if
+			root
+			and root.Position.Y < Config.STORM_CEILING
+			and Util.flatDistance(root.Position, home) > Config.STORM_HOME_CLEAR
+		then
 			table.insert(sailors, root.Position)
 		end
 	end
@@ -301,12 +306,16 @@ local function strike(cell)
 			consider(boat.hull.Position, occupied and 4 or 1, boat.hull.AssemblyLinearVelocity)
 		end
 	end
+	-- V8: weather is a thing of the sea. A goblin on the skyship's deck, in one of its cannons or high in
+	-- a flight is above it (lightning used to find them up there: one died sitting in a cannon).
 	for _, carrier in ipairs(Loot.carriers()) do
-		consider(carrier.root.Position, 3, carrier.root.AssemblyLinearVelocity)
+		if carrier.root.Position.Y < Config.STORM_CEILING then
+			consider(carrier.root.Position, 3, carrier.root.AssemblyLinearVelocity)
+		end
 	end
 	for _, player in ipairs(Players:GetPlayers()) do
 		local root = Util.aliveRoot(player)
-		if root then
+		if root and root.Position.Y < Config.STORM_CEILING then
 			consider(root.Position, 1, root.AssemblyLinearVelocity)
 		end
 	end

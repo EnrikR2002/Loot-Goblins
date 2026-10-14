@@ -643,15 +643,20 @@ function Boats.shove(boat, velocity, spin)
 	end
 end
 
--- An explosion or hit near boats: damage and shove each one in range.
-function Boats.hitAt(position, radius, damage, push, cause, except)
+-- An explosion or hit near boats: damage and shove each one in range. `floor` (a share of the hull,
+-- optional) is as low as this hit may take a hull: the world batters boats, it does not sink them (V8).
+function Boats.hitAt(position, radius, damage, push, cause, except, floor)
 	for _, boat in ipairs(Boats.list) do
 		if boat.state == "float" and boat ~= except then
 			local offset = boat.hull.Position - position
 			local distance = offset.Magnitude
 			if distance < radius + boat.spec.size.Z * 0.4 then
 				local falloff = math.clamp(1 - distance / (radius + boat.spec.size.Z * 0.4), 0.25, 1)
-				Boats.damage(boat, damage * falloff, cause)
+				local dealt = damage * falloff
+				if floor then
+					dealt = math.min(dealt, math.max(0, boat.health - boat.spec.health * floor))
+				end
+				Boats.damage(boat, dealt, cause)
 				local away = offset.Magnitude > 0.1 and offset.Unit or Vector3.yAxis
 				Boats.shove(boat, (away * push + Vector3.new(0, push * 0.5, 0)) * falloff)
 			end

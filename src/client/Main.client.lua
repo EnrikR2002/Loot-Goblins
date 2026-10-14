@@ -866,6 +866,17 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
 	end
+	-- In the air after a launch the keys belong to the flight (client/Skyship.lua): Space brakes, Shift dives.
+	if
+		player:GetAttribute("Diving")
+		and (
+			input.KeyCode == Enum.KeyCode.LeftShift
+			or input.KeyCode == Enum.KeyCode.Space
+			or input.KeyCode == Enum.KeyCode.C
+		)
+	then
+		return
+	end
 	if input.KeyCode == Enum.KeyCode.LeftShift then
 		if seatedInBoat() then
 			BoatDrive.boost()
@@ -1583,6 +1594,49 @@ end
 function handlers.Flood(p)
 	Effects.sound("splash", { position = p.position, speed = 0.5, volume = 1, range = 300 })
 	Effects.shakeAt(p.position, 0.8, 1, 120)
+end
+
+-- Something a sea creature did (server/Pursuit.lua, SeaMobs.lua): { sound, pitch, volume, colour, spray }.
+local SEA_FX = {
+	launch = { "splash", 0.7, 1, Color3.fromRGB(220, 240, 255), 1.2 },
+	splash = { "splash", 1, 0.9, Color3.fromRGB(220, 240, 255), 0.9 },
+	crash = { "thud", 0.6, 1, Color3.fromRGB(235, 228, 210), 1.3 },
+	erupt = { "boom", 1.4, 0.9, Color3.fromRGB(220, 240, 255), 1.7 },
+	bleat = { "rise", 1.6, 1, Color3.fromRGB(235, 228, 210) },
+	shriek = { "rise", 2.4, 1, Color3.fromRGB(96, 190, 84) },
+	snatch = { "blip", 2.9, 1, Color3.fromRGB(96, 190, 84), 0.5 },
+	zap = { "blip", 3.2, 1, Color3.fromRGB(120, 235, 255), 0.6 },
+	clap = { "thud", 1.6, 0.9, Color3.fromRGB(255, 170, 190), 0.5 },
+	chime = { "blip", 0.7, 0.9, Color3.fromRGB(215, 120, 255) },
+	shatter = { "blip", 2.6, 1, Color3.fromRGB(215, 120, 255), 0.8 },
+	eye = { "rise", 0.5, 1, Color3.fromRGB(255, 80, 60) },
+	chill = { "blip", 0.5, 0.9, Color3.fromRGB(190, 235, 255) },
+	yelp = { "rise", 2, 1, Color3.fromRGB(255, 240, 200), 0.8 },
+	nibble = { "blip", 3.4, 0.9, Color3.fromRGB(170, 200, 215), 0.5 },
+	boing = { "rise", 1.2, 1, Color3.fromRGB(255, 205, 90), 1.4 },
+	lance = { "whoosh", 1.5, 1, Color3.fromRGB(110, 170, 230), 0.7 },
+}
+
+function handlers.SeaFx(p)
+	local fx = SEA_FX[p.kind]
+	if not fx or typeof(p.position) ~= "Vector3" then
+		return
+	end
+	Effects.sound(fx[1], { position = p.position, speed = fx[2], volume = fx[3], range = 420 })
+	Effects.burst(p.position + Vector3.new(0, 2, 0), fx[4], 20, 24)
+	if fx[5] then
+		Effects.spray(p.position, fx[5])
+		Effects.ring(p.position + Vector3.new(0, 1, 0), fx[4], 12 + fx[5] * 10, 0.6)
+	end
+	if p.kind == "erupt" or p.kind == "crash" or p.kind == "boing" then
+		Effects.shakeAt(p.position, 0.6, 0.4, 90)
+	end
+end
+
+-- The world hit a carrier once (Loot.knockLoose): the treasure is still theirs, for now.
+function handlers.GripSlip(_p)
+	Hud.flash(Color3.fromRGB(255, 205, 50), 0.35)
+	Effects.sound("blip", { speed = 0.6, volume = 0.9 })
 end
 
 function handlers.Burn()

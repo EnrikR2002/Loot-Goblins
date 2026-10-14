@@ -1105,15 +1105,12 @@ function Kit.hookPost(base, height, color)
 	return top
 end
 
--- A catapult: a launch pad that throws you a long way. `launch` is the velocity it gives and
--- `carry` how many seconds the throw holds its sideways speed (the client keeps it; without that
--- a goblin's own air control would stop the flight short). Dash, air jump or grapple ends it early.
-function Kit.catapult(position, launch, carry, label)
-	local pad = Kit.launchPad(position, launch)
-	pad.Color = Color3.fromRGB(255, 170, 60)
-	pad.Size = Vector3.new(0.8, 10, 10)
-	pad:SetAttribute("Carry", carry)
-	local flat = Vector3.new(launch.X, 0, launch.Z).Unit
+-- A catapult (V8): a launcher, the same thing a skyship cannon is (server/Flight.lua). Climb into the
+-- cup (E), look at where you want to come down, fire. It starts aimed at `target`, the place it was
+-- built to reach, so E then Space still makes the old throw; turning it is the new part. The frame
+-- stands still and the throwing arm turns with the aim. Returns the refs.catapults entry.
+function Kit.catapult(position, target, label)
+	local flat = Vector3.new(target.X - position.X, 0, target.Z - position.Z).Unit
 	local frame = CFrame.lookAt(position, position + flat)
 	for _, side in ipairs({ -1, 1 }) do
 		structure(
@@ -1128,7 +1125,69 @@ function Kit.catapult(position, launch, carry, label)
 	local holder = decor("CatapultSign", Vector3.new(1, 1, 1), frame * CFrame.new(0, 10, 4.8), Color3.new(1, 1, 1), nil)
 	holder.Transparency = 1
 	sign(holder, label or "CATAPULT", Color3.fromRGB(255, 200, 110), Vector3.zero, 220)
-	return pad
+	-- The throwing arm and its cup: one model, turned as a piece.
+	local model = Instance.new("Model")
+	model.Name = "Catapult"
+	local pivot = position + Vector3.new(0, 1.2, 0)
+	local spoon = part(
+		"CatapultSpoon",
+		Vector3.new(1.4, 1, 13),
+		CFrame.lookAt(pivot, pivot + flat) * CFrame.new(0, 0.4, 2.5),
+		Color3.fromRGB(150, 104, 62),
+		Enum.Material.Wood,
+		model
+	)
+	spoon.CanCollide = false
+	local cup = part(
+		"CatapultCup",
+		Vector3.new(1.6, 7, 7),
+		CFrame.new(pivot) * CFrame.Angles(0, 0, math.rad(90)),
+		Color3.fromRGB(255, 170, 60),
+		Enum.Material.Neon,
+		model
+	)
+	cup.Shape = Enum.PartType.Cylinder
+	cup.CanCollide = false
+	model.PrimaryPart = cup
+	model.Parent = folders.structures
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "CatapultPrompt"
+	prompt.ObjectText = "Catapult"
+	prompt.ActionText = "Climb in"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
+	prompt.Parent = cup
+	local at = pivot + shift
+	local function pose(direction, kick)
+		local across = Vector3.new(direction.X, 0, direction.Z)
+		across = across.Magnitude > 0.05 and across.Unit or flat
+		local turned = CFrame.lookAt(at, at + across) * CFrame.Angles(math.rad(kick or 0), 0, 0)
+		spoon.CFrame = turned * CFrame.new(0, 0.4, 2.5)
+		cup.CFrame = turned * CFrame.Angles(0, 0, math.rad(90))
+	end
+	local entry = {
+		model = model,
+		cup = cup,
+		prompt = prompt,
+		from = at + Vector3.new(0, 3, 0),
+		target = target + shift,
+		exit = at + Vector3.new(0, 3, 0) - flat * 6,
+		label = label or "CATAPULT",
+		aim = function(direction)
+			pose(direction, 0)
+		end,
+		fired = function(direction)
+			pose(direction, 55) -- the arm snaps up and over
+			task.delay(0.6, function()
+				pose(direction, 0)
+			end)
+		end,
+	}
+	table.insert(refs.catapults, entry)
+	return entry
 end
 
 -- A signal beacon: a fire bowl on a post that anyone can light (hold E). Mechanisms.lua runs the

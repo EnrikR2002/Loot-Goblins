@@ -27,7 +27,7 @@ local Blast = {}
 Blast.Hit = Util.signal() -- (position, radius): something just went bang here (mines listen).
 local generation = 0 -- Bumped on reset, so strikes from an old raid never land.
 
--- opts: radius, damage, knockback, hullDamage, boatPush, breakPower, lootReason, owner (Player),
+-- opts: radius, damage, knockback, hullDamage, boatPush, breakPower, lootReason, owner (Player), sinks,
 -- cause (text for the wreck feed), color.
 function Blast.at(position, opts)
 	local radius = opts.radius or 12
@@ -63,7 +63,18 @@ function Blast.at(position, opts)
 		end
 	end
 	if (opts.hullDamage or 0) > 0 or (opts.boatPush or 0) > 0 then
-		Boats.hitAt(position, radius, opts.hullDamage or 0, opts.boatPush or 0, opts.cause, opts.exceptBoat)
+		-- V8: a blast nobody fired (a boulder, a bolt, a monster) bites a hull smaller and cannot sink it.
+		-- The Navy's guns and mines say `sinks`: being sunk by the Navy is the price of Heat.
+		local worlds = owner == nil and not opts.sinks
+		Boats.hitAt(
+			position,
+			radius,
+			(opts.hullDamage or 0) * (worlds and Config.IMPACT.HULL_SCALE or 1),
+			opts.boatPush or 0,
+			opts.cause,
+			opts.exceptBoat,
+			worlds and Config.IMPACT.HULL_FLOOR or nil
+		)
 	end
 	for _, item in ipairs(Loot.items) do
 		if item.state == "loose" then

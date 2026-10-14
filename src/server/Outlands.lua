@@ -53,14 +53,9 @@ local function moor(position, toward, typeName)
 	table.insert(refs.boatSpawns, { cf = CFrame.lookAt(at, v3(toward.X, 0.8, toward.Z)), type = typeName or "skiff" })
 end
 
--- The velocity that throws something from `a` to land on `b` after `seconds` in the air.
-local function throw(a, b, seconds)
-	local flat = v3(b.X - a.X, 0, b.Z - a.Z)
-	return flat / seconds + v3(0, (b.Y - a.Y) / seconds + workspace.Gravity * seconds / 2, 0)
-end
-
-local function catapult(a, b, seconds, label)
-	return Kit.catapult(a, throw(a + v3(0, 3, 0), b + v3(0, 3, 0), seconds), seconds, label)
+-- A catapult at `a` that starts aimed at `b` (V8: it can be turned; see Kit.catapult).
+local function catapult(a, b, label)
+	return Kit.catapult(a, b, label)
 end
 
 -- Trees (or palms) scattered over the land between two radii, wherever the ground suits them.
@@ -207,7 +202,7 @@ function places.Cross(i)
 	local crag = perch(i, -345, -70, 16, "WatchCrag")
 	Kit.beacon(crag + v3(-4, 0, -4), "Crossroads")
 	Kit.rockRamp(P(-262, floorAt(i, -262, -52, 30), -52), P(-318, crag.Y - 1, -66), 9, M.Rock)
-	catapult(crag + v3(5, 0.2, 3), P(-20, 42, -20), 2.3, "CATAPULT: to the acropolis")
+	catapult(crag + v3(5, 0.2, 3), P(-20, 42, -20), "CATAPULT: aim it anywhere")
 	dock(P(-60, 0, -338), P(-60, 0, -402), { 1 })
 	-- The drowned colonnade: broken columns mark a way you can wade.
 	for k = 0, 6 do
@@ -266,7 +261,7 @@ function places.Temple(i)
 		Kit.column(altar + v3(off[1], 0, off[2]), 11, 1.1, Color3.fromRGB(200, 210, 235), false)
 	end
 	torch(altar + v3(0, 9, 0), Color3.fromRGB(170, 200, 255))
-	catapult(altar + v3(6, 0.2, 2), P(-78, 56, 10), 2.4, "CATAPULT: to the temple")
+	catapult(altar + v3(6, 0.2, 2), P(-78, 56, 10), "CATAPULT: aim it anywhere")
 	Kit.rockRamp(P(-95, floorAt(i, -95, -278, 44), -278), P(-140, altar.Y - 1, -288), 9, M.Rock)
 	-- The Serpent River's landing: a skiff hidden at the head of the inlet.
 	moor(P(285, 0, -5), P(700, 0, 20))
@@ -518,7 +513,7 @@ function places.Fort(i)
 	-- Siege Hill.
 	local hill = perch(i, 262, -30, 22, "SiegeDeck")
 	Kit.cannon(hill + v3(-6, 0.2, 0), P(52, 20, -10), "Siege cannon")
-	catapult(hill + v3(2, 0.2, 7), P(20, 20, 14), 1.9, "CATAPULT: over the wall")
+	catapult(hill + v3(2, 0.2, 7), P(20, 20, 14), "CATAPULT: aim it anywhere")
 	Kit.rockRamp(P(272, floorAt(i, 272, 52, 10), 52), P(268, hill.Y - 1, 10), 10, M.Rock)
 	table.insert(refs.kegCrates, Kit.kegCrate(hill + v3(6, 0, -6)))
 	-- Gallows Point: a spare skiff out of sight of the walls.

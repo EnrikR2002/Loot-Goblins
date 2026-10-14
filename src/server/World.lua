@@ -1373,6 +1373,7 @@ function World.build()
 	refs.barrels = {}
 	refs.kegCrates = {}
 	refs.cannons = {}
+	refs.catapults = {}
 	refs.levers = {}
 	refs.gates = {}
 	refs.geysers = {}

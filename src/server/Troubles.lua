@@ -19,6 +19,7 @@ local Storms = require(script.Parent.Storms)
 local Navy = require(script.Parent.Navy)
 local Mechanisms = require(script.Parent.Mechanisms)
 local Destructibles = require(script.Parent.Destructibles)
+local Leviathan = require(script.Parent.Leviathan)
 
 local Troubles = {}
 
@@ -245,36 +246,12 @@ end
 
 -- Leviathan's Rest: tentacles smash up out of the sea around the island, aimed at the thief. A
 -- ring on the water, a beat, then the slam. Leave the area and they lose you.
-Threats.handlers.Kraken = function()
-	local site = refs.troubleSites.Kraken
-	if not site then
-		return
+Threats.handlers.Kraken = function(_item, player)
+	-- V8: taking the Tooth no longer rains tentacle strikes on the dock. The Leviathan itself comes after
+	-- the thief, once they are on the water (Leviathan.lua).
+	if player then
+		Leviathan.huntThief(player)
 	end
-	repeating(Config.KRAKEN_TIME, Config.KRAKEN_GAP, function()
-		local carrier = carrierNear(site.center, site.radius)
-		if carrier then
-			local v = carrier.root.AssemblyLinearVelocity
-			local position = carrier.root.Position + Vector3.new(v.X, 0, v.Z) * Config.KRAKEN_DELAY * 0.9
-			position = Vector3.new(
-				position.X + random:NextNumber(-5, 5),
-				math.max(position.Y - 2, 0),
-				position.Z + random:NextNumber(-5, 5)
-			)
-			Net.broadcast("Tentacle", { position = position, delay = Config.KRAKEN_DELAY })
-			Blast.strike(position, Config.KRAKEN_DELAY, {
-				radius = 17,
-				damage = 30,
-				knockback = 95,
-				hullDamage = 95,
-				boatPush = 85,
-				lootReason = "boulder",
-				cause = "the leviathan",
-				markerColor = Color3.fromRGB(190, 110, 255),
-				style = "kraken",
-				color = Color3.fromRGB(150, 90, 220),
-			})
-		end
-	end)
 end
 
 -- Skull Rock: ghost ships sail out of a fog bank.

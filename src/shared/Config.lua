@@ -663,30 +663,86 @@ Config.BOAT_RECLAIM_TIME = 5 -- Seconds the server then drives it before handing
 -- The skyship and the dive (V7) --------------------------------------------------------------------
 -- Every raid starts aboard a flying ship over the middle of the sea (server/Skyship.lua). The raid
 -- clock runs from the moment the bell goes; WINDOW seconds later whoever is still aboard is fired off.
+-- Pursuit (V8): what lives on an island follows a thief out to sea (server/Pursuit.lua). Each form's own
+-- numbers (speed, tell, rest) are beside its description there; these are the rules they all share.
+Config.PURSUIT = {
+	MAX = 5, -- Pursuers out at once in the whole sea.
+	CHECK = 0.5, -- Seconds between looks for a new thief to follow.
+	CLEAR = 70, -- A thief must be this far off the island's shore, on the water, before it sets out.
+	LEASH = 1100, -- Studs from its island's SHORE at which a pursuer gives up (a form may set its own).
+	TIME = 50, -- Seconds a pursuit lasts at most.
+	COOLDOWN = 40, -- Seconds before the same island can send its pursuer again.
+	FLINCH = 4, -- Seconds a pursuer reels from an explosion; the second one sends it home.
+	MISS_REST = 1.6, -- After a strike that MISSED it rests only this long (its form's own rest is for a hit).
+}
+-- Sea mobs (V8): the ordinary life of the open water (server/SeaMobs.lua). A fixed number, placed once.
+Config.SEA_MOBS = {
+	SPREAD = 520, -- Studs from a region's middle that its mobs may be placed.
+	HOME_CLEAR = 900, -- None this close to the Hoard: home water is quiet.
+	SHORE_CLEAR = 150, -- None this close to any island's shore.
+	LEASH = 420, -- A nibbler school gives up this far from where it lives.
+	NIBBLER_SIGHT = 150,
+	NIBBLER_SPEED = 150, -- A little faster than a cruising skiff (135), slower than a boost.
+	NIBBLER_CHASE = 9,
+	NIBBLER_HOLD = 5, -- Seconds they stay on a hull that does not jump.
+	NIBBLER_BITE = 1.5, -- Hull lost each half second (never below IMPACT.HULL_FLOOR).
+	NIBBLER_REST = 14,
+	PUFFER_LIFT = 140, -- Studs/s up: about as high as a full super jump (86 was only a hop's worth: 18 studs).
+	PUFFER_PUSH = 55,
+	PUFFER_REST = 6,
+	LANCER_SIGHT = 230,
+	LANCER_TELL = 1.1, -- Seconds the line shows before it goes.
+	LANCER_SPEED = 260,
+	LANCER_RUN = 300, -- Studs it travels.
+	LANCER_PUSH = 72,
+	LANCER_HULL = 6,
+	LANCER_REST = 12,
+}
+Config.STORM_CEILING = 200 -- Lightning and storm-seeding ignore goblins above this height (the skyship, a flight).
 Config.SKYSHIP = {
 	POSITION = Vector3.new(0, 540, -80), -- Centre of the deck. The sea's walls are 700 high.
 	BEAM = 44,
-	WINDOW = 28, -- Seconds from the raid's start: the deployment window.
+	WINDOW = 40, -- Seconds from the raid's start: the deployment window (V7: 28; there are wings to walk and an aim to take now).
 	COUNTDOWN = 3, -- The cannons unlock this long after the raid starts (so a crowd goes together).
 }
 Config.DIVE = {
-	PENCIL_REACH = 55, -- Studs/s along, head down.
-	PENCIL_FALL = 150, -- Studs/s down, head down.
-	PENCIL_RATE = 1.6, -- How quickly the velocity settles on those numbers (per second).
-	GLIDE_REACH = 175, -- Space held: arms out.
-	GLIDE_SINK = 30,
-	GLIDE_RATE = 1.1,
-	COAST_SHARE = 0.8, -- With no steering a goblin holds its heading at this share of its reach.
-	LAUNCH_SPEED = 230, -- What a cannon gives; the dive's numbers take over within a couple of seconds.
-	LAUNCH_ELEVATION = math.rad(24),
-	NUDGE_YAW = math.rad(14), -- How far the player can turn a cannon off its island.
-	NUDGE_PITCH = math.rad(10),
-	FUSE = 0.9, -- From Fire to launch.
-	BOUNCES = 1, -- A splash bounces a diver this many times; the next one is a plain swim.
-	BOUNCE_UP = 135, -- Studs/s up after a splash.
-	BOUNCE_GRAVITY = 85, -- The bounce is a hop with its own gravity: about 105 studs high and three seconds of flight.
-	BOUNCE_KEEP = 0.5, -- Share of the sideways speed kept through the bounce.
-	OSTRICH_SPEED = 95, -- Hitting ground this fast (a pencil dive; a glide is about 30) goes head first.
+	-- V8: the THROW gives the reach (a plain arc under GRAVITY, aimed where you look); the air gives
+	-- control, never distance. See shared/Dive.lua.
+	GRAVITY = 60, -- Studs/s^2 on a thrown goblin (the world's is 196: this is a long, readable arc).
+	-- Tumble: no keys held. The arc you were given, with a little push from the keys.
+	TUMBLE_STEER = 16, -- Studs/s^2 sideways: about 500 studs of correction over a full-sea flight.
+	TUMBLE_FLOOR = 40, -- From a standstill (a hop off the wing) the keys can get you this fast.
+	TUMBLE_SPIN = 2.4, -- Radians/s end over end.
+	-- Glide: Space held. An air brake: the fall eases to GLIDE_SINK, the speed across bleeds to GLIDE_SPEED.
+	GLIDE_SINK = 55,
+	GLIDE_SPEED = 50, -- So a glide covers under a stud across per stud down (V7: 5.7 across per stud down).
+	GLIDE_BRAKE = 2.4, -- Per second: how hard the fall is caught.
+	GLIDE_DRAG = 0.9, -- Per second: how quickly the speed across is lost.
+	GLIDE_STEER = 60,
+	-- Dive: Shift held. Head first, down hard.
+	PENCIL_GRAVITY = 170,
+	PENCIL_FALL_MAX = 420,
+	PENCIL_DRAG = 0.6,
+	PENCIL_STEER = 28,
+	PENCIL_FLOOR = 30,
+	-- What throws.
+	CANNON_SPEED = 440, -- The skyship's cannons: 3,560 studs of reach from 540 up (the farthest island is 3,130 away).
+	CANNON_ELEVATION = math.rad(32),
+	CATAPULT_SPEED = 200, -- An island catapult: about 575 studs over level ground, more off a hill.
+	CATAPULT_ELEVATION = math.rad(60), -- A high lob: it has walls and cliffs to clear (at 44 degrees all three fell short).
+	MIN_SPEED = 14, -- Aimed straight down: a plop over the side.
+	AIM_RANGE = 9000, -- The farthest point a client may ask a launcher to aim at.
+	FUSE = 0.5, -- From Fire to launch (V7: 0.9).
+	LOADED_TIMEOUT = 25, -- Seconds a goblin may sit in an island catapult before it tips them out.
+	MAX_TIME = 45, -- A flight that has not come down by now is ended where it is.
+	-- The sea: a fast goblin skips off it, each bounce smaller; the fourth touch is a swim.
+	BOUNCE_UP = { 95, 66, 40 }, -- Studs/s up: about 75, 36 and 13 studs high.
+	BOUNCE_KEEP = 0.45, -- Share of the speed across kept through each bounce...
+	BOUNCE_MAX_SPEED = 150, -- ...and never more than this: three skips cover at most about 650 studs.
+	BOUNCE_MIN_FALL = 62, -- Arriving slower than this (a glide is 55) is a plain landing in the water.
+	BOUNCE_GRACE = 0.5, -- Seconds after a bounce before the sea can be touched again.
+	-- The ground.
+	OSTRICH_SPEED = 95, -- Hitting ground this fast goes in head first; braking with a glide lands on your feet.
 	EMBED_TIME = 1.1, -- Seconds stuck in the ground.
 	POP_SPEED = 62, -- The hop out.
 }
@@ -1031,14 +1087,36 @@ Config.WAYPOINT_HIDE_WITHIN = 90 -- The arrow goes away this close to the Hoard:
 
 -- The Leviathan's body (server/Leviathan.lua): drawn by the Sleeper's tick, no health, no AI of its own.
 Config.LEVIATHAN = {
-	HUMPS = 7,
+	SCALE = 2.2, -- V8: every part of it is this many times its V7 size (the head is 48 x 31 x 57 studs).
+	HUMPS = 9,
 	NECK = 12,
-	RADIUS = 150, -- Of the circle its back swims.
+	RADIUS = 150, -- Of the circle its back swims while it lurks.
 	SWIM_SPEED = 22,
 	LURK_MIN = 0.25, -- How much of its back shows when the Sleeper is hardly aware.
-	GAP = 0.12, -- Radians between humps.
-	ARC_HEIGHT = 75,
-	NECK_GAP = 0.05,
+	GAP = 0.2, -- Radians between humps on the circle.
+	-- The hunt (V8).
+	SPEED = 165, -- Studs/s. A cruising skiff does 135 and a boost 215: it gains on one, loses to the other.
+	TURN = 1.3, -- Radians/s: wide turns. A hard turn (a drift) gets inside it.
+	SIGHT = 520, -- It re-picks the nearest crewed boat within this of its head.
+	SURGE_SPEED = 260, -- When the boat has got more than SURGE_GAP ahead (after a breach) it surges to catch up...
+	SURGE_GAP = 260, -- ...so one dodge is not the end of the hunt. It drops back to SPEED once it is close.
+	LEASH = 2400, -- Studs from its home at which it turns back (a cruising skiff is there in about 16 s: two breaches).
+	SHALLOW = 9, -- Water shallower than this (studs) it will not enter: after 3 s there it gives up.
+	HUNT_TIME = 55,
+	FLINCH = 4.5, -- Seconds it reels from an explosion on its head; the third sends it home.
+	RECOVER = 2, -- Seconds after a breach before it swims on.
+	BREACH_RANGE = 220, -- It breaches when this close behind (the ring opens where the boat is GOING, not where it is)...
+	BREACH_GAP = 7, -- ...and no more often than this.
+	BREACH_DELAY = 1.6, -- From the ring opening to the head coming up through it.
+	BREACH_RADIUS = 30,
+	BREACH_HEIGHT = 85,
+	BREACH_SHOW = 2, -- Seconds the head is out of the water: up fast, a hang at the top, back down.
+	BREACH_DAMAGE = 22, -- To a goblin (before IMPACT.DAMAGE_SCALE).
+	BREACH_HULL = 48, -- To a hull (before IMPACT.HULL_SCALE; never below IMPACT.HULL_FLOOR).
+	BREACH_PUSH = 110,
+	WAKE_RADIUS = 62, -- Boats this close to the swimming head are thrown aside by its bow wave...
+	WAKE_PUSH = 58, -- ...this hard. No damage.
+	THIEF_WINDOW = 90, -- Seconds after the Tooth is taken in which putting to sea starts a hunt.
 }
 
 -- Being hit by the world (V8, server/Impact.lua and Loot.knockLoose). Chaos should move you, not end you.
@@ -1046,6 +1124,7 @@ Config.IMPACT = {
 	GRACE = 1.2, -- After a world hit lands, nothing else from the world lands on that goblin for this long.
 	DAMAGE_SCALE = 0.55, -- World damage to goblins, as a share of what each source asks for.
 	LAST_STAND = 30, -- A goblin with more health than this cannot be killed by one world hit (it leaves 1).
+	HULL_SCALE = 0.6, -- The same for hulls: world blasts (boulders, lightning, monsters) bite this much smaller.
 	HULL_FLOOR = 0.12, -- A creature or sea-mob hit never takes a hull below this share of its health: only
 	-- cannons, shells, mines, kegs and real crashes sink boats.
 }

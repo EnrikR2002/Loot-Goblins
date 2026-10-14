@@ -427,22 +427,30 @@ end
 local HELP_LINES = {
 	{
 		"START",
-		"You begin on the SKYSHIP: pick an island on the map (M), climb into a cannon (E), SPACE fires. Hold SPACE to glide.",
+		"You begin on the SKYSHIP. Climb into a cannon (E), LOOK at where you want to land, click or SPACE to fire. Or walk out on a wing and step off.",
+	},
+	{
+		"FLYING",
+		"You tumble where you were thrown. Hold SPACE to glide: a brake and a soft landing, not extra distance. Hold SHIFT to dive. The sea skips you three times.",
 	},
 	{
 		"STEAL",
-		"Hold E on a glowing treasure to pry it off its spot. That causes TROUBLE. Some islands need gear: look for caches on the keys.",
+		"Hold E on a glowing treasure to pry it off its spot. That causes TROUBLE, and whatever lives there may follow you out to sea. No treasure needs gear.",
 	},
 	{ "BANK", "Carry it to THE HOARD (gold beam at Goblin Cove). Deeper treasure is worth more. Most gold wins." },
 	{
 		"BOATS",
-		"E boards, X leaves. W/S/A/D drive, SHIFT boosts, SPACE hops, hold C in a turn to DRIFT. B calls a boat if you are stranded.",
+		"E boards, X leaves. W/S/A/D drive, SHIFT boosts, hold C in a turn to DRIFT. SPACE hops; at boost speed it is a SUPER JUMP. B calls a boat if you are stranded.",
+	},
+	{
+		"THE SEA",
+		"A ring on the water means something lands there: steer off it or jump it. One hit only loosens your grip; a second soon after drops the treasure.",
 	},
 	{
 		"MOVE",
 		"You run fast for free. Stamina buys SHIFT sprint, C dash (also in the air) and a second jump in the air.",
 	},
-	{ "HOOK", "F on a cliff, crag, mast or a passing boat reels you to it. Jump lets go. Orange pads are catapults." },
+	{ "HOOK", "F on a cliff, crag, mast or a passing boat reels you to it. Jump lets go. Catapults: E to climb in, look, SPACE." },
 	{
 		"MAP",
 		"M: islands, how dangerous each is, who is on guard (red ring). Carrying treasure? The arrow on the screen points home.",
