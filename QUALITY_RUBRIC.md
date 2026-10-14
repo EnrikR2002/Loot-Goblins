@@ -138,6 +138,36 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### Check a carved terrain space by reading the terrain, not the script
+
+**ID:** thin-terrain-fills-remove-nothing | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-13
+**Related checks:** CL-08, CL-09
+
+**Observed / proposed:** A volcano's crater was meant to be hollowed by a stack of air fills 2.2 studs thick. In a Studio test an air fill thinner than one 4-stud terrain cell removed nothing, so the summit was solid and the treasure inside it unreachable from the first version that had it. A raycast through the crater centre hit the summit; a thick air block cleared it.
+
+**Recommendation:** Make carving fills at least one terrain cell (4 studs) thick, then verify the result by reading voxels or raycasting through the space before calling it reachable. A path-finding query from the approach to the objective is a quick follow-up, not a substitute for walking it.
+
+**Applies when:** Generating terrain by script; A treasure or route sits inside a carved cave, crater or tunnel
+
+**Limits:** Observed in one Studio build with Terrain:FillCylinder; other fill shapes were not compared; The measured threshold is this game's observation, not an engine specification
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/8ec8a81fa6678f1c77b3bd5285d33cf1e98b0f34/docs/reports/2026-10-13-v7-skyfall-competitive-archipelago.md): Section 18 records the crater centre reading 129.8 before the fix and 113.1 after, and a path from the beach reaching the crown.
+
+### Test player-versus-player rules with a stand-in when only one client exists
+
+**ID:** stand-in-player-for-solo-pvp-rules | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-13
+**Related checks:** CL-35, CL-39
+
+**Observed / proposed:** A single-client Studio session cannot create a second Player. The catch, knockdown, immunity and close-range steal rules were still exercised on the server with the real goblin as victim and a stand-in table (a rig plus the few Player members the code uses) as the thief. It found the order and timing mistakes in the test, refused a steal on a standing target, a steal from too far, and a catch inside a protected zone.
+
+**Recommendation:** Write server rules so they take the player objects as arguments, then drive them from a temporary test hook with a stand-in. State plainly in the report that replication, latency, prompts and real input were not covered.
+
+**Applies when:** Adding a rule between two players; Only one client is available to test with
+
+**Limits:** A stand-in does not test replication, latency, client prompts or real input; A real two-client or multi-client session is still required before calling the feature multiplayer-ready
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/8ec8a81fa6678f1c77b3bd5285d33cf1e98b0f34/docs/reports/2026-10-13-v7-skyfall-competitive-archipelago.md): Section 10 lists the stand-in thief tests and what they did not cover.
+
 ### Test reaching an objective through its intended route
 
 **ID:** test-the-real-route | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-12
