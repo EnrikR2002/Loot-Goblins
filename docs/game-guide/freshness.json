@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "fingerprint": "378d7cc0ebd64c134bb0a5226629d86b4b6e5d4e6baf3eb1b14248cf7637cb7c",
+  "fingerprint": "7fcebf661c0e9210bca40fc6dc390fae548ce2541c8315c534a07ba8a21847c0",
   "source_baseline": {
     "src/client/BoatDrive.lua": "a61beda170568f4248e4fb539e21d542e1e5bbd021df2c3138bc80ccfbaf35fc",
     "src/client/Effects.lua": "743338eecc2160ddb7bbfe1414a964d0c9f08245388c5d2c4afa4bb5f9caa60c",
@@ -63,7 +63,7 @@
     "default.project.json": "9fb828dd6c23f4351950c7fae8134f3c58e32a1b40379ced561ace167170b94d"
   },
   "inputs": {
-    "docs/GAME_DESIGN.md": "ece8d6b52ba1c71a4df08901eb2f2a625f4483efe5432565e6c9349f247a7258",
+    "docs/GAME_DESIGN.md": "3a9a2871000267c414818cbe427ff7341bb05791259cb44d37b2c85e0290446c",
     "src/shared/Config.lua": "bcff2ab0ca979a8ce5c8bb211ee6f9a11cf75b78d46671a72adc8763a9fbee55",
     "src/shared/Archipelago.lua": "956910425a5272c52fa671e6c8d109c6423542682b43032c55fb06ed56e87944",
     "default.project.json": "9fb828dd6c23f4351950c7fae8134f3c58e32a1b40379ced561ace167170b94d",
@@ -81,5 +81,5 @@
     "docs/reports/2026-10-03-yone-e-test.md": "e65828d401927d8b907b211fbefa624325a0dafa6ac183401d693cc150ebe74f",
     "docs/reports/2026-10-03-setup-verification.md": "56527ccdc0716c33c0aa0584e884d15b6b7d6cd8dc9672a17dc9d71f53c21c0a"
   },
-  "knowledge_revision": "3a5832006b07e8fd2c82149644ee0e8f27081635"
+  "knowledge_revision": "170dc4bb87fc31dee2a631cb68019437cb4f7ec3"
 }

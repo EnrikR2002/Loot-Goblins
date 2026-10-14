@@ -8,8 +8,8 @@ This file is a self-contained game description, quality rubric, and dated develo
 
 **Game repository:** https://github.com/EnrikR2002/Loot-Goblins
 **Documented gameplay revision:** c98f1828bf1e91374b8ad456c7790ff12b6d780f
-**Shared rubric revision:** 3a5832006b07e8fd2c82149644ee0e8f27081635
-**Document freshness fingerprint:** 378d7cc0ebd64c134bb0a5226629d86b4b6e5d4e6baf3eb1b14248cf7637cb7c
+**Shared rubric revision:** 170dc4bb87fc31dee2a631cb68019437cb4f7ec3
+**Document freshness fingerprint:** 7fcebf661c0e9210bca40fc6dc390fae548ce2541c8315c534a07ba8a21847c0
 
 Ask an outside AI: 'Read this complete guide, compare the current game with the included rubric, and suggest the highest-value improvements. Separate documented gaps, hypotheses, and ideas. Respect game-specific decisions and current prototype gates.'
 
@@ -55,9 +55,9 @@ V6's report was later amended after Ninety discovered the blocked Skull Chalice 
 
 ### Current guardrails and absent features
 
-V7 adds, on the team's explicit instruction in the V7 prompt (AGENTS.md still lists these as excluded before prototype approval; that line needs a human decision), a small progression layer: Shinies, five pets, start-with-gear kits and a saved profile, plus an inert Robux receipt foundation. There is still no XP, rarity economy, trading, boat upgrade tree or production architecture. The original long-term design vision appears later, explicitly as future direction. Rough geometry, primitive creature models, built-in sounds, and incomplete advertised input coverage are prototype compromises; they are not proof of release readiness.
+V7 adds a small progression layer: Shinies, five pets, start-with-gear kits and a saved profile, plus an inert Robux receipt foundation (no product IDs yet). There is no XP, rarity economy, trading or boat upgrade tree yet. Since 2026-10-14 the scope is open: the team can add any of these whenever they want (see AGENTS.md). The original long-term design vision appears later as inspiration. Rough geometry, primitive creature models, built-in sounds, and incomplete advertised input coverage are prototype compromises; they are not proof of release readiness.
 
-An outside AI should deepen possession and escape, preserve movement agency, compare ideas against existing verbs, distinguish current V6 from historical configurations, and propose a small experiment behind the active gate. A mechanic rejected for another game is not automatically rejected here. A larger map, more inhabitants, or permanent progression requires an actual reason and human scope approval.
+An outside AI should deepen possession and escape, preserve movement agency, compare ideas against existing verbs, and distinguish current V8 from historical configurations. A mechanic rejected for another game is not automatically rejected here. What gets built next is the team's call; a teammate's request is enough.
 
 ## Current approved version and development history
 
@@ -70,14 +70,14 @@ An outside AI should deepen possession and escape, preserve movement agency, com
 | Included in V6: PR #12 | **V4**: a sea 4.6 times the size laid out in regions, the original islands moved (not rebuilt) and grown with generated land, reefs, shallows, stack fields and currents between them, a harbor chain, signal beacons, catapults, 19 treasures, retuned economy, Heat and storms. Report: `docs/reports/2026-10-12-v4-living-archipelago.md`. One human playtest since: the sea is too spread out, the boost hoops are the best part of sailing, and the islands need things living on them. |
 | Included in V6: PR #13 | **V5**: the sea pulled in to 55% of V4's area (islands keep their size), 110 boost hoops laid out as 16 runs with chains and timed runs, coins, salvage, and **21 island inhabitants of 13 kinds** on one shared framework. Raids 9 minutes, values and Heat retuned. Report: `docs/reports/2026-10-12-v5-living-threats-playful-seas.md`. One human playtest since: the map size, the boats and the creatures are right; the hoops and coins are fun but crowded and oddly placed, worst of all outside the harbor; and there have been explosions in the distance since V2. |
 | Included in V6: PR #14 | **V6**: no new system. The hoops, coins, lanes and timed courses laid out again by a few written rules (Home Bay calm, straight lanes that point at docks, courses set apart, coins for skill and secrets), every lane and course driven by an autopilot and its par measured, and the map-wide thunder fixed (world sounds are positional and fade to silence). Report: `docs/reports/2026-10-12-v6-ocean-flow-audio.md`. Studio-tested by one AI on one client, sound checked from logs only; **no human playtest of V6 yet**. |
-| V7 (branch feature/v7-skyfall-competitive-archipelago) | **V7**: a flying-ship start (cannons, pencil dive and glide, splash bounce, head-first landing), a sea 20% wider with 16 major islands and computed difficulty tiers, faster boats with a hop, slow land driving and call-a-boat (B), a grapple that catches and an E that steals, regional alerts, gear-gated treasure, a visible Leviathan, white Navy ships, Shinies/pets/saved profile, twelve-minute raids, a final rush, route fixes (windmill, fort, Ember crater, Tide Vault). Report: `docs/reports/2026-10-13-v7-skyfall-competitive-archipelago.md`. **One AI, one client, no human or second-player test.** |
-| V8 (branch feature/v8-chaos-and-counterplay, stacked on V7) | **V8, Chaos & Counterplay**: one flight system for the skyship's cannons and the island catapults (aim by looking, a ballistic throw, glide as a brake, dive, three diminishing water skips, loose limbs while tumbling), walkable wings, a stronger boat hop and a speed-based super jump, a sea form for every island's creature (`Pursuit.lua`), three kinds of ordinary sea mob (`SeaMobs.lua`), a Leviathan 2.2 times the size that hunts boats, one rule for being hit by the world (`Impact.lua`: grace, smaller bites, a two-strike grip on treasure, hulls battered but never sunk by creatures), no gear requirement on any treasure, a front door to the Tide Vault, treasure values flattened. Report: `docs/reports/2026-10-13-v8-chaos-and-counterplay.md`. Studio-tested by one AI on one client; **no human playtest and no second player yet**. |
+| Merged 2026-10-14: PR #17 | **V7**: a flying-ship start (cannons, pencil dive and glide, splash bounce, head-first landing), a sea 20% wider with 16 major islands and computed difficulty tiers, faster boats with a hop, slow land driving and call-a-boat (B), a grapple that catches and an E that steals, regional alerts, gear-gated treasure, a visible Leviathan, white Navy ships, Shinies/pets/saved profile, twelve-minute raids, a final rush, route fixes (windmill, fort, Ember crater, Tide Vault). Report: `docs/reports/2026-10-13-v7-skyfall-competitive-archipelago.md`. **One AI, one client, no human or second-player test.** |
+| Merged 2026-10-14: PR #18 | **V8, Chaos & Counterplay**: one flight system for the skyship's cannons and the island catapults (aim by looking, a ballistic throw, glide as a brake, dive, three diminishing water skips, loose limbs while tumbling), walkable wings, a stronger boat hop and a speed-based super jump, a sea form for every island's creature (`Pursuit.lua`), three kinds of ordinary sea mob (`SeaMobs.lua`), a Leviathan 2.2 times the size that hunts boats, one rule for being hit by the world (`Impact.lua`: grace, smaller bites, a two-strike grip on treasure, hulls battered but never sunk by creatures), no gear requirement on any treasure, a front door to the Tide Vault, treasure values flattened. Report: `docs/reports/2026-10-13-v8-chaos-and-counterplay.md`. Studio-tested by one AI on one client; **no human playtest and no second player yet**. |
 
 The V6 report was subsequently amended after Ninety found the blocked Skull Chalice route; revision `8f399c7` repairs its ladder/hatch and records a single-client on-foot test. The table's earlier "no human playtest" wording describes an earlier checkpoint. This later route feedback is real, while the broad V6 layout, sound-by-ear, multiplayer, mobile, and balance acceptance remain outstanding.
 
 Enrik explicitly authorized merging the complete latest V6 development line into main on October 12, 2026. PR #14 targets main and includes the ancestor work from PRs #9–13 plus the shared-memory rollout in PR #15. GitHub records the actual integration outcome. This approval does not certify outstanding human, multiplayer, audio-by-ear, or device tests. Historical reports below retain their original checkpoint status.
 
-Everything below describes the approved V6 code and its current limitations.
+Everything below describes the code on main (V8, with the V7 and V6 sections it builds on) and its current limitations.
 
 ## Purpose
 
@@ -87,7 +87,7 @@ The loop: **explore (awe) → steal treasure → the world reacts → escape (pa
 
 The design principle is **active novelty**: surprises the player participates in (a geyser to time, a ring to jump, a charge to dodge, a storm to steer around), not things that just happen on screen.
 
-The long-term vision later in this document is not permission by itself to add anything; V7's progression is limited to what is described under "V7 systems".
+The long-term vision later in this document is inspiration, not a plan; the team decides what to build from it.
 
 ## Core loop
 
@@ -566,7 +566,7 @@ These notes came from earlier development sessions. Verify present tool capabili
 
 ## Human prototype experiment and decision
 
-Through V6: no shops, XP, pets, rarity tables, monetization, trading, boat trees, hideout decorating, or saved progress. V7 added Shinies, pets, start-with gear and a saved profile on the team's explicit instruction (the V7 prompt); AGENTS.md still carries the older exclusion and needs a human decision. Everything V7 sells is a sidegrade, gear is free in the world, and no essential content is paid. The loot values and `Wins` still score a raid.
+Through V6: no shops, XP, pets, rarity tables, monetization, trading, boat trees, hideout decorating, or saved progress. V7 added Shinies, pets, start-with gear and a saved profile on the team's explicit instruction (the V7 prompt); Enrik kept them on 2026-10-14 and opened the scope. Robux sales stay off until someone creates real products in the Creator Dashboard. Everything V7 sells is a sidegrade, gear is free in the world, and no essential content is paid. The loot values and `Wins` still score a raid.
 
 For a local multiplayer test: **top-left Test dropdown > Server & Clients > set player count to 3 > blue Play button**. Play several raids with Ethan, Ninety, and Enrik. The checklist in the latest report under `docs/reports/` says what to look for.
 
@@ -2766,6 +2766,66 @@ These are attributed observations and hypotheses, not automatic changes to the c
 **Limits:** A stand-in does not test replication, latency, client prompts or real input; A real two-client or multi-client session is still required before calling the feature multiplayer-ready
 
 - [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/8ec8a81fa6678f1c77b3bd5285d33cf1e98b0f34/docs/reports/2026-10-13-v7-skyfall-competitive-archipelago.md): Section 10 lists the stand-in thief tests and what they did not cover.
+
+### Moving a character out of a seat from the server can be undone by its client
+
+**ID:** seated-character-teleport-can-be-undone | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-13
+**Related checks:** General
+
+**Observed / proposed:** At a round's end the server destroyed a driver's SeatWeld and set their root's CFrame to a spawn on a ship. A trace showed them on the ship for one sample, then back beside the boat a fifth of a second later: their own client, which owned the character's physics, still held them in the seat and its position replicated back. Retrying the move for up to two seconds whenever the character was found far from the spawn fixed it.
+
+**Recommendation:** After moving a character that was seated or otherwise client-owned a moment before, verify a few frames later that the move took and repeat it if not, instead of assuming one CFrame write is final.
+
+**Applies when:** Respawning, round resets or teleports of players who may be in vehicle seats; Client-owned character physics
+
+**Limits:** Observed in Studio with zero network latency on one client; real latency may make it more frequent; Only VehicleSeat-style seats were tested
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md): Bug 9 in section 19: before the fix the goblin was aboard at +0.3 s and back at sea at +0.5 s; after it, aboard for the whole 8 s checked.
+
+### A batch of automated runs can silently test nothing after the first
+
+**ID:** reset-test-state-between-runs | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-13
+**Related checks:** General
+
+**Observed / proposed:** A batch of twelve automated pursuit runs reported that only the first run's trigger ever fired. The cause was the test, not the game: the first run left its treasure in the goblin's hands, so every later run could not pick up its own treasure and the condition being tested never arose. The batch's results had to be discarded and re-run after the harness emptied the goblin's hands between runs.
+
+**Recommendation:** Make each automated run put back everything it changed, and have a run that sees no effect print why (what it held, where it was, the trigger's inputs) rather than only that nothing happened.
+
+**Applies when:** Running several scripted gameplay tests in one session; A batch where only the first case passes
+
+**Limits:** One harness in one game; Does not say how often this happens in other suites
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md): Bug 12 in section 19 and the island-by-island table in section 10, re-run after the harness was fixed.
+
+### An interaction key can fall through when its prompt is off screen
+
+**ID:** offscreen-prompts-ignore-their-key | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-13
+**Related checks:** General
+
+**Observed / proposed:** A goblin standing beside a treasure pressed E and cast a different ability instead of stealing: Roblox only shows a ProximityPrompt whose object is on screen, and the camera was turned away. A server trace confirmed the other ability fired. Calling InputHoldBegin and InputHoldEnd on the nearest enabled prompt in reach, when no prompt was showing, made E steal with the camera turned away.
+
+**Recommendation:** When one key is shared between prompts and another action, route the key to any enabled prompt within its activation distance before falling back, and test with the camera deliberately facing away from the object.
+
+**Applies when:** A key is shared between ProximityPrompts and another action; Players report a key doing the wrong thing beside an object
+
+**Limits:** Tested on one client with keyboard input only; Gamepad and touch prompt behaviour were not examined
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md): Section 15 and bug 1 in section 19: E stole the Tide Vault pearl with the camera turned away after the change.
+
+### Check which avatar joints a place uses before writing poses or ragdolls
+
+**ID:** avatar-joints-may-be-animation-constraints | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-13
+**Related checks:** General
+
+**Observed / proposed:** Ragdoll and pose code written for Motor6D joints did nothing in a Studio test because the avatars in that place used AnimationConstraint joints (with a BallSocketConstraint already beside each) and no Motor6D at all. A V7 dive pose that wrote Motor6D.C0 had silently never shown. AnimationConstraint.C0 is read-only; writing the joint's Transform each PreSimulation step posed the arms, and setting AnimationConstraint.Enabled to false let the existing ball sockets take the limbs for a ragdoll.
+
+**Recommendation:** Before writing character poses or ragdolls, list the joint classes on a live character in the target place. Handle both AnimationConstraint and Motor6D, pose through Transform (after the animator runs), and ragdoll by disabling joints rather than destroying them so they can be restored.
+
+**Applies when:** Posing or ragdolling player characters by script; A pose or ragdoll appears to do nothing in Studio
+
+**Limits:** Observed in one place's Studio build on R15 avatars in October 2026; Which joint type a place gets may depend on Roblox settings that were not identified
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md): Section 5: 8 limb joints loose while tumbling, 0 while gliding or diving, all 15 back on after landing, limbs within 3.6 studs of the body.
 
 ### Test reaching an objective through its intended route
 
