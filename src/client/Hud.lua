@@ -450,7 +450,10 @@ local HELP_LINES = {
 		"MOVE",
 		"You run fast for free. Stamina buys SHIFT sprint, C dash (also in the air) and a second jump in the air.",
 	},
-	{ "HOOK", "F on a cliff, crag, mast or a passing boat reels you to it. Jump lets go. Catapults: E to climb in, look, SPACE." },
+	{
+		"HOOK",
+		"F on a cliff, crag, mast or a passing boat reels you to it. Jump lets go. Catapults: E to climb in, look, SPACE.",
+	},
 	{
 		"MAP",
 		"M: islands, how dangerous each is, who is on guard (red ring). Carrying treasure? The arrow on the screen points home.",
