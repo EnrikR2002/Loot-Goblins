@@ -18,7 +18,7 @@ The shared system is installed on main alongside the complete V6 integration app
 ## Architecture and scope
 Inspect existing systems first, follow conventions, and avoid duplicate implementations. Implement only the requested task; do not refactor unrelated systems. A new framework, major dependency, architecture pattern, directory reorganization, networking strategy, or data architecture requires explicit human approval.
 
-Test 001 asks whether stealing one valuable object, fighting over possession, and getting it home is fun. Ugly prototype code is allowed. Do not add progression, shops, pets, monetization, rarity, trading, giant maps, or production architecture before prototype approval. Production gameplay-critical state must be server authoritative; never blindly trust client-supplied state.
+Test 001 asks whether stealing one valuable object, fighting over possession, and getting it home is fun. Ugly prototype code is allowed. Do not add progression, shops, pets, monetization, rarity, trading, giant maps, or production architecture before prototype approval. Exception approved by Enrik on October 14: keep V7's Shinies, saved profile, the Shinies locker with its pets and start-with-gear kits. That approval does not extend them; any new progression, pet, or shop item still needs human approval, and V7's Robux receipt code stays switched off (no product IDs) until a human approves real monetization. Production gameplay-critical state must be server authoritative; never blindly trust client-supplied state.
 
 ## Git workflow (the AI operates Git)
 - Never do normal development on `main`. One task gets one short-lived `prototype/<task>`, `feature/<task>`, `fix/<task>`, or `chore/<task>` branch; no permanent personal branches.

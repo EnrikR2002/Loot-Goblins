@@ -168,6 +168,66 @@ These are attributed observations and hypotheses, not automatic changes to the c
 
 - [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/8ec8a81fa6678f1c77b3bd5285d33cf1e98b0f34/docs/reports/2026-10-13-v7-skyfall-competitive-archipelago.md): Section 10 lists the stand-in thief tests and what they did not cover.
 
+### Moving a character out of a seat from the server can be undone by its client
+
+**ID:** seated-character-teleport-can-be-undone | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-13
+**Related checks:** General
+
+**Observed / proposed:** At a round's end the server destroyed a driver's SeatWeld and set their root's CFrame to a spawn on a ship. A trace showed them on the ship for one sample, then back beside the boat a fifth of a second later: their own client, which owned the character's physics, still held them in the seat and its position replicated back. Retrying the move for up to two seconds whenever the character was found far from the spawn fixed it.
+
+**Recommendation:** After moving a character that was seated or otherwise client-owned a moment before, verify a few frames later that the move took and repeat it if not, instead of assuming one CFrame write is final.
+
+**Applies when:** Respawning, round resets or teleports of players who may be in vehicle seats; Client-owned character physics
+
+**Limits:** Observed in Studio with zero network latency on one client; real latency may make it more frequent; Only VehicleSeat-style seats were tested
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md): Bug 9 in section 19: before the fix the goblin was aboard at +0.3 s and back at sea at +0.5 s; after it, aboard for the whole 8 s checked.
+
+### A batch of automated runs can silently test nothing after the first
+
+**ID:** reset-test-state-between-runs | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-13
+**Related checks:** General
+
+**Observed / proposed:** A batch of twelve automated pursuit runs reported that only the first run's trigger ever fired. The cause was the test, not the game: the first run left its treasure in the goblin's hands, so every later run could not pick up its own treasure and the condition being tested never arose. The batch's results had to be discarded and re-run after the harness emptied the goblin's hands between runs.
+
+**Recommendation:** Make each automated run put back everything it changed, and have a run that sees no effect print why (what it held, where it was, the trigger's inputs) rather than only that nothing happened.
+
+**Applies when:** Running several scripted gameplay tests in one session; A batch where only the first case passes
+
+**Limits:** One harness in one game; Does not say how often this happens in other suites
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md): Bug 12 in section 19 and the island-by-island table in section 10, re-run after the harness was fixed.
+
+### An interaction key can fall through when its prompt is off screen
+
+**ID:** offscreen-prompts-ignore-their-key | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-13
+**Related checks:** General
+
+**Observed / proposed:** A goblin standing beside a treasure pressed E and cast a different ability instead of stealing: Roblox only shows a ProximityPrompt whose object is on screen, and the camera was turned away. A server trace confirmed the other ability fired. Calling InputHoldBegin and InputHoldEnd on the nearest enabled prompt in reach, when no prompt was showing, made E steal with the camera turned away.
+
+**Recommendation:** When one key is shared between prompts and another action, route the key to any enabled prompt within its activation distance before falling back, and test with the camera deliberately facing away from the object.
+
+**Applies when:** A key is shared between ProximityPrompts and another action; Players report a key doing the wrong thing beside an object
+
+**Limits:** Tested on one client with keyboard input only; Gamepad and touch prompt behaviour were not examined
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md): Section 15 and bug 1 in section 19: E stole the Tide Vault pearl with the camera turned away after the change.
+
+### Check which avatar joints a place uses before writing poses or ragdolls
+
+**ID:** avatar-joints-may-be-animation-constraints | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-13
+**Related checks:** General
+
+**Observed / proposed:** Ragdoll and pose code written for Motor6D joints did nothing in a Studio test because the avatars in that place used AnimationConstraint joints (with a BallSocketConstraint already beside each) and no Motor6D at all. A V7 dive pose that wrote Motor6D.C0 had silently never shown. AnimationConstraint.C0 is read-only; writing the joint's Transform each PreSimulation step posed the arms, and setting AnimationConstraint.Enabled to false let the existing ball sockets take the limbs for a ragdoll.
+
+**Recommendation:** Before writing character poses or ragdolls, list the joint classes on a live character in the target place. Handle both AnimationConstraint and Motor6D, pose through Transform (after the animator runs), and ragdoll by disabling joints rather than destroying them so they can be restored.
+
+**Applies when:** Posing or ragdolling player characters by script; A pose or ragdoll appears to do nothing in Studio
+
+**Limits:** Observed in one place's Studio build on R15 avatars in October 2026; Which joint type a place gets may depend on Roblox settings that were not identified
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md): Section 5: 8 limb joints loose while tumbling, 0 while gliding or diving, all 15 back on after landing, limbs within 3.6 studs of the body.
+
 ### Test reaching an objective through its intended route
 
 **ID:** test-the-real-route | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-12
