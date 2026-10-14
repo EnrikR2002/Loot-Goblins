@@ -54,7 +54,11 @@ Config.AIR_JUMP_POWER = 52
 -- heat is added when it is taken from its spot. respawn is seconds after banking.
 -- trouble is what the world does the moment it leaves its spot (Threats / Troubles).
 -- island is the Archipelago id. visual picks the model (Loot.lua).
--- The rule of the map: more gold means farther, harder to carry and nastier trouble.
+-- V8: VALUES ARE FLAT. Through V7 gold rose steeply with distance (1 to 20), and the playtest found that sent
+-- everyone to do sums instead of going where looked fun. Now the three islands beside home pay 4 to 5 (and come
+-- back slowly, 150 s, so they cannot be farmed), the keys 7 to 8, and every other island 9 to 11. A goblin picks an
+-- island because of what lives on it. Weight, carry speed, heat and trouble still differ.
+-- (Was: the rule of the map: more gold means farther, harder to carry and nastier trouble.)
 -- Values follow travel time: a near treasure earns about 2.5 gold a minute for a goblin working
 -- alone, a middle one 4 to 5, a far one 6 to 8 (and far ones go wrong). V5 pulled the islands in
 -- by 30%, so the far values came down from V4's; they are still well above V3's, because every
@@ -66,11 +70,11 @@ Config.LOOT = {
 		place = "Pebble Isle",
 		island = "Pebble",
 		visual = "disc",
-		value = 1,
+		value = 4,
 		weight = 1,
 		carrySpeed = 27,
 		heat = 4,
-		respawn = 20,
+		respawn = 150,
 		trouble = "Gulls",
 		color = Color3.fromRGB(255, 225, 150),
 	},
@@ -80,11 +84,11 @@ Config.LOOT = {
 		place = "Coral Atoll",
 		island = "Coral",
 		visual = "orb",
-		value = 2,
+		value = 5,
 		weight = 1,
 		carrySpeed = 26.5,
 		heat = 6,
-		respawn = 25,
+		respawn = 160,
 		trouble = "Gulls",
 		color = Color3.fromRGB(255, 190, 220),
 	},
@@ -94,11 +98,11 @@ Config.LOOT = {
 		place = "Smuggler's Cove",
 		island = "Smuggler",
 		visual = "chest",
-		value = 2,
+		value = 5,
 		weight = 2,
 		carrySpeed = 26,
 		heat = 8,
-		respawn = 25,
+		respawn = 160,
 		trouble = "Bell",
 		color = Color3.fromRGB(190, 150, 100),
 	},
@@ -108,11 +112,11 @@ Config.LOOT = {
 		place = "the Windmill",
 		island = "Windmill",
 		visual = "gear",
-		value = 4,
+		value = 9,
 		weight = 2,
 		carrySpeed = 26,
 		heat = 10,
-		respawn = 30,
+		respawn = 60,
 		trouble = "Windmill",
 		color = Color3.fromRGB(255, 205, 60),
 	},
@@ -122,11 +126,11 @@ Config.LOOT = {
 		place = "the Lighthouse",
 		island = "Cross",
 		visual = "disc",
-		value = 4,
+		value = 9,
 		weight = 2,
 		carrySpeed = 25.5,
 		heat = 15,
-		respawn = 25,
+		respawn = 60,
 		trouble = "Bell",
 		color = Color3.fromRGB(255, 240, 140),
 	},
@@ -136,11 +140,11 @@ Config.LOOT = {
 		place = "Kelp Cay",
 		island = "Kelp",
 		visual = "gear",
-		value = 4,
+		value = 7,
 		weight = 1,
 		carrySpeed = 26.5,
 		heat = 10,
-		respawn = 30,
+		respawn = 60,
 		trouble = "Gulls",
 		color = Color3.fromRGB(150, 220, 160),
 	},
@@ -150,11 +154,11 @@ Config.LOOT = {
 		place = "the Shipwreck",
 		island = "Shoals",
 		visual = "chest",
-		value = 5,
+		value = 9,
 		weight = 4,
 		carrySpeed = 23.5,
 		heat = 20,
-		respawn = 35,
+		respawn = 60,
 		trouble = "Barrage",
 		color = Color3.fromRGB(255, 160, 70),
 	},
@@ -164,11 +168,11 @@ Config.LOOT = {
 		place = "Crystal Isle",
 		island = "Crystal",
 		visual = "orb",
-		value = 7,
+		value = 10,
 		weight = 3,
 		carrySpeed = 24.5,
 		heat = 25,
-		respawn = 40,
+		respawn = 60,
 		trouble = "CaveIn",
 		color = Color3.fromRGB(215, 110, 255),
 	},
@@ -178,11 +182,11 @@ Config.LOOT = {
 		place = "Tangle Isle",
 		island = "Tangle",
 		visual = "idol",
-		value = 9,
+		value = 10,
 		weight = 2,
 		carrySpeed = 25,
 		heat = 22,
-		respawn = 40,
+		respawn = 60,
 		trouble = "Quake",
 		color = Color3.fromRGB(110, 235, 130),
 	},
@@ -192,11 +196,11 @@ Config.LOOT = {
 		place = "the Tide Vault",
 		island = "Tide",
 		visual = "orb",
-		value = 8,
+		value = 10,
 		weight = 3,
 		carrySpeed = 24.5,
 		heat = 26,
-		respawn = 45,
+		respawn = 60,
 		trouble = "Flood",
 		color = Color3.fromRGB(110, 230, 255),
 	},
@@ -206,11 +210,11 @@ Config.LOOT = {
 		place = "Maelstrom Rock",
 		island = "Maelstrom",
 		visual = "gem",
-		value = 8,
+		value = 10,
 		weight = 3,
 		carrySpeed = 24.5,
 		heat = 24,
-		respawn = 45,
+		respawn = 60,
 		trouble = "Squall",
 		color = Color3.fromRGB(150, 190, 255),
 	},
@@ -220,11 +224,11 @@ Config.LOOT = {
 		place = "Lantern Key",
 		island = "Lantern",
 		visual = "gem",
-		value = 9,
+		value = 8,
 		weight = 2,
 		carrySpeed = 25.5,
 		heat = 22,
-		respawn = 45,
+		respawn = 60,
 		trouble = "Bell",
 		color = Color3.fromRGB(255, 200, 110),
 	},
@@ -234,11 +238,11 @@ Config.LOOT = {
 		place = "Driftwood Key",
 		island = "Driftwood",
 		visual = "chest",
-		value = 9,
+		value = 8,
 		weight = 4,
 		carrySpeed = 23.5,
 		heat = 24,
-		respawn = 45,
+		respawn = 60,
 		trouble = "Gulls",
 		color = Color3.fromRGB(205, 175, 130),
 	},
@@ -248,11 +252,11 @@ Config.LOOT = {
 		place = "Fort Barnacle",
 		island = "Fort",
 		visual = "chest",
-		value = 13,
+		value = 11,
 		weight = 5,
 		carrySpeed = 22.5,
 		heat = 30,
-		respawn = 50,
+		respawn = 70,
 		trouble = "Navy",
 		color = Color3.fromRGB(255, 110, 100),
 	},
@@ -262,11 +266,11 @@ Config.LOOT = {
 		place = "the Volcano",
 		island = "Ember",
 		visual = "crown",
-		value = 13,
+		value = 10,
 		weight = 3,
 		carrySpeed = 24,
 		heat = 32,
-		respawn = 50,
+		respawn = 60,
 		trouble = "Eruption",
 		color = Color3.fromRGB(255, 130, 50),
 	},
@@ -276,11 +280,11 @@ Config.LOOT = {
 		place = "the Sun Temple",
 		island = "Temple",
 		visual = "idol",
-		value = 14,
+		value = 11,
 		weight = 4,
 		carrySpeed = 23.5,
 		heat = 40,
-		respawn = 60,
+		respawn = 70,
 		trouble = "Guardian",
 		color = Color3.fromRGB(255, 205, 40),
 	},
@@ -290,11 +294,11 @@ Config.LOOT = {
 		place = "Frost Spire",
 		island = "Frost",
 		visual = "gem",
-		value = 17,
+		value = 11,
 		weight = 4,
 		carrySpeed = 23.5,
 		heat = 38,
-		respawn = 65,
+		respawn = 70,
 		trouble = "Avalanche",
 		color = Color3.fromRGB(150, 245, 255),
 	},
@@ -304,7 +308,7 @@ Config.LOOT = {
 		place = "Leviathan's Rest",
 		island = "Bone",
 		visual = "tooth",
-		value = 17,
+		value = 11,
 		weight = 6,
 		carrySpeed = 21.5,
 		heat = 42,
@@ -318,11 +322,11 @@ Config.LOOT = {
 		place = "Skull Rock",
 		island = "Skull",
 		visual = "chalice",
-		value = 20,
+		value = 11,
 		weight = 5,
 		carrySpeed = 22.5,
 		heat = 45,
-		respawn = 75,
+		respawn = 70,
 		trouble = "GhostFleet",
 		color = Color3.fromRGB(130, 255, 180),
 	},
@@ -584,8 +588,17 @@ Config.BOAT_LAND_TURN = 0.8 -- Share of the steering kept on land.
 Config.BOAT_LAND_SLOPE = 0.45 -- The ground's normal must point up at least this much (Y) to count as a floor, not a wall.
 -- V7: Space at the wheel hops the boat. It needs water or ground under the hull and a cooldown, so there is
 -- no flying; a jump from a charged drift releases the burst.
-Config.BOAT_JUMP_SPEED = 58 -- Upward speed: about 8.5 studs of height from rest, a long arc under boost.
-Config.BOAT_JUMP_COOLDOWN = 1.3
+Config.BOAT_JUMP_SPEED = 80 -- Upward speed of a plain hop: about 16 studs up, 0.8 s in the air (V7: 58, 8.5 studs).
+Config.BOAT_JUMP_COOLDOWN = 1.1 -- (V7: 1.3)
+-- V8, the SUPER JUMP. Space while the hull is going faster than BOAT_SUPER_MIN (so: boosting, on a hoop chain,
+-- out of a drift burst; plain cruising is 135) throws it far higher: the jump's upward speed grows from the
+-- hop's to BOAT_SUPER_SPEED as the hull's speed goes from BOAT_SUPER_MIN to BOAT_SUPER_FULL. At full it is 57
+-- studs up and a second and a half in the air: 330 studs of flight at chain speed, over a rock, a patrol ship
+-- or a sea monster's back. Not on land. A clean landing from one pays the landing burst; a plain hop does not.
+Config.BOAT_SUPER_MIN = 150
+Config.BOAT_SUPER_FULL = 215
+Config.BOAT_SUPER_SPEED = 150
+Config.BOAT_SUPER_PITCH = 0.5 -- How hard a super jump throws the bow up (the upright assist levels it again).
 Config.BOAT_YAW_SNAP = 8 -- How quickly the hull reaches the turn rate you ask for (V2: 5).
 Config.BOAT_SLIP_LOSS = 0.15 -- Speed shed by sliding sideways in an ordinary turn (V2: 0.5).
 Config.BOAT_COAST_DRAG = 0.35 -- Share of the engine-on drag that remains off the throttle: boats coast.
@@ -593,7 +606,7 @@ Config.BOAT_BUOY_DAMPING = 1.1 -- How quickly a hull stops bouncing on its sprin
 Config.BOAT_MAX_STEP = 0.1 -- Longest frame the boat physics will integrate in one go (10 frames a second).
 Config.BOAT_AIR_CONTROL = 0.35 -- Share of the steering you keep while airborne.
 Config.BOAT_AIR_MIN = 0.4 -- Seconds off the water before a touchdown counts as a landing.
-Config.BOAT_LANDING_AIR = 0.7 -- Seconds in the air before a clean landing also bursts (a plain hop in flight 0.6 s does not).
+Config.BOAT_LANDING_AIR = 0.7 -- Seconds in the air before a clean landing also bursts. (A plain hop never does: BoatSim marks it.)
 Config.BOAT_FLIP_TIME = 1 -- Seconds a hull lies capsized before it pops back upright.
 Config.BOAT_LANDING_KICK = 16 -- Speed added by a clean landing (V6: 12).
 Config.BOAT_PAYLOAD_DRAG = 0.03 -- Each unit of loot weight aboard cuts thrust and top speed by this much.
@@ -643,37 +656,93 @@ Config.BOAT_SLEEP_DISTANCE = 650 -- Empty boats farther than this from every pla
 Config.BOAT_CLIENT_PHYSICS = true
 Config.BOAT_SPEED_SLACK = 1.15 -- A driven boat may exceed its modelled top speed by this factor...
 Config.BOAT_SPEED_MARGIN = 40 -- ...plus this (currents, waves, hoops), before it counts as cheating.
-Config.BOAT_MAX_ALTITUDE = 80 -- Studs above the sea a hull can be (kickers reach about 15).
+Config.BOAT_MAX_ALTITUDE = 130 -- Studs above the sea a hull can be (a super jump reaches about 57, off a ramp a little more; V7: 80).
 Config.BOAT_STRIKE_TIME = 1.2 -- Seconds over a limit before the server takes the boat back.
 Config.BOAT_RECLAIM_TIME = 5 -- Seconds the server then drives it before handing it back.
 
 -- The skyship and the dive (V7) --------------------------------------------------------------------
 -- Every raid starts aboard a flying ship over the middle of the sea (server/Skyship.lua). The raid
 -- clock runs from the moment the bell goes; WINDOW seconds later whoever is still aboard is fired off.
+-- Pursuit (V8): what lives on an island follows a thief out to sea (server/Pursuit.lua). Each form's own
+-- numbers (speed, tell, rest) are beside its description there; these are the rules they all share.
+Config.PURSUIT = {
+	MAX = 5, -- Pursuers out at once in the whole sea.
+	CHECK = 0.5, -- Seconds between looks for a new thief to follow.
+	CLEAR = 70, -- A thief must be this far off the island's shore, on the water, before it sets out.
+	LEASH = 1100, -- Studs from its island's SHORE at which a pursuer gives up (a form may set its own).
+	TIME = 50, -- Seconds a pursuit lasts at most.
+	COOLDOWN = 40, -- Seconds before the same island can send its pursuer again.
+	FLINCH = 4, -- Seconds a pursuer reels from an explosion; the second one sends it home.
+	MISS_REST = 1.6, -- After a strike that MISSED it rests only this long (its form's own rest is for a hit).
+}
+-- Sea mobs (V8): the ordinary life of the open water (server/SeaMobs.lua). A fixed number, placed once.
+Config.SEA_MOBS = {
+	SPREAD = 520, -- Studs from a region's middle that its mobs may be placed.
+	HOME_CLEAR = 900, -- None this close to the Hoard: home water is quiet.
+	SHORE_CLEAR = 150, -- None this close to any island's shore.
+	LEASH = 420, -- A nibbler school gives up this far from where it lives.
+	NIBBLER_SIGHT = 150,
+	NIBBLER_SPEED = 150, -- A little faster than a cruising skiff (135), slower than a boost.
+	NIBBLER_CHASE = 9,
+	NIBBLER_HOLD = 5, -- Seconds they stay on a hull that does not jump.
+	NIBBLER_BITE = 1.5, -- Hull lost each half second (never below IMPACT.HULL_FLOOR).
+	NIBBLER_REST = 14,
+	PUFFER_LIFT = 140, -- Studs/s up: about as high as a full super jump (86 was only a hop's worth: 18 studs).
+	PUFFER_PUSH = 55,
+	PUFFER_REST = 6,
+	LANCER_SIGHT = 230,
+	LANCER_TELL = 1.1, -- Seconds the line shows before it goes.
+	LANCER_SPEED = 260,
+	LANCER_RUN = 300, -- Studs it travels.
+	LANCER_PUSH = 72,
+	LANCER_HULL = 6,
+	LANCER_REST = 12,
+}
+Config.STORM_CEILING = 200 -- Lightning and storm-seeding ignore goblins above this height (the skyship, a flight).
 Config.SKYSHIP = {
 	POSITION = Vector3.new(0, 540, -80), -- Centre of the deck. The sea's walls are 700 high.
 	BEAM = 44,
-	WINDOW = 28, -- Seconds from the raid's start: the deployment window.
+	WINDOW = 40, -- Seconds from the raid's start: the deployment window (V7: 28; there are wings to walk and an aim to take now).
 	COUNTDOWN = 3, -- The cannons unlock this long after the raid starts (so a crowd goes together).
 }
 Config.DIVE = {
-	PENCIL_REACH = 55, -- Studs/s along, head down.
-	PENCIL_FALL = 150, -- Studs/s down, head down.
-	PENCIL_RATE = 1.6, -- How quickly the velocity settles on those numbers (per second).
-	GLIDE_REACH = 175, -- Space held: arms out.
-	GLIDE_SINK = 30,
-	GLIDE_RATE = 1.1,
-	COAST_SHARE = 0.8, -- With no steering a goblin holds its heading at this share of its reach.
-	LAUNCH_SPEED = 230, -- What a cannon gives; the dive's numbers take over within a couple of seconds.
-	LAUNCH_ELEVATION = math.rad(24),
-	NUDGE_YAW = math.rad(14), -- How far the player can turn a cannon off its island.
-	NUDGE_PITCH = math.rad(10),
-	FUSE = 0.9, -- From Fire to launch.
-	BOUNCES = 1, -- A splash bounces a diver this many times; the next one is a plain swim.
-	BOUNCE_UP = 135, -- Studs/s up after a splash.
-	BOUNCE_GRAVITY = 85, -- The bounce is a hop with its own gravity: about 105 studs high and three seconds of flight.
-	BOUNCE_KEEP = 0.5, -- Share of the sideways speed kept through the bounce.
-	OSTRICH_SPEED = 95, -- Hitting ground this fast (a pencil dive; a glide is about 30) goes head first.
+	-- V8: the THROW gives the reach (a plain arc under GRAVITY, aimed where you look); the air gives
+	-- control, never distance. See shared/Dive.lua.
+	GRAVITY = 60, -- Studs/s^2 on a thrown goblin (the world's is 196: this is a long, readable arc).
+	-- Tumble: no keys held. The arc you were given, with a little push from the keys.
+	TUMBLE_STEER = 16, -- Studs/s^2 sideways: about 500 studs of correction over a full-sea flight.
+	TUMBLE_FLOOR = 40, -- From a standstill (a hop off the wing) the keys can get you this fast.
+	TUMBLE_SPIN = 2.4, -- Radians/s end over end.
+	-- Glide: Space held. An air brake: the fall eases to GLIDE_SINK, the speed across bleeds to GLIDE_SPEED.
+	GLIDE_SINK = 55,
+	GLIDE_SPEED = 50, -- So a glide covers under a stud across per stud down (V7: 5.7 across per stud down).
+	GLIDE_BRAKE = 2.4, -- Per second: how hard the fall is caught.
+	GLIDE_DRAG = 0.9, -- Per second: how quickly the speed across is lost.
+	GLIDE_STEER = 60,
+	-- Dive: Shift held. Head first, down hard.
+	PENCIL_GRAVITY = 170,
+	PENCIL_FALL_MAX = 420,
+	PENCIL_DRAG = 0.6,
+	PENCIL_STEER = 28,
+	PENCIL_FLOOR = 30,
+	-- What throws.
+	CANNON_SPEED = 440, -- The skyship's cannons: 3,560 studs of reach from 540 up (the farthest island is 3,130 away).
+	CANNON_ELEVATION = math.rad(32),
+	CATAPULT_SPEED = 200, -- An island catapult: about 575 studs over level ground, more off a hill.
+	CATAPULT_ELEVATION = math.rad(60), -- A high lob: it has walls and cliffs to clear (at 44 degrees all three fell short).
+	MIN_SPEED = 14, -- Aimed straight down: a plop over the side.
+	AIM_RANGE = 9000, -- The farthest point a client may ask a launcher to aim at.
+	FUSE = 0.5, -- From Fire to launch (V7: 0.9).
+	LOADED_TIMEOUT = 25, -- Seconds a goblin may sit in an island catapult before it tips them out.
+	MAX_TIME = 45, -- A flight that has not come down by now is ended where it is.
+	-- The sea: a fast goblin skips off it, each bounce smaller; the fourth touch is a swim.
+	BOUNCE_UP = { 95, 66, 40 }, -- Studs/s up: about 75, 36 and 13 studs high.
+	BOUNCE_KEEP = 0.45, -- Share of the speed across kept through each bounce...
+	BOUNCE_MAX_SPEED = 150, -- ...and never more than this: three skips cover at most about 650 studs.
+	BOUNCE_MIN_FALL = 62, -- Arriving slower than this (a glide is 55) is a plain landing in the water.
+	BOUNCE_GRACE = 0.5, -- Seconds after a bounce before the sea can be touched again.
+	-- The ground.
+	OSTRICH_SPEED = 95, -- Hitting ground this fast goes in head first; braking with a glide lands on your feet.
 	EMBED_TIME = 1.1, -- Seconds stuck in the ground.
 	POP_SPEED = 62, -- The hop out.
 }
@@ -686,8 +755,8 @@ Config.DIVE = {
 -- change to an island moves its tier.
 --   guardian  what lives there and how hard it is to out-think      traverse  how hard the way to the
 --   hazard    what the island does to a thief                       treasure is, on foot
---   extract   how hard the way HOME is (Navy base, distance)        gear      2 if the island is far
---                                                                             better with equipment
+--   extract   how hard the way HOME is (Navy base, distance)        gear      always 0 since V8: no treasure
+--                                                                             needs equipment any more
 -- tag: the kind of challenge. line: the one-sentence identity. alerts: see Alerts.lua.
 Config.ISLAND_INFO = {
 	Pebble = {
@@ -772,14 +841,14 @@ Config.ISLAND_INFO = {
 	},
 	Tide = {
 		major = true,
-		tag = "EQUIPMENT",
-		line = "A vault that floods: swim the drain, or bring a rebreather.",
+		tag = "FLOOD",
+		line = "A vault that floods when you take the pearl: get out before the eel finds you.",
 		g = 1,
 		t = 2,
 		h = 3,
 		x = 2,
-		r = 1,
-		gear = "Rebreather",
+		r = 0,
+		helps = "Rebreather",
 	},
 	Maelstrom = {
 		major = true,
@@ -803,14 +872,14 @@ Config.ISLAND_INFO = {
 	},
 	Ember = {
 		major = true,
-		tag = "EQUIPMENT",
-		line = "A volcano and a river of fire: boots make it a walk.",
+		tag = "FIRE",
+		line = "A volcano with the crown in its crater, and little fires that run ahead of you.",
 		g = 1,
 		t = 2,
 		h = 3,
 		x = 2,
-		r = 2,
-		gear = "CinderBoots",
+		r = 0,
+		helps = "CinderBoots",
 	},
 	Temple = {
 		major = true,
@@ -824,14 +893,14 @@ Config.ISLAND_INFO = {
 	},
 	Frost = {
 		major = true,
-		tag = "EQUIPMENT",
-		line = "A glacier with a cold that follows you: claws and a plan.",
+		tag = "CLIMB",
+		line = "A glacier with a cold that follows you up it.",
 		g = 1,
 		t = 3,
 		h = 2,
 		x = 2,
-		r = 2,
-		gear = "FrostClaws",
+		r = 0,
+		helps = "FrostClaws",
 	},
 	Bone = {
 		major = true,
@@ -889,8 +958,9 @@ Config.TIER_COLORS = {
 	Color3.fromRGB(255, 70, 70),
 }
 
--- Gear (V7): found in the world, never sold for Robux. Each piece changes one island's hazard a lot, and the treasure
--- on that island cannot be pried loose without it. A cache on a key island hands it out for the rest of the raid, once
+-- Gear: found in the world, never sold for Robux. Each piece changes one island's hazard a lot. V8: it is
+-- OPTIONAL. (V7 refused the treasure on three islands without it; the playtest found that a chore, so every
+-- treasure can now be taken bare-handed.) A cache on a key island hands it out for the rest of the raid, once
 -- per goblin (Lantern Key offers boots OR claws: you carry one at a time, so you choose). Shinies can buy "start with it".
 Config.REBREATHER_SWIM = 1.4 -- Swim speed with the rebreather, as a multiple.
 Config.CLAWS_CHILL = 0.25 -- The Chill's drain with frost claws, as a multiple.
@@ -1017,14 +1087,55 @@ Config.WAYPOINT_HIDE_WITHIN = 90 -- The arrow goes away this close to the Hoard:
 
 -- The Leviathan's body (server/Leviathan.lua): drawn by the Sleeper's tick, no health, no AI of its own.
 Config.LEVIATHAN = {
-	HUMPS = 7,
+	SCALE = 2.2, -- V8: every part of it is this many times its V7 size (the head is 48 x 31 x 57 studs).
+	HUMPS = 9,
 	NECK = 12,
-	RADIUS = 150, -- Of the circle its back swims.
+	RADIUS = 150, -- Of the circle its back swims while it lurks.
 	SWIM_SPEED = 22,
 	LURK_MIN = 0.25, -- How much of its back shows when the Sleeper is hardly aware.
-	GAP = 0.12, -- Radians between humps.
-	ARC_HEIGHT = 75,
-	NECK_GAP = 0.05,
+	GAP = 0.2, -- Radians between humps on the circle.
+	-- The hunt (V8).
+	SPEED = 165, -- Studs/s. A cruising skiff does 135 and a boost 215: it gains on one, loses to the other.
+	TURN = 1.3, -- Radians/s: wide turns. A hard turn (a drift) gets inside it.
+	SIGHT = 520, -- It re-picks the nearest crewed boat within this of its head.
+	SURGE_SPEED = 260, -- When the boat has got more than SURGE_GAP ahead (after a breach) it surges to catch up...
+	SURGE_GAP = 260, -- ...so one dodge is not the end of the hunt. It drops back to SPEED once it is close.
+	LEASH = 2400, -- Studs from its home at which it turns back (a cruising skiff is there in about 16 s: two breaches).
+	SHALLOW = 9, -- Water shallower than this (studs) it will not enter: after 3 s there it gives up.
+	HUNT_TIME = 55,
+	FLINCH = 4.5, -- Seconds it reels from an explosion on its head; the third sends it home.
+	RECOVER = 2, -- Seconds after a breach before it swims on.
+	BREACH_RANGE = 220, -- It breaches when this close behind (the ring opens where the boat is GOING, not where it is)...
+	BREACH_GAP = 7, -- ...and no more often than this.
+	BREACH_DELAY = 1.6, -- From the ring opening to the head coming up through it.
+	BREACH_RADIUS = 30,
+	BREACH_HEIGHT = 85,
+	BREACH_SHOW = 2, -- Seconds the head is out of the water: up fast, a hang at the top, back down.
+	BREACH_DAMAGE = 22, -- To a goblin (before IMPACT.DAMAGE_SCALE).
+	BREACH_HULL = 48, -- To a hull (before IMPACT.HULL_SCALE; never below IMPACT.HULL_FLOOR).
+	BREACH_PUSH = 110,
+	WAKE_RADIUS = 62, -- Boats this close to the swimming head are thrown aside by its bow wave...
+	WAKE_PUSH = 58, -- ...this hard. No damage.
+	THIEF_WINDOW = 90, -- Seconds after the Tooth is taken in which putting to sea starts a hunt.
+}
+
+-- Being hit by the world (V8, server/Impact.lua and Loot.knockLoose). Chaos should move you, not end you.
+Config.IMPACT = {
+	GRACE = 1.2, -- After a world hit lands, nothing else from the world lands on that goblin for this long.
+	DAMAGE_SCALE = 0.55, -- World damage to goblins, as a share of what each source asks for.
+	LAST_STAND = 30, -- A goblin with more health than this cannot be killed by one world hit (it leaves 1).
+	HULL_SCALE = 0.6, -- The same for hulls: world blasts (boulders, lightning, monsters) bite this much smaller.
+	HULL_FLOOR = 0.12, -- A creature or sea-mob hit never takes a hull below this share of its health: only
+	-- cannons, shells, mines, kegs and real crashes sink boats.
+}
+-- The two-strike grip. An ordinary world hit does not knock treasure out of a carrier's hands: it LOOSENS their
+-- grip for SLIP_TIME seconds (they are told). A second world hit inside that time drops it. A few rare,
+-- clearly marked attacks (HEAVY) drop it at once. Once the world has made a goblin drop treasure, it cannot do
+-- so again for RECOVER seconds. None of this applies to another goblin's sword, keg, cannon or grapple.
+Config.GRIP = {
+	SLIP_TIME = 6,
+	RECOVER = 10,
+	HEAVY = { guardianleap = true },
 }
 
 -- Recall (B): a boat for a goblin with none. See server/Recall.lua.

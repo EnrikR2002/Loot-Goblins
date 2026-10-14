@@ -305,9 +305,27 @@ function BoatSim.step(boat, input, dt, t)
 
 	-- The hop. (After the forces, so the spring does not eat it.)
 	out.jumped = false
+	out.super = nil
 	if jumpNow then
 		boat.jumpReadyAt = t + Config.BOAT_JUMP_COOLDOWN
-		hull:ApplyImpulse(Vector3.new(0, Config.BOAT_JUMP_SPEED * mass, 0))
+		-- The faster the hull, the bigger the jump: a hop below BOAT_SUPER_MIN, a super jump above it.
+		local super = 0
+		if not grounded and speedMag > Config.BOAT_SUPER_MIN then
+			super = math.clamp(
+				(speedMag - Config.BOAT_SUPER_MIN) / (Config.BOAT_SUPER_FULL - Config.BOAT_SUPER_MIN),
+				0.15,
+				1
+			)
+		end
+		local jumpSpeed = Config.BOAT_JUMP_SPEED + super * (Config.BOAT_SUPER_SPEED - Config.BOAT_JUMP_SPEED)
+		hull:ApplyImpulse(Vector3.new(0, jumpSpeed * mass, 0))
+		if super > 0 then
+			-- Bow up, for the look of it (and so the stern meets the water first).
+			local pitchInertia = mass * (size.Y * size.Y + size.Z * size.Z) / 12
+			hull:ApplyAngularImpulse(cf.RightVector * super * Config.BOAT_SUPER_PITCH * pitchInertia)
+			out.super = super
+		end
+		boat.hopOnly = super == 0 -- a plain hop earns no landing burst
 		out.jumped = true
 	end
 
@@ -320,11 +338,13 @@ function BoatSim.step(boat, input, dt, t)
 			out.event = "splash"
 		end
 		boat.airTime = 0
+		boat.hopOnly = false
 	elseif wet >= 0.3 then
 		if boat.airTime >= Config.BOAT_AIR_MIN then
 			-- A burst needs a real flight (a ramp, a boosted hop), not a plain hop from rest.
 			if
 				boat.airTime >= Config.BOAT_LANDING_AIR
+				and not boat.hopOnly
 				and up.Y > 0.8
 				and slip < 0.3
 				and forwardSpeed > spec.maxSpeed * 0.4
@@ -336,6 +356,7 @@ function BoatSim.step(boat, input, dt, t)
 			else
 				out.event = "splash"
 			end
+			boat.hopOnly = false
 		end
 		boat.airTime = 0
 	end

@@ -51,11 +51,16 @@ local Escalation = require(script.Parent.Escalation)
 local Coins = require(script.Parent.Coins)
 local Recall = require(script.Parent.Recall)
 local Skyship = require(script.Parent.Skyship)
+local Flight = require(script.Parent.Flight)
 local Gear = require(script.Parent.Gear)
+local Impact = require(script.Parent.Impact)
 local Alerts = require(script.Parent.Alerts)
 local Progress = require(script.Parent.Progress)
 local Monetization = require(script.Parent.Monetization)
 local Creatures = require(script.Parent.Creatures)
+local Pursuit = require(script.Parent.Pursuit)
+local Leviathan = require(script.Parent.Leviathan)
+local SeaMobs = require(script.Parent.SeaMobs)
 require(script.Parent.Bestiary)
 require(script.Parent.BestiaryMinor)
 local Raid = require(script.Parent.Raid)
@@ -85,6 +90,7 @@ print(
 )
 Boats.build(refs)
 Skyship.build(refs)
+Flight.build(refs, Skyship.model())
 Gear.build(refs)
 Loot.build(refs)
 Poltergoblin.init(refs)
@@ -99,6 +105,8 @@ Navy.build(refs)
 Troubles.build(refs)
 Escalation.build(refs)
 Creatures.build(refs)
+Pursuit.build(refs)
+SeaMobs.build(refs)
 Combat.init(refs)
 Raid.init(refs)
 Progress.init()
@@ -184,6 +192,7 @@ local LOOSE_TEXT = {
 	throw = "%s threw the %s",
 	sword = "%s smacked the %s out of %s's hands!",
 	guardian = "The Guardian smashed the %s out of %s's hands!",
+	guardianleap = "The Guardian LANDED on the %s: %s dropped it!",
 	boulder = "%s got flattened and dropped the %s!",
 	cannon = "%s was blasted and dropped the %s!",
 	keg = "%s got kegged and dropped the %s!",
@@ -209,7 +218,7 @@ Loot.Loosened:Connect(function(item, reason, byPlayer, fromPlayer)
 		text = string.format(LOOSE_TEXT.throw, holder, def.name)
 	elseif reason == "sword" then
 		text = string.format(LOOSE_TEXT.sword, byPlayer and byPlayer.DisplayName or "Someone", def.name, holder)
-	elseif reason == "guardian" then
+	elseif reason == "guardian" or reason == "guardianleap" then
 		text = string.format(LOOSE_TEXT.guardian, def.name, holder)
 	elseif reason == "imp" then
 		text = string.format(LOOSE_TEXT.imp, def.name)
@@ -292,6 +301,7 @@ Players.PlayerRemoving:Connect(function(player)
 	Coins.forget(player)
 	Recall.forget(player)
 	Skyship.forget(player)
+	Impact.forget(player)
 	Progress.forget(player)
 end)
 
@@ -326,19 +336,22 @@ Net.BoatBoard.OnServerEvent:Connect(function(player)
 	end
 end)
 Net.BoatFx.OnServerEvent:Connect(function(player, kind)
-	if kind == "mini1" or kind == "mini2" or kind == "landing" or kind == "jump" then
+	if kind == "mini1" or kind == "mini2" or kind == "landing" or kind == "jump" or kind == "super" then
 		Boats.relayFx(player, kind)
 	end
 end)
-Net.Deploy.OnServerEvent:Connect(function(player, action, a, b)
+Net.Deploy.OnServerEvent:Connect(function(player, action, a)
+	-- V8: a launcher is aimed at a PLACE (the server works out the throw); see Flight.lua.
 	if action == "choose" then
 		Skyship.choose(player, a)
 	elseif action == "aim" then
-		Skyship.nudge(player, a, b)
+		Flight.aim(player, a)
 	elseif action == "fire" then
-		Skyship.fire(player)
+		Flight.fire(player)
 	elseif action == "leave" then
-		Skyship.leaveCannon(player)
+		Flight.leave(player)
+	elseif action == "mode" then
+		Flight.setMode(player, a)
 	end
 end)
 Net.Shop.OnServerEvent:Connect(function(player, action, id)
@@ -388,6 +401,9 @@ RunService.Heartbeat:Connect(function(dt)
 	Boats.tick(dt)
 	Recall.tick()
 	Skyship.tick(dt)
+	Flight.tick(dt)
+	Pursuit.tick(dt)
+	SeaMobs.tick(dt)
 	Progress.tick(dt, active)
 	if active then
 		Loot.tick()
@@ -403,6 +419,7 @@ RunService.Heartbeat:Connect(function(dt)
 	Mechanisms.tick(dt)
 	Coins.tick(dt, active)
 	Creatures.tick(dt)
+	Leviathan.tick(dt) -- after the creatures: the Sleeper drives it when awake, this only fills in when it is not
 	Poltergoblin.tick()
 	Movement.tick(dt)
 	Raid.tick()

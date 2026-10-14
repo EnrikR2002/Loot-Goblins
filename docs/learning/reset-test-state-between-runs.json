@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "reset-test-state-between-runs",
+  "title": "A batch of automated runs can silently test nothing after the first",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-13",
+  "topics": [
+    "testing",
+    "automation"
+  ],
+  "observation": "A batch of twelve automated pursuit runs reported that only the first run's trigger ever fired. The cause was the test, not the game: the first run left its treasure in the goblin's hands, so every later run could not pick up its own treasure and the condition being tested never arose. The batch's results had to be discarded and re-run after the harness emptied the goblin's hands between runs.",
+  "recommendation": "Make each automated run put back everything it changed, and have a run that sees no effect print why (what it held, where it was, the trigger's inputs) rather than only that nothing happened.",
+  "applies_when": [
+    "Running several scripted gameplay tests in one session",
+    "A batch where only the first case passes"
+  ],
+  "limits": [
+    "One harness in one game",
+    "Does not say how often this happens in other suites"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md",
+      "detail": "Bug 12 in section 19 and the island-by-island table in section 10, re-run after the harness was fixed."
+    }
+  ]
+}

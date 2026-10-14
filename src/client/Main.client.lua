@@ -91,6 +91,52 @@ ProximityPromptService.PromptHidden:Connect(function(prompt)
 	shownPrompts[prompt] = nil
 end)
 
+-- Roblox only SHOWS a prompt whose object is on screen. So a goblin standing beside the treasure with the
+-- camera turned away saw no prompt, and E (shared with Poltergoblin) sent their spirit flying instead of
+-- stealing: "I pressed E and it did the wrong thing". V8: if no prompt is showing, E goes to the nearest
+-- enabled E-prompt the goblin is in reach of, held and released exactly as if it were on screen.
+local heldPrompt = nil
+local function reachPrompt()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return nil
+	end
+	local best, bestDistance = nil, math.huge
+	local function consider(prompt)
+		if not prompt.Enabled or prompt.KeyboardKeyCode ~= Enum.KeyCode.E then
+			return
+		end
+		local parent = prompt.Parent
+		local position
+		if parent and parent:IsA("BasePart") then
+			position = parent.Position
+		elseif parent and parent:IsA("Attachment") then
+			position = parent.WorldPosition
+		end
+		if position then
+			local distance = (position - root.Position).Magnitude
+			if distance <= prompt.MaxActivationDistance and distance < bestDistance then
+				best, bestDistance = prompt, distance
+			end
+		end
+	end
+	for _, instance in ipairs(generated:GetDescendants()) do
+		if instance:IsA("ProximityPrompt") then
+			consider(instance)
+		end
+	end
+	-- The steal prompt on a goblin who is down lives on their body, not in the world folder.
+	for _, other in ipairs(Players:GetPlayers()) do
+		local otherRoot = other ~= player and other.Character and other.Character:FindFirstChild("HumanoidRootPart")
+		local prompt = otherRoot and otherRoot:FindFirstChildOfClass("ProximityPrompt")
+		if prompt then
+			consider(prompt)
+		end
+	end
+	return best
+end
+
 local function promptOwnsE()
 	for prompt in pairs(shownPrompts) do
 		if prompt.Parent and prompt.Enabled and prompt.KeyboardKeyCode == Enum.KeyCode.E then
@@ -555,7 +601,12 @@ UserInputService.WindowFocusReleased:Connect(function()
 	setSprint(false)
 end)
 UserInputService.InputEnded:Connect(function(input)
-	if input.KeyCode == Enum.KeyCode.LeftShift then
+	if input.KeyCode == Enum.KeyCode.E and heldPrompt then
+		if heldPrompt.Parent then
+			heldPrompt:InputHoldEnd()
+		end
+		heldPrompt = nil
+	elseif input.KeyCode == Enum.KeyCode.LeftShift then
 		setSprint(false)
 	elseif input.KeyCode == Enum.KeyCode.C or input.KeyCode == Enum.KeyCode.ButtonB then
 		BoatDrive.setDrift(false)
@@ -815,6 +866,17 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
 	end
+	-- In the air after a launch the keys belong to the flight (client/Skyship.lua): Space brakes, Shift dives.
+	if
+		player:GetAttribute("Diving")
+		and (
+			input.KeyCode == Enum.KeyCode.LeftShift
+			or input.KeyCode == Enum.KeyCode.Space
+			or input.KeyCode == Enum.KeyCode.C
+		)
+	then
+		return
+	end
 	if input.KeyCode == Enum.KeyCode.LeftShift then
 		if seatedInBoat() then
 			BoatDrive.boost()
@@ -860,7 +922,14 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	elseif input.KeyCode == Enum.KeyCode.F then
 		pressGrapple()
 	elseif input.KeyCode == Enum.KeyCode.E then
-		pressPoltergoblin()
+		-- V8: E belongs to whatever is IN REACH, not only to what the camera happens to show (see reachPrompt).
+		local prompt = not promptOwnsE() and reachPrompt() or nil
+		if prompt then
+			heldPrompt = prompt
+			prompt:InputHoldBegin()
+		else
+			pressPoltergoblin()
+		end
 	elseif input.KeyCode == Enum.KeyCode.H then
 		Hud.toggleHelp()
 	elseif input.KeyCode == Enum.KeyCode.T then
@@ -1237,6 +1306,17 @@ local function boatFx(kind, position, mine)
 		end
 	elseif kind == "splash" then
 		Effects.spray(position, 0.35)
+	elseif kind == "super" then
+		-- The super jump: a wall of spray, a ring, the view thrown wide.
+		Effects.spray(position, 1.3)
+		Effects.ring(position, Color3.fromRGB(255, 240, 160), 30, 0.6)
+		Effects.burst(position, Color3.fromRGB(255, 255, 255), 70, 55)
+		Effects.sound("whoosh", { position = position, speed = 0.9, volume = 1, range = 400 })
+		Effects.sound("rise", { position = position, speed = 1.3, volume = 0.8, range = 400 })
+		if mine then
+			Effects.punchFov(108)
+			Hud.toast("SUPER JUMP!")
+		end
 	elseif kind == "jump" then
 		Effects.spray(position, 0.45)
 		Effects.sound("whoosh", { position = position, speed = 1.4, volume = 0.7, range = 250 })
@@ -1514,6 +1594,49 @@ end
 function handlers.Flood(p)
 	Effects.sound("splash", { position = p.position, speed = 0.5, volume = 1, range = 300 })
 	Effects.shakeAt(p.position, 0.8, 1, 120)
+end
+
+-- Something a sea creature did (server/Pursuit.lua, SeaMobs.lua): { sound, pitch, volume, colour, spray }.
+local SEA_FX = {
+	launch = { "splash", 0.7, 1, Color3.fromRGB(220, 240, 255), 1.2 },
+	splash = { "splash", 1, 0.9, Color3.fromRGB(220, 240, 255), 0.9 },
+	crash = { "thud", 0.6, 1, Color3.fromRGB(235, 228, 210), 1.3 },
+	erupt = { "boom", 1.4, 0.9, Color3.fromRGB(220, 240, 255), 1.7 },
+	bleat = { "rise", 1.6, 1, Color3.fromRGB(235, 228, 210) },
+	shriek = { "rise", 2.4, 1, Color3.fromRGB(96, 190, 84) },
+	snatch = { "blip", 2.9, 1, Color3.fromRGB(96, 190, 84), 0.5 },
+	zap = { "blip", 3.2, 1, Color3.fromRGB(120, 235, 255), 0.6 },
+	clap = { "thud", 1.6, 0.9, Color3.fromRGB(255, 170, 190), 0.5 },
+	chime = { "blip", 0.7, 0.9, Color3.fromRGB(215, 120, 255) },
+	shatter = { "blip", 2.6, 1, Color3.fromRGB(215, 120, 255), 0.8 },
+	eye = { "rise", 0.5, 1, Color3.fromRGB(255, 80, 60) },
+	chill = { "blip", 0.5, 0.9, Color3.fromRGB(190, 235, 255) },
+	yelp = { "rise", 2, 1, Color3.fromRGB(255, 240, 200), 0.8 },
+	nibble = { "blip", 3.4, 0.9, Color3.fromRGB(170, 200, 215), 0.5 },
+	boing = { "rise", 1.2, 1, Color3.fromRGB(255, 205, 90), 1.4 },
+	lance = { "whoosh", 1.5, 1, Color3.fromRGB(110, 170, 230), 0.7 },
+}
+
+function handlers.SeaFx(p)
+	local fx = SEA_FX[p.kind]
+	if not fx or typeof(p.position) ~= "Vector3" then
+		return
+	end
+	Effects.sound(fx[1], { position = p.position, speed = fx[2], volume = fx[3], range = 420 })
+	Effects.burst(p.position + Vector3.new(0, 2, 0), fx[4], 20, 24)
+	if fx[5] then
+		Effects.spray(p.position, fx[5])
+		Effects.ring(p.position + Vector3.new(0, 1, 0), fx[4], 12 + fx[5] * 10, 0.6)
+	end
+	if p.kind == "erupt" or p.kind == "crash" or p.kind == "boing" then
+		Effects.shakeAt(p.position, 0.6, 0.4, 90)
+	end
+end
+
+-- The world hit a carrier once (Loot.knockLoose): the treasure is still theirs, for now.
+function handlers.GripSlip(_p)
+	Hud.flash(Color3.fromRGB(255, 205, 50), 0.35)
+	Effects.sound("blip", { speed = 0.6, volume = 0.9 })
 end
 
 function handlers.Burn()

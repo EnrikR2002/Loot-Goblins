@@ -163,8 +163,9 @@ RunService.PreSimulation:Connect(function(dt)
 	info.charge, info.level, info.drifting = out.charge, out.level, out.drifting
 	info.grounded = out.grounded == true
 	if out.jumped then
-		onEvent("jump", hull.Position)
-		fxRemote:FireServer("jump")
+		local kind = out.super and "super" or "jump"
+		onEvent(kind, hull.Position, out.super)
+		fxRemote:FireServer(kind)
 	end
 	if out.punched then
 		onEvent("punch", hull.Position)

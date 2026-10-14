@@ -19,6 +19,7 @@ local Storms = require(script.Parent.Storms)
 local Navy = require(script.Parent.Navy)
 local Mechanisms = require(script.Parent.Mechanisms)
 local Destructibles = require(script.Parent.Destructibles)
+local Leviathan = require(script.Parent.Leviathan)
 
 local Troubles = {}
 
@@ -102,6 +103,21 @@ Threats.handlers.Windmill = function()
 	end)
 end
 
+-- Floods or drains the vault. Only AIR becomes water and only WATER becomes air, inside the site's regions, so
+-- the stairway and the walls are never touched (a plain block fill would dissolve them).
+local function setFlood(site, on)
+	local terrain = workspace.Terrain
+	for _, corners in ipairs(site.regions) do
+		local region = Region3.new(corners[1], corners[2]):ExpandToGrid(4)
+		if on then
+			terrain:ReplaceMaterial(region, 4, Enum.Material.Air, Enum.Material.Water)
+		else
+			terrain:ReplaceMaterial(region, 4, Enum.Material.Water, Enum.Material.Air)
+		end
+	end
+	flooded = on
+end
+
 -- Tide Vault: the portcullis drops and the chamber fills. The way out is the drain tunnel (swim),
 -- or a friend at the lever.
 Threats.handlers.Flood = function()
@@ -109,14 +125,11 @@ Threats.handlers.Flood = function()
 	if not site then
 		return
 	end
-	local terrain = workspace.Terrain
 	Mechanisms.slamGate(site.gate, 0)
 	local generation = Threats.generation()
-	local chamber, tunnel = site.chamberCenter, site.tunnelCenter
+	local chamber = site.center
 	local function fill(material)
-		terrain:FillBlock(CFrame.new(chamber), site.chamberSize, material)
-		terrain:FillBlock(CFrame.new(tunnel), site.tunnelSize, material)
-		flooded = material == Enum.Material.Water
+		setFlood(site, material == Enum.Material.Water)
 	end
 	task.spawn(function()
 		task.wait(0.8)
@@ -233,36 +246,12 @@ end
 
 -- Leviathan's Rest: tentacles smash up out of the sea around the island, aimed at the thief. A
 -- ring on the water, a beat, then the slam. Leave the area and they lose you.
-Threats.handlers.Kraken = function()
-	local site = refs.troubleSites.Kraken
-	if not site then
-		return
+Threats.handlers.Kraken = function(_item, player)
+	-- V8: taking the Tooth no longer rains tentacle strikes on the dock. The Leviathan itself comes after
+	-- the thief, once they are on the water (Leviathan.lua).
+	if player then
+		Leviathan.huntThief(player)
 	end
-	repeating(Config.KRAKEN_TIME, Config.KRAKEN_GAP, function()
-		local carrier = carrierNear(site.center, site.radius)
-		if carrier then
-			local v = carrier.root.AssemblyLinearVelocity
-			local position = carrier.root.Position + Vector3.new(v.X, 0, v.Z) * Config.KRAKEN_DELAY * 0.9
-			position = Vector3.new(
-				position.X + random:NextNumber(-5, 5),
-				math.max(position.Y - 2, 0),
-				position.Z + random:NextNumber(-5, 5)
-			)
-			Net.broadcast("Tentacle", { position = position, delay = Config.KRAKEN_DELAY })
-			Blast.strike(position, Config.KRAKEN_DELAY, {
-				radius = 17,
-				damage = 30,
-				knockback = 95,
-				hullDamage = 95,
-				boatPush = 85,
-				lootReason = "boulder",
-				cause = "the leviathan",
-				markerColor = Color3.fromRGB(190, 110, 255),
-				style = "kraken",
-				color = Color3.fromRGB(150, 90, 220),
-			})
-		end
-	end)
 end
 
 -- Skull Rock: ghost ships sail out of a fog bank.
@@ -306,10 +295,13 @@ end
 function Troubles.reset()
 	local site = refs.troubleSites.Flood
 	if flooded and site then
-		workspace.Terrain:FillBlock(CFrame.new(site.chamberCenter), site.chamberSize, Enum.Material.Air)
-		workspace.Terrain:FillBlock(CFrame.new(site.tunnelCenter), site.tunnelSize, Enum.Material.Air)
-		flooded = false
+		setFlood(site, false)
 	end
+end
+
+-- Is the Tide Vault under water right now? (The Warden asks.)
+function Troubles.flooded()
+	return flooded
 end
 
 return Troubles

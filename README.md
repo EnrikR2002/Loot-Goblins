@@ -1,6 +1,6 @@
 # Loot Goblins
 
-Steal ridiculous treasure from dangerous islands and other players, then somehow get it home. This branch is the V7 prototype: every raid starts on a flying pirate ship (cannons, a dive, a splash or a head-first landing), over a wider archipelago of sixteen major islands with physical boats and sea, island inhabitants, readable lanes and courses, positional world audio, regional alerts, gear, and a small saved progression (Shinies and pets). Nobody has played V7 yet: it was tested by one AI on one client.
+Steal ridiculous treasure from dangerous islands and other players, then somehow get it home. This branch is the V8 prototype (**Chaos & Counterplay**): every raid starts on a flying pirate ship whose cannons you aim by looking, you tumble through the air with loose limbs and skip across the sea, boats super-jump, every island's creature chases a thief out onto the water (a ram in a washtub, a crab from below, a walking whirlpool), the Leviathan hunts boats, and being hit knocks you about instead of taking everything from you. V8 was tested by one AI on one client: nobody has played it yet, and it has never had a second player.
 
 ## Play it
 
@@ -22,7 +22,7 @@ The world appears when Play starts. While editing, this game's Rojo connection u
 
 ## The raid
 
-Explore, take treasure, survive the reaction, escape, and bank at the Hoard. A raid lasts twelve minutes and starts on the skyship: press `M`, click an island, climb into a cannon with `E`, press `Space` to fire, then dive (hold `Space` to glide a long way, let go to plunge). Gold wins the raid; **Shinies** are what you keep between raids (open the locker with `P` to buy pets and starting gear). The map shows how dangerous each island is and which ones are on guard. Carrying treasure? An arrow on the screen points to the Hoard. Teal hoops are travel lanes; orange hoops are timed courses. The final 90 seconds pay 25% more.
+Explore, take treasure, survive the reaction, escape, and bank at the Hoard. A raid lasts twelve minutes and starts on the skyship: climb into a cannon with `E`, look at where you want to land (the gold ring), click or press `Space` to fire. In the air you tumble; hold `Space` to glide (a brake and a soft landing), hold `Shift` to dive, and the sea skips you up to three times. Gold wins the raid; **Shinies** are what you keep between raids (open the locker with `P` for pets and starting gear). No treasure needs gear, and most are worth about the same (9 to 11 gold; the three nearest home 4 to 5), so pick the island you fancy.
 
 ## Controls
 
@@ -31,9 +31,11 @@ Explore, take treasure, survive the reaction, escape, and bank at the Hoard. A r
 | Hold `E` on treasure | Steal it from its spot (0.6 s), or grab it when loose |
 | `E` on a boat | Board it. `W A S D` drives from the driver seat; `S` is a real brake |
 | `Shift` in the driver seat | Boost (2.4 s, 5 s cooldown) |
-| `Space` in the driver seat | Hop the boat. `X` leaves the boat |
+| `Space` in the driver seat | Hop the boat. At boost speed it is a **super jump** (about 38 studs up). `X` leaves the boat |
 | `B` | Call a boat to the nearest shore if you are stranded |
-| On the skyship: `E` at a cannon | Climb in. `A`/`D` turn, `W`/`S` tilt, `Space` fires, `X` climbs out. Hold `Space` while diving to glide |
+| On the skyship: `E` at a cannon | Climb in. **Look** (mouse, or `W A S D`) at where you want to land, click or `Space` to fire, `X` climbs out. `M` then an island points the cannon at it. Or walk out on a wing and step off |
+| In the air | `W A S D` nudge. Hold `Space`: glide (brake, soft landing). Hold `Shift`: dive |
+| `E` at an island catapult | Climb in and aim it the same way as a cannon |
 | Hold `C` in a turn, in the driver seat | **Drift**: the boat slides round the turn. Let go for a burst of speed (bigger the longer you held the slide) |
 | `R` near a boat's winch | Drop or raise the anchor |
 | `E` at a cannon | Fire it where you aim |
@@ -53,7 +55,7 @@ Explore, take treasure, survive the reaction, escape, and bank at the Hoard. A r
 | `T` | Show every treasure on the board |
 | `H` | Show or hide the how-to-play panel |
 
-Green pads and timed steam geysers launch you; orange pads are catapults that throw you a long way (dash or jump to drop out early). Ladders, ramps and ziplines take you up and across the islands; tall crags and sea stacks are for the grapple. Home has bounce pads, a practice cannon with floating targets, keg crates and a harbor jump.
+Green pads and timed steam geysers launch you; catapults are aimed like the skyship's cannons. Ladders, ramps and ziplines take you up and across the islands; tall crags and sea stacks are for the grapple. Home has bounce pads, a practice cannon with floating targets, keg crates and a harbor jump. Out at sea: a ring on the water means something is about to land there; puffer fish bounce your boat into the air (a free jump); a jump shakes off nibblers and the clam.
 
 ## Work and feedback
 

@@ -4,19 +4,19 @@ This is the single editable source for this game's vision, current mechanics, co
 
 The AI updates affected sections here, records task evidence under docs/reports/, and runs the existing guide export. Generated root GAME_GUIDE.md packages this document, exact tuning, the shared quality rubric and lessons, and full dated reports into one attachment for another AI. Do not edit that generated file. The manifest and freshness files under docs/game-guide/ are export metadata, not additional game descriptions.
 
-## Loot Goblins V7: identity, journey, and current scope
+## Loot Goblins V8: identity, journey, and current scope
 
 Loot Goblins is a social possession-and-escape game: steal ridiculous treasure from dangerous islands and other players, then somehow get it home. The desired rhythm is explore with awe, take something valuable, feel the world react, improvise an escape, bank the reward, and choose another risk. Fast movement and boat handling should be enjoyable before a reward appears. Danger challenges that power rather than restoring difficulty by making ordinary travel sluggish.
 
-This guide describes the V7 code on branch feature/v7-skyfall-competitive-archipelago, built on main after V6 (PR #14) and the shared-memory system were merged on October 12, 2026. V7 has been tested by one AI on one Studio client and **has not been played by a person or with a second player**; its report (docs/reports/2026-10-13-v7-skyfall-competitive-archipelago.md) says exactly what was and was not exercised. The portable guide retains historical reports as history, while these current chapters describe the latest code.
+This guide describes the **V8** code on branch feature/v8-chaos-and-counterplay, which is stacked on V7 (branch feature/v7-skyfall-competitive-archipelago, PR #17, itself not yet merged into main). V8 is described in the section **V8 systems** below and in docs/reports/2026-10-13-v8-chaos-and-counterplay.md; where a V7 paragraph here disagrees with that section, V8 is what the code does. V7 and V8 have each been tested by one AI on one Studio client and **neither has been played by a person or with a second player**; their reports say exactly what was and was not exercised. The portable guide retains historical reports as history, while these current chapters describe the latest code.
 
 ### The first raid from a player's perspective
 
-The world generates when Play starts, taking several seconds on the reported development machine; players are loaded after world construction. **A raid begins aboard the skyship** (V7): a flying pirate ship hung 540 studs over the middle of the sea. Goblins pick an island on the map, climb into a cannon, are thrown into a dive (pencil-dive or glide), and land on land (head first like an ostrich if they fall fast, soft if they glide) or in the sea (a big splash and a bounce). Goblin Cove is home. The Hoard is the visible gold ring/beam where treasure and coin proceeds are banked; it is never on the ship. Home also has boats, keg access, a practice cannon, movement toys, and a harbor jump. The intended introductory line is the harbor jump, the teal Gate Run, and the passage through the reef to the Crossroads. Home Bay deliberately leaves calm water and visual breathing room.
+The world generates when Play starts, taking several seconds on the reported development machine; players are loaded after world construction. **A raid begins aboard the skyship** (V7): a flying pirate ship hung 540 studs over the middle of the sea. Goblins climb into a cannon and aim it by looking at where they want to land (V8), are thrown on a plain arc and tumble with loose limbs, and come down on land (head first like an ostrich if they fall fast, on their feet if they brake with a glide) or on the sea (which skips a fast goblin up to three times, each bounce smaller). They can also walk out along the ship's wings and step off. Goblin Cove is home. The Hoard is the visible gold ring/beam where treasure and coin proceeds are banked; it is never on the ship. Home also has boats, keg access, a practice cannon, movement toys, and a harbor jump. The intended introductory line is the harbor jump, the teal Gate Run, and the passage through the reef to the Crossroads. Home Bay deliberately leaves calm water and visual breathing room.
 
 The near islands offer inexpensive short trips. Middle destinations add longer journeys and characteristic trouble. Far islands offer larger treasure with heavier carrying costs and harder return routes. A treasure pillar/name and the map/compass help choose a destination; the physical geography gives currents, reef passes, cover, high ground, and alternate routes that influence pursuit. A thief normally carries one treasure at a time. The personal decision is which treasure is worth exposing oneself for, and how to return without being robbed or stopped by the world.
 
-A raid lasts twelve minutes (`Config.RAID_DURATION` 720) with a short intermission spent on the skyship; the first intermission is six seconds. The clock runs from the first second of deployment; the cannons unlock 3 s in and anyone still aboard at 28 s is fired off. In the last 90 s banking pays 25% more (the final rush). Banking adds Gold for that raid. At its end, every player tied for the highest positive Gold receives a Win; a zero-score raid has no winner. Gold resets next raid, and the world resets its systems. Wins are session values, not saved progression. Loose or carried treasure not banked in time does not become score. Death drops carried treasure and respawns the player at home after three seconds, allowing others to recover the object.
+A raid lasts twelve minutes (`Config.RAID_DURATION` 720) with a short intermission spent on the skyship; the first intermission is six seconds. The clock runs from the first second of deployment; the cannons unlock 3 s in and anyone still aboard at 40 s is fired off. In the last 90 s banking pays 25% more (the final rush). Banking adds Gold for that raid. At its end, every player tied for the highest positive Gold receives a Win; a zero-score raid has no winner. Gold resets next raid, and the world resets its systems. Wins are session values, not saved progression. Loose or carried treasure not banked in time does not become score. Death drops carried treasure and respawns the player at home after three seconds, allowing others to recover the object.
 
 Taking treasure triggers its own trouble and adds shared Heat. Continuing to carry outside the home ward raises Heat; when nobody carries, Heat cools. Other players and world threats create exposure. The intended social result is improvised chases, theft, escape, group reactions, and another raid. Existing solo mechanical observations and some human feedback do not establish full multiplayer fun or fairness.
 
@@ -52,6 +52,7 @@ An outside AI should deepen possession and escape, preserve movement agency, com
 | Included in V6: PR #13 | **V5**: the sea pulled in to 55% of V4's area (islands keep their size), 110 boost hoops laid out as 16 runs with chains and timed runs, coins, salvage, and **21 island inhabitants of 13 kinds** on one shared framework. Raids 9 minutes, values and Heat retuned. Report: `docs/reports/2026-10-12-v5-living-threats-playful-seas.md`. One human playtest since: the map size, the boats and the creatures are right; the hoops and coins are fun but crowded and oddly placed, worst of all outside the harbor; and there have been explosions in the distance since V2. |
 | Included in V6: PR #14 | **V6**: no new system. The hoops, coins, lanes and timed courses laid out again by a few written rules (Home Bay calm, straight lanes that point at docks, courses set apart, coins for skill and secrets), every lane and course driven by an autopilot and its par measured, and the map-wide thunder fixed (world sounds are positional and fade to silence). Report: `docs/reports/2026-10-12-v6-ocean-flow-audio.md`. Studio-tested by one AI on one client, sound checked from logs only; **no human playtest of V6 yet**. |
 | V7 (branch feature/v7-skyfall-competitive-archipelago) | **V7**: a flying-ship start (cannons, pencil dive and glide, splash bounce, head-first landing), a sea 20% wider with 16 major islands and computed difficulty tiers, faster boats with a hop, slow land driving and call-a-boat (B), a grapple that catches and an E that steals, regional alerts, gear-gated treasure, a visible Leviathan, white Navy ships, Shinies/pets/saved profile, twelve-minute raids, a final rush, route fixes (windmill, fort, Ember crater, Tide Vault). Report: `docs/reports/2026-10-13-v7-skyfall-competitive-archipelago.md`. **One AI, one client, no human or second-player test.** |
+| V8 (branch feature/v8-chaos-and-counterplay, stacked on V7) | **V8, Chaos & Counterplay**: one flight system for the skyship's cannons and the island catapults (aim by looking, a ballistic throw, glide as a brake, dive, three diminishing water skips, loose limbs while tumbling), walkable wings, a stronger boat hop and a speed-based super jump, a sea form for every island's creature (`Pursuit.lua`), three kinds of ordinary sea mob (`SeaMobs.lua`), a Leviathan 2.2 times the size that hunts boats, one rule for being hit by the world (`Impact.lua`: grace, smaller bites, a two-strike grip on treasure, hulls battered but never sunk by creatures), no gear requirement on any treasure, a front door to the Tide Vault, treasure values flattened. Report: `docs/reports/2026-10-13-v8-chaos-and-counterplay.md`. Studio-tested by one AI on one client; **no human playtest and no second player yet**. |
 
 The V6 report was subsequently amended after Ninety found the blocked Skull Chalice route; revision `8f399c7` repairs its ladder/hatch and records a single-client on-foot test. The table's earlier "no human playtest" wording describes an earlier checkpoint. This later route feedback is real, while the broad V6 layout, sound-by-ear, multiplayer, mobile, and balance acceptance remain outstanding.
 
@@ -87,11 +88,11 @@ The long-term vision later in this document is not permission by itself to add a
 | `E` on a boat | Board it (driver seat first, then passengers) | `Boats` |
 | `W A S D` in the driver seat | Drive. `S` against your motion is a brake | `BoatSim`, client `BoatDrive` |
 | `Shift` in the driver seat | **Boost** (2.4 s, 5 s cooldown, a kick at the start). Gamepad `X` | `Boats`, client `BoatDrive` |
-| `Space` in the driver seat | **Hop** the boat (needs water or ground under it, 1.3 s cooldown); it no longer leaves the seat | `BoatSim`, client `BoatDrive` |
+| `Space` in the driver seat | **Hop** the boat (about 18 studs up, 1.1 s cooldown). Faster than `BOAT_SUPER_MIN` (150: a boost, a hoop chain, a drift burst) it is a **super jump**, up to about 38 studs at 187 studs/s and 57 at 215; a clean landing from one pays the landing burst. It does not leave the seat | `BoatSim`, client `BoatDrive` |
 | `X` (gamepad `Y`) in a seat | Leave the boat | client `Main` |
 | `B` (D-pad down) | **Call a boat** to the nearest shore (45 s cooldown) | `Recall` |
-| `E` at a cannon on the skyship | Climb in; `A/D` turn, `W/S` tilt, `Space` fires, `X` climbs out | `Skyship` |
-| `Space` held while diving | Glide (a long reach); let go for a pencil dive. `WASD` steers | client `Skyship`, `Dive` |
+| `E` at a cannon on the skyship, or at an island catapult | Climb in. **Look** (mouse, or `W A S D`) at where you want to land; the ring is where you come down. Click or `Space` fires, `X` climbs out. `M` then an island points a ship's cannon at it | `Flight`, client `Skyship` |
+| In the air after a launch | `W A S D` nudge the arc. Hold `Space`: **glide** (an air brake: slower fall, speed bled off, a soft landing). Hold `Shift`: **dive** (head first, down hard). Nothing held: you tumble | client `Skyship`, `Dive`, `Flight` |
 | `P` | The locker: Shinies, pets, start-with gear | client `Shop` |
 | `T` | Show every treasure on the board (default: loose or carried only) | client `Hud` |
 | Hold `C` in a turn, driver seat | **Drift**: slide round the turn, let go for a speed burst. Gamepad `B` | `BoatSim` |
@@ -181,13 +182,13 @@ All tuning numbers live in `src/shared/Config.lua`. Gameplay modules never hardc
   | Captain's Chest | The wreck's cannon barrage |
   | Crystal Heart | Cave-in seals the tunnel |
   | Jade Frog | Quake: the rope bridges snap |
-  | Pearl of the Deep | The vault gate slams shut and the chamber floods (swim the drain tunnel, or a friend pulls the lever) |
+  | Pearl of the Deep | The vault floods to just below the top of its stairway (V8: the way out is the way in, up the stairs; or a grapple through the skylight) and the Warden follows a thief to sea |
   | Tempest Trident | A squall settles on the whirlpool |
   | Admiral's Strongbox | Two patrol ships launch at once (if the fort's harbor chain is up, the moment it drops) |
   | Ember Crown | The volcano rains marked lava bombs |
   | Golden Idol | The Guardian wakes and a boulder rolls |
   | Aurora Gem | Snow boulders roll down the glacier |
-  | Leviathan Tooth | Tentacles slam up around the island |
+  | Leviathan Tooth | V8: the Leviathan hunts the thief once they put to sea (V7: tentacle strikes round the island) |
   | Skull Chalice | Fog, and a ghost fleet (18 s late if the Captain's shade is dozing: see Island inhabitants) |
 
 - **Navy** (`Navy.lua`): AI patrol ships on `SeaNav` routes after the most valuable carrier they can *see* (line of sight, range 700, shorter in storms).
@@ -267,6 +268,76 @@ All tuning numbers live in `src/shared/Config.lua`. Gameplay modules never hardc
 - `Weather.lua`: reads `StormData`; draws cloud walls, fog, rain and darkening; sets wave size; warns "STORM TO THE NORTH-EAST - 600 STUDS".
 - `Effects.lua`: sounds from `rbxasset://sounds/*`, neon effects, **markers** (a closing ring on the ground: the one visual language for "this lands here"), the Guardian's shockwave, lightning bolts, flares, shells, tentacles, fireworks, dash and air-jump puffs. The field of view follows speed (`Effects.setSpeed`) and kicks for a dash or a launch (`punchFov`); one writer per frame. **Sound has two kinds**, and `Effects.sound` decides by whether it is given a position: an INTERFACE sound (a chime, an alarm) plays in the player's ears; a WORLD sound plays at its place with `InverseTapered` rolloff, fades to silence at its `range`, and is **not played at all** beyond it or when it would be inaudible. At most `VOICE_LIMIT` of one sound start within `VOICE_WINDOW`, and the world's sound group has a compressor. Thunder is a world sound (`Effects.thunder`). Far-off markers, blasts and bolts are not drawn either. Numbers: `Config.AUDIO`.
 - `Main.client.lua`: input, sprint, dash, air jump, grapple, zipline/pad/geyser movement, cannon and keg input, hiding coins the moment you pass them, hiding signs that are out of range, creature sounds and puffs (`CREATURE_FX`), event routing.
+
+## V8 systems
+
+V8 (Chaos & Counterplay) answers the first human playtest of V7: the chaos was the fun part and its price was too high. The aim is more things going wrong, each of them survivable. Everything here was added on top of V7's systems; the V7 section below still describes the ship, alerts, progression, recall and navigation, except where a line here says otherwise.
+
+### Being hit by the world (`Impact.lua`, `Loot.knockLoose`, `Blast.lua`, `Boats.hitAt`)
+
+One set of rules for everything that is not another goblin (creatures, the Guardian, lava, blades, boulders, lightning, sea monsters). PvP is untouched: a sword, a thrown keg, a fired cannon and the grapple catch keep their own rules, so a creature brushing a carrier never shields them from a thief.
+
+- **Grace.** After a world hit lands on a goblin, nothing else from the world can land on them for `IMPACT.GRACE` (1.2 s). `Impact.open(player)` is asked before every world hit.
+- **Smaller bites.** World damage is multiplied by `IMPACT.DAMAGE_SCALE` (0.55), and one hit cannot kill a goblin who had more than `IMPACT.LAST_STAND` (30) health: it leaves them on 1.
+- **The grip.** A world hit on a carrier does not take the treasure: it starts `GRIP.SLIP_TIME` (6 s) of "your grip is slipping". Only a second hit inside that window drops it, and after a drop the world cannot strip that goblin again for `GRIP.RECOVER` (10 s). The one exception is the Guardian's leap (`GRIP.HEAVY`), which still drops at once. The imps use the same rule.
+- **Hulls.** A blast nobody fired is multiplied by `IMPACT.HULL_SCALE` (0.6) on boats and cannot take a hull below `IMPACT.HULL_FLOOR` (12%): the world batters boats, it does not sink them. The Navy's shells and mines say `sinks` and are exempt: being sunk by the Navy is the price of Heat. Crashing your own boat is not softened.
+- Knockback is unchanged everywhere. Being thrown is the point.
+
+### Flight: one system for cannons and catapults (`shared/Dive.lua`, `server/Flight.lua`, `client/Skyship.lua`)
+
+- **Launchers.** The skyship's twelve cannons and the three island catapults (Crossroads, Sun Temple, Fort Barnacle) are the same thing: `Flight.addLauncher`. A goblin climbs in (`E`), the client sends the **point** it is looking at (never a velocity), and the server works out the throw with `Dive.solve` from that launcher's own numbers (`CANNON_SPEED` 440 at 32 degrees: 3,560 studs of reach from the ship, the farthest island is 3,130 away; `CATAPULT_SPEED` 200 at 60 degrees: about 575 studs). Out of reach, it throws as far as it can that way and the ring turns red.
+- **Aiming is looking.** In a launcher the mouse (or `W A S D`) turns a camera above it; the middle of the screen is the aim. The gold ring is the first place the flight touches, drawn from the same model the flight uses, with smaller rings where the sea will skip you on to. From a ship's cannon the ship is hidden (only your own barrel stays, faintly) and every major island wears its name and tier. A launcher starts aimed at a sensible place (an island picked on the map, or what a catapult was built to reach) and stays exactly on it until the player turns it.
+- **The air.** The throw gives the distance: a plain arc under `DIVE.GRAVITY` (60). No keys: **tumble**, with a small sideways push from `W A S D` (`TUMBLE_STEER` 16). `Space`: **glide**, an air brake (fall eases to `GLIDE_SINK` 55, speed across bleeds to `GLIDE_SPEED` 50: under one stud across per stud down, where V7's glide covered 5.7). `Shift`: **dive** (`PENCIL_GRAVITY` 170, head first). None of them adds distance.
+- **Loose limbs.** A tumbling goblin's shoulders, elbows, hips and knees are switched off on the server and hang on ball sockets; taking hold (glide or dive) switches them back and the goblin strikes a pose. Joints are disabled, never removed, and the neck and waist are left alone. Both kinds of Roblox avatar joint are handled (`AnimationConstraint` and `Motor6D`).
+- **Endings**, decided by the server from the goblin's root: the sea, fast: a splash and a **bounce**, up to three (`BOUNCE_UP` 95, 66, 40: about 75, 36 and 13 studs high), keeping 45% of the speed across and never more than 150, so three skips cover at most about 650 studs; the sea, gently or while gliding: a plain landing at the surface; the ground at more than `OSTRICH_SPEED` (95) without a glide: head first into it for 1.1 s, then spat out; the ground slower or gliding: on your feet at once. A flight that has not ended after 45 s is ended where it is.
+- **The ship.** Its wings are deck: a gate amidships on each side opens onto a broad wing with a plank walkway and a diving board at the tip. Stepping off anywhere is a free dive. The deployment window is 40 s. Storms ignore anyone above `STORM_CEILING` (200 studs): lightning used to find goblins on the deck.
+
+### Boats: the super jump (`shared/BoatSim.lua`)
+
+`Space` at any speed is a stronger hop (`BOAT_JUMP_SPEED` 80: about 18 studs, V7 was 8.5). Faster than `BOAT_SUPER_MIN` (150 studs/s; cruising is 135, a boost 215) the jump grows with speed up to `BOAT_SUPER_SPEED` (150): measured 37.7 studs up and 1.2 s in the air at 188 studs/s with a real driver. The bow comes up and the upright assist levels it; the landing burst is paid for a super jump and not for a plain hop. `BOAT_MAX_ALTITUDE` is 130 so the anti-cheat accepts it.
+
+### Pursuit: every island's creature follows a thief to sea (`Pursuit.lua`)
+
+When a goblin carrying an island's treasure is on the water more than `PURSUIT.CLEAR` (70) studs off that island's shore, the island sends its **sea form** after them. One per island, `PURSUIT.MAX` (5) at once. Every form has a tell before it strikes and a rest after; ends after `PURSUIT.TIME` (50 s), beyond its leash (studs from the shore), when the treasure is banked, dropped or taken, or when the thief has been ashore 5 s; flinches for 4 s from any explosion near it and goes home after the second; and is removed by the raid's reset. A strike that misses earns only a short rest (`MISS_REST` 1.6 s). Hull damage from them goes through `Pursuit.batter` (never below the hull floor).
+
+| Island | Sea form | What it does | The answer |
+| --- | --- | --- | --- |
+| Windmill Hills | **Bramble the ram, in a washtub** (150 studs/s) | Lines up and charges in a straight line it cannot turn out of (240 studs/s): rams the boat sideways and up | Turn or jump when he bleats |
+| Tangle Isle | **The imps' raft** (158) | Pulls alongside; one imp leaps for the treasure (a grip hit, no damage) | Get away from the raft's side for a second: boost, jump, turn |
+| Shipwreck Shoals | **Old Clacker**, under the surface (150) | A ring opens under where your boat is going; a second later the crab comes up through it and the boat goes into the air | Change speed or course when the ring opens |
+| Tide Vault | **The Warden eel** (170, leash 800) | Goes under the bow and lashes the boat round: you end up pointing the wrong way | Outrun its short leash; a blast |
+| Coral Atoll | **The clam** (jets, about 150) | Clamps onto the hull and drags for up to 4 s | **Jump**: it cannot hold a boat that leaves the water |
+| Maelstrom Rock | **The Wandering Maw** (74) | Its whirlpool follows you: boats within 170 studs are pulled in and round, and the middle spits them into the air | It is slow: leave. Do not stop near it |
+| Crystal Isle | **The Echo** | Repeats the exact way your boat went, a few seconds behind, the gap closing from 3.4 s to 1 s | Keep moving; never double back |
+| Fort Barnacle | **The garrison's launch** (140) | Hangs back and drops swivel-gun shot ahead of you, each marked first | Weave; it only rocks the boat |
+| Sun Temple | **The Guardian's boulders** (it will not swim) | Throws a boulder every 3.1 s at where you will be, marked 1.75 s ahead | Steer off the ring; get out of range (950 from shore) |
+| Crossroads Ruins | **The Watchers' gaze** | Walks a row of five marks across the water at you | Turn across the line |
+| Ember Isle | **The Cinderlings' fire** | Spits fire that burns on the water for 7 s | Steer round the patches |
+| Frost Spire | **The Chill's breath** | Freezes a patch of sea ahead of you for 5.5 s; a boat on it is held | Steer round it |
+| Leviathan's Rest | **The Leviathan** | See below | See below |
+| Skull Rock | **The Ghost Fleet** (V4, unchanged) | Ghost ships hunt the thief | As before |
+
+Pebble Isle, Smuggler's Cove and the three keys have no hostile inhabitant and send nothing.
+
+### Sea mobs (`SeaMobs.lua`)
+
+Twenty-five, placed once at build time by a fixed seed (so players can learn them), by region: none in Home Bay (the nearest is 1,086 studs from the Hoard) or Navy Waters, none within 150 studs of any shore. A mob nobody is near does nothing at all.
+
+- **Nibblers** (7 schools): chase a passing boat for up to 9 s, latch on, gnaw 1.5 hull each half second and drag. A jump shakes them off at once; they give up after 5 s anyway.
+- **Puffers** (11): float and do nothing until a boat runs into one, then bounce it into the air (`PUFFER_LIFT` 140). No damage: a free jump for a driver who aims for one.
+- **Lancers** (7): mark a straight 300-stud line on the water and, 1.1 s later, go down it at 260 studs/s, knocking aside what is on it (6 hull, a grip hit). Leave the line.
+
+### The Leviathan hunts (`Leviathan.lua`)
+
+2.2 times its V7 size (the head is 48 x 31 x 57 studs, nine humps). It still lurks on its circle off the east dock of Leviathan's Rest. **How to start a hunt:** drive a boat faster than 45 studs/s within 240 studs of the Sleeper's eye for about two seconds, or steal the Leviathan Tooth and put to sea within 90 s. It swims after the nearest crewed boat at 165 studs/s in wide turns (it surges to 260 when the boat is more than 260 studs ahead), throws boats beside its head aside with a bow wave (no damage), and when it is within 220 studs it sinks, opens a 30-stud ring where the boat is going to be, and 1.6 s later comes straight up through it: a boat on the ring is thrown into the air and battered (48 hull before scaling, never sunk). It re-picks the nearest boat after every breach. It gives up after 55 s, 2,400 studs from home, in water shallower than 9 studs, or after three explosions on its head. Measured: a passive cruising skiff is hit twice and escapes at the leash; a boost and a super jump when the ring opens clears the breach untouched.
+
+### Treasure
+
+No treasure needs gear: the Rebreather, Cinder Boots and Frost Claws still exist and still help, and the server no longer checks for them. **Values are flat:** Lost Compass 4, Giant Pearl 5, Smuggler's Stash 5 (the three nearest home, with long respawns of 150 to 160 s so they cannot be farmed); Sunken Sextant 7, Storm Lantern 8, Castaway's Hoard 8 (the keys); everything else 9 to 11. Interest still adds up to three steps of about 12%. **The Tide Vault has a front door:** a boardwalk from the dock to the north ramp, and at the top of the ramp an open stairway down to the pearl under a skylight. Taking the pearl floods the vault to just below the top of the stairs, so the way out is the way in. Measured on foot: dock to pearl 5.0 s, and out again carrying it 5.4 s.
+
+### The E key
+
+`E` now acts on the nearest prompt the goblin is in reach of even when the camera is turned away from it (Roblox only shows a prompt that is on screen, so `E` used to cast Poltergoblin instead of stealing).
 
 ## V7 systems
 
@@ -380,6 +451,11 @@ Integration points new code must respect:
 
 ## Known bugs
 
+- **V8 has not been played by a person, and never with two players.** Everything in the V8 report was measured by one AI on one Studio client. Other players seeing the loose limbs, two goblins flying at once, a pursuer choosing between two carriers and two boats sharing the Leviathan are untested.
+- **V8 creature art is primitive**: the sea forms and mobs are a handful of blocks and balls each. The Leviathan's breach was measured (hull hits, states, the jump that dodges it) but never caught in a screenshot.
+- **Pursuers swim in straight lines round land** (a look-ahead probe on `SeaNav`), not along routes: among tight rocks one can stall, and it gives up after its time limit.
+- **Lobbers** (boulders, the Watchers, fire, ice) do not flinch from explosions: the answer to them is range.
+- **The old catapult flight code on the client** (`flight` in `Main.client.lua`, for pads with a `Carry` attribute) is no longer reached; it was left in place.
 - **Fixed in V7 and walked on foot:** the windmill ladder, the fort's cannon-stand ladder, the Ember crater (it was solid), the Tide Vault (the gate now starts open), and Skull Rock's ladder was re-walked. The other ladders (`DeckLadder`, `HoldLadder`, `UndercroftLadder`) were blocked on three of four faces in V6's scan and have not been climbed. **Not exercised in V7:** anything with two players; the skyship's pose; the dive from every cannon; two goblins calling a boat at once; the alert's Navy effect with a ship out; boots against real lava; claws against the Chill; picking gear up from a cache; the Leviathan and Navy by eye; the lap hoops are not all clean for the autopilot (Maelstrom Ring misses a hoop or two by 4 to 7 studs). **Not exercised in V6:** whether any of the new layout is clearer or more fun to a person; **any sound by ear** (checked from logs of what was played and how loud by the falloff formula); the final blast range (20 to 600 studs) by log; any ramp; the coin trail across the Western Shelf; laps by hand (the autopilot's were not all clean); a patrol ship catching a carrier on a lane; anything with two players. **Not exercised in V5, and still open:** any creature against a player who moves or dodges, or with two players (a Watcher held by one goblin while it chases another, an Echo hurting a rival); driving the runs by hand apart from the Gate Run, so every par; Gobbo's keg and warnings; Bramble's rage after the Gear is taken; a cinderling going out in the sea; salvage from a real sunk patrol ship or spent storm; a coin coming back after 80 s; reaching the 6-gold cap. **Not exercised in V4, and the islands have moved since:** walking any of the new land, riding any zipline, driving by hand through the reef passes, inlets, the rib run or the Serpent Channel, fifteen of the sixteen new hoops, the new guns, the river of fire, taking the three new treasures, a patrol ship meeting the raised chain. **Still not exercised from V3:** anything between two players, drift with `BOAT_CLIENT_PHYSICS = false`, the Navy's charge against a cutter, windmill blade hits, the ice slide, anchoring in a current. **Unexplained:** Studio's process grew by 2.3 GB over a 67-minute unattended run while the game's own script memory and instance counts stayed flat (V4 report, section 11).
 
 ## Additional system contracts for portable understanding

@@ -158,7 +158,7 @@ function Map.build(gui, hoard)
 				Position = UDim2.new(0.5, 0, 1, 11),
 				Size = UDim2.fromOffset(120, 11),
 				Font = Enum.Font.GothamBlack,
-				Text = Config.TIER_NAMES[info.tier] .. (info.gear and "  + GEAR" or ""),
+				Text = Config.TIER_NAMES[info.tier],
 				TextColor3 = Config.TIER_COLORS[info.tier],
 				TextStrokeTransparency = 0.2,
 				TextSize = 8,

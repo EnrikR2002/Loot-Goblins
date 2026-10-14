@@ -1,19 +1,13 @@
--- The skyship (V7): every raid starts on a flying pirate ship hung 540 studs over the middle of the
--- sea. Goblins stand on the deck, choose an island on the map, climb into a cannon (E), nudge the aim,
--- fire (Space) and are thrown into a dive: PENCIL (fast, head down) or GLIDE (Space held: a long
--- reach), steered with the keys. A dive ends in one of three ways:
---   * a soft landing (a glide, or a slow touch): a puff of dust and control back at once;
---   * the SEA: a big splash and a BOUNCE back up (once), so a bad aim over water is a second chance;
---   * the GROUND at pencil speed: the goblin goes in head first like an ostrich, wiggles for a
---     moment, and is spat back out with control returned.
--- The raid clock runs from the first second; the window is short (Config.SKYSHIP.WINDOW) and anyone
--- still aboard when it ends is fired off automatically, at the island they chose or a near one.
+-- The skyship: every raid starts on a flying pirate ship hung 540 studs over the middle of the sea.
+-- Goblins stand on the deck (or walk out along its wings), climb into a cannon (E), LOOK at where
+-- they want to come down and fire. The raid clock runs from the first second; the window is short
+-- (Config.SKYSHIP.WINDOW) and anyone still aboard when it ends is fired off automatically, at the
+-- island they chose on the map or a near one.
 --
--- Who does what: the server places goblins, owns the cannons, decides where they were fired and
--- how every dive ended (it watches the goblin's root: the character's own client flies it, as
--- with a driven boat). The dive controller and the destination picker are the client's
--- (client/Skyship.lua). Late arrivals and deaths in the window start aboard; after it, at home.
-local PhysicsService = game:GetService("PhysicsService")
+-- V8: the ship only owns the ship. Its twelve cannons are LAUNCHERS (server/Flight.lua), the same
+-- thing an island catapult is, so the aiming, the flight, the bounces and the landings are one system.
+-- What is here: the hull, the deck spots, the wings you can walk on, the window, and what happens to
+-- a goblin who walks off the edge (a free dive) or who is still aboard at the end (fired off).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -23,6 +17,7 @@ local Dive = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild(
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Poltergoblin = require(script.Parent.Poltergoblin)
+local Flight = require(script.Parent.Flight)
 
 local Skyship = {}
 
@@ -33,35 +28,12 @@ local model
 local shipCFrame
 local cannons = {}
 local deckSpawns = {}
-local state = {} -- player -> { phase, dest, cannon, yaw, pitch, bounces, fall, diveStart, token }
+local aboard = {} -- player -> { spot, autoFor }: goblins who are the ship's business (on deck or in a cannon)
+local chosen = {} -- player -> island id picked on the map
 local opensAt, endsAt = 0, 0
 local boardedFor = 0 -- a counter: a straggler is only auto-fired once per window
 
--- A goblin in a dive passes through the ship (it starts inside a cannon, and falls past a rail), but
--- not through anything else. Two collision groups do it: the ship's parts and a diver's body.
-local HULL_GROUP, DIVER_GROUP = "SkyshipHull", "SkyDiver"
-pcall(function()
-	PhysicsService:RegisterCollisionGroup(HULL_GROUP)
-end)
-pcall(function()
-	PhysicsService:RegisterCollisionGroup(DIVER_GROUP)
-end)
-PhysicsService:CollisionGroupSetCollidable(DIVER_GROUP, HULL_GROUP, false)
-
-local function setBodyGroup(character, group)
-	if not character then
-		return
-	end
-	for _, p in ipairs(character:GetDescendants()) do
-		if p:IsA("BasePart") then
-			p.CollisionGroup = group
-		end
-	end
-end
-
-local rayParams = RaycastParams.new()
-rayParams.FilterType = Enum.RaycastFilterType.Exclude
-rayParams.IgnoreWater = false
+local HULL_GROUP = Flight.HULL_GROUP
 
 local function now()
 	return workspace:GetServerTimeNow()
@@ -138,21 +110,48 @@ local function buildCannon(index, x, z, outward)
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
 	prompt.Parent = barrel
-	local cannon = {
+	local cannon = Flight.addLauncher({
+		kind = "cannon",
 		index = index,
 		barrel = barrel,
 		ring = ring,
 		base = base,
 		prompt = prompt,
 		from = baseCF.Position,
-		rest = rest,
-		aim = aim,
-		setRing = setRing,
-		occupant = nil,
-	}
-	prompt.Triggered:Connect(function(player)
-		Skyship.load(player, cannon)
-	end)
+		speed = D.CANNON_SPEED,
+		elevation = D.CANNON_ELEVATION,
+		-- With nobody aiming it: a point on the sea, out over its own side.
+		rest = Vector3.new(baseCF.Position.X + out.X * 900, 0, baseCF.Position.Z + out.Z * 900),
+		exit = baseCF.Position + Vector3.new(0, 1.5, 0) - out * 7,
+		back = "aboard",
+		-- Climbing in with an island picked on the map: it starts pointed there.
+		restFor = function(player)
+			local island = chosen[player] and Archipelago.byId[chosen[player]]
+			return island and Vector3.new(island.x, 0, island.z) or nil
+		end,
+		aim = function(direction)
+			aim(direction)
+			setRing()
+		end,
+		fired = function(_direction)
+			barrel.CFrame = barrel.CFrame * CFrame.new(-2, 0, 0)
+			task.delay(0.35, function()
+				aim(rest)
+				setRing()
+			end)
+		end,
+		ready = function(player)
+			if not aboard[player] then
+				return false
+			end
+			local t = now()
+			if t < opensAt then
+				return false, "The cannons unlock in " .. math.ceil(opensAt - t) .. "..."
+			end
+			return true
+		end,
+	})
+	cannon.restDirection = rest
 	table.insert(cannons, cannon)
 end
 
@@ -178,7 +177,18 @@ function Skyship.build(_worldRefs)
 	part("HullBand", Vector3.new(S.BEAM * 0.8, 2, 124), CFrame.new(0, -1.2, 2), TRIM, Enum.Material.Metal, false)
 	-- The rails: low walls along both sides with the cannons set into them.
 	for _, side in ipairs({ -1, 1 }) do
-		part("Rail", Vector3.new(1, 4, 116), CFrame.new(side * (S.BEAM / 2 - 0.5), 3, 0), DARK_WOOD)
+		-- V8: a gate amidships on each side opens onto the wing.
+		part("Rail", Vector3.new(1, 4, 52), CFrame.new(side * (S.BEAM / 2 - 0.5), 3, -32), DARK_WOOD)
+		part("Rail", Vector3.new(1, 4, 52), CFrame.new(side * (S.BEAM / 2 - 0.5), 3, 32), DARK_WOOD)
+		for _, z in ipairs({ -6, 6 }) do
+			part(
+				"GatePost",
+				Vector3.new(1.6, 7, 1.6),
+				CFrame.new(side * (S.BEAM / 2 - 0.5), 4.5, z),
+				TRIM,
+				Enum.Material.Metal
+			)
+		end
 		part(
 			"RailBow",
 			Vector3.new(1, 4, 26),
@@ -223,25 +233,53 @@ function Skyship.build(_worldRefs)
 		emblem.Shape = Enum.PartType.Cylinder
 		emblem.CFrame = shipCFrame * CFrame.new(0, height * 0.52, z - 1.4) * CFrame.Angles(0, math.rad(90), 0)
 	end
-	-- Wings and lift: two broad sails and a glowing belly, so it reads as a thing that flies.
+	-- Wings and lift. V8: the wings are DECK. Each one is a broad canvas-and-spar platform level with
+	-- the main deck at the gate and rising a little toward its tip, where a diving board sticks out
+	-- over nothing. Walk out, look down at the whole sea, and step off (a free dive) or go back for a
+	-- cannon. Nothing rails them in: falling off a wing is a way off the ship, not an accident.
+	local WING_SPAN, WING_RISE = 40, math.rad(8)
 	for _, side in ipairs({ -1, 1 }) do
-		local wing = part(
-			"Wing",
-			Vector3.new(34, 1.2, 64),
-			CFrame.new(side * (S.BEAM / 2 + 14), 2, 2) * CFrame.Angles(0, 0, side * math.rad(-14)),
-			SAIL,
-			Enum.Material.Fabric,
-			false
-		)
-		wing.Transparency = 0.1
+		local lift = CFrame.Angles(0, 0, side * WING_RISE)
+		local midX = side * (S.BEAM / 2 + WING_SPAN / 2 * math.cos(WING_RISE))
+		local midY = 0.4 + WING_SPAN / 2 * math.sin(WING_RISE)
+		local wing =
+			part("Wing", Vector3.new(WING_SPAN, 1.2, 64), CFrame.new(midX, midY, 2) * lift, SAIL, Enum.Material.Fabric)
+		wing.Transparency = 0.05
+		for _, z in ipairs({ -30, -9, 13, 34 }) do
+			part(
+				"WingSpar",
+				Vector3.new(WING_SPAN + 2, 1.6, 2),
+				CFrame.new(midX, midY - 0.2, z) * lift,
+				TRIM,
+				Enum.Material.Metal
+			)
+		end
+		-- The walkway from the gate to the tip, in planks, and the board beyond it.
 		part(
-			"WingSpar",
-			Vector3.new(36, 1.6, 2),
-			CFrame.new(side * (S.BEAM / 2 + 14), 2.4, -28) * CFrame.Angles(0, 0, side * math.rad(-14)),
-			TRIM,
-			Enum.Material.Metal,
+			"WingWalk",
+			Vector3.new(WING_SPAN, 0.5, 9),
+			CFrame.new(midX, midY + 0.75, 0) * lift,
+			WOOD,
+			Enum.Material.WoodPlanks
+		)
+		local tipX = side * (S.BEAM / 2 + WING_SPAN * math.cos(WING_RISE))
+		local tipY = 0.4 + WING_SPAN * math.sin(WING_RISE)
+		part(
+			"DivingBoard",
+			Vector3.new(16, 0.8, 5),
+			CFrame.new(tipX + side * 7, tipY + 0.9, 0),
+			WOOD,
+			Enum.Material.WoodPlanks
+		)
+		local lantern = part(
+			"WingLantern",
+			Vector3.new(2.2, 2.2, 2.2),
+			CFrame.new(tipX + side * 14.5, tipY + 2.6, 0),
+			Color3.fromRGB(255, 220, 120),
+			Enum.Material.Neon,
 			false
 		)
+		lantern.Shape = Enum.PartType.Ball
 	end
 	local glow = part(
 		"Belly",
@@ -312,58 +350,13 @@ function Skyship.build(_worldRefs)
 end
 
 -- Goblins ---------------------------------------------------------------------------------------
-local function setState(player, phase)
-	local s = state[player]
-	if not s then
-		s = { bounces = 0, fall = 0, token = 0 }
-		state[player] = s
-	end
-	s.phase = phase
-	player:SetAttribute("DeployState", phase)
-	return s
-end
-
-local function release(player)
-	local s = state[player]
-	if s and s.cannon then
-		local cannon = s.cannon
-		cannon.occupant = nil
-		cannon.aim(cannon.rest)
-		cannon.setRing()
-		cannon.prompt.Enabled = true
-		s.cannon = nil
-	end
-end
-
-local function endDive(player, humanoid, root)
-	local s = state[player]
-	if not s then
-		return
-	end
-	s.token += 1
-	setBodyGroup(player.Character, "Default")
-	player:SetAttribute("Diving", nil)
-	player:SetAttribute("DiveGlide", nil)
-	if humanoid and humanoid.Parent then
-		humanoid.PlatformStand = false
-		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-	end
-	if root and root.Parent then
-		-- Back on its feet: upright, whichever way it was facing.
-		local look = root.CFrame.LookVector
-		local flatLook = Vector3.new(look.X, 0, look.Z)
-		flatLook = flatLook.Magnitude > 0.05 and flatLook.Unit or Vector3.new(0, 0, -1)
-		root.CFrame = CFrame.lookAt(root.Position, root.Position + flatLook)
-	end
-	setState(player, "landed")
-end
-
--- Put a goblin on the deck.
-function Skyship.board(player)
+-- Put a goblin on the deck. `since` (optional) keeps the time of the first attempt when this is a retry.
+function Skyship.board(player, since)
 	local root, humanoid = Util.aliveRoot(player)
 	if not root then
 		return
 	end
+	Flight.forget(player)
 	Poltergoblin.finish(player, "cancel")
 	local seat = humanoid.SeatPart
 	if seat then
@@ -373,16 +366,14 @@ function Skyship.board(player)
 		end
 		humanoid.Sit = false
 	end
-	release(player)
-	setBodyGroup(player.Character, "Default")
 	local i = (#Players:GetPlayers() > 0 and (player.UserId % #deckSpawns) or 0) + 1
 	local spot = deckSpawns[i]
 	-- Spread: find a spot nobody is standing on.
 	for step = 0, #deckSpawns - 1 do
 		local candidate = deckSpawns[(i + step - 1) % #deckSpawns + 1]
 		local taken = false
-		for other, other_state in pairs(state) do
-			if other ~= player and other_state.phase == "aboard" and other_state.spot == candidate then
+		for other, entry in pairs(aboard) do
+			if other ~= player and entry.spot == candidate then
 				taken = true
 				break
 			end
@@ -392,15 +383,16 @@ function Skyship.board(player)
 			break
 		end
 	end
-	local s = setState(player, "aboard")
-	s.spot = spot
-	s.bounces = 0
-	s.fall = 0
+	-- boardedAt: a goblin who was at a boat's wheel a moment ago is still held in that seat on their own
+	-- client, and the move to the deck can be undone by it (a test saw one put aboard, snap back to the sea
+	-- and "dive" into the seabed). The tick below puts them aboard again until it takes.
+	aboard[player] = { spot = spot, boardedAt = since or now() }
 	root.Anchored = false
 	humanoid.PlatformStand = false
 	root.CFrame = spot * CFrame.Angles(0, math.rad(180), 0)
 	root.AssemblyLinearVelocity = Vector3.zero
 	player:SetAttribute("Diving", nil)
+	player:SetAttribute("DeployState", "aboard")
 end
 
 function Skyship.boardAll()
@@ -419,7 +411,8 @@ end
 
 -- A character just spawned (first load, or a respawn): aboard if the ship is still in port.
 function Skyship.onCharacter(player)
-	state[player] = nil
+	Flight.forget(player)
+	aboard[player] = nil
 	player:SetAttribute("Diving", nil)
 	player:SetAttribute("DeployState", nil)
 	if boardingTime() and model then
@@ -432,8 +425,9 @@ function Skyship.onCharacter(player)
 end
 
 function Skyship.forget(player)
-	release(player)
-	state[player] = nil
+	Flight.forget(player)
+	aboard[player] = nil
+	chosen[player] = nil
 end
 
 -- The raid clock has started: unlock the cannons and open the window.
@@ -448,28 +442,17 @@ function Skyship.open()
 end
 
 function Skyship.reset()
-	for _, player in ipairs(Players:GetPlayers()) do
-		release(player)
-		state[player] = nil
-		setBodyGroup(player.Character, "Default")
-		player:SetAttribute("Diving", nil)
-		player:SetAttribute("DeployState", nil)
-		local root, humanoid = Util.aliveRoot(player)
-		if humanoid then
-			humanoid.PlatformStand = false
-		end
-		if root then
-			root.Anchored = false
-		end
-	end
+	Flight.reset()
+	table.clear(aboard)
 	opensAt, endsAt = 0, 0
 	workspace:SetAttribute("DeployOpensAt", nil)
 	workspace:SetAttribute("DeployEndsAt", nil)
 end
 
--- What the client may ask for ----------------------------------------------------------------------
+-- The island a goblin picked on the map: where the ship fires them if they are still aboard at the
+-- end, and where their cannon points when they climb in (they can look anywhere from there).
 local function destinationPosition(id)
-	local island = Archipelago.byId[id]
+	local island = id and Archipelago.byId[id]
 	if not island then
 		return nil
 	end
@@ -491,250 +474,8 @@ function Skyship.choose(player, id)
 	if typeof(id) ~= "string" or not Config.ISLAND_INFO[id] or not Archipelago.byId[id] then
 		return
 	end
-	local s = state[player] or setState(player, nil)
-	s.dest = id
+	chosen[player] = id
 	player:SetAttribute("DeployDest", id)
-end
-
-function Skyship.load(player, cannon)
-	local s = state[player]
-	if not s or s.phase ~= "aboard" then
-		return
-	end
-	local t = now()
-	if t < opensAt then
-		Net.toast(player, "The cannons unlock in " .. math.ceil(opensAt - t) .. "...")
-		return
-	end
-	if cannon.occupant then
-		return
-	end
-	local root, humanoid = Util.aliveRoot(player)
-	if not root then
-		return
-	end
-	if not s.dest then
-		s.dest = player:GetAttribute("DeployDest") or defaultDestination()
-		player:SetAttribute("DeployDest", s.dest)
-		Net.toast(player, "No island chosen: " .. Archipelago.byId[s.dest].name .. ". (Open the map with M to pick.)")
-	end
-	local toward = destinationPosition(s.dest) - cannon.from
-	toward = Vector3.new(toward.X, 0, toward.Z)
-	if toward.Magnitude > 1 and toward.Unit:Dot(Vector3.new(cannon.rest.X, 0, cannon.rest.Z).Unit) < -0.3 then
-		Net.toast(
-			player,
-			"This cannon faces away from your island: it shoots across the deck. The ones on the other side shoot straight out."
-		)
-	end
-	cannon.occupant = player
-	cannon.prompt.Enabled = false
-	s.cannon = cannon
-	s.yaw, s.pitch = 0, 0
-	setState(player, "loaded")
-	root.Anchored = true
-	humanoid.PlatformStand = true
-	Skyship.refreshAim(player)
-end
-
--- Point the loaded goblin's cannon at their island, with their nudge.
-function Skyship.refreshAim(player)
-	local s = state[player]
-	if not s or s.phase ~= "loaded" or not s.cannon then
-		return
-	end
-	local cannon = s.cannon
-	local velocity = Dive.launchVelocity(cannon.from, destinationPosition(s.dest), s.yaw, s.pitch)
-	s.velocity = velocity
-	cannon.aim(velocity.Unit)
-	cannon.setRing()
-	local root = Util.aliveRoot(player)
-	if root then
-		-- inside the breech, head toward the muzzle
-		root.CFrame = CFrame.lookAt(cannon.from - velocity.Unit * 1.5, cannon.from + velocity.Unit * 20)
-	end
-	player:SetAttribute("DeployAim", velocity)
-end
-
-function Skyship.nudge(player, yaw, pitch)
-	local s = state[player]
-	if not s or s.phase ~= "loaded" or typeof(yaw) ~= "number" or typeof(pitch) ~= "number" then
-		return
-	end
-	s.yaw = math.clamp(yaw, -D.NUDGE_YAW, D.NUDGE_YAW)
-	s.pitch = math.clamp(pitch, -D.NUDGE_PITCH, D.NUDGE_PITCH)
-	Skyship.refreshAim(player)
-end
-
-function Skyship.leaveCannon(player)
-	local s = state[player]
-	if not s or s.phase ~= "loaded" then
-		return
-	end
-	local root, humanoid = Util.aliveRoot(player)
-	local cannon = s.cannon
-	release(player)
-	setState(player, "aboard")
-	if root then
-		root.Anchored = false
-		humanoid.PlatformStand = false
-		root.CFrame = cannon
-				and (CFrame.new(cannon.from + Vector3.new(0, 1.5, 0)) * CFrame.new(
-					shipCFrame.RightVector * -math.sign(cannon.rest.X) * 7
-				))
-			or root.CFrame
-	end
-end
-
--- Start the dive. velocity is where the cannon (or the hop off the rail) sends them.
-local function launch(player, velocity, fromCannon)
-	local root, humanoid = Util.aliveRoot(player)
-	local s = state[player]
-	if not root or not s then
-		return
-	end
-	if fromCannon then
-		local cannon = s.cannon
-		release(player)
-		if cannon then
-			Net.broadcast("DiveFire", { position = cannon.from, direction = velocity.Unit, userId = player.UserId })
-			cannon.barrel.CFrame = cannon.barrel.CFrame * CFrame.new(-2, 0, 0)
-			task.delay(0.35, function()
-				cannon.aim(cannon.rest)
-				cannon.setRing()
-			end)
-		end
-	end
-	setState(player, "diving")
-	s.bounces = 0
-	s.diveStart = now()
-	s.fall = math.min(0, velocity.Y)
-	s.token += 1
-	setBodyGroup(player.Character, DIVER_GROUP)
-	root.Anchored = false
-	humanoid.PlatformStand = true
-	root.AssemblyLinearVelocity = velocity
-	player:SetAttribute("Diving", true)
-	player:SetAttribute("DiveVelocity", velocity)
-	-- The character's own client flies it; tell that client where to start.
-	Net.send(player, "DiveStart", { velocity = velocity, token = s.token })
-end
-
-function Skyship.fire(player)
-	local s = state[player]
-	if not s or s.phase ~= "loaded" or not s.velocity then
-		return
-	end
-	if now() < opensAt then
-		return
-	end
-	s.phase = "fuse"
-	player:SetAttribute("DeployState", "fuse")
-	local token = s.token
-	task.delay(D.FUSE, function()
-		local cur = state[player]
-		if cur and cur.phase == "fuse" and cur.token == token then
-			launch(player, cur.velocity, true)
-		end
-	end)
-end
-
--- Landing --------------------------------------------------------------------------------------------
-local function groundBelow(root)
-	local ignore = {}
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p.Character then
-			table.insert(ignore, p.Character)
-		end
-	end
-	table.insert(ignore, model)
-	rayParams.FilterDescendantsInstances = ignore
-	return workspace:Raycast(root.Position + Vector3.new(0, 2, 0), Vector3.new(0, -400, 0), rayParams)
-end
-
-local function soft(player, humanoid, root, position)
-	Net.broadcastNear(position, 900, "DiveImpact", { kind = "soft", position = position, userId = player.UserId })
-	endDive(player, humanoid, root)
-end
-
-local function splash(player, humanoid, root, position)
-	local s = state[player]
-	Net.broadcastNear(position, 1400, "DiveImpact", { kind = "water", position = position, userId = player.UserId })
-	if s.bounces < D.BOUNCES then
-		s.bounces += 1
-		local v = root.AssemblyLinearVelocity
-		local bounce = Vector3.new(v.X * D.BOUNCE_KEEP, D.BOUNCE_UP, v.Z * D.BOUNCE_KEEP)
-		s.fall = 0
-		s.landAfter = now() + 0.8 -- it is still beside the water for a moment: that is not a second landing
-		s.token += 1
-		root.CFrame = CFrame.new(position + Vector3.new(0, 4, 0)) * root.CFrame.Rotation
-		root.AssemblyLinearVelocity = bounce
-		Net.send(player, "DiveBounce", { velocity = bounce, token = s.token })
-	else
-		root.AssemblyLinearVelocity = Vector3.zero
-		endDive(player, humanoid, root)
-	end
-end
-
-local function ostrich(player, root, hit)
-	local s = state[player]
-	local position = hit.Position
-	Net.broadcastNear(position, 1000, "DiveImpact", { kind = "ground", position = position, userId = player.UserId })
-	s.phase = "embedded"
-	player:SetAttribute("DeployState", "embedded")
-	player:SetAttribute("Diving", nil)
-	s.token += 1
-	local token = s.token
-	-- Head first in the ground, legs in the air.
-	local yaw = math.atan2(-root.CFrame.LookVector.X, -root.CFrame.LookVector.Z)
-	local buried = CFrame.new(position + Vector3.new(0, 0.6, 0))
-		* CFrame.Angles(0, yaw, 0)
-		* CFrame.Angles(math.rad(180), 0, 0)
-	root.AssemblyLinearVelocity = Vector3.zero
-	root.Anchored = true
-	root.CFrame = buried
-	s.buried = buried
-	s.embeddedAt = now()
-	task.delay(D.EMBED_TIME, function()
-		local cur = state[player]
-		if not cur or cur.token ~= token or cur.phase ~= "embedded" then
-			return
-		end
-		local r, h = Util.aliveRoot(player)
-		if not r then
-			return
-		end
-		r.Anchored = false
-		r.CFrame = CFrame.new(position + Vector3.new(0, 3.4, 0))
-		endDive(player, h, r)
-		r.AssemblyLinearVelocity = Vector3.new((math.random() - 0.5) * 16, D.POP_SPEED, (math.random() - 0.5) * 16)
-		Net.broadcastNear(position, 900, "DiveImpact", { kind = "pop", position = position, userId = player.UserId })
-	end)
-end
-
-local function resolveLanding(player, humanoid, root)
-	local s = state[player]
-	local velocity = root.AssemblyLinearVelocity
-	local hit = groundBelow(root)
-	if not hit then
-		return
-	end
-	local gap = root.Position.Y - hit.Position.Y
-	local trigger = 4.2 + math.max(0, -s.fall) * 0.1
-	if hit.Material == Enum.Material.Water then
-		if gap <= trigger - 1 then
-			splash(player, humanoid, root, Vector3.new(root.Position.X, hit.Position.Y, root.Position.Z))
-		end
-		return
-	end
-	-- Solid ground: the client's character stops on it, so it is resting near the surface.
-	if gap <= 5.2 then
-		local impact = math.max(-s.fall, -velocity.Y)
-		if impact >= D.OSTRICH_SPEED then
-			ostrich(player, root, hit)
-		else
-			soft(player, humanoid, root, hit.Position)
-		end
-	end
 end
 
 -- Each frame ---------------------------------------------------------------------------------------------
@@ -743,80 +484,50 @@ function Skyship.tick(_dt)
 		return
 	end
 	local t = now()
-	for player, s in pairs(state) do
-		local root, humanoid = Util.aliveRoot(player)
-		if not root or not player.Parent then
-			if s.phase == "loaded" or s.phase == "fuse" then
-				release(player)
+	local windowOver = endsAt > 0 and t >= endsAt and workspace:GetAttribute("RaidPhase") == "raid"
+	for player, entry in pairs(aboard) do
+		local root = Util.aliveRoot(player)
+		local phase = Flight.phaseOf(player)
+		if not root or not player.Parent or phase == "diving" or phase == "embedded" then
+			aboard[player] = nil -- gone, or thrown: the flight has them now
+		elseif phase == "loaded" then
+			if windowOver then
+				Flight.fire(player)
 			end
-			state[player] = nil
-		elseif s.phase == "aboard" then
-			-- Over the side without a cannon: a free dive.
-			local local_ = shipCFrame:PointToObjectSpace(root.Position)
-			if local_.Y < -9 and t >= opensAt then
-				launch(player, root.AssemblyLinearVelocity + Vector3.new(0, 0, 0), false)
-				s.dest = s.dest or defaultDestination()
-			elseif local_.Y < -40 then
+		elseif phase == nil then
+			local onShip = shipCFrame:PointToObjectSpace(root.Position)
+			if onShip.Y < -9 and t - entry.boardedAt < 2 then
+				-- Only just put aboard and already far below: the move did not take (see Skyship.board). Again.
+				Skyship.board(player, entry.boardedAt)
+			elseif onShip.Y < -9 and t >= opensAt then
+				-- Over the side, or off the end of a wing: a free dive from where they are.
+				aboard[player] = nil
+				Flight.launch(player, root.AssemblyLinearVelocity, nil)
+			elseif onShip.Y < -40 then
 				-- before the cannons unlock: put them back (nobody falls off before the bell)
 				Skyship.board(player)
-			elseif
-				t >= endsAt
-				and endsAt > 0
-				and (workspace:GetAttribute("RaidPhase") == "raid")
-				and s.autoFor ~= boardedFor
-			then
-				-- The window is over: fire the straggler at their island from where they stand.
-				s.autoFor = boardedFor
-				s.dest = s.dest or player:GetAttribute("DeployDest") or defaultDestination()
-				local from = root.Position
-				launch(player, Dive.launchVelocity(from, destinationPosition(s.dest), 0, 0), false)
-				Net.toast(player, "The ship fires you off at " .. Archipelago.byId[s.dest].name .. "!")
+			elseif windowOver and entry.autoFor ~= boardedFor then
+				-- The window is over: the ship fires the straggler at their island from where they stand.
+				entry.autoFor = boardedFor
+				local id = chosen[player] or player:GetAttribute("DeployDest") or defaultDestination()
+				local target = destinationPosition(id) or Vector3.new(0, 0, 380)
+				aboard[player] = nil
+				Flight.launch(player, (Dive.solve(root.Position, target, D.CANNON_ELEVATION, D.CANNON_SPEED)), nil)
+				Net.toast(player, "The ship fires you off at " .. Archipelago.byId[id].name .. "!")
 			end
-		elseif s.phase == "loaded" or s.phase == "fuse" then
-			if
-				t >= endsAt
-				and endsAt > 0
-				and (workspace:GetAttribute("RaidPhase") == "raid")
-				and s.phase == "loaded"
-			then
-				Skyship.fire(player)
-			end
-		elseif s.phase == "diving" then
-			local velocity = root.AssemblyLinearVelocity
-			-- the fastest fall since the launch or the last bounce: the touchdown itself reads near zero
-			s.fall = math.min(s.fall, velocity.Y)
-			if t - s.diveStart > 0.6 and t >= (s.landAfter or 0) then
-				resolveLanding(player, humanoid, root)
-			end
-			if root.Position.Y < -45 then
-				-- somewhere it should not be: back to the water's edge
-				root.CFrame = CFrame.new(root.Position.X, 8, root.Position.Z)
-				endDive(player, humanoid, root)
-			end
-		elseif s.phase == "embedded" and s.buried then
-			-- the wiggle
-			local k = (t - s.embeddedAt) * 30
-			root.CFrame = s.buried * CFrame.Angles(0, 0, math.rad(math.sin(k) * 14))
 		end
 	end
 	-- the window is over for everybody: tidy the attribute so the HUD can let go of it
 	if endsAt > 0 and t >= endsAt + 1 and workspace:GetAttribute("DeployEndsAt") then
-		local anyone = false
-		for _, s in pairs(state) do
-			if s.phase == "aboard" or s.phase == "loaded" or s.phase == "fuse" then
-				anyone = true
-			end
-		end
-		if not anyone then
+		if next(aboard) == nil then
 			workspace:SetAttribute("DeployEndsAt", nil)
 			workspace:SetAttribute("DeployOpensAt", nil)
 		end
 	end
 end
 
-function Skyship.phaseOf(player)
-	local s = state[player]
-	return s and s.phase
+function Skyship.model()
+	return model
 end
 
 function Skyship.cannonCount()

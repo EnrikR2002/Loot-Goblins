@@ -19,6 +19,7 @@ local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Gear = require(script.Parent.Gear)
 local Loot = require(script.Parent.Loot)
+local Impact = require(script.Parent.Impact)
 
 local Mechanisms = {}
 
@@ -148,9 +149,9 @@ local function tickSpinners(dt)
 							local along = to - from
 							local alpha = math.clamp((root.Position - from):Dot(along) / along:Dot(along), 0, 1)
 							local closest = from + along * alpha
-							if (root.Position - closest).Magnitude < 3.2 then
+							if (root.Position - closest).Magnitude < 3.2 and Impact.open(player) then
 								lastBladeHit[player] = t
-								Util.damage(humanoid, Config.WINDMILL_DAMAGE)
+								Impact.damage(humanoid, Config.WINDMILL_DAMAGE)
 								local away = root.Position - closest
 								Util.knockback(
 									root,
@@ -182,8 +183,13 @@ local function tickLava()
 			if root and not Gear.fireproof(player) then
 				local local_ = zone.part.CFrame:PointToObjectSpace(root.Position)
 				local half = zone.part.Size / 2
-				if math.abs(local_.X) < half.X and math.abs(local_.Y) < half.Y and math.abs(local_.Z) < half.Z then
-					Util.damage(humanoid, zone.damage)
+				if
+					math.abs(local_.X) < half.X
+					and math.abs(local_.Y) < half.Y
+					and math.abs(local_.Z) < half.Z
+					and Impact.open(player)
+				then
+					Impact.damage(humanoid, zone.damage)
 					Util.knockback(root, Vector3.new(0, 52, 0), 0.2)
 					Loot.knockLoose(player, root.Position, "lava", nil)
 					Net.send(player, "Burn", {})

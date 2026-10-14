@@ -17,6 +17,7 @@ local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChil
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Gear = require(script.Parent.Gear)
+local Impact = require(script.Parent.Impact)
 local Boats = require(script.Parent.Boats)
 local Loot = require(script.Parent.Loot)
 local Poltergoblin = require(script.Parent.Poltergoblin)
@@ -26,7 +27,7 @@ local Blast = {}
 Blast.Hit = Util.signal() -- (position, radius): something just went bang here (mines listen).
 local generation = 0 -- Bumped on reset, so strikes from an old raid never land.
 
--- opts: radius, damage, knockback, hullDamage, boatPush, breakPower, lootReason, owner (Player),
+-- opts: radius, damage, knockback, hullDamage, boatPush, breakPower, lootReason, owner (Player), sinks,
 -- cause (text for the wreck feed), color.
 function Blast.at(position, opts)
 	local radius = opts.radius or 12
@@ -36,11 +37,14 @@ function Blast.at(position, opts)
 		if root then
 			local offset = root.Position - position
 			local distance = offset.Magnitude
-			if distance <= radius then
+			-- A blast with no owner is the world's (a shell, a bolt, a lava bomb, a boulder): it obeys Impact's grace and
+			-- smaller bites. One a goblin set off is a rival's doing and lands in full.
+			if distance <= radius and (owner ~= nil or Impact.open(player)) then
 				local falloff = 1 - 0.55 * distance / radius
 				local isOwner = player == owner
 				if (opts.damage or 0) > 0 and not isOwner and not (opts.fire and Gear.fireproof(player)) then
-					local dealt = Util.damage(humanoid, opts.damage * falloff)
+					local dealt = owner and Util.damage(humanoid, opts.damage * falloff)
+						or Impact.damage(humanoid, opts.damage * falloff)
 					if owner then
 						Poltergoblin.markDamage(owner, humanoid, dealt)
 					end
@@ -59,7 +63,18 @@ function Blast.at(position, opts)
 		end
 	end
 	if (opts.hullDamage or 0) > 0 or (opts.boatPush or 0) > 0 then
-		Boats.hitAt(position, radius, opts.hullDamage or 0, opts.boatPush or 0, opts.cause, opts.exceptBoat)
+		-- V8: a blast nobody fired (a boulder, a bolt, a monster) bites a hull smaller and cannot sink it.
+		-- The Navy's guns and mines say `sinks`: being sunk by the Navy is the price of Heat.
+		local worlds = owner == nil and not opts.sinks
+		Boats.hitAt(
+			position,
+			radius,
+			(opts.hullDamage or 0) * (worlds and Config.IMPACT.HULL_SCALE or 1),
+			opts.boatPush or 0,
+			opts.cause,
+			opts.exceptBoat,
+			worlds and Config.IMPACT.HULL_FLOOR or nil
+		)
 	end
 	for _, item in ipairs(Loot.items) do
 		if item.state == "loose" then

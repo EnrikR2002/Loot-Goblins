@@ -367,9 +367,15 @@ local function buildSmugglerStash()
 	table.insert(refs.barrels, Kit.barrel(v3(cx + 22, y, cz - 2)))
 end
 
--- The Tide Vault: a half-drowned temple. A portcullis seals the vault until a lever (far
--- off, on a pavilion) is pulled; a flooded drain tunnel is the back way in. Taking the pearl
--- slams the gate and floods the chamber: the lever (or the drain) is the way out. ------------
+-- The Tide Vault: a half-drowned temple.
+--
+-- V8: THE FRONT DOOR. Three playtests could not find the way in (it was a tunnel on the far side from the dock,
+-- behind a gate whose lever stood 100 studs away). Now the way in is where a goblin arriving at the dock is
+-- already looking: a boardwalk from the dock to the north ramp, up the ramp, and at its top a broad open
+-- stairway DOWN into the vault, with the pearl glowing at the bottom under a skylight. No gate, no lever, no
+-- gear. Taking the pearl floods the vault: the water rises to just below the top of the stairway, so the way
+-- out is the way in (swim, then walk up out of the water), or a grapple up through the skylight. The old
+-- south tunnel, its gate and lever, and the drain are still there as other ways.
 local function buildTideVault()
 	local t = info("Tide")
 	local cx, cz = t.x, t.z
@@ -377,9 +383,16 @@ local function buildTideVault()
 	-- The temple platform.
 	fillColumn(cx, cz, -3, 14, 48, Enum.Material.Rock)
 	fillColumn(cx, cz, 11, 14, 47, Enum.Material.Slate)
-	rockRamp(v3(cx, -2.5, cz - 82), v3(cx, 14, cz - 46), 12, Enum.Material.Rock)
+	rockRamp(v3(cx, -2.5, cz - 82), v3(cx, 14, cz - 46), 18, Enum.Material.Rock)
+	-- The front door: an open trench through the platform with a stairway-ramp down it, from the top of the north
+	-- ramp (y 14) to the vault floor (y 2). Cut as one thick block (thin air fills remove nothing: see the Ember
+	-- crater), then the slope is filled back in under the line of the stairs.
+	terrain:FillBlock(CFrame.new(cx, 13, cz - 28), v3(16, 22, 34), AIR)
+	rockRamp(v3(cx, 14, cz - 45), v3(cx, 2, cz - 13), 16, Enum.Material.Slate)
 	-- Chamber, entrance tunnel (south) and the drain tunnel (west, under the sea).
 	terrain:FillBlock(CFrame.new(cx, 6.5, cz), v3(26, 9, 26), AIR)
+	-- The skylight over the altar: light on the pearl, a view of it from above, and a way out for a grapple.
+	terrain:FillCylinder(CFrame.new(cx, 15, cz), 10, 9, AIR)
 	tunnel(v3(cx, 2, cz + 56), v3(cx, 2, cz + 11), 9, 8)
 	rockRamp(v3(cx, -2.5, cz + 88), v3(cx, 2, cz + 50), 10, Enum.Material.Rock)
 	-- (Terrain is 4-stud cells: the V6 drain was 5.4 studs wide and a shaft of radius 3.2, which came out as one
@@ -462,14 +475,46 @@ local function buildTideVault()
 		local a = i / 6 * math.pi * 2 + 0.3
 		Kit.column(v3(cx + math.cos(a) * 34, 14, cz + math.sin(a) * 34), 15, 1.8, STONE, i % 2 == 0)
 	end
+	-- What floods: the chamber, the stairway trench and the south tunnel, up to y 12 (the stairway tops out at 14,
+	-- so the water stops short of spilling). Only AIR is turned to water and back, so the stairs are untouched.
 	refs.troubleSites.Flood = {
 		gate = gateEntry,
-		chamberCenter = v3(cx, 6.5, cz),
-		chamberSize = v3(26, 9, 26),
-		tunnelCenter = v3(cx, 5, cz + 30),
-		tunnelSize = v3(9, 6, 36),
+		center = v3(cx, 6.5, cz),
+		regions = {
+			{ v3(cx - 13, 2, cz - 13), v3(cx + 13, 12, cz + 13) },
+			{ v3(cx - 8, 2, cz - 45), v3(cx + 8, 12, cz - 13) },
+			{ v3(cx - 4.5, 2, cz + 12), v3(cx + 4.5, 8, cz + 46) },
+		},
 		lever = lever,
 	}
+	-- The way from the dock: a boardwalk across the shallows to the foot of the ramp, and two lamps at the top of
+	-- the stairway so the door is the first thing a goblin sees.
+	-- The ramp and the stairway are paved with smooth stone slabs. (Terrain alone left a 3-stud step half-way up
+	-- the ramp that a goblin could not walk over: a route must not depend on the shape voxels happen to take.)
+	local STONE_PAVING = Color3.fromRGB(196, 202, 212)
+	local function slab(name, from, to, width)
+		ground(
+			name,
+			v3(width, 1.6, (to - from).Magnitude),
+			CFrame.lookAt((from + to) / 2, to),
+			STONE_PAVING,
+			Enum.Material.Slate
+		)
+	end
+	slab("VaultRamp", v3(cx, -1, cz - 90), v3(cx, 17, cz - 46), 16)
+	slab("VaultStairs", v3(cx, 17, cz - 46), v3(cx, 2.4, cz - 10), 14)
+	local walkFrom, walkTo = v3(cx + 24, 0.7, cz - 127), v3(cx + 2, 0.7, cz - 86)
+	ground(
+		"VaultBoardwalk",
+		v3(7, 1, (walkTo - walkFrom).Magnitude + 4),
+		CFrame.lookAt((walkFrom + walkTo) / 2, walkTo),
+		WOOD,
+		Enum.Material.WoodPlanks
+	)
+	for _, side in ipairs({ -1, 1 }) do
+		Kit.column(v3(cx + side * 11, 14, cz - 46), 10, 1.2, Color3.fromRGB(220, 225, 235), false)
+		glow(v3(cx + side * 11, 26, cz - 46), Color3.fromRGB(110, 230, 255), 26)
+	end
 	dock(v3(cx + 24, 0, cz - 128), v3(cx + 24, 0, cz - 190), { -1 })
 	islandSign(v3(cx, 60, cz), t.name, t.color)
 end

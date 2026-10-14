@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "offscreen-prompts-ignore-their-key",
+  "title": "An interaction key can fall through when its prompt is off screen",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-13",
+  "topics": [
+    "input",
+    "controls",
+    "ux"
+  ],
+  "observation": "A goblin standing beside a treasure pressed E and cast a different ability instead of stealing: Roblox only shows a ProximityPrompt whose object is on screen, and the camera was turned away. A server trace confirmed the other ability fired. Calling InputHoldBegin and InputHoldEnd on the nearest enabled prompt in reach, when no prompt was showing, made E steal with the camera turned away.",
+  "recommendation": "When one key is shared between prompts and another action, route the key to any enabled prompt within its activation distance before falling back, and test with the camera deliberately facing away from the object.",
+  "applies_when": [
+    "A key is shared between ProximityPrompts and another action",
+    "Players report a key doing the wrong thing beside an object"
+  ],
+  "limits": [
+    "Tested on one client with keyboard input only",
+    "Gamepad and touch prompt behaviour were not examined"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md",
+      "detail": "Section 15 and bug 1 in section 19: E stole the Tide Vault pearl with the camera turned away after the change."
+    }
+  ]
+}
