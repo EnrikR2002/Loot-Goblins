@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "seated-character-teleport-can-be-undone",
+  "title": "Moving a character out of a seat from the server can be undone by its client",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-13",
+  "topics": [
+    "networking",
+    "physics",
+    "vehicles"
+  ],
+  "observation": "At a round's end the server destroyed a driver's SeatWeld and set their root's CFrame to a spawn on a ship. A trace showed them on the ship for one sample, then back beside the boat a fifth of a second later: their own client, which owned the character's physics, still held them in the seat and its position replicated back. Retrying the move for up to two seconds whenever the character was found far from the spawn fixed it.",
+  "recommendation": "After moving a character that was seated or otherwise client-owned a moment before, verify a few frames later that the move took and repeat it if not, instead of assuming one CFrame write is final.",
+  "applies_when": [
+    "Respawning, round resets or teleports of players who may be in vehicle seats",
+    "Client-owned character physics"
+  ],
+  "limits": [
+    "Observed in Studio with zero network latency on one client; real latency may make it more frequent",
+    "Only VehicleSeat-style seats were tested"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md",
+      "detail": "Bug 9 in section 19: before the fix the goblin was aboard at +0.3 s and back at sea at +0.5 s; after it, aboard for the whole 8 s checked."
+    }
+  ]
+}

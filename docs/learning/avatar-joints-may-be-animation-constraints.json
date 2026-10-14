@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "avatar-joints-may-be-animation-constraints",
+  "title": "Check which avatar joints a place uses before writing poses or ragdolls",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-13",
+  "topics": [
+    "animation",
+    "physics",
+    "characters"
+  ],
+  "observation": "Ragdoll and pose code written for Motor6D joints did nothing in a Studio test because the avatars in that place used AnimationConstraint joints (with a BallSocketConstraint already beside each) and no Motor6D at all. A V7 dive pose that wrote Motor6D.C0 had silently never shown. AnimationConstraint.C0 is read-only; writing the joint's Transform each PreSimulation step posed the arms, and setting AnimationConstraint.Enabled to false let the existing ball sockets take the limbs for a ragdoll.",
+  "recommendation": "Before writing character poses or ragdolls, list the joint classes on a live character in the target place. Handle both AnimationConstraint and Motor6D, pose through Transform (after the animator runs), and ragdoll by disabling joints rather than destroying them so they can be restored.",
+  "applies_when": [
+    "Posing or ragdolling player characters by script",
+    "A pose or ragdoll appears to do nothing in Studio"
+  ],
+  "limits": [
+    "Observed in one place's Studio build on R15 avatars in October 2026",
+    "Which joint type a place gets may depend on Roblox settings that were not identified"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md",
+      "detail": "Section 5: 8 limb joints loose while tumbling, 0 while gliding or diving, all 15 back on after landing, limbs within 3.6 studs of the body."
+    }
+  ]
+}
