@@ -50,13 +50,14 @@ end
 -- THE WATCHERS (Crossroads Ruins) --------------------------------------------------------
 local function watcher(index, dx, dz)
 	local k = K.Watcher
+	local S = Config.GUARDIAN_SCALE.Watcher -- V9: bigger
 	local center = C.at("Cross")
 	return C.add({
 		name = "Watcher" .. index,
 		home = C.at("Cross", dx, 0, dz),
 		wake = 430,
-		size = 5,
-		lift = CFrame.new(0, 0.7, 0),
+		size = 5 * S,
+		lift = CFrame.new(0, 0.7 * S, 0),
 
 		build = function(self)
 			self.home = v3(self.home.X, C.floor(self.home.X, self.home.Z), self.home.Z)
@@ -81,7 +82,7 @@ local function watcher(index, dx, dz)
 					STONE,
 					M.Cobblestone,
 				},
-			})
+			}, nil, S)
 			self.eyes = { self.model.EyeL, self.model.EyeR }
 		end,
 
@@ -142,7 +143,7 @@ local function watcher(index, dx, dz)
 					local walking = C.walk(self, held.spot.Position, k.carrySpeed, step, 7)
 					self:setEyes(true)
 					C.pose(self)
-					Loot.hold(held, self.root.CFrame * CFrame.new(0, 6, -2.8))
+					Loot.hold(held, self.root.CFrame * CFrame.new(0, 6 * S, -2.8 * S))
 					if not walking then
 						Loot.sendHome(held, "taken:The Watchers")
 						self.holding = nil
@@ -162,7 +163,7 @@ local function watcher(index, dx, dz)
 			for _, item in ipairs(C.looseLoot(self.position, 80)) do
 				if not item.held and Util.flatDistance(item.core.Position, center) <= k.island then
 					if not C.walk(self, item.core.Position, k.speed, step, 5) then
-						if Loot.hold(item, self.root.CFrame * CFrame.new(0, 6, -2.8)) then
+						if Loot.hold(item, self.root.CFrame * CFrame.new(0, 6 * S, -2.8 * S)) then
 							self.holding = item
 							C.fx("stone", self.position)
 						end
@@ -368,6 +369,7 @@ local function crab()
 		size = 7,
 
 		build = function(self)
+			self.scale = Config.GUARDIAN_SCALE.Crab -- V9: bigger
 			-- Find real sand near the intended spot (the atoll's shape is not known to this file).
 			local found
 			for ring = 0, 8 do
@@ -394,12 +396,12 @@ local function crab()
 				{ "ClawR", v3(3, 2.4, 5), CFrame.new(6.5, -0.6, -4), SHELL, M.Slate },
 				{ "EyeL", v3(0.9, 2.2, 0.9), CFrame.new(-1.6, 2.2, -4.6), Color3.fromRGB(250, 240, 200), M.Neon },
 				{ "EyeR", v3(0.9, 2.2, 0.9), CFrame.new(1.6, 2.2, -4.6), Color3.fromRGB(250, 240, 200), M.Neon },
-			})
+			}, nil, self.scale)
 		end,
 
 		-- depth: how far the shell is sunk into the sand (0 = fully up).
 		show = function(self, depth)
-			self.lift = CFrame.new(0, 3 - depth, 0)
+			self.lift = CFrame.new(0, (3 - depth) * (self.scale or 1), 0)
 			C.pose(self)
 		end,
 
@@ -518,8 +520,8 @@ local function ram()
 		name = "Bramble",
 		home = C.at("Windmill", -250, 0, 20),
 		wake = 330,
-		size = 5,
-		lift = CFrame.new(0, 3.3, 0),
+		size = 5 * Config.GUARDIAN_SCALE.Ram,
+		lift = CFrame.new(0, 3.3 * Config.GUARDIAN_SCALE.Ram, 0), -- V9: bigger
 
 		build = function(self)
 			self.home = v3(self.home.X, C.floor(self.home.X, self.home.Z), self.home.Z)
@@ -542,7 +544,7 @@ local function ram()
 				},
 				{ "LegsF", v3(3, 2.2, 0.9), CFrame.new(0, -2.7, -2.2), Color3.fromRGB(70, 60, 58), M.SmoothPlastic },
 				{ "LegsB", v3(3, 2.2, 0.9), CFrame.new(0, -2.7, 2.2), Color3.fromRGB(70, 60, 58), M.SmoothPlastic },
-			})
+			}, nil, Config.GUARDIAN_SCALE.Ram)
 		end,
 
 		reset = function(self)
@@ -596,8 +598,8 @@ local function ram()
 				self.position = v3(nextPos.X, y, nextPos.Z)
 				self.charged += step
 				C.pose(self, CFrame.Angles(rad(10), 0, 0))
-				for _, entry in ipairs(C.players(self.position, 6)) do
-					if not self.hit[entry.player] and math.abs(entry.root.Position.Y - self.position.Y) < 9 then
+				for _, entry in ipairs(C.players(self.position, 6 * Config.GUARDIAN_SCALE.Ram)) do
+					if not self.hit[entry.player] and math.abs(entry.root.Position.Y - self.position.Y) < 12 then
 						self.hit[entry.player] = true
 						C.strike(entry, self.position, {
 							damage = k.damage,
@@ -659,14 +661,14 @@ local function eel()
 		name = "Warden",
 		home = center,
 		wake = 330,
-		size = 10,
+		size = 10 * Config.GUARDIAN_SCALE.Eel,
 
 		build = function(self)
 			self.parts = {}
 			local model = Instance.new("Model")
 			model.Name = "Warden"
 			for i = 1, SEGMENTS do
-				local size = i == 1 and 5 or (4.4 - i * 0.4)
+				local size = (i == 1 and 5 or (4.4 - i * 0.4)) * Config.GUARDIAN_SCALE.Eel -- V9: bigger
 				local part = Util.part("Segment", v3(size, size, size), CFrame.new(0, -200, 0), GLOW, M.Neon, model)
 				part.Shape = Enum.PartType.Ball
 				part.CanCollide, part.CanQuery, part.CanTouch, part.CastShadow = false, false, false, false

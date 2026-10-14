@@ -216,7 +216,7 @@ local function chill()
 				{ "Wisp1", v3(4, 4, 4), CFrame.new(7, 3, 2), ICE, M.Neon, Enum.PartType.Ball, 0.5 },
 				{ "Wisp2", v3(3, 3, 3), CFrame.new(-6, -2, 5), ICE, M.Neon, Enum.PartType.Ball, 0.5 },
 				{ "Wisp3", v3(3.5, 3.5, 3.5), CFrame.new(2, 5, -7), ICE, M.Neon, Enum.PartType.Ball, 0.5 },
-			})
+			}, nil, Config.GUARDIAN_SCALE.Chill) -- V9: bigger
 		end,
 
 		reset = function(self)
@@ -454,7 +454,7 @@ local function maw()
 					Color3.fromRGB(40, 52, 68),
 					M.SmoothPlastic,
 				},
-			})
+			}, nil, Config.GUARDIAN_SCALE.Maw) -- V9: bigger
 		end,
 
 		reset = function(self)

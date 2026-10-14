@@ -336,6 +336,15 @@ function Flight.fire(player)
 	if not s or s.phase ~= "loaded" or not s.velocity then
 		return
 	end
+	if s.launcher.canFire then
+		local ok, why = s.launcher.canFire(player)
+		if not ok then
+			if why then
+				Net.toast(player, why)
+			end
+			return
+		end
+	end
 	setPhase(player, s, "fuse")
 	local token = s.token
 	local launcher = s.launcher

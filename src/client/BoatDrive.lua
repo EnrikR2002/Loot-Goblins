@@ -20,6 +20,7 @@ local Shared = ReplicatedStorage:WaitForChild("LootGoblins")
 local Config = require(Shared:WaitForChild("Config"))
 local BoatSim = require(Shared:WaitForChild("BoatSim"))
 local Sea = require(Shared:WaitForChild("Sea"))
+local Twister = require(Shared:WaitForChild("Twister"))
 
 local BoatDrive = {}
 
@@ -38,7 +39,10 @@ local seenRefund = 0 -- The boat's BoostRefund total when we last looked (coins 
 local input = { throttle = 0, steer = 0, drift = false, jump = false }
 local jumpQueued = false
 local info = { driving = false, speed = 0, charge = 0, level = 0, drifting = false }
-local onEvent = function(_kind, _position, _chain) end
+local onEvent = function(_kind, _position, _a, _b) end
+local hiddenPrompt = nil -- the anchor prompt of the boat we drive: hidden for its driver (R is the trick key)
+local spinSide = 1
+local trickQueued = false -- R pressed during a trick: the next one starts when it ends
 
 local function now()
 	return workspace:GetServerTimeNow()
@@ -58,8 +62,9 @@ local function seatAndModel()
 	return nil, nil
 end
 
--- Main sets this: function(kind, position, chain) for "mini1", "mini2", "landing", "splash", "hoop",
--- "kick". chain is how many hoops in a row this one makes (hoops only).
+-- Main sets this: function(kind, position, a, b) for "mini1", "mini2", "landing", "splash", "hoop",
+-- "kick" (a: how many hoops in a row this one makes), and V9's "trickstart" (a: the trick), "trick" (a: the
+-- trick, b: how many this flight), "trickland" (a: how many), "sketchy", "bail", "twister".
 function BoatDrive.onEvent(callback)
 	onEvent = callback
 end
@@ -97,6 +102,51 @@ function BoatDrive.jump()
 	end
 end
 
+-- V9: R (gamepad R1) in the air: a trick. One button, nothing to learn: the first press in a flight is a flat
+-- spin and each further press the next in a combo (corkscrew, front flip, double spin, ...). Holding A or D
+-- rolls that way instead; holding S, a backflip. (W is ignored: a driver is nearly always holding it.) A press
+-- during a trick is kept and plays when it ends. Returns the trick's name, or nil if the boat is not in the air.
+local COMBO = { "spin", "corkscrew", "frontflip", "spin2" }
+local TRICK_NAMES = {
+	spin = "SPIN CYCLE",
+	spin2 = "DOUBLE SPIN",
+	roll = "BARREL ROLL",
+	backflip = "KEEL FLIP",
+	frontflip = "BOW FLIP",
+	corkscrew = "CORKSCREW",
+}
+BoatDrive.TRICK_NAMES = TRICK_NAMES
+
+function BoatDrive.trick()
+	local seat, model = seatAndModel()
+	if not model or not sim then
+		return nil
+	end
+	local t = now()
+	if sim.trick then
+		trickQueued = true
+		return sim.trick.kind
+	end
+	local steer, throttle = seat.SteerFloat, seat.ThrottleFloat
+	local kind, side
+	if steer < -0.3 then
+		kind, side = "roll", -1
+	elseif steer > 0.3 then
+		kind, side = "roll", 1
+	elseif throttle < -0.3 then
+		kind, side = "backflip", 1
+	else
+		kind = COMBO[(sim.tricksDone or 0) % #COMBO + 1]
+		spinSide = -spinSide
+		side = spinSide
+	end
+	if BoatSim.startTrick(sim, kind, side, t) then
+		onEvent("trickstart", simHull.Position, kind, side)
+		return kind
+	end
+	return nil
+end
+
 -- C held in the driver's seat.
 function BoatDrive.setDrift(held)
 	if held ~= driftHeld then
@@ -115,15 +165,31 @@ function BoatDrive.push(payload)
 	end
 end
 
--- For the HUD: { driving, speed, charge, level, drifting, boosting }.
+-- For the HUD: { driving, speed, charge, level, drifting, boosting, airborne, tricking, twister }.
 function BoatDrive.info()
 	return info
+end
+
+-- The driver does not get the anchor's R prompt while driving (R is the trick key); passengers still do.
+local function hideAnchorPrompt(model)
+	local winch = model and model:FindFirstChild("Anchor")
+	local prompt = winch and winch:FindFirstChild("AnchorPrompt")
+	if prompt ~= hiddenPrompt then
+		if hiddenPrompt and hiddenPrompt.Parent then
+			hiddenPrompt.Enabled = true
+		end
+		hiddenPrompt = prompt
+		if prompt then
+			prompt.Enabled = false
+		end
+	end
 end
 
 RunService.PreSimulation:Connect(function(dt)
 	local seat, model = seatAndModel()
 	local hull = model and model:FindFirstChild("Hull")
 	info.driving = hull ~= nil
+	hideAnchorPrompt(hull and model or nil)
 	if not hull then
 		sim, simHull = nil, nil
 		if driftHeld then
@@ -162,6 +228,13 @@ RunService.PreSimulation:Connect(function(dt)
 	local out = BoatSim.step(sim, input, math.min(dt, Config.BOAT_MAX_STEP), t)
 	info.charge, info.level, info.drifting = out.charge, out.level, out.drifting
 	info.grounded = out.grounded == true
+	info.airborne = out.wet == 0 and not out.grounded
+	info.tricking = sim.trick ~= nil
+	info.twister = out.twister
+	if out.twister and not info.wasTwisted then
+		onEvent("twister", hull.Position)
+	end
+	info.wasTwisted = out.twister ~= nil
 	if out.jumped then
 		local kind = out.super and "super" or "jump"
 		onEvent(kind, hull.Position, out.super)
@@ -171,9 +244,25 @@ RunService.PreSimulation:Connect(function(dt)
 		onEvent("punch", hull.Position)
 	end
 	if out.event then
-		onEvent(out.event, hull.Position)
-		if out.event ~= "splash" then
-			fxRemote:FireServer(out.event)
+		if out.event == "trick" then
+			onEvent("trick", hull.Position, out.trick, out.tricks)
+			fxRemote:FireServer("trick", out.trick)
+			if trickQueued then
+				trickQueued = false
+				BoatDrive.trick()
+			end
+		elseif out.event == "trickland" then
+			trickQueued = false
+			onEvent("trickland", hull.Position, out.tricks)
+			fxRemote:FireServer("trickland", out.tricks)
+		else
+			if out.event == "sketchy" then
+				trickQueued = false
+			end
+			onEvent(out.event, hull.Position)
+			if out.event ~= "splash" then
+				fxRemote:FireServer(out.event)
+			end
 		end
 	end
 	local gate = BoatSim.gate(sim, gates, t, true)
@@ -277,6 +366,7 @@ task.spawn(function()
 	Sea.import(data)
 	gates = data.gates or {}
 	Sea.follow()
+	Twister.follow()
 end)
 
 return BoatDrive

@@ -138,9 +138,10 @@ end
 --   text     a line for their screen
 -- Returns true if it landed. It does not land on a goblin the world hit a moment ago (Impact.lua), and
 -- `reason` loosens a carrier's grip before it ever drops their treasure (Loot.knockLoose).
+-- `opened` (V9): the caller already asked Impact.open for this hit.
 function Creatures.strike(entry, from, opts)
 	local player, root, humanoid = entry.player, entry.root, entry.humanoid
-	if not root.Parent or humanoid.Health <= 0 or not Impact.open(player) then
+	if not root.Parent or humanoid.Health <= 0 or (not opts.opened and not Impact.open(player)) then
 		return false
 	end
 	if (opts.damage or 0) > 0 then
@@ -174,15 +175,17 @@ end
 -- Bodies ----------------------------------------------------------------------------------
 -- parts: { { name, size, offset (CFrame from the root), color, material, shape, transparency } }.
 -- The first is the root. Nothing collides or answers raycasts: a creature is not a wall, and
--- a grapple aimed at one goes through to the ground behind it.
-function Creatures.body(name, parts, parent)
+-- a grapple aimed at one goes through to the ground behind it. `scale` (V9, optional) grows every size
+-- and offset from the root: the guardians are bigger than they were.
+function Creatures.body(name, parts, parent, scale)
+	scale = scale or 1
 	local model = Instance.new("Model")
 	model.Name = name
 	local root
 	for index, spec in ipairs(parts) do
 		local part = Instance.new("Part")
 		part.Name = spec[1]
-		part.Size = spec[2]
+		part.Size = spec[2] * scale
 		part.Color = spec[4] or Color3.new(1, 1, 1)
 		part.Material = spec[5] or Enum.Material.SmoothPlastic
 		if spec[6] then
@@ -202,7 +205,8 @@ function Creatures.body(name, parts, parent)
 		else
 			part.Anchored = false
 			part.Massless = true
-			part.CFrame = root.CFrame * (spec[3] or CFrame.new())
+			local offset = spec[3] or CFrame.new()
+			part.CFrame = root.CFrame * CFrame.new(offset.Position * scale) * offset.Rotation
 			local weld = Instance.new("WeldConstraint")
 			weld.Part0 = root
 			weld.Part1 = part

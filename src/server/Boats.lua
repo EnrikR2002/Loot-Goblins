@@ -26,6 +26,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("LootGoblins")
 local Config = require(Shared:WaitForChild("Config"))
+local Twister = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Twister"))
 local BoatSim = require(Shared:WaitForChild("BoatSim"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
@@ -544,21 +545,35 @@ function Boats.setDrift(player, held)
 	end
 end
 
--- The driver's client says its boat did something worth showing (a drift burst, a landing).
--- It is only an effect for the other players, so the check is light.
-function Boats.relayFx(player, kind)
+-- The driver's client says its boat did something worth showing (a drift burst, a landing, a trick).
+-- It is only an effect for the other players, so the check is light. `extra` is a trick's name or a
+-- landing's trick count.
+function Boats.relayFx(player, kind, extra)
 	local boat = Boats.drivenBy(player)
 	if not boat or boat.pilot ~= player then
 		return
 	end
 	local t = now()
-	if t - (boat.lastFxAt or 0) < 0.3 then
+	if t - (boat.lastFxAt or 0) < 0.25 then
 		return
 	end
 	boat.lastFxAt = t
 	-- A burst or a hop is a sudden change of speed that is not a crash.
 	boat.impactGraceUntil = math.max(boat.impactGraceUntil, t + 0.3)
-	Net.broadcast("BoatFx", { kind = kind, position = boat.hull.Position, userId = player.UserId })
+	local payload = { kind = kind, position = boat.hull.Position, userId = player.UserId }
+	if kind == "trick" and type(extra) == "string" and BoatSim.TRICKS[extra] then
+		payload.trick = extra
+	elseif kind == "trickland" and type(extra) == "number" then
+		-- V9: landing clean after tricks hands back some boost cooldown. Only for a hull the server itself saw
+		-- high in the air a moment ago, and at most once per flight.
+		local count = math.clamp(math.floor(extra), 1, Config.TRICK.MAX_PAID)
+		payload.tricks = count
+		if t - (boat.lastHighAt or -math.huge) < 2 and (boat.lastPaidAt or -math.huge) < (boat.lastHighAt or 0) then
+			boat.lastPaidAt = t
+			Boats.refund(boat, count * Config.TRICK.REFUND)
+		end
+	end
+	Net.broadcast("BoatFx", payload)
 end
 
 -- Damage and sinking ---------------------------------------------------------------
@@ -629,9 +644,15 @@ function Boats.shove(boat, velocity, spin)
 		boat.hull.Anchored = false
 		boat.asleep = false
 	end
-	-- A push we caused is not a crash.
-	boat.impactGraceUntil = math.max(boat.impactGraceUntil, now() + 0.5)
+	-- A push we caused is not a crash, and not cheating.
+	local t = now()
+	boat.impactGraceUntil = math.max(boat.impactGraceUntil, t + 0.5)
 	boat.crash = nil
+	local size = velocity.Magnitude
+	if size > 20 then
+		boat.shovedBy = math.max(t < (boat.shovedUntil or 0) and (boat.shovedBy or 0) or 0, size)
+		boat.shovedUntil = t + 2.5
+	end
 	if boat.pilot then
 		Net.send(boat.pilot, "BoatPush", { hull = boat.hull, velocity = velocity, spin = spin })
 	else
@@ -775,6 +796,26 @@ local function police(boat, dt, t)
 	local boosted = t < boat.boostUntil + 2.5 -- A burst takes a moment to bleed off.
 	local allowed = spec.maxSpeed * (boosted and Config.BOAT_BOOST_MULT or 1) * Config.BOAT_SPEED_SLACK
 		+ Config.BOAT_SPEED_MARGIN
+	-- V9: high in the air (a ramp, a launch, a tornado) and just after: a trick landing's burst and a throw.
+	local wave = Sea.waveAt(position.X, position.Z, t)
+	if position.Y - wave > 8 then
+		boat.lastHighAt = t
+	end
+	if t - (boat.lastHighAt or -math.huge) < 3 then
+		allowed += 60
+	end
+	-- A tornado lifts hulls far higher and throws them far faster than anything else does.
+	if Twister.find(position, t, 1.6) then
+		boat.twistedAt = t
+	end
+	local twisted = t - (boat.twistedAt or -math.huge) < Config.TWISTER.ALLOW_TIME
+	if twisted then
+		allowed += Config.TWISTER.SPEED_ALLOW
+	end
+	-- A shove from the server (a monster, a launch) is not the driver's doing either.
+	if t < (boat.shovedUntil or 0) then
+		allowed += boat.shovedBy or 0
+	end
 	local broken = position.X ~= position.X or speed ~= speed or math.abs(position.Y) > 5000
 	-- Updates from the driver arrive in bursts on a bad connection, so a jump is judged
 	-- against the time since the hull last moved here, not against one frame.
@@ -788,7 +829,7 @@ local function police(boat, dt, t)
 		boat.lastPosition, boat.lastMovedAt = position, t
 	end
 	local over = speed > allowed
-	local flying = position.Y - Sea.waveAt(position.X, position.Z, t) > Config.BOAT_MAX_ALTITUDE
+	local flying = position.Y - wave > (twisted and Config.TWISTER.ALTITUDE or Config.BOAT_MAX_ALTITUDE)
 	if broken or jumped then
 		boat.strikes = Config.BOAT_STRIKE_TIME
 	elseif over or flying then
@@ -895,6 +936,7 @@ function Boats.build(worldRefs)
 			dx = gate.direction.X,
 			dz = gate.direction.Z,
 			both = gate.both or nil,
+			cy = gate.ringY,
 		})
 	end
 	for _, def in ipairs(Config.LOOT) do

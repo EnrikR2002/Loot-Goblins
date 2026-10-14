@@ -31,6 +31,8 @@ local Gear = require(script.Parent.Gear)
 local Impact = require(script.Parent.Impact)
 local Alerts = require(script.Parent.Alerts)
 local Progress = require(script.Parent.Progress)
+local Tornadoes = require(script.Parent.Tornadoes)
+local GhostFleet = require(script.Parent.GhostFleet)
 
 local Raid = {}
 Raid.phase = "intermission"
@@ -92,13 +94,16 @@ local function resetWorld()
 	Creatures.reset()
 	Pursuit.reset()
 	SeaMobs.reset()
+	Tornadoes.reset()
+	GhostFleet.reset()
 end
 
 function Raid.start()
 	resetWorld()
 	-- V7: the match starts aboard the skyship (nobody walks out of the cove). Anyone who is still at
-	-- home (a late spawn, a death in the intermission) is put on the deck first.
-	Skyship.boardAll()
+	-- home (a late spawn, a death in the intermission) is put on the deck first; anyone already aboard
+	-- stays where they are (V9: they may be in a cannon, aimed and waiting for the bell).
+	Skyship.boardAll(true)
 	Progress.onRaidStart()
 	for _, player in ipairs(Players:GetPlayers()) do
 		local gold = stat(player, "Gold")
@@ -108,7 +113,10 @@ function Raid.start()
 	end
 	lastCallSent = false
 	rushSent = false
-	setPhase("raid", now() + Config.RAID_DURATION)
+	-- V9: the six-minute clock starts when the launch window closes, so everyone gets all six minutes of play.
+	local clockAt = now() + Config.SKYSHIP.WINDOW
+	workspace:SetAttribute("RaidClockAt", clockAt)
+	setPhase("raid", clockAt + Config.RAID_DURATION)
 	Loot.setEnabled(true)
 	Skyship.open()
 	Net.broadcast("RaidStart", { endsAt = phaseEndsAt })
@@ -151,7 +159,9 @@ function Raid.finish()
 	-- Loot still out there is lost; the world goes quiet until the next raid.
 	resetWorld()
 	setPhase("intermission", now() + Config.INTERMISSION)
+	workspace:SetAttribute("RaidClockAt", nil)
 	Skyship.reset()
+	Skyship.preopen(phaseEndsAt + Config.SKYSHIP.COUNTDOWN)
 	Skyship.boardAll() -- the intermission is spent on the deck, choosing where to land
 	Net.broadcast("RaidEnd", { results = results, winners = winners, endsAt = phaseEndsAt })
 end
@@ -214,6 +224,7 @@ end
 function Raid.init(worldRefs)
 	refs = worldRefs
 	setPhase("intermission", now() + Config.FIRST_INTERMISSION)
+	Skyship.preopen(phaseEndsAt + Config.SKYSHIP.COUNTDOWN)
 	Loot.setEnabled(false)
 end
 

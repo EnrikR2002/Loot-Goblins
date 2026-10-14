@@ -363,7 +363,7 @@ local function buildHome()
 		ball.Shape = Enum.PartType.Ball
 	end
 	pointLight(dais, GOLD, 30, 2)
-	sign(dais, "THE HOARD", GOLD, Vector3.new(0, 12, 6), 400)
+	sign(dais, "THE HOARD", GOLD, Vector3.new(0, 12, 6), 260)
 	skyBeam("HoardBeacon", HOARD, GOLD, 6)
 	refs.hoard = { position = W(HOARD), part = dais }
 	-- With streaming on, far parts come and go; this invisible persistent marker keeps the Hoard's

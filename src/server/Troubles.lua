@@ -20,6 +20,7 @@ local Navy = require(script.Parent.Navy)
 local Mechanisms = require(script.Parent.Mechanisms)
 local Destructibles = require(script.Parent.Destructibles)
 local Leviathan = require(script.Parent.Leviathan)
+local GhostFleet = require(script.Parent.GhostFleet)
 
 local Troubles = {}
 
@@ -254,7 +255,8 @@ Threats.handlers.Kraken = function(_item, player)
 	end
 end
 
--- Skull Rock: ghost ships sail out of a fog bank.
+-- Skull Rock: a crewed ghost fleet sails out of a fog bank (V9: GhostFleet.lua; V8 sent two empty ghost
+-- patrol ships through Navy.dispatchGhosts).
 Threats.handlers.GhostFleet = function(item, player)
 	local site = refs.troubleSites.GhostFleet
 	if not site then
@@ -269,7 +271,9 @@ Threats.handlers.GhostFleet = function(item, player)
 		strength = 1,
 		duration = Config.GHOST_FOG_TIME,
 	})
-	Navy.dispatchGhosts(site.spawns, Config.GHOST_SHIPS, player)
+	if player and player.Parent then
+		GhostFleet.rise(player, site.spawns)
+	end
 end
 
 -- Tangle Isle: after a rumble the rope bridges snap. The ladders and the zipline are the way out.

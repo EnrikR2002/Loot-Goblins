@@ -30,6 +30,8 @@ local EYE_FRENZY = Color3.fromRGB(255, 170, 40)
 local TOTEM_IDLE = Color3.fromRGB(90, 30, 30)
 local TOTEM_ACTIVE = Color3.fromRGB(255, 80, 40)
 local BLAST_COLOR = Color3.fromRGB(255, 120, 40)
+-- V9: the Guardian is bigger (its reach and its stomp's height check grow with it).
+local GS = Config.GUARDIAN_SCALE.Guardian
 
 local function now()
 	return workspace:GetServerTimeNow()
@@ -81,7 +83,7 @@ local guardian = {
 	parts = {},
 	position = Vector3.zero,
 	yaw = 0,
-	state = "sleep", -- "sleep" | "awake"
+	state = "sleep", -- "sleep" | "awake" | "board" (leaping onto its boat) | "sail" (in its boat: Pursuit.lua)
 	nextHitAt = 0,
 	recoverUntil = 0,
 	phase = 0,
@@ -109,9 +111,12 @@ local function buildGuardian()
 	local model = Instance.new("Model")
 	model.Name = "Guardian"
 	local function gpart(name, size, color, material, pivot, hang)
+		-- V9: everything GS times its V8 size, from the feet up.
+		pivot = CFrame.new(pivot.Position * GS) * pivot.Rotation
+		hang = hang and (CFrame.new(hang.Position * GS) * hang.Rotation) or nil
 		local p = Instance.new("Part")
 		p.Name = name
-		p.Size = size
+		p.Size = size * GS
 		p.Color = color
 		p.Material = material
 		p.Anchored = true
@@ -185,7 +190,7 @@ local function buildGuardian()
 	gui.Name = "GuardianTag"
 	gui.Size = UDim2.fromOffset(220, 40)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, 6, 0)
-	gui.MaxDistance = 400
+	gui.MaxDistance = 120 -- V9: a close-up label, not a sign across the sea (V8: 400)
 	gui.LightInfluence = 0
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
@@ -220,7 +225,7 @@ local function poseGuardian()
 	end
 	local parts, cframes = {}, {}
 	-- Both fists high overhead while it winds up a stomp: the tell to get off the ground.
-	local raised = g.stomp ~= nil and 2.8 or nil
+	local raised = (g.stomp ~= nil or g.state == "board") and 2.8 or nil
 	for _, entry in ipairs(g.parts) do
 		local angle = 0
 		if entry.name == "ArmL" or entry.name == "FistL" then
@@ -252,6 +257,9 @@ end
 
 function Threats.wakeGuardian(reason)
 	if guardian.state ~= "sleep" then
+		return
+	end
+	if reason == "heat" and Threats.guardianAtSea() then
 		return
 	end
 	guardian.state = "awake"
@@ -388,7 +396,7 @@ local function guardianAttacks(g, targetPlayer, t)
 		local aim = root.Position + velocity * Config.GUARDIAN_THROW_DELAY * 0.9
 		local floorY, water = groundAt(aim.X, aim.Z)
 		local to = Vector3.new(aim.X, water and 0 or floorY, aim.Z)
-		local from = g.position + Vector3.new(0, 18, 0)
+		local from = g.position + Vector3.new(0, 18 * GS, 0)
 		Net.broadcast("GuardianThrow", { from = from, to = to, duration = Config.GUARDIAN_THROW_DELAY })
 		Blast.strike(to, Config.GUARDIAN_THROW_DELAY, {
 			radius = Config.GUARDIAN_THROW_RADIUS,
@@ -408,7 +416,26 @@ end
 local function tickGuardian(dt)
 	local g = guardian
 	local t = now()
-	if g.state == "sleep" then
+	if g.state == "sail" then
+		return -- in its boat, out at sea (Pursuit.lua draws it there)
+	elseif g.state == "board" then
+		-- V9: the leap from the temple onto its boat, in a long, high arc.
+		local b = g.boarding
+		local a = math.clamp((t - b.startAt) / (b.landAt - b.startAt), 0, 1)
+		local p = b.from:Lerp(b.to, a)
+		g.position = Vector3.new(p.X, p.Y + math.sin(math.pi * a) * b.height, p.Z)
+		g.phase += dt * 12
+		if a >= 1 then
+			g.state = "sail"
+			g.boarding = nil
+			-- Out of sight under its island until the chase is over: the one in the boat is the Guardian now.
+			g.position = refs.guardianLair.Position - Vector3.new(0, 400, 0)
+			workspace:SetAttribute("GuardianState", "sail")
+			Net.broadcast("GuardianSmash", { position = b.to })
+		end
+		poseGuardian()
+		return
+	elseif g.state == "sleep" then
 		-- Asleep it doesn't move, so it isn't re-posed (no replication cost).
 		if Heat.tier >= Config.GUARDIAN_WAKE_TIER then
 			Threats.wakeGuardian("heat")
@@ -467,18 +494,18 @@ local function tickGuardian(dt)
 		end
 		-- Smash anyone close enough while chasing a carrier.
 		if targetPlayer and t >= g.nextHitAt then
-			local chest = g.position + Vector3.new(0, 6, 0)
+			local chest = g.position + Vector3.new(0, 6 * GS, 0)
 			local targetRoot = Util.aliveRoot(targetPlayer)
 			if
 				targetRoot
-				and Util.flatDistance(targetRoot.Position, chest) <= Config.GUARDIAN_HIT_RANGE
-				and math.abs(targetRoot.Position.Y - chest.Y) <= 14
+				and Util.flatDistance(targetRoot.Position, chest) <= Config.GUARDIAN_HIT_RANGE * GS
+				and math.abs(targetRoot.Position.Y - chest.Y) <= 14 * GS
 			then
 				g.nextHitAt = t + Config.GUARDIAN_HIT_COOLDOWN
 				g.recoverUntil = t + Config.GUARDIAN_RECOVER
 				hurtArea(
 					chest,
-					Config.GUARDIAN_HIT_RANGE,
+					Config.GUARDIAN_HIT_RANGE * GS,
 					Config.GUARDIAN_DAMAGE,
 					Config.GUARDIAN_KNOCKBACK,
 					"guardian",
@@ -540,8 +567,52 @@ local function tickWaves(t)
 	end
 end
 
+-- V9: the Golden Idol's thief is at sea: the Guardian leaps from wherever it stands onto its speedboat at
+-- `point` (Pursuit.lua's forms.Temple), arriving `seconds` later. Until Threats.guardianReturn it is not on
+-- its island.
+function Threats.guardianBoard(point, seconds)
+	local g = guardian
+	if g.state == "sleep" then
+		g.state = "awake"
+		setGuardianLook()
+	end
+	g.leap, g.stomp = nil, nil
+	local from = g.position
+	local distance = Util.flatDistance(from, point)
+	g.state = "board"
+	g.boarding = {
+		from = from,
+		to = point,
+		startAt = now(),
+		landAt = now() + seconds,
+		height = 40 + distance * 0.18,
+	}
+	g.yaw = math.atan2(-(point.X - from.X), -(point.Z - from.Z))
+	workspace:SetAttribute("GuardianState", "board")
+	Net.broadcast("GuardianLeap", { position = from })
+end
+
+-- The chase is over: the Guardian is back at its altar (asleep again unless the Idol is still out).
+function Threats.guardianReturn()
+	local g = guardian
+	if g.state ~= "sail" and g.state ~= "board" then
+		return
+	end
+	g.boarding = nil
+	g.state = "awake"
+	g.position = refs.guardianLair.Position
+	g.recoverUntil = now() + 1
+	setGuardianLook()
+	poseGuardian()
+end
+
+function Threats.guardianAtSea()
+	return guardian.state == "sail" or guardian.state == "board"
+end
+
 local function resetGuardian()
 	local g = guardian
+	g.boarding = nil
 	g.stomp = nil
 	g.nextStompAt = 0
 	table.clear(waves)
