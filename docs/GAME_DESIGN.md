@@ -36,9 +36,9 @@ V6's report was later amended after Ninety discovered the blocked Skull Chalice 
 
 ### Current guardrails and absent features
 
-V7 adds, on the team's explicit instruction in the V7 prompt (kept by Enrik's decision on 2026-10-14, now recorded as an exception in AGENTS.md), a small progression layer: Shinies, five pets, start-with-gear kits and a saved profile, plus an inert Robux receipt foundation. There is still no XP, rarity economy, trading, boat upgrade tree or production architecture. The original long-term design vision appears later, explicitly as future direction. Rough geometry, primitive creature models, built-in sounds, and incomplete advertised input coverage are prototype compromises; they are not proof of release readiness.
+V7 adds a small progression layer: Shinies, five pets, start-with-gear kits and a saved profile, plus an inert Robux receipt foundation (no product IDs yet). There is no XP, rarity economy, trading or boat upgrade tree yet. Since 2026-10-14 the scope is open: the team can add any of these whenever they want (see AGENTS.md). The original long-term design vision appears later as inspiration. Rough geometry, primitive creature models, built-in sounds, and incomplete advertised input coverage are prototype compromises; they are not proof of release readiness.
 
-An outside AI should deepen possession and escape, preserve movement agency, compare ideas against existing verbs, distinguish current V6 from historical configurations, and propose a small experiment behind the active gate. A mechanic rejected for another game is not automatically rejected here. A larger map, more inhabitants, or permanent progression requires an actual reason and human scope approval.
+An outside AI should deepen possession and escape, preserve movement agency, compare ideas against existing verbs, and distinguish current V8 from historical configurations. A mechanic rejected for another game is not automatically rejected here. What gets built next is the team's call; a teammate's request is enough.
 
 ## Current approved version and development history
 
@@ -58,7 +58,7 @@ The V6 report was subsequently amended after Ninety found the blocked Skull Chal
 
 Enrik explicitly authorized merging the complete latest V6 development line into main on October 12, 2026. PR #14 targets main and includes the ancestor work from PRs #9–13 plus the shared-memory rollout in PR #15. GitHub records the actual integration outcome. This approval does not certify outstanding human, multiplayer, audio-by-ear, or device tests. Historical reports below retain their original checkpoint status.
 
-Everything below describes the approved V6 code and its current limitations.
+Everything below describes the code on main (V8, with the V7 and V6 sections it builds on) and its current limitations.
 
 ## Purpose
 
@@ -68,7 +68,7 @@ The loop: **explore (awe) → steal treasure → the world reacts → escape (pa
 
 The design principle is **active novelty**: surprises the player participates in (a geyser to time, a ring to jump, a charge to dodge, a storm to steer around), not things that just happen on screen.
 
-The long-term vision later in this document is not permission by itself to add anything; V7's progression is limited to what is described under "V7 systems".
+The long-term vision later in this document is inspiration, not a plan; the team decides what to build from it.
 
 ## Core loop
 
@@ -547,7 +547,7 @@ These notes came from earlier development sessions. Verify present tool capabili
 
 ## Human prototype experiment and decision
 
-Through V6: no shops, XP, pets, rarity tables, monetization, trading, boat trees, hideout decorating, or saved progress. V7 added Shinies, pets, start-with gear and a saved profile on the team's explicit instruction (the V7 prompt); Enrik kept them on 2026-10-14 and AGENTS.md records that exception. Real Robux sales stay off until a human approves them. Everything V7 sells is a sidegrade, gear is free in the world, and no essential content is paid. The loot values and `Wins` still score a raid.
+Through V6: no shops, XP, pets, rarity tables, monetization, trading, boat trees, hideout decorating, or saved progress. V7 added Shinies, pets, start-with gear and a saved profile on the team's explicit instruction (the V7 prompt); Enrik kept them on 2026-10-14 and opened the scope. Robux sales stay off until someone creates real products in the Creator Dashboard. Everything V7 sells is a sidegrade, gear is free in the world, and no essential content is paid. The loot values and `Wins` still score a raid.
 
 For a local multiplayer test: **top-left Test dropdown > Server & Clients > set player count to 3 > blue Play button**. Play several raids with Ethan, Ninety, and Enrik. The checklist in the latest report under `docs/reports/` says what to look for.
 
