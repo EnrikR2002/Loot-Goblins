@@ -43,19 +43,21 @@ local COIN_Y = 3.4
 local LANE_SIGN_RANGE = 300
 -- A lap's radius. At chain speed a skiff cannot hold a circle 190 studs across the middle (driven,
 -- it missed half the hoops of one). At 290 it can, with care; at 330 it has steering to spare.
-local LAP_RADIUS = { Lookout = 330, Maelstrom = 290 }
+-- (V7: the skiff is a quarter faster, so a lap's radius grew with it: V6 had 330 and 290.)
+local LAP_RADIUS = { Lookout = 400, Maelstrom = 350 }
 
 -- Pars for the timed courses, in seconds. Each was measured: the game's own boat physics drove
 -- a skiff down the course (boosting, steering at a point a little ahead along the hoops), and
 -- the par is that clean time plus 15 to 20 percent, rounded to half a second. Measured times:
 -- the Teeth 3.7, the Cinder Slalom 3.6 to 3.8, the Serpent 2.9 with the current and 3.3 against,
 -- the Maelstrom Ring 11.5 to 11.7 a flying lap, the Lookout Loop 13.3 to 13.8.
+-- V7 (a skiff at 135, chain speed to 242, laps 400 and 350 studs in radius): measured again, plus 17 percent.
 local PAR = {
-	Teeth = 4.5,
-	Cinder = 4.5,
-	Serpent = 4,
-	Lookout = 16,
-	Maelstrom = 13.5,
+	Teeth = 3.3,
+	Cinder = 3.2,
+	Serpent = 2.8,
+	Lookout = 14,
+	Maelstrom = 12.8,
 }
 
 local function v3(x, y, z)

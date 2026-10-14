@@ -284,14 +284,14 @@ end
 
 -- A signal fire: every patrol ship close enough to see it gives up whatever it was doing and
 -- sails over to look, for a while. Returns how many turned.
-function Navy.distract(position)
+function Navy.distract(position, range, time)
 	local t = now()
 	local turned = 0
 	for _, ship in ipairs(Navy.ships) do
 		if not ship.ghost and not ship.leaving then
 			local distance = (flat(ship.boat.hull.Position) - flat(position)).Magnitude
-			if distance < Config.BEACON_RANGE then
-				ship.decoyUntil = t + Config.BEACON_TIME
+			if distance < (range or Config.BEACON_RANGE) then
+				ship.decoyUntil = t + (time or Config.BEACON_TIME)
 				ship.target = nil
 				ship.lastSeenPos = position
 				ship.lastSeenAt = t

@@ -21,6 +21,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
+local Gear = require(script.Parent.Gear)
 local Movement = require(script.Parent.Movement)
 local Loot = require(script.Parent.Loot)
 
@@ -130,7 +131,7 @@ local function start(player)
 		Net.toast(player, "The Hoard's ward blocks Poltergoblin")
 		return
 	end
-	readyAt[player] = t + Config.POLTER_COOLDOWN
+	readyAt[player] = t + Config.POLTER_COOLDOWN * (Gear.petIs(player, "Ghost") and Config.PET_GHOST_COOLDOWN or 1)
 
 	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
 	if look.Magnitude < 0.01 then

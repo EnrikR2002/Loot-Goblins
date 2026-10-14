@@ -4,8 +4,13 @@ local Config = {}
 
 -- Raid -----------------------------------------------------------------------
 -- A raid is one timed match. Bank the most gold before the timer runs out.
-Config.RAID_DURATION = 540 -- V5's sea is 30% narrower than V4's: the farthest round trip is a little over 2 minutes. (V4: 600, V3: 420)
+Config.RAID_DURATION = 720 -- V7: twelve minutes for a server of up to 32, a sixteen-island sea and a deployment from the skyship. (V5/V6: 540, V4: 600, V3: 420)
 Config.LAST_CALL = 60 -- The HUD turns red for the final stretch.
+-- V7, the final rush: in the last FINAL_RUSH seconds every treasure banked pays FINAL_RUSH_MULT times its gold. It
+-- gives everybody a reason to run for the Hoard at the end, and lets a goblin who is behind catch up with one big
+-- run; it is a multiplier on what is banked, never on what is held, so a rival still has to be robbed to profit.
+Config.FINAL_RUSH = 90
+Config.FINAL_RUSH_MULT = 1.25
 Config.INTERMISSION = 12
 Config.FIRST_INTERMISSION = 6 -- Gives the first players time to load in.
 Config.RESPAWN_TIME = 3
@@ -350,8 +355,9 @@ Config.WARD_RADIUS = 55 -- Around the Hoard: no Poltergoblin, no Guardian.
 -- the X/Z edges, built from several parts because one part can't pass 2048 studs.
 -- V5: 5080 x 4390 studs. V3's sea was 3200 x 2740 and V4's 6900 x 5840; the V4 playtest found
 -- that too spread out, so this is 55% of V4's area (2.5 times V3's).
-Config.BOUNDS_MIN = Vector3.new(-2560, -45, -2040)
-Config.BOUNDS_MAX = Vector3.new(2520, 600, 2350)
+-- V7: 5880 x 5010 studs (the islands beyond the home ring are 20% farther apart; see Archipelago.lua).
+Config.BOUNDS_MIN = Vector3.new(-2980, -45, -2660)
+Config.BOUNDS_MAX = Vector3.new(2900, 600, 2350)
 
 -- Heat -----------------------------------------------------------------------
 -- One shared meter. Stealing and carrying raise it, quiet time lowers it.
@@ -444,8 +450,20 @@ Config.SWORD_KNOCKBACK = 34
 -- clear line of sight. Aimed at ground, walls, cliffs or a boat it pulls you there (a boat
 -- keeps moving: the rope follows it). Carriers can't steal with it, but they can still pull
 -- themselves around, on a longer cooldown. A miss costs no cooldown.
-Config.GRAPPLE_RANGE = 70 -- Steal range.
+Config.GRAPPLE_RANGE = 70 -- Range for grabbing LOOSE loot (a carrier is caught at GRAPPLE_PVP_RANGE, below).
 Config.GRAPPLE_AIM_ASSIST = 8 -- Loot or a carrier this far off your aim line still counts.
+-- V7: the hook CATCHES a carrier, it does not rob them. A caught goblin is yanked toward you and falls
+-- (CATCH_DOWN_TIME seconds, or sooner if they press Space after CATCH_MIN_DOWN); you have to run up and
+-- press E within STEAL_RANGE to take what they carry. The ordinary pull (to walls, ground, boats) keeps
+-- its long GRAPPLE_PULL_RANGE: only the person-catching range was cut.
+Config.GRAPPLE_PVP_RANGE = 40 -- (V6: 70, and it stole at once.)
+Config.CATCH_DOWN_TIME = 2.0
+Config.CATCH_MIN_DOWN = 0.9 -- Before this, Space does not get you up.
+Config.CATCH_PULL_SPEED = 46 -- The yank toward the thrower.
+Config.CATCH_COOLDOWN = 4.5 -- The hook's cooldown after a catch.
+Config.CATCH_IMMUNITY = 6 -- Nobody can be caught again for this long after getting up (no knockdown loops).
+Config.STEAL_RANGE = 8 -- E at this range, on a goblin who is down.
+Config.STEAL_COOLDOWN = 1.2
 Config.GRAPPLE_COOLDOWN = 6 -- After a successful steal.
 Config.GRAPPLE_FAIL_COOLDOWN = 1 -- After a steal that slipped off (steal immunity).
 Config.GRAPPLE_PULL_RANGE = 170
@@ -496,10 +514,10 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(9, 3, 20),
 		draft = 1.3,
 		density = 0.75,
-		accel = 84, -- (V2: 44)
-		maxSpeed = 108, -- (V2: 72)
-		turn = 2.1,
-		turnFade = 150,
+		accel = 100, -- (V6: 84, V2: 44)
+		maxSpeed = 135, -- (V6: 108, V2: 72)
+		turn = 2.5, -- (V6: 2.1)
+		turnFade = 230, -- (V6: 150) Slower to lose its bite: a V7 skiff at chain speed turns about as tightly as V6's did.
 		grip = 3.4,
 		driftGrip = 0.35,
 		driftTurn = 1.65,
@@ -514,10 +532,10 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(14, 4, 34),
 		draft = 2.1,
 		density = 0.8,
-		accel = 56, -- (V2: 28)
-		maxSpeed = 86, -- (V2: 56)
-		turn = 1.45,
-		turnFade = 130,
+		accel = 68, -- (V6: 56, V2: 28)
+		maxSpeed = 104, -- (V6: 86, V2: 56)
+		turn = 1.7, -- (V6: 1.45)
+		turnFade = 190, -- (V6: 130)
 		grip = 2.7,
 		driftGrip = 0.45,
 		driftTurn = 1.4,
@@ -533,10 +551,10 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(16, 6, 42),
 		draft = 3.8,
 		density = 0.85,
-		accel = 58, -- (V2: 27)
-		maxSpeed = 88, -- (V2: 54) Slower than an empty skiff, faster than a cutter or a heavily laden skiff.
-		turn = 1.15,
-		turnFade = 120,
+		accel = 68, -- (V6: 58, V2: 27)
+		maxSpeed = 106, -- (V6: 88, V2: 54) Slower than an empty skiff, a touch faster than a cutter.
+		turn = 1.3, -- (V6: 1.15)
+		turnFade = 160, -- (V6: 120)
 		grip = 2.4,
 		driftGrip = 1,
 		driftTurn = 1,
@@ -547,15 +565,27 @@ Config.BOAT_TYPES = {
 		passengers = 0,
 	},
 }
-Config.BOAT_BOOST_MULT = 1.4 -- Top speed while boosting (a skiff: 151).
-Config.BOAT_BOOST_THRUST = 2.1
-Config.BOAT_BOOST_TIME = 2.2
-Config.BOAT_BOOST_COOLDOWN = 5.5 -- (V2: 7)
+Config.BOAT_BOOST_MULT = 1.5 -- Top speed while boosting (a skiff: 202; V6: 1.4).
+Config.BOAT_BOOST_THRUST = 2.4 -- (V6: 2.1)
+Config.BOAT_BOOST_TIME = 2.4 -- (V6: 2.2)
+Config.BOAT_BOOST_COOLDOWN = 5 -- (V6: 5.5, V2: 7)
+Config.BOAT_BOOST_PUNCH = 14 -- Speed added the moment a boost starts: the kick in the back.
 Config.BOAT_LAUNCH_PUNCH = 0.9 -- Extra thrust from a standstill, fading out by half speed.
 Config.BOAT_BRAKE = 1.7 -- Thrust against the way you are moving: S is a brake, not a slow reverse.
 Config.BOAT_REVERSE = 0.5 -- Reverse thrust relative to forward.
-Config.BOAT_BEACH_SHOVE = 1.6 -- Thrust (as a share of accel) for shoving a beached hull along...
-Config.BOAT_BEACH_SPEED = 12 -- ...which only works below this speed: boats do not drive on land.
+Config.BOAT_BEACH_SHOVE = 1.6 -- Thrust (as a share of accel) for shoving a hull along that is in the air or on a ledge the ground check cannot see...
+Config.BOAT_BEACH_SPEED = 12 -- ...which only works below this speed.
+-- V7: a boat can drive on land, slowly (Minecraft's boats do), so a beached boat is never stuck and a
+-- narrow spit is a shortcut. The speed is about a goblin's sprint: water stays far better.
+Config.BOAT_LAND_SPEED = 0.3 -- Top speed on land, as a share of the hull's maxSpeed (a skiff: 40; it measures about 23 under load). A boost does not raise it.
+Config.BOAT_LAND_THRUST = 1.6 -- Engine power on land, as a share of accel: enough to climb a steep beach, which the low top speed keeps in check.
+Config.BOAT_LAND_COAST = 1.8 -- Land drag off the throttle, as a multiple of the on-throttle drag: it stops quickly.
+Config.BOAT_LAND_TURN = 0.8 -- Share of the steering kept on land.
+Config.BOAT_LAND_SLOPE = 0.45 -- The ground's normal must point up at least this much (Y) to count as a floor, not a wall.
+-- V7: Space at the wheel hops the boat. It needs water or ground under the hull and a cooldown, so there is
+-- no flying; a jump from a charged drift releases the burst.
+Config.BOAT_JUMP_SPEED = 58 -- Upward speed: about 8.5 studs of height from rest, a long arc under boost.
+Config.BOAT_JUMP_COOLDOWN = 1.3
 Config.BOAT_YAW_SNAP = 8 -- How quickly the hull reaches the turn rate you ask for (V2: 5).
 Config.BOAT_SLIP_LOSS = 0.15 -- Speed shed by sliding sideways in an ordinary turn (V2: 0.5).
 Config.BOAT_COAST_DRAG = 0.35 -- Share of the engine-on drag that remains off the throttle: boats coast.
@@ -563,8 +593,9 @@ Config.BOAT_BUOY_DAMPING = 1.1 -- How quickly a hull stops bouncing on its sprin
 Config.BOAT_MAX_STEP = 0.1 -- Longest frame the boat physics will integrate in one go (10 frames a second).
 Config.BOAT_AIR_CONTROL = 0.35 -- Share of the steering you keep while airborne.
 Config.BOAT_AIR_MIN = 0.4 -- Seconds off the water before a touchdown counts as a landing.
+Config.BOAT_LANDING_AIR = 0.7 -- Seconds in the air before a clean landing also bursts (a plain hop in flight 0.6 s does not).
 Config.BOAT_FLIP_TIME = 1 -- Seconds a hull lies capsized before it pops back upright.
-Config.BOAT_LANDING_KICK = 12 -- Speed added by a clean landing.
+Config.BOAT_LANDING_KICK = 16 -- Speed added by a clean landing (V6: 12).
 Config.BOAT_PAYLOAD_DRAG = 0.03 -- Each unit of loot weight aboard cuts thrust and top speed by this much.
 
 -- Drift (hold C in a turn, at speed): the keel lets go and the boat swings round. Holding the
@@ -573,19 +604,19 @@ Config.BOAT_DRIFT_MIN_SPEED = 0.38 -- Fraction of top speed needed to break the 
 Config.BOAT_DRIFT_ANGLE = { math.rad(38), math.rad(58) } -- The hull swings out freely to the first angle and holds by the second.
 Config.BOAT_DRIFT_SLIP_LOSS = 0.05 -- Speed shed while drifting and during the burst after (an ordinary slide sheds BOAT_SLIP_LOSS).
 Config.BOAT_DRIFT_CHARGE = { 0.75, 1.7 } -- Charge needed for each level (about 0.6 s and 1.4 s of sliding).
-Config.BOAT_MINI_KICK = { 16, 28 } -- Speed added at once.
+Config.BOAT_MINI_KICK = { 20, 34 } -- Speed added at once (V6: 16, 28).
 Config.BOAT_MINI_TIME = { 1.0, 1.6 } -- Seconds the raised top speed lasts.
-Config.BOAT_MINI_MULT = 1.16 -- Top speed while a burst runs.
+Config.BOAT_MINI_MULT = 1.2 -- Top speed while a burst runs (V6: 1.16).
 
 -- Hoops and kickers.
-Config.BOAT_HOOP_KICK = 30 -- Speed a boost hoop adds along its arrow.
+Config.BOAT_HOOP_KICK = 34 -- Speed a boost hoop adds along its arrow (V6: 30).
 Config.BOAT_HOOP_TIME = 2 -- A hoop also boosts for this long.
 -- Chains: a hoop taken within BOAT_CHAIN_WINDOW seconds of the last one kicks harder, by
 -- BOAT_CHAIN_KICK for each hoop in the chain so far, up to BOAT_CHAIN_MAX steps (30, 35, ... 50).
 Config.BOAT_CHAIN_WINDOW = 4
-Config.BOAT_CHAIN_KICK = 5
-Config.BOAT_CHAIN_MAX = 4
-Config.BOAT_CHAIN_TOP = 6 -- A kick stops at the boat's boosted top speed plus this per link (a skiff: 151 to 175).
+Config.BOAT_CHAIN_KICK = 7 -- (V6: 5)
+Config.BOAT_CHAIN_MAX = 5 -- (V6: 4)
+Config.BOAT_CHAIN_TOP = 8 -- A kick stops at the boat's boosted top speed plus this per link (a skiff: 210 to 242; V6 151 to 175).
 Config.BOAT_KICK_SPEED = 76 -- Upward speed a kicker ramp gives a fast boat.
 Config.BOAT_KICK_MIN_SPEED = 34 -- Slower than this and a kicker is only a bump.
 
@@ -598,7 +629,7 @@ Config.BOAT_IMPACT_DAMAGE = 1.5 -- Hull damage per stud/s above the minimum.
 Config.BOAT_IMPACT_CAP = 0.45 -- One crash never takes more than this fraction of a hull.
 Config.BOAT_IMPACT_GRACE = 0.7 -- Seconds after a crash when further bumps don't count.
 Config.BOAT_SCRAPE_DAMAGE = 16 -- Hull damage per second while dragging fast over sand or rock.
-Config.BOAT_SCRAPE_SPEED = 24 -- Slower than this, running aground costs nothing.
+Config.BOAT_SCRAPE_SPEED = 44 -- Slower than this, running aground costs nothing (V7: above a boat's land speed, so driving on land is free).
 Config.BOAT_REPAIR_DELAY = 9 -- Seconds without damage before a hull starts patching itself.
 Config.BOAT_REPAIR_RATE = 4 -- Hull points per second after that.
 Config.BOAT_SINK_TIME = 7 -- Seconds a wreck takes to go under.
@@ -615,6 +646,395 @@ Config.BOAT_SPEED_MARGIN = 40 -- ...plus this (currents, waves, hoops), before i
 Config.BOAT_MAX_ALTITUDE = 80 -- Studs above the sea a hull can be (kickers reach about 15).
 Config.BOAT_STRIKE_TIME = 1.2 -- Seconds over a limit before the server takes the boat back.
 Config.BOAT_RECLAIM_TIME = 5 -- Seconds the server then drives it before handing it back.
+
+-- The skyship and the dive (V7) --------------------------------------------------------------------
+-- Every raid starts aboard a flying ship over the middle of the sea (server/Skyship.lua). The raid
+-- clock runs from the moment the bell goes; WINDOW seconds later whoever is still aboard is fired off.
+Config.SKYSHIP = {
+	POSITION = Vector3.new(0, 540, -80), -- Centre of the deck. The sea's walls are 700 high.
+	BEAM = 44,
+	WINDOW = 28, -- Seconds from the raid's start: the deployment window.
+	COUNTDOWN = 3, -- The cannons unlock this long after the raid starts (so a crowd goes together).
+}
+Config.DIVE = {
+	PENCIL_REACH = 55, -- Studs/s along, head down.
+	PENCIL_FALL = 150, -- Studs/s down, head down.
+	PENCIL_RATE = 1.6, -- How quickly the velocity settles on those numbers (per second).
+	GLIDE_REACH = 175, -- Space held: arms out.
+	GLIDE_SINK = 30,
+	GLIDE_RATE = 1.1,
+	COAST_SHARE = 0.8, -- With no steering a goblin holds its heading at this share of its reach.
+	LAUNCH_SPEED = 230, -- What a cannon gives; the dive's numbers take over within a couple of seconds.
+	LAUNCH_ELEVATION = math.rad(24),
+	NUDGE_YAW = math.rad(14), -- How far the player can turn a cannon off its island.
+	NUDGE_PITCH = math.rad(10),
+	FUSE = 0.9, -- From Fire to launch.
+	BOUNCES = 1, -- A splash bounces a diver this many times; the next one is a plain swim.
+	BOUNCE_UP = 135, -- Studs/s up after a splash.
+	BOUNCE_GRAVITY = 85, -- The bounce is a hop with its own gravity: about 105 studs high and three seconds of flight.
+	BOUNCE_KEEP = 0.5, -- Share of the sideways speed kept through the bounce.
+	OSTRICH_SPEED = 95, -- Hitting ground this fast (a pencil dive; a glide is about 30) goes head first.
+	EMBED_TIME = 1.1, -- Seconds stuck in the ground.
+	POP_SPEED = 62, -- The hop out.
+}
+
+-- The sixteen major islands and what is around them (V7) -------------------------------------------
+-- A MAJOR island has a main treasure, something living or moving on it, and a tier. The rest are
+-- supporting geography: Gull Rock, Twin Stacks and Pilgrim's Rock have nothing to take; the three
+-- keys (Kelp Cay, Lantern Key, Driftwood Key) keep a small stash each AND a gear cache (below).
+-- Difficulty is computed, not asserted: each factor is 0 to 3 and the tier follows their sum, so a
+-- change to an island moves its tier.
+--   guardian  what lives there and how hard it is to out-think      traverse  how hard the way to the
+--   hazard    what the island does to a thief                       treasure is, on foot
+--   extract   how hard the way HOME is (Navy base, distance)        gear      2 if the island is far
+--                                                                             better with equipment
+-- tag: the kind of challenge. line: the one-sentence identity. alerts: see Alerts.lua.
+Config.ISLAND_INFO = {
+	Pebble = {
+		major = true,
+		tag = "NAVIGATION",
+		line = "A quiet shingle spit: learn the route home.",
+		g = 0,
+		t = 0,
+		h = 0,
+		x = 0,
+		r = 0,
+	},
+	Coral = {
+		major = true,
+		tag = "TIMING",
+		line = "A giant clam that opens and shuts: take the pearl while it gapes.",
+		g = 1,
+		t = 0,
+		h = 0,
+		x = 1,
+		r = 0,
+	},
+	Smuggler = {
+		major = true,
+		tag = "STEALTH",
+		line = "A hidden stash behind a bell: do not ring it.",
+		g = 0,
+		t = 1,
+		h = 1,
+		x = 1,
+		r = 0,
+	},
+	Windmill = {
+		major = true,
+		tag = "TIMING",
+		line = "A windmill with a ram on the hill: the Golden Gear spins the blades up.",
+		g = 1,
+		t = 2,
+		h = 2,
+		x = 1,
+		r = 0,
+	},
+	Cross = {
+		major = true,
+		tag = "STEALTH",
+		line = "Statues that only move when nobody is looking at them.",
+		g = 2,
+		t = 1,
+		h = 0,
+		x = 1,
+		r = 0,
+	},
+	Shoals = {
+		major = true,
+		tag = "ENVIRONMENT",
+		line = "A wrecked fleet on a sandbar: a crab underfoot and cannons overhead.",
+		g = 1,
+		t = 1,
+		h = 2,
+		x = 2,
+		r = 0,
+	},
+	Crystal = {
+		major = true,
+		tag = "TERRAIN",
+		line = "Caves of crystal and a cave-in behind you, with an echo that follows.",
+		g = 1,
+		t = 2,
+		h = 2,
+		x = 1,
+		r = 0,
+	},
+	Tangle = {
+		major = true,
+		tag = "SPEED",
+		line = "Rope bridges that snap, and imps that carry your treasure off.",
+		g = 2,
+		t = 2,
+		h = 2,
+		x = 2,
+		r = 0,
+	},
+	Tide = {
+		major = true,
+		tag = "EQUIPMENT",
+		line = "A vault that floods: swim the drain, or bring a rebreather.",
+		g = 1,
+		t = 2,
+		h = 3,
+		x = 2,
+		r = 1,
+		gear = "Rebreather",
+	},
+	Maelstrom = {
+		major = true,
+		tag = "BOAT SKILL",
+		line = "A whirlpool with a fin in it: sail it, do not fight it.",
+		g = 1,
+		t = 1,
+		h = 3,
+		x = 2,
+		r = 0,
+	},
+	Fort = {
+		major = true,
+		tag = "COMBAT",
+		line = "The Navy's own fort: marines, turrets and a harbor chain.",
+		g = 3,
+		t = 2,
+		h = 2,
+		x = 3,
+		r = 0,
+	},
+	Ember = {
+		major = true,
+		tag = "EQUIPMENT",
+		line = "A volcano and a river of fire: boots make it a walk.",
+		g = 1,
+		t = 2,
+		h = 3,
+		x = 2,
+		r = 2,
+		gear = "CinderBoots",
+	},
+	Temple = {
+		major = true,
+		tag = "COMBAT",
+		line = "The Sun Temple's Guardian: huge, loud and fair.",
+		g = 3,
+		t = 2,
+		h = 2,
+		x = 3,
+		r = 0,
+	},
+	Frost = {
+		major = true,
+		tag = "EQUIPMENT",
+		line = "A glacier with a cold that follows you: claws and a plan.",
+		g = 1,
+		t = 3,
+		h = 2,
+		x = 2,
+		r = 2,
+		gear = "FrostClaws",
+	},
+	Bone = {
+		major = true,
+		tag = "BOSS",
+		line = "Leviathan's Rest: the sea itself is awake.",
+		g = 3,
+		t = 1,
+		h = 3,
+		x = 3,
+		r = 0,
+		boss = true,
+	},
+	Skull = {
+		major = true,
+		tag = "STEALTH",
+		line = "A skull with a throne room, a sleeping captain and a ghost fleet.",
+		g = 2,
+		t = 3,
+		h = 2,
+		x = 3,
+		r = 0,
+	},
+	-- Supporting geography.
+	Gull = { major = false, tag = "WATCHPOST", line = "A bare rock with a view." },
+	Twin = { major = false, tag = "ZIPLINE", line = "Two stacks joined by a zipline." },
+	Pilgrim = { major = false, tag = "ZIPLINE", line = "A stack at the end of the Sun Spire's zipline." },
+	Kelp = { major = false, tag = "CACHE", line = "A kelp cay: a small stash and a rebreather.", gear = "Rebreather" },
+	Lantern = {
+		major = false,
+		tag = "CACHE",
+		line = "A lighthouse key: a small stash, and a choice of cinder boots or frost claws.",
+		gear = "CinderBoots",
+		gear2 = "FrostClaws",
+	},
+	Driftwood = { major = false, tag = "WRECKAGE", line = "A driftwood key: a small stash among the bones of a wreck." },
+}
+-- Total of the factors, to a tier of 1 to 4.
+function Config.islandTier(id)
+	local info = Config.ISLAND_INFO[id]
+	if not info or not info.major then
+		return 0
+	end
+	local sum = info.g + info.t + info.h + info.x + info.r
+	return sum <= 3 and 1 or (sum <= 6 and 2 or (sum <= 9 and 3 or 4))
+end
+for id, info in pairs(Config.ISLAND_INFO) do
+	info.tier = Config.islandTier(id)
+	info.id = id
+end
+Config.TIER_NAMES = { "EASY", "RISKY", "DANGEROUS", "DEADLY" }
+Config.TIER_COLORS = {
+	Color3.fromRGB(120, 230, 140),
+	Color3.fromRGB(255, 215, 80),
+	Color3.fromRGB(255, 140, 60),
+	Color3.fromRGB(255, 70, 70),
+}
+
+-- Gear (V7): found in the world, never sold for Robux. Each piece changes one island's hazard a lot, and the treasure
+-- on that island cannot be pried loose without it. A cache on a key island hands it out for the rest of the raid, once
+-- per goblin (Lantern Key offers boots OR claws: you carry one at a time, so you choose). Shinies can buy "start with it".
+Config.REBREATHER_SWIM = 1.4 -- Swim speed with the rebreather, as a multiple.
+Config.CLAWS_CHILL = 0.25 -- The Chill's drain with frost claws, as a multiple.
+Config.GEAR = {
+	Rebreather = {
+		name = "Diver's Rebreather",
+		short = "REBREATHER",
+		island = "Kelp",
+		for_ = "Tide",
+		effect = "Swim at full speed with no stamina cost, and the flooded vault drains you less.",
+		color = Color3.fromRGB(110, 230, 255),
+	},
+	CinderBoots = {
+		name = "Cinder Boots",
+		short = "CINDER BOOTS",
+		island = "Lantern",
+		for_ = "Ember",
+		effect = "Lava, fire patches and lava bombs cannot hurt you.",
+		color = Color3.fromRGB(255, 130, 60),
+	},
+	FrostClaws = {
+		name = "Frost Claws",
+		short = "FROST CLAWS",
+		island = "Lantern",
+		for_ = "Frost",
+		effect = "The Chill drains a quarter as much stamina, and ice cannot throw you.",
+		color = Color3.fromRGB(170, 230, 255),
+	},
+}
+
+-- Regional alerts (V7, server/Alerts.lua). A theft puts its island on guard (level 0 to 3), and the
+-- islands it is linked to by LINKS[island][other] times as much. Levels fall by DECAY per second.
+Config.ALERT = {
+	STEAL = 1.0, -- Level added to the robbed island.
+	DECAY = 1 / 40, -- A level lasts about 40 seconds.
+	WAKE_PER_LEVEL = 0.3, -- Creatures notice you from this much farther per level.
+	NAVY_LEVEL = 2, -- At this level the Navy comes.
+	NAVY_RANGE = 1800, -- Every patrol ship this close turns toward the island...
+	NAVY_TIME = 35, -- ...for this long.
+	CALL_GAP = 30,
+	LINKS = {
+		Tangle = { Fort = 0.8, Shoals = 0.5 },
+		Fort = { Tangle = 0.8, Shoals = 0.4, Tide = 0.4 },
+		Shoals = { Tide = 0.6, Kelp = 0.4, Tangle = 0.4 },
+		Tide = { Shoals = 0.6, Kelp = 0.6 },
+		Cross = { Pilgrim = 0.7, Temple = 0.6 },
+		Temple = { Cross = 0.7, Pilgrim = 0.5, Frost = 0.4 },
+		Windmill = { Crystal = 0.6, Smuggler = 0.4 },
+		Crystal = { Windmill = 0.6, Twin = 0.6, Maelstrom = 0.4 },
+		Maelstrom = { Crystal = 0.4, Windmill = 0.4 },
+		Ember = { Skull = 0.6, Lantern = 0.6 },
+		Skull = { Ember = 0.6, Lantern = 0.5 },
+		Frost = { Bone = 0.6, Lantern = 0.4, Temple = 0.4 },
+		Bone = { Frost = 0.6, Driftwood = 0.6, Temple = 0.3 },
+		Smuggler = { Coral = 0.5, Pebble = 0.3 },
+		Coral = { Smuggler = 0.5, Pebble = 0.4 },
+		Pebble = { Coral = 0.4, Gull = 0.4 },
+	},
+}
+
+-- Lasting progress (V7, server/Progress.lua) -------------------------------------------------------------
+-- SHINIES are what a goblin keeps; raid GOLD is what wins a raid. A raid pays PARTICIPATION to
+-- everyone who was there for MIN_PRESENT seconds, PER_GOLD for each gold banked (up to GOLD_CAP), a WIN
+-- bonus for the winner (a tie shares it) and an UNDERDOG bonus to a goblin who banked something and sits at or
+-- below the middle. At most RAID_CAP a raid. A pet costs 120 to 200: two to five raids.
+Config.PROGRESS = {
+	STORE = "LootGoblinsProfile_v1",
+	PARTICIPATION = 10,
+	PER_GOLD = 1,
+	GOLD_CAP = 30,
+	WIN = 25,
+	UNDERDOG = 5,
+	RAID_CAP = 70,
+	MIN_PRESENT = 90,
+	AUTOSAVE = 120,
+}
+Config.KIT_PRICE = 90 -- Starting a raid already carrying one piece of gear.
+-- Five pets, each a different VERB rather than a different percentage. Equipped one at a time.
+Config.PETS = {
+	Crab = {
+		name = "Tug Crab",
+		price = 120,
+		color = Color3.fromRGB(235, 110, 90),
+		effect = "Boat calls arrive on a 40% shorter wait.",
+	},
+	Gull = {
+		name = "Scout Gull",
+		price = 150,
+		color = Color3.fromRGB(240, 240, 245),
+		effect = "Shows how far the nearest waiting treasure is.",
+	},
+	Frog = {
+		name = "Spring Frog",
+		price = 140,
+		color = Color3.fromRGB(110, 220, 110),
+		effect = "Your dash recharges 35% faster.",
+	},
+	Tortoise = {
+		name = "Shell Tortoise",
+		price = 180,
+		color = Color3.fromRGB(110, 150, 90),
+		effect = "The first grapple catch on you each 30 s bounces off.",
+	},
+	Ghost = {
+		name = "Pocket Ghost",
+		price = 200,
+		color = Color3.fromRGB(190, 220, 255),
+		effect = "Poltergoblin recharges 25% faster.",
+	},
+}
+Config.PET_CRAB_RECALL = 0.6 -- Recall cooldown multiple.
+Config.PET_FROG_DASH = 0.65 -- Dash cooldown multiple.
+Config.PET_GHOST_COOLDOWN = 0.75 -- Poltergoblin cooldown multiple.
+Config.PET_TORTOISE_REST = 30 -- Seconds before the shell works again.
+Config.PET_GULL_RANGE = 1400 -- How far the gull sees.
+-- Robux. EMPTY until a human creates Developer Products and pastes their ids here:
+--   [123456789] = { pet = "Gull" },
+Config.MONETIZATION = { PRODUCTS = {} }
+
+-- Navigation (V7). The compass strip only lists treasure this close (all nineteen across the top was the
+-- clutter), and a carrier gets a waypoint arrow toward the Hoard.
+Config.COMPASS_LOOT_RANGE = 1300
+Config.WAYPOINT_HIDE_WITHIN = 90 -- The arrow goes away this close to the Hoard: you are there.
+
+-- The Leviathan's body (server/Leviathan.lua): drawn by the Sleeper's tick, no health, no AI of its own.
+Config.LEVIATHAN = {
+	HUMPS = 7,
+	NECK = 12,
+	RADIUS = 150, -- Of the circle its back swims.
+	SWIM_SPEED = 22,
+	LURK_MIN = 0.25, -- How much of its back shows when the Sleeper is hardly aware.
+	GAP = 0.12, -- Radians between humps.
+	ARC_HEIGHT = 75,
+	NECK_GAP = 0.05,
+}
+
+-- Recall (B): a boat for a goblin with none. See server/Recall.lua.
+Config.RECALL_COOLDOWN = 45 -- Per goblin.
+Config.RECALL_OFFSHORE = 520 -- Studs out from the shore the boat starts: about four seconds of sailing.
+Config.RECALL_SHORE_MAX = 420 -- The goblin must be this near water a skiff can use.
+Config.RECALL_BOAT_CLEAR = 70 -- No call while a free boat is this close.
+Config.RECALL_ARRIVE = 45 -- The boat stops this far from the shore point.
+Config.RECALL_TIMEOUT = 32 -- Seconds before a boat that is stuck is put beside the shore.
+Config.RECALL_EXTRA_MAX = 6 -- Skiffs Recall may build when every boat is busy.
 
 -- Carrying and fighting ---------------------------------------------------------
 -- A carrier can swing, but it is a slow, short, tiring bash: the sword stays a way to contest loot

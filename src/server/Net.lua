@@ -32,6 +32,12 @@ Net.BoatFx = remote("BoatFxRequest") -- (kind): the driver's boat did something 
 Net.BoatBoard = remote("BoatBoardRequest") -- A grapple reeled the player onto a boat: seat them.
 Net.Cannon = remote("CannonRequest")
 Net.Keg = remote("KegRequest")
+-- V7:
+Net.BoatJump = remote("BoatJumpRequest") -- The hop, for a boat the server is simulating (a driven one hops on its own client).
+Net.BoatRecall = remote("BoatRecallRequest") -- B: call a boat to the nearest shore.
+Net.Steal = remote("StealRequest") -- (target Player): E at close range on a carrier you have knocked down.
+Net.Deploy = remote("DeployRequest") -- (islandId | nil): choose where to land, and (second argument true) go.
+Net.Shop = remote("ShopRequest") -- (action, id): buy, equip or unequip something with Shinies.
 Net.GameEvent = remote("GameEvent")
 folder.Parent = ReplicatedStorage
 

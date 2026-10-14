@@ -49,6 +49,12 @@ local Navy = require(script.Parent.Navy)
 local Troubles = require(script.Parent.Troubles)
 local Escalation = require(script.Parent.Escalation)
 local Coins = require(script.Parent.Coins)
+local Recall = require(script.Parent.Recall)
+local Skyship = require(script.Parent.Skyship)
+local Gear = require(script.Parent.Gear)
+local Alerts = require(script.Parent.Alerts)
+local Progress = require(script.Parent.Progress)
+local Monetization = require(script.Parent.Monetization)
 local Creatures = require(script.Parent.Creatures)
 require(script.Parent.Bestiary)
 require(script.Parent.BestiaryMinor)
@@ -78,6 +84,8 @@ print(
 	)
 )
 Boats.build(refs)
+Skyship.build(refs)
+Gear.build(refs)
 Loot.build(refs)
 Poltergoblin.init(refs)
 Destructibles.build(refs)
@@ -93,6 +101,8 @@ Escalation.build(refs)
 Creatures.build(refs)
 Combat.init(refs)
 Raid.init(refs)
+Progress.init()
+Monetization.init()
 Storms.reset()
 
 -- Salvage: a crate floats where a patrol ship went down, and where a storm blew itself out.
@@ -143,6 +153,7 @@ Loot.Taken:Connect(function(item, player, fromSpot, fromPlayer)
 	local def = item.def
 	Creatures.onTaken(item, player, fromSpot)
 	if fromSpot then
+		Alerts.stolen(def.island, player)
 		Heat.add(def.heat)
 		Net.broadcast("Stolen", {
 			name = player.DisplayName,
@@ -160,7 +171,7 @@ Loot.Taken:Connect(function(item, player, fromSpot, fromPlayer)
 			{ name = player.DisplayName, userId = player.UserId, from = fromPlayer.DisplayName, itemName = def.name }
 		)
 		Net.feed(
-			player.DisplayName .. " grappled the " .. def.name .. " from " .. fromPlayer.DisplayName .. "!",
+			player.DisplayName .. " snatched the " .. def.name .. " from " .. fromPlayer.DisplayName .. "!",
 			def.color
 		)
 	else
@@ -242,6 +253,8 @@ local function onCharacter(player, character)
 	humanoid.JumpPower = Config.JUMP_POWER
 	Movement.refill(player)
 	Kegs.refill(player)
+	Combat.standUp(player, 0) -- a new body starts on its feet
+	Skyship.onCharacter(player)
 	Combat.giveSword(player, character)
 	humanoid.Died:Connect(function()
 		Loot.dropFor(player, "death")
@@ -277,6 +290,9 @@ Players.PlayerRemoving:Connect(function(player)
 	Kegs.forget(player)
 	Mechanisms.forget(player)
 	Coins.forget(player)
+	Recall.forget(player)
+	Skyship.forget(player)
+	Progress.forget(player)
 end)
 
 Net.Throw.OnServerEvent:Connect(function(player)
@@ -291,6 +307,8 @@ end)
 Net.Move.OnServerEvent:Connect(function(player, kind)
 	if kind == "dash" or kind == "airjump" then
 		Movement.request(player, kind)
+	elseif kind == "getup" then
+		Combat.getUp(player)
 	end
 end)
 Net.BoatBoost.OnServerEvent:Connect(function(player)
@@ -308,9 +326,36 @@ Net.BoatBoard.OnServerEvent:Connect(function(player)
 	end
 end)
 Net.BoatFx.OnServerEvent:Connect(function(player, kind)
-	if kind == "mini1" or kind == "mini2" or kind == "landing" then
+	if kind == "mini1" or kind == "mini2" or kind == "landing" or kind == "jump" then
 		Boats.relayFx(player, kind)
 	end
+end)
+Net.Deploy.OnServerEvent:Connect(function(player, action, a, b)
+	if action == "choose" then
+		Skyship.choose(player, a)
+	elseif action == "aim" then
+		Skyship.nudge(player, a, b)
+	elseif action == "fire" then
+		Skyship.fire(player)
+	elseif action == "leave" then
+		Skyship.leaveCannon(player)
+	end
+end)
+Net.Shop.OnServerEvent:Connect(function(player, action, id)
+	if action == "robux" then
+		Monetization.prompt(player, id)
+	else
+		Progress.handle(player, action, id)
+	end
+end)
+Net.Steal.OnServerEvent:Connect(function(player, target)
+	Combat.stealFrom(player, target)
+end)
+Net.BoatJump.OnServerEvent:Connect(function(player)
+	Boats.jump(player)
+end)
+Net.BoatRecall.OnServerEvent:Connect(function(player)
+	Recall.request(player)
 end)
 
 -- The world is ready: let everyone in (and put anyone who joined early at the spawn).
@@ -341,12 +386,16 @@ end
 RunService.Heartbeat:Connect(function(dt)
 	local active = Raid.isActive()
 	Boats.tick(dt)
+	Recall.tick()
+	Skyship.tick(dt)
+	Progress.tick(dt, active)
 	if active then
 		Loot.tick()
 		Heat.tick(dt, carryHeatRate())
 		Threats.tick(dt)
 		Navy.tick()
 		Escalation.tick()
+		Alerts.tick(dt)
 	end
 	Storms.tick(dt, active)
 	Cannons.tick(dt)

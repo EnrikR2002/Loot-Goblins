@@ -256,6 +256,44 @@ local function buildBoat(spawn)
 	model.PrimaryPart = hull
 	buildVisuals(spec, typeName, model, hull, trim)
 
+	-- V7: the Navy is WHITE, so a patrol ship stands out against pirate wood and the sea: white hull and
+	-- superstructure, a deep blue stripe and sails, brass trim. (An original livery: no real-world flag.)
+	if typeName == "navy" then
+		local WHITE, BLUE, BRASS =
+			Color3.fromRGB(246, 248, 252), Color3.fromRGB(30, 70, 160), Color3.fromRGB(230, 190, 80)
+		for _, p in ipairs(model:GetDescendants()) do
+			if p:IsA("BasePart") and p.Transparency < 0.9 then
+				local n = p.Name
+				if n == "Sail" or n == "Flag" then
+					p.Color, p.Material = BLUE, Enum.Material.Fabric
+				elseif n == "Cannon" or n == "Anchor" then
+					p.Color = Color3.fromRGB(60, 62, 72)
+				else
+					p.Color, p.Material = WHITE, Enum.Material.SmoothPlastic
+				end
+			end
+		end
+		hull.Color, hull.Material = WHITE, Enum.Material.SmoothPlastic
+		detail(
+			model,
+			hull,
+			"Stripe",
+			Vector3.new(size.X + 0.2, 0.9, size.Z * 0.8),
+			CFrame.new(0, 0.4, 0),
+			BLUE,
+			Enum.Material.SmoothPlastic
+		)
+		detail(
+			model,
+			hull,
+			"BowPlate",
+			Vector3.new(size.X * 0.5, 1.4, 1.6),
+			CFrame.new(0, 0.9, -size.Z / 2 - 0.2),
+			BRASS,
+			Enum.Material.Metal
+		)
+	end
+
 	-- The bow's underside slopes up, so a hull that meets a beach rides up onto it instead of
 	-- hitting it like a wall. (An upside-down wedge in front of the hull box.) Players' boats
 	-- only: an AI ship that overshoots should bump the shore, not climb the island.
@@ -378,6 +416,11 @@ local function occupants(boat)
 	return list
 end
 
+-- Is anybody sitting in this boat?
+function Boats.occupied(boat)
+	return #occupants(boat) > 0
+end
+
 local function driverOf(boat)
 	local humanoid = boat.driver and boat.driver.Occupant
 	return humanoid and Players:GetPlayerFromCharacter(humanoid.Parent) or nil
@@ -469,6 +512,14 @@ end
 
 -- The driver pressed Shift: a burst of speed, then a cooldown. (The driver's client starts its
 -- own burst at once and this confirms it; the speed check below uses this clock, not theirs.)
+-- The driver's Space, for a boat the server is simulating (a client-simulated one hops on its own).
+function Boats.jump(player)
+	local boat = Boats.drivenBy(player)
+	if boat and boat.pilot == nil and boat.state == "float" then
+		boat.jumpQueued = true
+	end
+end
+
 function Boats.boost(player)
 	local boat = Boats.drivenBy(player)
 	if not boat or boat.state ~= "float" or boat.moored then
@@ -476,6 +527,7 @@ function Boats.boost(player)
 	end
 	local t = now()
 	if t >= boat.boostReadyAt then
+		boat.impactGraceUntil = math.max(boat.impactGraceUntil, t + 0.3) -- The boost's punch is not a crash.
 		boat.boostUntil = t + Config.BOAT_BOOST_TIME
 		boat.boostReadyAt = t + Config.BOAT_BOOST_COOLDOWN
 		boat.model:SetAttribute("BoostEndsAt", boat.boostUntil)
@@ -504,6 +556,8 @@ function Boats.relayFx(player, kind)
 		return
 	end
 	boat.lastFxAt = t
+	-- A burst or a hop is a sudden change of speed that is not a crash.
+	boat.impactGraceUntil = math.max(boat.impactGraceUntil, t + 0.3)
 	Net.broadcast("BoatFx", { kind = kind, position = boat.hull.Position, userId = player.UserId })
 end
 
@@ -861,6 +915,16 @@ function Boats.build(worldRefs)
 	value.Parent = ReplicatedStorage
 end
 
+-- An extra boat for players (V7's recall: when every boat is in use or lost). It is an ordinary
+-- boat in every way except that it is not one of the dock boats, so it is deleted at the end of
+-- the raid (Boats.reset) or when Recall retires it.
+function Boats.spawnPlayerBoat(typeName, cframe)
+	local boat = buildBoat({ cf = cframe, type = typeName })
+	boat.extra = true
+	table.insert(Boats.list, boat)
+	return boat
+end
+
 -- An AI-driven boat (Navy). Returns the boat; set boat.input each frame to steer it.
 function Boats.spawnAI(typeName, cframe)
 	local boat = buildBoat({ cf = cframe, type = typeName, ai = true })
@@ -893,6 +957,8 @@ local function simulate(boat, dt, t)
 	elseif boat.driver and boat.driver.Occupant then
 		input = seatInput
 		input.throttle, input.steer, input.drift = boat.driver.ThrottleFloat, boat.driver.SteerFloat, boat.driftHeld
+		input.jump = boat.jumpQueued == true
+		boat.jumpQueued = false
 	else
 		input = IDLE
 	end
@@ -1018,7 +1084,7 @@ end
 
 function Boats.reset()
 	for _, boat in ipairs(table.clone(Boats.list)) do
-		if boat.ai then
+		if boat.ai or boat.extra then
 			Boats.remove(boat)
 		else
 			eject(boat)

@@ -11,6 +11,11 @@
 -- 30% closer. Distances are chosen from travel time: a skiff does 108 studs a second, so 1000
 -- studs is about nine seconds of sailing.
 --
+-- V7 (a server of 32, boats a quarter faster): every island beyond the home ring moved 20% farther
+-- from Goblin Cove along the same line, the islands themselves keeping their size. A skiff now
+-- does 135, so the farthest crossing (Skull Rock, 4,500 studs) is about 33 s, V6's was 34 s. The
+-- home ring and Twin Stacks' offset from Crystal Isle (a zipline joins them) did not change.
+--
 --   HOME BAY         Goblin Cove behind a reef arc, with four small islands 6-8 s away.
 --   THE CROSSING     Crossroads Ruins, 10 s out, just beyond the Gate: the hub of the map.
 --   WESTERN SHALLOWS Shipwreck Shoals and the Tide Vault round a sandy shelf (14-18 s).
@@ -55,7 +60,7 @@ Archipelago.islands = {
 		id = "Cross",
 		name = "CROSSROADS RUINS",
 		x = 0,
-		z = 600,
+		z = 380,
 		r = 400,
 		ring = 2,
 		color = Color3.fromRGB(255, 245, 220),
@@ -64,8 +69,8 @@ Archipelago.islands = {
 	{
 		id = "Windmill",
 		name = "WINDMILL HILLS",
-		x = 1330,
-		z = 1420,
+		x = 1596,
+		z = 1364,
 		r = 330,
 		ring = 2,
 		color = Color3.fromRGB(190, 235, 120),
@@ -73,18 +78,18 @@ Archipelago.islands = {
 	{
 		id = "Crystal",
 		name = "CRYSTAL ISLE",
-		x = 1360,
-		z = 520,
+		x = 1632,
+		z = 284,
 		r = 330,
 		ring = 2,
 		color = Color3.fromRGB(215, 110, 255),
 	},
-	{ id = "Twin", name = "TWIN STACKS", x = 1010, z = 240, r = 70, ring = 2, color = Color3.fromRGB(235, 235, 240) },
+	{ id = "Twin", name = "TWIN STACKS", x = 1282, z = 4, r = 70, ring = 2, color = Color3.fromRGB(235, 235, 240) },
 	{
 		id = "Maelstrom",
 		name = "MAELSTROM ROCK",
-		x = 2100,
-		z = 1050,
+		x = 2520,
+		z = 920,
 		r = 120,
 		ring = 2,
 		color = Color3.fromRGB(150, 190, 255),
@@ -93,20 +98,20 @@ Archipelago.islands = {
 	{
 		id = "Shoals",
 		name = "SHIPWRECK SHOALS",
-		x = -1180,
-		z = 740,
+		x = -1416,
+		z = 548,
 		r = 360,
 		ring = 2,
 		color = Color3.fromRGB(255, 160, 70),
 	},
-	{ id = "Tide", name = "TIDE VAULT", x = -1900, z = 1420, r = 300, ring = 2, color = Color3.fromRGB(110, 230, 255) },
-	{ id = "Kelp", name = "KELP CAY", x = -1540, z = 1100, r = 90, ring = 2, color = Color3.fromRGB(150, 210, 140) },
+	{ id = "Tide", name = "TIDE VAULT", x = -2280, z = 1364, r = 300, ring = 2, color = Color3.fromRGB(110, 230, 255) },
+	{ id = "Kelp", name = "KELP CAY", x = -1848, z = 980, r = 90, ring = 2, color = Color3.fromRGB(150, 210, 140) },
 	-- Navy Waters.
 	{
 		id = "Tangle",
 		name = "TANGLE ISLE",
-		x = -1180,
-		z = -260,
+		x = -1416,
+		z = -652,
 		r = 380,
 		ring = 2,
 		color = Color3.fromRGB(110, 230, 110),
@@ -114,8 +119,8 @@ Archipelago.islands = {
 	{
 		id = "Fort",
 		name = "FORT BARNACLE",
-		x = -2040,
-		z = -780,
+		x = -2448,
+		z = -1276,
 		r = 380,
 		ring = 3,
 		color = Color3.fromRGB(255, 110, 100),
@@ -125,20 +130,20 @@ Archipelago.islands = {
 	{
 		id = "Pilgrim",
 		name = "PILGRIM'S ROCK",
-		x = 110,
-		z = -80,
+		x = 132,
+		z = -436,
 		r = 80,
 		top = 30,
 		ring = 2,
 		color = Color3.fromRGB(255, 230, 150),
 	},
-	{ id = "Temple", name = "SUN TEMPLE", x = 0, z = -660, r = 460, ring = 3, color = Color3.fromRGB(255, 205, 40) },
-	{ id = "Ember", name = "EMBER ISLE", x = 1860, z = -440, r = 400, ring = 3, color = Color3.fromRGB(255, 120, 50) },
+	{ id = "Temple", name = "SUN TEMPLE", x = 0, z = -1132, r = 460, ring = 3, color = Color3.fromRGB(255, 205, 40) },
+	{ id = "Ember", name = "EMBER ISLE", x = 2232, z = -868, r = 400, ring = 3, color = Color3.fromRGB(255, 120, 50) },
 	{
 		id = "Lantern",
 		name = "LANTERN KEY",
-		x = 1380,
-		z = -960,
+		x = 1656,
+		z = -1492,
 		r = 100,
 		ring = 3,
 		color = Color3.fromRGB(255, 200, 110),
@@ -146,8 +151,8 @@ Archipelago.islands = {
 	{
 		id = "Frost",
 		name = "FROST SPIRE",
-		x = 800,
-		z = -1480,
+		x = 960,
+		z = -2116,
 		r = 380,
 		ring = 3,
 		color = Color3.fromRGB(170, 230, 255),
@@ -155,8 +160,8 @@ Archipelago.islands = {
 	{
 		id = "Bone",
 		name = "LEVIATHAN'S REST",
-		x = -820,
-		z = -1460,
+		x = -984,
+		z = -2092,
 		r = 360,
 		ring = 3,
 		color = Color3.fromRGB(240, 235, 215),
@@ -164,8 +169,8 @@ Archipelago.islands = {
 	{
 		id = "Driftwood",
 		name = "DRIFTWOOD KEY",
-		x = -1450,
-		z = -1240,
+		x = -1740,
+		z = -1828,
 		r = 100,
 		ring = 3,
 		color = Color3.fromRGB(200, 170, 130),
@@ -173,8 +178,8 @@ Archipelago.islands = {
 	{
 		id = "Skull",
 		name = "SKULL ROCK",
-		x = 2030,
-		z = -1420,
+		x = 2436,
+		z = -2044,
 		r = 300,
 		ring = 3,
 		color = Color3.fromRGB(150, 255, 190),
@@ -184,13 +189,13 @@ Archipelago.islands = {
 -- Region names for the world map: where you are in the sea, in a word.
 Archipelago.regions = {
 	{ name = "HOME BAY", x = 0, z = 2270 },
-	{ name = "THE CROSSING", x = -640, z = 1110 },
-	{ name = "WESTERN SHALLOWS", x = -1960, z = 1020 },
-	{ name = "EASTERN REACH", x = 1900, z = 800 },
-	{ name = "NAVY WATERS", x = -1800, z = -200 },
-	{ name = "THE LONG REACH", x = 600, z = -60 },
-	{ name = "THE FAR NORTH", x = -20, z = -1800 },
-	{ name = "THE CINDERS", x = 1560, z = -1240 },
+	{ name = "THE CROSSING", x = -768, z = 992 },
+	{ name = "WESTERN SHALLOWS", x = -2352, z = 884 },
+	{ name = "EASTERN REACH", x = 2280, z = 620 },
+	{ name = "NAVY WATERS", x = -2160, z = -580 },
+	{ name = "THE OPEN SEA", x = 720, z = -412 },
+	{ name = "THE FAR NORTH", x = -24, z = -2400 },
+	{ name = "THE CINDERS", x = 1872, z = -1828 },
 }
 
 Archipelago.byId = {}

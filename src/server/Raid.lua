@@ -5,7 +5,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
-local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Loot = require(script.Parent.Loot)
 local Heat = require(script.Parent.Heat)
@@ -23,6 +22,12 @@ local Navy = require(script.Parent.Navy)
 local Storms = require(script.Parent.Storms)
 local Troubles = require(script.Parent.Troubles)
 local Escalation = require(script.Parent.Escalation)
+local Recall = require(script.Parent.Recall)
+local Combat = require(script.Parent.Combat)
+local Skyship = require(script.Parent.Skyship)
+local Gear = require(script.Parent.Gear)
+local Alerts = require(script.Parent.Alerts)
+local Progress = require(script.Parent.Progress)
 
 local Raid = {}
 Raid.phase = "intermission"
@@ -30,6 +35,7 @@ Raid.phase = "intermission"
 local refs
 local phaseEndsAt = 0
 local lastCallSent = false
+local rushSent = false
 
 local function now()
 	return workspace:GetServerTimeNow()
@@ -58,26 +64,6 @@ function Raid.setupPlayer(player)
 	leaderstats.Parent = player
 end
 
--- Everyone back to the cove, off any boat seat.
-local function teleportHome()
-	for i, player in ipairs(Players:GetPlayers()) do
-		local root, humanoid = Util.aliveRoot(player)
-		if root then
-			local seat = humanoid.SeatPart
-			if seat then
-				local seatWeld = seat:FindFirstChild("SeatWeld")
-				if seatWeld then
-					seatWeld:Destroy()
-				end
-				humanoid.Sit = false
-			end
-			local points = refs.homePoints
-			root.CFrame = points[(i - 1) % #points + 1]
-			root.AssemblyLinearVelocity = Vector3.zero
-		end
-	end
-end
-
 -- Puts every system back to the start-of-raid state.
 local function resetWorld()
 	Poltergoblin.cancelAll()
@@ -94,13 +80,20 @@ local function resetWorld()
 	Cannons.reset()
 	Kegs.reset()
 	Boats.reset()
+	Recall.reset()
+	Gear.reset()
+	Alerts.reset()
+	Combat.reset()
 	Coins.reset()
 	Creatures.reset()
 end
 
 function Raid.start()
 	resetWorld()
-	teleportHome()
+	-- V7: the match starts aboard the skyship (nobody walks out of the cove). Anyone who is still at
+	-- home (a late spawn, a death in the intermission) is put on the deck first.
+	Skyship.boardAll()
+	Progress.onRaidStart()
 	for _, player in ipairs(Players:GetPlayers()) do
 		local gold = stat(player, "Gold")
 		if gold then
@@ -108,8 +101,10 @@ function Raid.start()
 		end
 	end
 	lastCallSent = false
+	rushSent = false
 	setPhase("raid", now() + Config.RAID_DURATION)
 	Loot.setEnabled(true)
+	Skyship.open()
 	Net.broadcast("RaidStart", { endsAt = phaseEndsAt })
 end
 
@@ -139,9 +134,19 @@ function Raid.finish()
 			end
 		end
 	end
+	-- What the goblins keep: Shinies, once each (Progress guards a second payout for the same raid).
+	local awardList = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		local gold = stat(player, "Gold")
+		local value = gold and gold.Value or 0
+		table.insert(awardList, { player = player, gold = value, won = best > 0 and value == best })
+	end
+	Progress.award(awardList)
 	-- Loot still out there is lost; the world goes quiet until the next raid.
 	resetWorld()
 	setPhase("intermission", now() + Config.INTERMISSION)
+	Skyship.reset()
+	Skyship.boardAll() -- the intermission is spent on the deck, choosing where to land
 	Net.broadcast("RaidEnd", { results = results, winners = winners, endsAt = phaseEndsAt })
 end
 
@@ -151,6 +156,14 @@ end
 
 function Raid.onBanked(item, player)
 	local value = item.bankedValue or item.def.value
+	if Raid.phase == "raid" and phaseEndsAt - now() <= Config.FINAL_RUSH then
+		local rushed = math.floor(value * Config.FINAL_RUSH_MULT + 0.5)
+		Net.feed(
+			string.format("FINAL RUSH: +%d extra gold for %s.", rushed - value, player.DisplayName),
+			Color3.fromRGB(255, 120, 70)
+		)
+		value = rushed
+	end
 	local gold = stat(player, "Gold")
 	if gold then
 		gold.Value += value
@@ -169,6 +182,17 @@ end
 function Raid.tick()
 	local t = now()
 	if Raid.phase == "raid" then
+		if not rushSent and phaseEndsAt - t <= Config.FINAL_RUSH then
+			rushSent = true
+			Net.message(
+				string.format(
+					"FINAL RUSH: BANKING PAYS %d%% MORE!",
+					math.floor((Config.FINAL_RUSH_MULT - 1) * 100 + 0.5)
+				),
+				4,
+				Color3.fromRGB(255, 120, 70)
+			)
+		end
 		if not lastCallSent and phaseEndsAt - t <= Config.LAST_CALL then
 			lastCallSent = true
 			Net.broadcast("LastCall", { seconds = Config.LAST_CALL })

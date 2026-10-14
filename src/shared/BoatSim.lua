@@ -52,13 +52,31 @@ function BoatSim.new(hull, spec)
 		airTime = 0,
 		flippedFor = 0,
 		gateAt = {},
+		jumpReadyAt = 0,
+		wasBoosting = false,
+		grounded = false, -- On land (or a beach): the ground, not the water, is holding the hull.
 		out = {},
 	}
 end
 
+-- V7: on land the hull drives slowly instead of being shoved (Config.BOAT_LAND_*), and a jump needs
+-- something under the hull.
+local function groundParams(boat)
+	local params = boat.rayParams
+	if not params then
+		params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.IgnoreWater = true
+		params.FilterDescendantsInstances = { boat.hull.Parent }
+		boat.rayParams = params
+	end
+	return params
+end
+
 -- Steps the boat. Returns boat.out: { wet, speed, forwardSpeed, slip, boosting, drifting,
--- charge, level, event }. event is "mini1" / "mini2" (a drift burst), "landing" (a clean one)
--- or "splash" (any other landing), for effects only.
+-- charge, level, event, jumped, grounded }. event is "mini1" / "mini2" (a drift burst), "landing"
+-- (a clean one) or "splash" (any other landing), for effects only. input.jump is one frame of the
+-- jump key; jumped says the hull left the water (or the ground) this step.
 function BoatSim.step(boat, input, dt, t)
 	local hull = boat.hull
 	local spec = boat.spec
@@ -93,6 +111,15 @@ function BoatSim.step(boat, input, dt, t)
 	end
 	local wet = submerged / count
 
+	-- Is the ground holding the hull up (a beach, an island, a dock)? Only asked when the water is not.
+	local grounded = false
+	if wet < 0.5 and not boat.sinking then
+		local hit = workspace:Raycast(position, Vector3.new(0, -(size.Y / 2 + 2.2), 0), groundParams(boat))
+		grounded = hit ~= nil and hit.Normal.Y >= Config.BOAT_LAND_SLOPE
+	end
+	boat.grounded = grounded and wet < 0.2
+	grounded = boat.grounded
+
 	local throttle, steer = input.throttle or 0, input.steer or 0
 	local sinking = boat.sinking
 	if boat.moored or sinking then
@@ -100,6 +127,12 @@ function BoatSim.step(boat, input, dt, t)
 	end
 	local boosting = t < boat.boostUntil
 	local mini = t < boat.miniUntil
+	-- The moment a boost starts it kicks (a hoop's own kick marks wasBoosting, so it is not doubled).
+	if boosting and not boat.wasBoosting and wet > 0.3 and not sinking then
+		hull:ApplyImpulse(Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z).Unit * Config.BOAT_BOOST_PUNCH * mass)
+		out.punched = true
+	end
+	boat.wasBoosting = boosting
 
 	-- Horizontal motion relative to the water's own flow.
 	local flowX, flowZ = Sea.currentAt(position.X, position.Z)
@@ -117,7 +150,16 @@ function BoatSim.step(boat, input, dt, t)
 
 	-- Drift. While the key is held the keel lets go; an actual slide (steering, at speed, in
 	-- the water) charges a burst that fires when the key is released.
-	local wantDrift = input.drift == true and not boat.moored and not sinking
+	-- A hop from a charged drift lets the burst go (the key is treated as released).
+	local jumpNow = input.jump == true
+		and t >= boat.jumpReadyAt
+		and not boat.moored
+		and not sinking
+		and (wet > 0.3 or grounded)
+	local wantDrift = input.drift == true
+		and not boat.moored
+		and not sinking
+		and not (jumpNow and boat.driftCharge >= Config.BOAT_DRIFT_CHARGE[1])
 	local loose = wantDrift and wet > 0.2 and speedMag > spec.maxSpeed * Config.BOAT_DRIFT_MIN_SPEED
 	local level = 0
 	if wantDrift then
@@ -149,6 +191,11 @@ function BoatSim.step(boat, input, dt, t)
 		* payloadFactor
 		* (boosting and Config.BOAT_BOOST_MULT or 1)
 		* (mini and Config.BOAT_MINI_MULT or 1)
+	if grounded then
+		-- On land: a slow, heavy drive. A boost or a burst does not raise it.
+		accel = spec.accel * payloadFactor * Config.BOAT_LAND_THRUST
+		topSpeed = spec.maxSpeed * payloadFactor * Config.BOAT_LAND_SPEED
+	end
 	local drive
 	if throttle >= 0 then
 		if forwardSpeed < -4 then
@@ -166,13 +213,21 @@ function BoatSim.step(boat, input, dt, t)
 	-- the water the crew can only shove it along slowly, either way, so a boat run up a beach
 	-- can always be worked back to the sea and nobody is stranded.
 	if wet < 0.15 then
-		drive = speedAbs < Config.BOAT_BEACH_SPEED and throttle * spec.accel * Config.BOAT_BEACH_SHOVE or 0
+		if grounded then
+			drive = throttle >= 0 and throttle * accel or throttle * accel * Config.BOAT_REVERSE * 2
+		else
+			drive = speedAbs < Config.BOAT_BEACH_SPEED and throttle * spec.accel * Config.BOAT_BEACH_SHOVE or 0
+		end
 	else
 		drive *= math.min(1, wet * 2.2)
 	end
 	-- Drag sets the top speed under power. Off the throttle a hull coasts a long way (S is
 	-- the brake), so momentum is something you carry through a manoeuvre.
 	local dragForward = accel / topSpeed * (0.25 + 0.75 * wet) * (throttle == 0 and Config.BOAT_COAST_DRAG or 1)
+	if grounded then
+		-- Wheels-in-mud drag: the full rate (no easing for being out of the water), and heavy off the throttle.
+		dragForward = accel / topSpeed * (throttle == 0 and Config.BOAT_LAND_COAST or 1)
+	end
 	-- Roblox's own Terrain water also drags on the hull, by an amount that depends on the hull
 	-- and that this code does not control. So measure it: whatever slowed the hull along its
 	-- length since the last step, beyond what these forces did, is the water (or a collision,
@@ -191,8 +246,9 @@ function BoatSim.step(boat, input, dt, t)
 	-- burst that follows one, shed far less: sliding on purpose is not a mistake.
 	local grip = spec.grip * (loose and spec.driftGrip or 1)
 	local redirected = relative
-	if speedMag > 1 and wet > 0 then
-		local keel = math.min(1, grip * math.max(wet, 0.15) * dt)
+	local traction = math.max(wet, grounded and 0.55 or 0)
+	if speedMag > 1 and traction > 0 then
+		local keel = math.min(1, grip * math.max(traction, 0.15) * dt)
 		local aligned = forward * (forwardSpeed >= 0 and 1 or -1) * speedMag
 		redirected = relative:Lerp(aligned, keel)
 		local loss = (loose or mini) and Config.BOAT_DRIFT_SLIP_LOSS or Config.BOAT_SLIP_LOSS
@@ -216,7 +272,7 @@ function BoatSim.step(boat, input, dt, t)
 	if loose then
 		authority *= spec.driftTurn
 	end
-	local control = wet > 0 and math.max(wet, 0.3) or Config.BOAT_AIR_CONTROL
+	local control = wet > 0 and math.max(wet, 0.3) or (grounded and Config.BOAT_LAND_TURN or Config.BOAT_AIR_CONTROL)
 	local yawRate = spec.turn * authority * control
 	if loose and speedMag > 1 and lateralSpeed * steer < 0 then
 		-- In a drift the hull swings quickly out to a slide angle and then holds it (turning
@@ -247,12 +303,33 @@ function BoatSim.step(boat, input, dt, t)
 	local righting = 14 * (0.55 + 0.45 * wet)
 	hull:ApplyAngularImpulse((cf.LookVector * lean + tilt * righting - flatSpin * 2.2 * (0.4 + wet)) * rollInertia * dt)
 
+	-- The hop. (After the forces, so the spring does not eat it.)
+	out.jumped = false
+	if jumpNow then
+		boat.jumpReadyAt = t + Config.BOAT_JUMP_COOLDOWN
+		hull:ApplyImpulse(Vector3.new(0, Config.BOAT_JUMP_SPEED * mass, 0))
+		out.jumped = true
+	end
+
 	-- Air time, and a burst for landing clean (upright, pointing the way you travel).
-	if wet <= 0 then
+	if wet <= 0 and not grounded then
 		boat.airTime += dt
+	elseif grounded then
+		-- Down on land: a thump, never a burst.
+		if boat.airTime >= Config.BOAT_AIR_MIN then
+			out.event = "splash"
+		end
+		boat.airTime = 0
 	elseif wet >= 0.3 then
 		if boat.airTime >= Config.BOAT_AIR_MIN then
-			if up.Y > 0.8 and slip < 0.3 and forwardSpeed > spec.maxSpeed * 0.4 and not sinking then
+			-- A burst needs a real flight (a ramp, a boosted hop), not a plain hop from rest.
+			if
+				boat.airTime >= Config.BOAT_LANDING_AIR
+				and up.Y > 0.8
+				and slip < 0.3
+				and forwardSpeed > spec.maxSpeed * 0.4
+				and not sinking
+			then
 				boat.miniUntil = math.max(boat.miniUntil, t + Config.BOAT_MINI_TIME[1])
 				hull:ApplyImpulse(forward * Config.BOAT_LANDING_KICK * mass)
 				out.event = "landing"
@@ -281,6 +358,7 @@ function BoatSim.step(boat, input, dt, t)
 	end
 
 	out.wet = wet
+	out.grounded = grounded
 	out.speed = horizontal.Magnitude
 	out.forwardSpeed = forwardSpeed
 	out.slip = slip
@@ -309,6 +387,7 @@ function BoatSim.gate(boat, gates, t, apply)
 			if gate.kind == "boost" then
 				boat.gateAt[index] = t
 				boat.boostUntil = math.max(boat.boostUntil, t + Config.BOAT_HOOP_TIME)
+				boat.wasBoosting = true -- the hoop's own kick is enough: no second punch from the boost it starts
 				-- A CHAIN: each hoop taken within BOAT_CHAIN_WINDOW of the last kicks a little harder,
 				-- up to a cap, so holding a line through a run is worth more than clipping one hoop.
 				boat.chain = (t - (boat.chainAt or -math.huge) <= Config.BOAT_CHAIN_WINDOW) and (boat.chain or 0) + 1

@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Util = require(script.Parent.Util)
+local Gear = require(script.Parent.Gear)
 local Net = require(script.Parent.Net)
 
 local Movement = {}
@@ -80,7 +81,7 @@ function Movement.speedFor(player, root)
 		speed *= carry and Config.CARRY_SPRINT_MULT or Config.SPRINT_MULT
 	end
 	if root and Movement.inWater(root) then
-		speed *= Config.WATER_SPEED_MULT
+		speed *= Config.WATER_SPEED_MULT * (Gear.has(player, "Rebreather") and Config.REBREATHER_SWIM or 1)
 	end
 	speed *= boost[player] or 1
 	-- Half-stud steps keep WalkSpeed from replicating every frame.
@@ -129,7 +130,10 @@ local function tickStamina(player, root, humanoid, dt, t)
 			math.min(s.value + Config.STAMINA_REGEN * (chilled and Config.CHILL_REGEN or 1) * dt, Config.STAMINA_MAX)
 	end
 	if chilled then
-		s.value = math.max(s.value - Config.CHILL_DRAIN * dt, 0)
+		s.value = math.max(
+			s.value - Config.CHILL_DRAIN * (Gear.has(player, "FrostClaws") and Config.CLAWS_CHILL or 1) * dt,
+			0
+		)
 	end
 	if s.winded and s.value >= Config.STAMINA_RECOVER then
 		s.winded = false
@@ -176,7 +180,8 @@ function Movement.request(player, kind)
 	local s = staminaOf(player)
 	local t = os.clock()
 	if kind == "dash" then
-		if t - s.dashAt < Config.DASH_COOLDOWN * REQUEST_SLACK or not Movement.spend(player, Config.DASH_COST) then
+		local cooldown = Config.DASH_COOLDOWN * (Gear.petIs(player, "Frog") and Config.PET_FROG_DASH or 1)
+		if t - s.dashAt < cooldown * REQUEST_SLACK or not Movement.spend(player, Config.DASH_COST) then
 			return
 		end
 		s.dashAt = t

@@ -28,13 +28,15 @@ local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
 local boostRemote = remotes:WaitForChild("BoatBoostRequest")
 local driftRemote = remotes:WaitForChild("BoatDriftRequest")
 local fxRemote = remotes:WaitForChild("BoatFxRequest")
+local jumpRemote = remotes:WaitForChild("BoatJumpRequest")
 
 local gates = {}
 local sim, simHull = nil, nil
 local driftHeld = false
 local predictedReadyAt = 0 -- Our own guess at the boost cooldown until the server's arrives.
 local seenRefund = 0 -- The boat's BoostRefund total when we last looked (coins hand cooldown back).
-local input = { throttle = 0, steer = 0, drift = false }
+local input = { throttle = 0, steer = 0, drift = false, jump = false }
+local jumpQueued = false
 local info = { driving = false, speed = 0, charge = 0, level = 0, drifting = false }
 local onEvent = function(_kind, _position, _chain) end
 
@@ -78,6 +80,20 @@ function BoatDrive.boost()
 	if sim and t >= readyAt and not model:GetAttribute("Moored") then
 		sim.boostUntil = t + Config.BOAT_BOOST_TIME
 		predictedReadyAt = t + Config.BOAT_BOOST_COOLDOWN
+	end
+end
+
+-- Space in the driver's seat: a hop. Our own sim plays it this frame; if the server is the one
+-- simulating (the setting is off, or it took the hull back), it is asked to.
+function BoatDrive.jump()
+	local _, model = seatAndModel()
+	if not model then
+		return
+	end
+	if sim then
+		jumpQueued = true
+	else
+		jumpRemote:FireServer()
 	end
 end
 
@@ -139,10 +155,20 @@ RunService.PreSimulation:Connect(function(dt)
 	sim.payload = model:GetAttribute("Payload") or 0
 	sim.boostUntil = math.max(sim.boostUntil, model:GetAttribute("BoostEndsAt") or 0)
 	input.throttle, input.steer, input.drift = seat.ThrottleFloat, seat.SteerFloat, driftHeld
+	input.jump = jumpQueued
+	jumpQueued = false
 	-- The real frame time, down to 10 frames a second, so a slow client's boat still gets its
 	-- full thrust and buoyancy (the forces are impulses scaled by dt).
 	local out = BoatSim.step(sim, input, math.min(dt, Config.BOAT_MAX_STEP), t)
 	info.charge, info.level, info.drifting = out.charge, out.level, out.drifting
+	info.grounded = out.grounded == true
+	if out.jumped then
+		onEvent("jump", hull.Position)
+		fxRemote:FireServer("jump")
+	end
+	if out.punched then
+		onEvent("punch", hull.Position)
+	end
 	if out.event then
 		onEvent(out.event, hull.Position)
 		if out.event ~= "splash" then

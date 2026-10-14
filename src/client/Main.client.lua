@@ -3,6 +3,7 @@
 -- server events into HUD messages and effects. The server decides everything
 -- that matters, including sprint speed and stamina.
 local CollectionService = game:GetService("CollectionService")
+local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,6 +15,8 @@ local Hud = require(script.Parent.Hud)
 local Effects = require(script.Parent.Effects)
 local Weather = require(script.Parent.Weather)
 local BoatDrive = require(script.Parent.BoatDrive)
+local Skyship = require(script.Parent.Skyship)
+local Shop = require(script.Parent.Shop)
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
@@ -25,6 +28,8 @@ local moveRemote = remotes:WaitForChild("MoveRequest")
 local boatBoardRemote = remotes:WaitForChild("BoatBoardRequest")
 local cannonRemote = remotes:WaitForChild("CannonRequest")
 local kegRemote = remotes:WaitForChild("KegRequest")
+local recallRemote = remotes:WaitForChild("BoatRecallRequest")
+local stealRemote = remotes:WaitForChild("StealRequest")
 local eventRemote = remotes:WaitForChild("GameEvent")
 
 local generated = workspace:WaitForChild("LootGoblinsGenerated")
@@ -448,6 +453,74 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt)
 	end
 end)
 
+-- Cannon aiming aid (V7): while a cannon's prompt is showing, a ring marks where the shot will go (green when
+-- it can fire, red while it reloads) and the cannon says READY or how long is left. Every cannon in the
+-- game works this way (the skyship's deployment cannons have their own aim view: client/Skyship.lua).
+do
+	local ring, tag
+	local function ensure()
+		if not ring then
+			ring = Instance.new("Part")
+			ring.Name = "CannonAimRing"
+			ring.Shape = Enum.PartType.Cylinder
+			ring.Size = Vector3.new(0.4, 14, 14)
+			ring.Anchored = true
+			ring.CanCollide = false
+			ring.CanQuery = false
+			ring.CanTouch = false
+			ring.CastShadow = false
+			ring.Material = Enum.Material.Neon
+			ring.Transparency = 0.45
+		end
+		if not tag then
+			tag = Instance.new("BillboardGui")
+			tag.Name = "CannonStatus"
+			tag.Size = UDim2.fromOffset(150, 30)
+			tag.StudsOffset = Vector3.new(0, 5, 0)
+			tag.AlwaysOnTop = true
+			tag.MaxDistance = 60
+			local label = Instance.new("TextLabel")
+			label.Name = "Text"
+			label.Size = UDim2.fromScale(1, 1)
+			label.BackgroundTransparency = 1
+			label.Font = Enum.Font.GothamBlack
+			label.TextSize = 18
+			label.TextStrokeTransparency = 0.3
+			label.Parent = tag
+		end
+	end
+	RunService.RenderStepped:Connect(function()
+		local active
+		for prompt in pairs(shownPrompts) do
+			if prompt.Name == "CannonPrompt" and prompt.Parent then
+				active = prompt
+				break
+			end
+		end
+		if not active then
+			if ring then
+				ring.Parent = nil
+				tag.Parent = nil
+			end
+			return
+		end
+		ensure()
+		local base = active.Parent
+		local readyAt = base:GetAttribute("ReadyAt") or 0
+		local left = readyAt - now()
+		local ready = left <= 0
+		local hit = aimPoint()
+		ring.Color = ready and Color3.fromRGB(110, 255, 150) or Color3.fromRGB(255, 90, 80)
+		ring.CFrame = CFrame.new(hit + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		ring.Parent = workspace
+		tag.Adornee = base
+		tag.Parent = base
+		local text = tag:FindFirstChild("Text")
+		text.Text = ready and "READY" or string.format("RELOADING %.1f", left)
+		text.TextColor3 = ready and Color3.fromRGB(110, 255, 150) or Color3.fromRGB(255, 120, 100)
+	end)
+end
+
 -- G throws a powder keg where you aim.
 local function pressKeg()
 	local _, _, root = getCharacter()
@@ -725,6 +798,18 @@ local function soulSlash(position)
 	Effects.ring(position - Vector3.new(0, 2.5, 0), MARK_COLOR, 5)
 end
 
+-- At the wheel, Space hops the boat instead of climbing out of it (X leaves). The binding sits above
+-- Roblox's own jump control and only swallows the key while you are driving.
+ContextActionService:BindActionAtPriority("LootGoblinsBoatHop", function(_, state)
+	if not seatedInBoat() then
+		return Enum.ContextActionResult.Pass
+	end
+	if state == Enum.UserInputState.Begin then
+		BoatDrive.jump()
+	end
+	return Enum.ContextActionResult.Sink
+end, false, Enum.ContextActionPriority.High.Value + 10, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
+
 -- Input ------------------------------------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
@@ -746,7 +831,20 @@ UserInputService.InputBegan:Connect(function(input, processed)
 			pressDash()
 		end
 	elseif input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.ButtonA then
-		tryAirJump()
+		if player:GetAttribute("DownedUntil") then
+			moveRemote:FireServer("getup") -- caught: the server frees you once the minimum has passed
+		else
+			tryAirJump()
+		end
+	elseif input.KeyCode == Enum.KeyCode.X or input.KeyCode == Enum.KeyCode.ButtonY then
+		-- Leave the boat. (Space is the boat's hop now, so it no longer climbs out.)
+		local _, humanoid = getCharacter()
+		if humanoid and humanoid.SeatPart then
+			humanoid.Sit = false
+			humanoid.Jump = true
+		end
+	elseif input.KeyCode == Enum.KeyCode.B or input.KeyCode == Enum.KeyCode.DPadDown then
+		recallRemote:FireServer()
 	elseif input.KeyCode == Enum.KeyCode.G then
 		pressKeg()
 	elseif input.KeyCode == Enum.KeyCode.M then
@@ -765,6 +863,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		pressPoltergoblin()
 	elseif input.KeyCode == Enum.KeyCode.H then
 		Hud.toggleHelp()
+	elseif input.KeyCode == Enum.KeyCode.T then
+		Hud.toggleBoard()
 	end
 end)
 
@@ -789,6 +889,9 @@ local function isMe(payload)
 end
 
 local handlers = {}
+Skyship.install(handlers)
+Skyship.start()
+Shop.start()
 
 function handlers.Message(p)
 	Hud.banner(p.text or "", p.color, p.duration)
@@ -944,6 +1047,18 @@ function handlers.GrappleFX(p)
 		end
 		Effects.ball(p.to, ROPE_COLOR, 2.5, 0.3)
 		Effects.sound("thud", { position = p.to, speed = 1.7, volume = 0.6 })
+		return
+	end
+	if p.kind == "catch" then
+		-- The hook round a carrier's middle: a rope to them, a ring, stars where they fall.
+		Effects.line(p.from, p.to, ROPE_COLOR, 0.3, 0.45)
+		Effects.ring(p.to - Vector3.new(0, 2.5, 0), Color3.fromRGB(255, 120, 90), 9, 0.5)
+		Effects.burst(p.to, Color3.fromRGB(255, 240, 160), 22, 16)
+		Effects.sound("thud", { position = p.to, speed = 1.1, volume = 0.9 })
+		if p.victim == player.UserId then
+			Effects.shakeAt(p.to, 0.8, 0.4, 40)
+			Effects.punchFov(52)
+		end
 		return
 	end
 	-- A steal, or a miss that only the thrower sees.
@@ -1122,6 +1237,17 @@ local function boatFx(kind, position, mine)
 		end
 	elseif kind == "splash" then
 		Effects.spray(position, 0.35)
+	elseif kind == "jump" then
+		Effects.spray(position, 0.45)
+		Effects.sound("whoosh", { position = position, speed = 1.4, volume = 0.7, range = 250 })
+		if mine then
+			Effects.punchFov(84)
+		end
+	elseif kind == "punch" then
+		Effects.burst(position, Color3.fromRGB(255, 240, 200), 30, 26)
+		if mine then
+			Effects.punchFov(100)
+		end
 	elseif kind == "hoop" or kind == "boost" then
 		Effects.burst(position, Color3.fromRGB(120, 255, 230), 40, 30)
 		Effects.sound("rise", { position = position, speed = 1.8, volume = 0.8, range = 300 })
@@ -1143,6 +1269,58 @@ BoatDrive.onEvent(function(kind, position, chain)
 		-- A chain of hoops: say so (in the boat panel), and let the note climb with it.
 		Hud.chain(chain)
 		Effects.sound("blip", { speed = 1 + math.min(chain, 8) * 0.14, volume = 0.8 })
+	end
+end)
+
+-- Stealing from a goblin who has been caught (V7) --------------------------------------------
+-- The prompt is made HERE, on this client, on another goblin's body, only while they are down and
+-- carrying and you have empty hands: it never shows on your own body and does not exist the rest of
+-- the time. Pressing E sends who it is; the server checks the distance, the wall and the hold.
+local stealPrompts = {}
+task.spawn(function()
+	while true do
+		local t = now()
+		local emptyHanded = player:GetAttribute("CarryingLoot") == nil
+		for other, prompt in pairs(stealPrompts) do
+			if not other.Parent or not prompt.Parent then
+				prompt:Destroy()
+				stealPrompts[other] = nil
+			end
+		end
+		for _, other in ipairs(Players:GetPlayers()) do
+			if other ~= player then
+				local root = other.Character and other.Character:FindFirstChild("HumanoidRootPart")
+				local carried = other:GetAttribute("CarryingLoot")
+				local want = root ~= nil
+					and emptyHanded
+					and carried ~= nil
+					and (other:GetAttribute("DownedUntil") or 0) > t
+				local prompt = stealPrompts[other]
+				if want and (not prompt or prompt.Parent ~= root) then
+					if prompt then
+						prompt:Destroy()
+					end
+					prompt = Instance.new("ProximityPrompt")
+					prompt.Name = "StealPrompt"
+					prompt.ObjectText = other.DisplayName
+					prompt.ActionText = "Steal the treasure"
+					prompt.HoldDuration = 0
+					prompt.MaxActivationDistance = Config.STEAL_RANGE + 2
+					prompt.RequiresLineOfSight = false
+					prompt.KeyboardKeyCode = Enum.KeyCode.E
+					prompt.GamepadKeyCode = Enum.KeyCode.ButtonY
+					prompt.Parent = root
+					prompt.Triggered:Connect(function()
+						stealRemote:FireServer(other)
+					end)
+					stealPrompts[other] = prompt
+				elseif not want and prompt then
+					prompt:Destroy()
+					stealPrompts[other] = nil
+				end
+			end
+		end
+		task.wait(0.15)
 	end
 end)
 
@@ -1288,6 +1466,12 @@ function handlers.GatePass(p)
 	local _, _, root = getCharacter()
 	local mine = BoatDrive.isDriving() and root ~= nil and (p.position - root.Position).Magnitude < 30
 	boatFx(p.kind, p.position, mine)
+end
+
+function handlers.RecallCalled(p)
+	if p.userId == player.UserId then
+		Effects.ring(p.position, Color3.fromRGB(110, 255, 190), 28, 1.2)
+	end
 end
 
 function handlers.BoatFx(p)

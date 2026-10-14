@@ -220,7 +220,9 @@ local function buildWindmill()
 	cylinder("MillCap", 6, 3, base + v3(0, 38, 0), Color3.fromRGB(150, 70, 60), Enum.Material.Slate, folders.structures)
 	local deckY = hillTop + 26
 	cylinder("MillGallery", 12, 1, v3(base.X, deckY, base.Z), WOOD, Enum.Material.WoodPlanks, folders.ground)
-	ladder("MillLadder", base - axis * 9.4 + v3(0, 1, 0), 26)
+	-- The ladder stands OUTSIDE the gallery (radius 12) and tops out above its edge, so a climber steps in over
+	-- the rim. (Through V6 it stood 9.4 studs out, under the floor: nobody could get up it.)
+	ladder("MillLadder", base - axis * 13.6 + v3(0, 1, 0), 28)
 	local hubPos = base + axis * 10.5 + v3(0, 36, 0)
 	local hub = CFrame.lookAt(hubPos, hubPos + axis)
 	local sails = Instance.new("Model")
@@ -380,9 +382,11 @@ local function buildTideVault()
 	terrain:FillBlock(CFrame.new(cx, 6.5, cz), v3(26, 9, 26), AIR)
 	tunnel(v3(cx, 2, cz + 56), v3(cx, 2, cz + 11), 9, 8)
 	rockRamp(v3(cx, -2.5, cz + 88), v3(cx, 2, cz + 50), 10, Enum.Material.Rock)
-	terrain:FillCylinder(CFrame.new(cx - 8, -2.5, cz - 8), 11, 3.2, AIR)
-	terrain:FillBlock(CFrame.new(cx - 40, -4.5, cz - 8), v3(64, 5, 5.4), AIR)
-	terrain:FillCylinder(CFrame.new(cx - 72, -2.5, cz - 8), 10, 3.2, AIR)
+	-- (Terrain is 4-stud cells: the V6 drain was 5.4 studs wide and a shaft of radius 3.2, which came out as one
+	-- cell and a goblin-wide squeeze at best. Eight studs and a bigger shaft is a tunnel you can swim.)
+	terrain:FillCylinder(CFrame.new(cx - 8, -1, cz - 8), 14, 5.2, AIR)
+	terrain:FillBlock(CFrame.new(cx - 40, -3.5, cz - 8), v3(64, 8, 8.4), AIR)
+	terrain:FillCylinder(CFrame.new(cx - 72, -1.5, cz - 8), 12, 5.2, AIR)
 	-- A ring of glowing stones marks the drain's mouth in the shallows.
 	for i = 0, 7 do
 		local a = i / 8 * math.pi * 2
@@ -414,7 +418,16 @@ local function buildTideVault()
 	end
 	gateModel.PrimaryPart = bars
 	gateModel.Parent = folders.structures
-	local gateEntry = { model = gateModel, closed = closed, open = closed * CFrame.new(0, 9, 0), name = "Vault gate" }
+	-- startOpen: the vault is open at the start of a raid. (V2 to V6 started it closed with the only lever 100
+	-- studs away on a pavilion nobody knew about, and a narrow drain: players could not reach the pearl.) Taking
+	-- the pearl still slams it and floods the chamber; the lever (or the drain) is the way out.
+	local gateEntry = {
+		model = gateModel,
+		closed = closed,
+		open = closed * CFrame.new(0, 9, 0),
+		name = "Vault gate",
+		startOpen = true,
+	}
 	table.insert(refs.gates, gateEntry)
 
 	-- The altar, runes and the pearl.
