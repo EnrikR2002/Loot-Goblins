@@ -25,6 +25,7 @@ local Archipelago = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitFo
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Loot = require(script.Parent.Loot)
+local Impact = require(script.Parent.Impact)
 local Blast = require(script.Parent.Blast)
 local Alerts = require(script.Parent.Alerts)
 
@@ -135,13 +136,15 @@ end
 --   push     a velocity (Vector3) to throw them with
 --   reason   knocks their treasure loose with this cause ("crab", "ram", ...), unless nil
 --   text     a line for their screen
+-- Returns true if it landed. It does not land on a goblin the world hit a moment ago (Impact.lua), and
+-- `reason` loosens a carrier's grip before it ever drops their treasure (Loot.knockLoose).
 function Creatures.strike(entry, from, opts)
 	local player, root, humanoid = entry.player, entry.root, entry.humanoid
-	if not root.Parent or humanoid.Health <= 0 then
-		return
+	if not root.Parent or humanoid.Health <= 0 or not Impact.open(player) then
+		return false
 	end
 	if (opts.damage or 0) > 0 then
-		Util.damage(humanoid, opts.damage)
+		Impact.damage(humanoid, opts.damage)
 	end
 	if opts.push and not humanoid.SeatPart then
 		Util.knockback(root, opts.push, opts.pushTime or 0.22)
@@ -152,6 +155,7 @@ function Creatures.strike(entry, from, opts)
 	if opts.text then
 		Net.toast(player, opts.text)
 	end
+	return true
 end
 
 -- A closing ring on the ground: the game's one sign for "something lands here".

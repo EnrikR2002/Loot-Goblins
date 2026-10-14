@@ -21,6 +21,7 @@ local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChil
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Gear = require(script.Parent.Gear)
+local Impact = require(script.Parent.Impact)
 local Leviathan = require(script.Parent.Leviathan)
 local Loot = require(script.Parent.Loot)
 local Boats = require(script.Parent.Boats)
@@ -72,9 +73,10 @@ local function tickPatches(t)
 				not burned[entry.player]
 				and not Gear.fireproof(entry.player)
 				and math.abs(entry.root.Position.Y - patch.position.Y) < 7
+				and Impact.open(entry.player)
 			then
 				burned[entry.player] = true
-				Util.damage(entry.humanoid, k.burn)
+				Impact.damage(entry.humanoid, k.burn)
 				Net.send(entry.player, "Burn", {})
 			end
 		end

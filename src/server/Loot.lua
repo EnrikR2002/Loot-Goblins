@@ -11,7 +11,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
-local Gear = require(script.Parent.Gear)
 local Movement = require(script.Parent.Movement)
 
 local Loot = {}
@@ -35,6 +34,8 @@ end
 local CARRY_LIFT = 2.8 -- Studs from the root's center to the bottom of carried loot.
 
 local carrying = {} -- player -> item
+local slipUntil = {} -- player -> time their grip stops being loose (the two-strike rule)
+local dropSafeUntil = {} -- player -> time before which the world cannot make them drop again
 local enabled = false
 local refs
 
@@ -614,13 +615,6 @@ function Loot.build(worldRefs)
 		table.insert(Loot.items, item)
 		Loot.byId[def.id] = item
 		item.prompt.Triggered:Connect(function(player)
-			if item.state == "spot" then
-				local allowed, why = Gear.allows(player, def.island)
-				if not allowed then
-					Net.toast(player, why)
-					return
-				end
-			end
 			Loot.tryGrab(item, player)
 		end)
 		placeAtSpot(item)
@@ -722,6 +716,23 @@ function Loot.knockLoose(player, fromPosition, reason, byPlayer)
 	local item = carrying[player]
 	if not item or now() < item.immuneUntil then
 		return false
+	end
+	if byPlayer == nil then
+		-- The world did it, not a rival: the two-strike grip (Config.GRIP).
+		local t = now()
+		if t < (dropSafeUntil[player] or 0) then
+			return false
+		end
+		if not Config.GRIP.HEAVY[reason] and t >= (slipUntil[player] or 0) then
+			slipUntil[player] = t + Config.GRIP.SLIP_TIME
+			player:SetAttribute("GripSlipUntil", slipUntil[player])
+			Net.toast(player, "YOUR GRIP IS SLIPPING! One more hit in the next few seconds and you drop it.")
+			Net.send(player, "GripSlip", { seconds = Config.GRIP.SLIP_TIME })
+			return false
+		end
+		slipUntil[player] = nil
+		player:SetAttribute("GripSlipUntil", nil)
+		dropSafeUntil[player] = t + Config.GRIP.RECOVER
 	end
 	local root = Util.aliveRoot(player)
 	local away = root and (root.Position - fromPosition) or Vector3.zero
@@ -840,6 +851,23 @@ end
 function Loot.forget(player)
 	Loot.dropFor(player, "left")
 	carrying[player] = nil
+	slipUntil[player] = nil
+	dropSafeUntil[player] = nil
+end
+
+-- A creature that TAKES treasure (the imps): allowed unless the world has just made this goblin drop it.
+-- Returns the item it knocked loose, or nil.
+function Loot.worldTake(player, reason)
+	local item = carrying[player]
+	local t = now()
+	if not item or t < item.immuneUntil or t < (dropSafeUntil[player] or 0) then
+		return nil
+	end
+	dropSafeUntil[player] = t + Config.GRIP.RECOVER
+	slipUntil[player] = nil
+	player:SetAttribute("GripSlipUntil", nil)
+	Loot.dropFor(player, reason)
+	return item
 end
 
 return Loot

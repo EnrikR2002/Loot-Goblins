@@ -4,7 +4,8 @@
 --   Cinder Boots        (Lantern Key)  fire, lava and lava bombs do nothing; for Ember Isle
 --   Frost Claws         (Lantern Key)  the Chill drains a quarter as much; for Frost Spire
 -- Lantern Key offers boots OR claws: one piece is carried at a time, so taking the other swaps.
--- The treasure on a gear island cannot be pried off without its piece (Loot asks Gear.allows).
+-- V8: gear is OPTIONAL. Nothing needs it (V7 locked three treasures behind it and the playtest found that a
+-- chore); a piece only makes its island kinder.
 -- Caches give the gear once per goblin per raid, free: gear is never for sale. Shinies can buy
 -- "start the raid with it" (Progress), which is a convenience, not a lock.
 -- Pets are read here too (Gear.pet) so the modules that care ask one place.
@@ -46,18 +47,6 @@ function Gear.give(player, id, quiet)
 	if not quiet then
 		Net.toast(player, "You took the " .. def.name .. ": " .. def.effect)
 	end
-end
-
--- May this goblin take the treasure of this island? Returns ok, reason.
-function Gear.allows(player, islandId)
-	local info = Config.ISLAND_INFO[islandId]
-	local need = info and info.major and info.gear
-	if not need or Gear.has(player, need) then
-		return true
-	end
-	local piece = Config.GEAR[need]
-	return false,
-		string.format("It needs the %s. You can get one at %s.", piece.name, Archipelago.byId[piece.island].name)
 end
 
 -- Fire and lava: boots make a goblin immune.

@@ -17,6 +17,7 @@ local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChil
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Gear = require(script.Parent.Gear)
+local Impact = require(script.Parent.Impact)
 local Boats = require(script.Parent.Boats)
 local Loot = require(script.Parent.Loot)
 local Poltergoblin = require(script.Parent.Poltergoblin)
@@ -36,11 +37,14 @@ function Blast.at(position, opts)
 		if root then
 			local offset = root.Position - position
 			local distance = offset.Magnitude
-			if distance <= radius then
+			-- A blast with no owner is the world's (a shell, a bolt, a lava bomb, a boulder): it obeys Impact's grace and
+			-- smaller bites. One a goblin set off is a rival's doing and lands in full.
+			if distance <= radius and (owner ~= nil or Impact.open(player)) then
 				local falloff = 1 - 0.55 * distance / radius
 				local isOwner = player == owner
 				if (opts.damage or 0) > 0 and not isOwner and not (opts.fire and Gear.fireproof(player)) then
-					local dealt = Util.damage(humanoid, opts.damage * falloff)
+					local dealt = owner and Util.damage(humanoid, opts.damage * falloff)
+						or Impact.damage(humanoid, opts.damage * falloff)
 					if owner then
 						Poltergoblin.markDamage(owner, humanoid, dealt)
 					end

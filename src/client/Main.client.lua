@@ -91,6 +91,52 @@ ProximityPromptService.PromptHidden:Connect(function(prompt)
 	shownPrompts[prompt] = nil
 end)
 
+-- Roblox only SHOWS a prompt whose object is on screen. So a goblin standing beside the treasure with the
+-- camera turned away saw no prompt, and E (shared with Poltergoblin) sent their spirit flying instead of
+-- stealing: "I pressed E and it did the wrong thing". V8: if no prompt is showing, E goes to the nearest
+-- enabled E-prompt the goblin is in reach of, held and released exactly as if it were on screen.
+local heldPrompt = nil
+local function reachPrompt()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return nil
+	end
+	local best, bestDistance = nil, math.huge
+	local function consider(prompt)
+		if not prompt.Enabled or prompt.KeyboardKeyCode ~= Enum.KeyCode.E then
+			return
+		end
+		local parent = prompt.Parent
+		local position
+		if parent and parent:IsA("BasePart") then
+			position = parent.Position
+		elseif parent and parent:IsA("Attachment") then
+			position = parent.WorldPosition
+		end
+		if position then
+			local distance = (position - root.Position).Magnitude
+			if distance <= prompt.MaxActivationDistance and distance < bestDistance then
+				best, bestDistance = prompt, distance
+			end
+		end
+	end
+	for _, instance in ipairs(generated:GetDescendants()) do
+		if instance:IsA("ProximityPrompt") then
+			consider(instance)
+		end
+	end
+	-- The steal prompt on a goblin who is down lives on their body, not in the world folder.
+	for _, other in ipairs(Players:GetPlayers()) do
+		local otherRoot = other ~= player and other.Character and other.Character:FindFirstChild("HumanoidRootPart")
+		local prompt = otherRoot and otherRoot:FindFirstChildOfClass("ProximityPrompt")
+		if prompt then
+			consider(prompt)
+		end
+	end
+	return best
+end
+
 local function promptOwnsE()
 	for prompt in pairs(shownPrompts) do
 		if prompt.Parent and prompt.Enabled and prompt.KeyboardKeyCode == Enum.KeyCode.E then
@@ -555,7 +601,12 @@ UserInputService.WindowFocusReleased:Connect(function()
 	setSprint(false)
 end)
 UserInputService.InputEnded:Connect(function(input)
-	if input.KeyCode == Enum.KeyCode.LeftShift then
+	if input.KeyCode == Enum.KeyCode.E and heldPrompt then
+		if heldPrompt.Parent then
+			heldPrompt:InputHoldEnd()
+		end
+		heldPrompt = nil
+	elseif input.KeyCode == Enum.KeyCode.LeftShift then
 		setSprint(false)
 	elseif input.KeyCode == Enum.KeyCode.C or input.KeyCode == Enum.KeyCode.ButtonB then
 		BoatDrive.setDrift(false)
@@ -860,7 +911,14 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	elseif input.KeyCode == Enum.KeyCode.F then
 		pressGrapple()
 	elseif input.KeyCode == Enum.KeyCode.E then
-		pressPoltergoblin()
+		-- V8: E belongs to whatever is IN REACH, not only to what the camera happens to show (see reachPrompt).
+		local prompt = not promptOwnsE() and reachPrompt() or nil
+		if prompt then
+			heldPrompt = prompt
+			prompt:InputHoldBegin()
+		else
+			pressPoltergoblin()
+		end
 	elseif input.KeyCode == Enum.KeyCode.H then
 		Hud.toggleHelp()
 	elseif input.KeyCode == Enum.KeyCode.T then
@@ -1237,6 +1295,17 @@ local function boatFx(kind, position, mine)
 		end
 	elseif kind == "splash" then
 		Effects.spray(position, 0.35)
+	elseif kind == "super" then
+		-- The super jump: a wall of spray, a ring, the view thrown wide.
+		Effects.spray(position, 1.3)
+		Effects.ring(position, Color3.fromRGB(255, 240, 160), 30, 0.6)
+		Effects.burst(position, Color3.fromRGB(255, 255, 255), 70, 55)
+		Effects.sound("whoosh", { position = position, speed = 0.9, volume = 1, range = 400 })
+		Effects.sound("rise", { position = position, speed = 1.3, volume = 0.8, range = 400 })
+		if mine then
+			Effects.punchFov(108)
+			Hud.toast("SUPER JUMP!")
+		end
 	elseif kind == "jump" then
 		Effects.spray(position, 0.45)
 		Effects.sound("whoosh", { position = position, speed = 1.4, volume = 0.7, range = 250 })

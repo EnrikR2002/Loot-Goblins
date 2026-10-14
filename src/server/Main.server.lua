@@ -52,6 +52,7 @@ local Coins = require(script.Parent.Coins)
 local Recall = require(script.Parent.Recall)
 local Skyship = require(script.Parent.Skyship)
 local Gear = require(script.Parent.Gear)
+local Impact = require(script.Parent.Impact)
 local Alerts = require(script.Parent.Alerts)
 local Progress = require(script.Parent.Progress)
 local Monetization = require(script.Parent.Monetization)
@@ -184,6 +185,7 @@ local LOOSE_TEXT = {
 	throw = "%s threw the %s",
 	sword = "%s smacked the %s out of %s's hands!",
 	guardian = "The Guardian smashed the %s out of %s's hands!",
+	guardianleap = "The Guardian LANDED on the %s: %s dropped it!",
 	boulder = "%s got flattened and dropped the %s!",
 	cannon = "%s was blasted and dropped the %s!",
 	keg = "%s got kegged and dropped the %s!",
@@ -209,7 +211,7 @@ Loot.Loosened:Connect(function(item, reason, byPlayer, fromPlayer)
 		text = string.format(LOOSE_TEXT.throw, holder, def.name)
 	elseif reason == "sword" then
 		text = string.format(LOOSE_TEXT.sword, byPlayer and byPlayer.DisplayName or "Someone", def.name, holder)
-	elseif reason == "guardian" then
+	elseif reason == "guardian" or reason == "guardianleap" then
 		text = string.format(LOOSE_TEXT.guardian, def.name, holder)
 	elseif reason == "imp" then
 		text = string.format(LOOSE_TEXT.imp, def.name)
@@ -292,6 +294,7 @@ Players.PlayerRemoving:Connect(function(player)
 	Coins.forget(player)
 	Recall.forget(player)
 	Skyship.forget(player)
+	Impact.forget(player)
 	Progress.forget(player)
 end)
 
@@ -326,7 +329,7 @@ Net.BoatBoard.OnServerEvent:Connect(function(player)
 	end
 end)
 Net.BoatFx.OnServerEvent:Connect(function(player, kind)
-	if kind == "mini1" or kind == "mini2" or kind == "landing" or kind == "jump" then
+	if kind == "mini1" or kind == "mini2" or kind == "landing" or kind == "jump" or kind == "super" then
 		Boats.relayFx(player, kind)
 	end
 end)

@@ -13,6 +13,7 @@ local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChil
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Loot = require(script.Parent.Loot)
+local Impact = require(script.Parent.Impact)
 local Heat = require(script.Parent.Heat)
 local Blast = require(script.Parent.Blast)
 
@@ -56,8 +57,8 @@ local function hurtArea(center, radius, damage, knockback, lootReason, maxHeight
 			else
 				inRange = offset.Magnitude <= radius
 			end
-			if inRange then
-				Util.damage(humanoid, damage)
+			if inRange and Impact.open(player) then
+				Impact.damage(humanoid, damage)
 				local away = Vector3.new(offset.X, 0, offset.Z)
 				away = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1)
 				Util.knockback(root, away * knockback + Vector3.new(0, knockback * 0.5, 0), 0.2)
@@ -435,7 +436,7 @@ local function tickGuardian(dt)
 			Config.GUARDIAN_LEAP_RADIUS,
 			Config.GUARDIAN_LEAP_DAMAGE,
 			Config.GUARDIAN_LEAP_KNOCKBACK,
-			"guardian",
+			"guardianleap", -- the one hit of his that drops treasure at once: the marked circle
 			16
 		)
 		Net.broadcast("GuardianSmash", { position = g.position })
@@ -520,9 +521,9 @@ local function tickWaves(t)
 				local level = math.abs(root.Position.Y - 3 - wave.origin.Y) < 10
 				if level and distance >= wave.last - 3 and distance <= radius + 3 then
 					-- A standing goblin's root is 3 studs up; anything higher is a jump.
-					if workspace:Raycast(root.Position, Vector3.new(0, -5, 0), standParams) then
+					if workspace:Raycast(root.Position, Vector3.new(0, -5, 0), standParams) and Impact.open(player) then
 						wave.hit[player] = true
-						Util.damage(humanoid, Config.GUARDIAN_STOMP_DAMAGE)
+						Impact.damage(humanoid, Config.GUARDIAN_STOMP_DAMAGE)
 						local away = root.Position - wave.origin
 						away = Vector3.new(away.X, 0, away.Z)
 						away = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1)
@@ -836,9 +837,14 @@ local function tickRollers()
 		elseif t < r.dangerousUntil then
 			for _, player in ipairs(Players:GetPlayers()) do
 				local root, humanoid = Util.aliveRoot(player)
-				if root and not r.hit[player] and (root.Position - part.Position).Magnitude <= r.radius + 2.5 then
+				if
+					root
+					and not r.hit[player]
+					and (root.Position - part.Position).Magnitude <= r.radius + 2.5
+					and Impact.open(player)
+				then
 					r.hit[player] = true
-					Util.damage(humanoid, r.damage)
+					Impact.damage(humanoid, r.damage)
 					local away = root.Position - part.Position
 					away = Vector3.new(away.X, 0, away.Z)
 					away = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1)

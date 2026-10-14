@@ -918,7 +918,7 @@ local function imp(index, perchIndex)
 				end
 				if victim then
 					local item = victim.item
-					Loot.dropFor(victim.player, "imp")
+					Loot.worldTake(victim.player, "imp")
 					if item.state == "loose" and Loot.hold(item, self.root.CFrame * CFrame.new(0, 3.4, 0)) then
 						self.holding = item
 						self.state = "flee"
