@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "fabric-material-reads-as-knit-on-small-parts",
+  "title": "Fabric material looks like knitted wool on small cosmetic parts",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-17",
+  "topics": [
+    "art",
+    "materials",
+    "characters"
+  ],
+  "observation": "A captain's coat, breeches and other clothing built from character-sized parts with Enum.Material.Fabric read in a Studio screenshot as a noisy dark knitted-wool texture that hid the colour and clashed with a clean toy-like art style. The same parts in SmoothPlastic read as clean, saturated colour blocks; large Fabric surfaces such as sails still looked fine.",
+  "recommendation": "For a clean or toy-like style, build small cloth pieces (costume parts, pet accessories) in SmoothPlastic and keep Fabric for large cloth like sails and flags; check new materials in a screenshot at the distance players see them.",
+  "applies_when": [
+    "Building avatar cosmetics or accessories from parts",
+    "Choosing materials for small cloth-like props"
+  ],
+  "limits": [
+    "One place's lighting and colour grade in October 2026",
+    "Graphics quality settings and phones were not compared"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/0635aec9368565ade07d534144be178fead2fb95/docs/reports/2026-10-17-v11-goblin-life.md",
+      "detail": "Section 8 and the before-fabric screenshot: the first outfit pass in Fabric against the SmoothPlastic version."
+    }
+  ],
+  "rubric_checks": [
+    "CL-07"
+  ]
+}

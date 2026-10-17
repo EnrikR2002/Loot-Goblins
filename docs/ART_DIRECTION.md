@@ -1,6 +1,6 @@
 # Loot Goblins: art direction
 
-How Loot Goblins looks, as a working system: what to use, where, and why. The colours below are the ones the code uses (`src/shared/Palette.lua` and `server/World.lua`); change them there and here together. Written for V10 (The Living Archipelago); later passes extend it rather than replace it.
+How Loot Goblins looks, as a working system: what to use, where, and why. The colours below are the ones the code uses (`src/shared/Palette.lua` and `server/World.lua`); change them there and here together. Written for V10 (The Living Archipelago) and extended for V11 (Goblin Life: cosmetics, boat looks, pets, effects and the wardrobe interface); later passes extend it rather than replace it.
 
 ## The idea in one line
 
@@ -128,7 +128,33 @@ Every major island has a **signature landmark**: its silhouette from the sea. `s
 
 ## Goblins
 
-Every player is a goblin by default (`server/GoblinLook.lua`): goblin-green skin, long pointed ears pink inside, and a big nose, over whatever their avatar wears. It is one look for everyone, not a customization system (that is a later version). The ears and nose are welded, massless, never solid, never hit by rays.
+Every player is a goblin (`shared/Wardrobe.lua`, applied by `server/GoblinLook.lua`): goblin-green skin, long pointed ears pink inside and a big nose by default, over whatever their avatar wears. V11 makes it a costume box rather than one look: skin shades (greens first, then a few fantasy hues; the Golden Goblin is a trophy), ear and nose styles, and hats, eyewear, face pieces, outfits and back pieces on top. The goblin must still read as a goblin from across the water: no item hides the ears and nose (a hat sits behind and above them, eyewear leaves the nose out front).
+
+### Cosmetics (V11)
+
+- **Built like everything else**: chunky primitives, ellipsoids from a block with a sphere mesh, two tones per piece, one accent. No uploaded meshes or textures.
+- **Clean colour, not texture**: cloth is SmoothPlastic. Roblox's Fabric material reads as noisy knitted wool on goblin-sized parts (checked in a screenshot); keep Fabric for big cloth (sails, flags). Metal for buckles, crowns and lids; Glass for lenses; Neon only for small glowing details (a ghost coat's trim, a brow gem).
+- **Personality before price**: every slot mixes the adventurous, the silly, the spooky, the nautical and the elegant. Expensive does not mean gold and glowing: the Royal Robe is purple and ermine, the Captain's Hat is a huge black bicorne, the Plumed Hat is magenta with a palm-frond feather.
+- **Exaggerate the joke**: hats too small (Tiny Sailor Cap) or far too big (a bicorne three heads wide), a barrel worn as overalls, googly eyes, a stuffed parrot sewn to the shoulder.
+- **Fit any avatar**: head pieces are drawn for a 1.2-stud head and scaled to the real one; body pieces are sized from the real body parts. An avatar's own item that would clash (a hat under a hat, a shirt under a coat) is hidden while the game item is worn.
+- **The collision contract applies**: every piece is welded, massless, non-colliding, never hit by rays and never touched (see below).
+- **Budgets**: a hat at most 18 parts, eyewear and face 9, an outfit 24, a back piece 12 (the tests check). The heaviest goblin is 80 parts; a typical full look is 40 to 60.
+
+### Boats (V11)
+
+A boat wears its driver's paint, flag and figurehead (`shared/BoatLook.lua`). Paint recolours V10's parts by role (hull, stripe, trim, sails, sail stripe, mast, cabin); Class Colours is V10's look exactly. A paint has a personality and a detail or two that reads from a distance: the shark's teeth and eyes on the bow, the Jolly Goblin's skull sails, the Leviathan's amber eyes and scales, the pumpkin's stalk, the reef's spotted sails. Flags fly from the boat's own flag spot; the free Jolly Goblin flag keeps each boat's coloured flag (the colours tell boats apart) and adds a skull. Figureheads lean out over the bow and are big enough to see from another boat (a giant rubber duck is allowed).
+
+### Pets (V11)
+
+Pets are little characters, not floating icons (`shared/PetLook.lua`): a silhouette you can name (a crab with eye stalks and one big claw, a round gull with black wing tips, a fat frog with huge eyes, a domed tortoise, a wispy ghost), a face, two or three colours, and a way of moving that is their personality (the crab scuttles sideways, the frog hops, the tortoise plods, the gull flaps and glides, the ghost bobs and loops). About knee to waist height on a goblin. Alternative looks change the palette and add one prop (a striped shell, a pumpkin, a garden of flowers). The Shell Tortoise's ready glow is gameplay information and stays visible to everyone.
+
+### Effects (V11)
+
+Trails, wakes, trick effects and callouts (`shared/StyleFx.lua`) are expressive but never cover the game: thin, short-lived ribbons; one emitter per effect; capped bursts; the big burst only for a landing of three tricks or more; nothing drawn beyond 420 studs; half the particles on low graphics. Over the bright sea a glowing ribbon washes out to white, so trails keep a low light emission. Callout backings hug the words.
+
+### The interface (V11)
+
+The wardrobe, the emote wheel and the results card share one kit (`client/Ui.lua`): a dark-wood frame, parchment cards, goblin gold for the main action and anything good, FredokaOne for titles and Gotham for text, rounded corners, chunky buttons at least 44 points tall with a gold ring when a gamepad is on them. Rarity is a coloured edge and chip (common sand, uncommon green, rare blue, legendary gold, trophy violet, premium mint), never the only signal: the card also says the price, OWNED, WEARING ✔ or 🔒 TROPHY. Celebrations are short (a pop, a chime, a small burst) and never block play. Previews show the real thing: your own goblin, a real boat, the real pet.
 
 ## Treasure
 
@@ -166,7 +192,7 @@ Every player is a goblin by default (`server/GoblinLook.lua`): goblin-green skin
 
 V10 changed how everything looks and nothing about where you can walk, sail, hook or shoot.
 
-- Decoration is **anchored (or welded), non-colliding, not hit by rays and not touchable**: landmarks, creature details, boat trim, skyship dressing, treasure trim, goblin ears.
+- Decoration is **anchored (or welded), non-colliding, not hit by rays and not touchable**: landmarks, creature details, boat trim, skyship dressing, treasure trim, goblin ears, and (V11) every cosmetic, boat paint detail, flag, figurehead, pet and the skyship's tailor stall.
 - Where a prop that used to be solid was redesigned, its **old solid stays exactly as it was, made invisible**, and the new look is decoration on top: palm trunks (V9's straight post), coral heads (V9's blocks, same random draws), tree trunks (V9's upright trunk).
 - **How to check:** fingerprint every solid or ray-hit anchored part (name, position, size, rotation) in a built world and compare with the previous version. V10's matched V9's except things that move by themselves (parked boats bobbing, the windmill's sails turning). See the V10 report.
 
@@ -190,6 +216,11 @@ V10 changed how everything looks and nothing about where you can walk, sail, hoo
 | Tornadoes | `client/Twisters.lua` |
 | The Guardian's design | `server/GuardianLook.lua` (used by `Threats.lua` and `Pursuit.lua`) |
 | Creatures | `Bestiary.lua`, `BestiaryMinor.lua`, `Pursuit.lua` (sea forms), `Leviathan.lua`, `GhostFleet.lua`, `SeaMobs.lua` |
-| Players' goblin look | `server/GoblinLook.lua` |
+| Players' goblin look and every goblin cosmetic | `shared/Wardrobe.lua` (applied by `server/GoblinLook.lua`) |
+| Boat paint, flags, figureheads | `shared/BoatLook.lua` (applied by `server/BoatStyle.lua`) |
+| Trails, wakes, trick effects, callout styles | `shared/StyleFx.lua` (drawn by `client/Looks.lua`, `client/Tricks.lua`) |
+| Pets, pet looks and hats | `shared/PetLook.lua` (moved by `client/Pets.lua`) |
+| Emotes and victory dances | `shared/EmoteMoves.lua` |
+| The wardrobe, emote wheel and results | `client/Ui.lua`, `client/Shop.lua`, `client/Emotes.lua`, `client/Results.lua` |
 | Boats and the skyship | `server/Boats.lua`, `server/Skyship.lua`, `client/Skyship.lua` (propellers) |
 | Treasures | `server/Loot.lua` |

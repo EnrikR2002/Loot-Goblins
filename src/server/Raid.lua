@@ -33,6 +33,7 @@ local Alerts = require(script.Parent.Alerts)
 local Progress = require(script.Parent.Progress)
 local Tornadoes = require(script.Parent.Tornadoes)
 local GhostFleet = require(script.Parent.GhostFleet)
+local Emotes = require(script.Parent.Emotes)
 
 local Raid = {}
 Raid.phase = "intermission"
@@ -149,11 +150,20 @@ function Raid.finish()
 		end
 	end
 	-- What the goblins keep: Shinies, once each (Progress guards a second payout for the same raid).
+	local places = {}
+	for index, entry in ipairs(results) do
+		places[entry.userId] = index
+	end
 	local awardList = {}
+	local champions = {}
 	for _, player in ipairs(Players:GetPlayers()) do
 		local gold = stat(player, "Gold")
 		local value = gold and gold.Value or 0
-		table.insert(awardList, { player = player, gold = value, won = best > 0 and value == best })
+		local won = best > 0 and value == best
+		table.insert(awardList, { player = player, gold = value, won = won, place = places[player.UserId] })
+		if won then
+			table.insert(champions, player)
+		end
 	end
 	Progress.award(awardList)
 	-- Loot still out there is lost; the world goes quiet until the next raid.
@@ -164,6 +174,10 @@ function Raid.finish()
 	Skyship.preopen(phaseEndsAt + Config.SKYSHIP.COUNTDOWN)
 	Skyship.boardAll() -- the intermission is spent on the deck, choosing where to land
 	Net.broadcast("RaidEnd", { results = results, winners = winners, endsAt = phaseEndsAt })
+	-- V11: the winner dances on the deck (once the move aboard has taken: Skyship retries it for a moment).
+	for _, champion in ipairs(champions) do
+		task.delay(1.2, Emotes.celebrate, champion)
+	end
 end
 
 function Raid.isActive()

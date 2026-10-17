@@ -57,6 +57,7 @@ local Impact = require(script.Parent.Impact)
 local Alerts = require(script.Parent.Alerts)
 local Progress = require(script.Parent.Progress)
 local Monetization = require(script.Parent.Monetization)
+local Emotes = require(script.Parent.Emotes)
 local Creatures = require(script.Parent.Creatures)
 local Pursuit = require(script.Parent.Pursuit)
 local Leviathan = require(script.Parent.Leviathan)
@@ -165,6 +166,9 @@ end
 Loot.Taken:Connect(function(item, player, fromSpot, fromPlayer)
 	local def = item.def
 	Creatures.onTaken(item, player, fromSpot)
+	if fromPlayer then
+		Progress.onSnatch(player) -- V11: the Sticky Fingers trophy
+	end
 	if fromSpot then
 		Alerts.stolen(def.island, player)
 		Heat.add(def.heat)
@@ -252,6 +256,7 @@ end)
 
 Loot.Banked:Connect(function(item, player)
 	Raid.onBanked(item, player)
+	Progress.onBanked(player, item.def.id, item.bankedValue or item.def.value) -- V11: lasting stats and trophies
 	Net.feed(
 		player.DisplayName
 			.. " banked the "
@@ -274,7 +279,10 @@ local function onCharacter(player, character)
 	Combat.standUp(player, 0) -- a new body starts on its feet
 	Skyship.onCharacter(player)
 	Combat.giveSword(player, character)
-	task.delay(2, GoblinLook.apply, player, character) -- and on appearance loaded (GoblinLook.watch)
+	-- V11: dressed at once, again when the avatar's appearance has loaded (GoblinLook.watch) and once more 2 s later
+	-- (appearance loading can replace the head and colours just after spawning; dressing again is cheap and idempotent).
+	task.defer(GoblinLook.apply, player, character)
+	task.delay(2, GoblinLook.apply, player, character)
 	humanoid.Died:Connect(function()
 		Loot.dropFor(player, "death")
 		Poltergoblin.finish(player, "death")
@@ -313,10 +321,10 @@ Players.PlayerRemoving:Connect(function(player)
 	Recall.forget(player)
 	Skyship.forget(player)
 	Impact.forget(player)
-	Progress.forget(player)
 	Pursuit.forget(player)
 	GhostFleet.forget(player)
 	Tornadoes.forget(player)
+	task.spawn(Progress.forget, player) -- saves and releases the profile (it yields)
 end)
 
 Net.Throw.OnServerEvent:Connect(function(player)
@@ -387,6 +395,23 @@ Net.Shop.OnServerEvent:Connect(function(player, action, id)
 		Progress.handle(player, action, id)
 	end
 end)
+Net.Emote.OnServerEvent:Connect(function(player, id)
+	if type(id) == "string" then
+		Emotes.request(player, id)
+	end
+end)
+-- V11: a clean four-trick landing the server itself saw counts toward the Trick Master trophy.
+Boats.TrickLanded:Connect(function(player, count)
+	Progress.onTrickLanded(player, count)
+end)
+-- V11: pets (whose abilities matter in a raid) change only where nothing is chasing you.
+Progress.petSafe = function(player)
+	if not Raid.isActive() or Skyship.isAboard(player) then
+		return true
+	end
+	local root = Util.aliveRoot(player)
+	return root ~= nil and Util.flatDistance(root.Position, refs.hoard.position) <= Config.WARD_RADIUS + 25
+end
 Net.Steal.OnServerEvent:Connect(function(player, target)
 	Combat.stealFrom(player, target)
 end)
@@ -450,5 +475,6 @@ RunService.Heartbeat:Connect(function(dt)
 	Leviathan.tick(dt) -- after the creatures: the Sleeper drives it when awake, this only fills in when it is not
 	Poltergoblin.tick()
 	Movement.tick(dt)
+	Emotes.tick()
 	Raid.tick()
 end)

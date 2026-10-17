@@ -25,6 +25,11 @@ local Effects = require(script.Parent.Effects)
 local Map = require(script.Parent.Map)
 
 local Skyship = {}
+
+local mapHeldUntil = 0 -- V11: the map does not open on its own before this time (the winner's dance)
+function Skyship.holdMap(seconds)
+	mapHeldUntil = math.max(mapHeldUntil, time() + seconds)
+end
 Skyship.handlers = {}
 
 local player = Players.LocalPlayer
@@ -987,6 +992,7 @@ function Skyship.start()
 		end
 	end)
 	-- Open the map the first time you are aboard in a raid's start, so the sea is the first thing you see.
+	-- V11: not straight after a raid ends: the winner dances on the deck first (Skyship.holdMap), then the map opens.
 	local lastState
 	player:GetAttributeChangedSignal("DeployState"):Connect(function()
 		local state = player:GetAttribute("DeployState")
@@ -996,11 +1002,14 @@ function Skyship.start()
 			and lastState ~= "loaded"
 			and not player:GetAttribute("DeployDest")
 		then
-			task.delay(1, function()
-				if player:GetAttribute("DeployState") == "aboard" then
+			local function openMap()
+				if time() < mapHeldUntil then
+					task.delay(mapHeldUntil - time(), openMap)
+				elseif player:GetAttribute("DeployState") == "aboard" then
 					Map.show(true)
 				end
-			end)
+			end
+			task.delay(1, openMap)
 		elseif state == "loaded" or state == "fuse" or state == "diving" then
 			Map.show(false) -- the sky is the thing to look at
 		end

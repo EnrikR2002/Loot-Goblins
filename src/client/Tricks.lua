@@ -7,26 +7,66 @@
 --
 -- Other players' tricks are shown over their boat (a short-range label), so a spectator can tell a boat
 -- spinning in the air on purpose from one that was hit.
+--
+-- V11: callouts wear the goblin's chosen callout style (shared/StyleFx.lua CALLOUTS): your own style on your
+-- screen, each other goblin's style over their boat.
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextService = game:GetService("TextService")
 local TweenService = game:GetService("TweenService")
+
+local Shared = ReplicatedStorage:WaitForChild("LootGoblins")
+local Catalog = require(Shared:WaitForChild("Catalog"))
+local StyleFx = require(Shared:WaitForChild("StyleFx"))
 
 local Tricks = {}
 
 local player = Players.LocalPlayer
 local gui, holder
 local combo = 0
-local PALETTE = {
-	Color3.fromRGB(170, 255, 60),
-	Color3.fromRGB(255, 70, 190),
-	Color3.fromRGB(60, 230, 255),
-	Color3.fromRGB(255, 170, 40),
-	Color3.fromRGB(255, 240, 70),
-}
 local paletteIndex = 0
 
-local function nextColor()
-	paletteIndex = paletteIndex % #PALETTE + 1
-	return PALETTE[paletteIndex]
+local function styleOf(who)
+	local look = Catalog.decodeLook(who and who:GetAttribute("Look"))
+	return StyleFx.CALLOUTS[look.callout] or StyleFx.CALLOUTS.callout_classic
+end
+
+local function nextColor(style)
+	local palette = (style or styleOf(player)).palette
+	paletteIndex = paletteIndex % #palette + 1
+	return palette[paletteIndex]
+end
+
+-- Dresses a label in a callout style (font, outline, a gradient or a comic-book backing).
+local function dress(label, style, stroke)
+	label.Font = style.font
+	label.TextStrokeColor3 = style.stroke
+	if stroke then
+		stroke.Color = style.stroke
+	end
+	if style.gradient then
+		local gradient = Instance.new("UIGradient")
+		gradient.Color = style.gradient
+		gradient.Rotation = 90
+		gradient.Parent = label
+	end
+	if style.back then
+		-- A comic-book backing that hugs the words (a full-width panel hid the middle of the screen).
+		-- (Only for on-screen callouts sized in pixels; a label filling a billboard keeps its size.)
+		local height = label.Size.Y.Offset
+		if height > 0 then
+			local size = math.floor(height * 0.78)
+			label.TextScaled = false
+			label.TextSize = size
+			local bounds = TextService:GetTextSize(label.Text, size, label.Font, Vector2.new(2000, size * 2))
+			label.Size = UDim2.fromOffset(bounds.X + 28, height)
+		end
+		label.BackgroundTransparency = 0.2
+		label.BackgroundColor3 = style.back[math.random(1, #style.back)]
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(0, 10)
+		c.Parent = label
+	end
 end
 
 local function build()
@@ -50,6 +90,7 @@ local function callout(text, color, size, tilt, yOffset, hold)
 	if not gui then
 		build()
 	end
+	local style = styleOf(player)
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
 	label.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -66,7 +107,16 @@ local function callout(text, color, size, tilt, yOffset, hold)
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Color3.fromRGB(20, 10, 30)
 	stroke.Thickness = 4
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 	stroke.Parent = label
+	dress(label, style, stroke)
+	if style.wobble then
+		TweenService:Create(
+			label,
+			TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{ Rotation = -tilt }
+		):Play()
+	end
 	local scale = Instance.new("UIScale")
 	scale.Scale = 0.2
 	scale.Parent = label
@@ -82,6 +132,7 @@ local function callout(text, color, size, tilt, yOffset, hold)
 				Position = label.Position - UDim2.fromOffset(0, 70),
 				TextTransparency = 1,
 				TextStrokeTransparency = 1,
+				BackgroundTransparency = 1,
 			}):Play()
 			TweenService:Create(stroke, TweenInfo.new(0.35), { Transparency = 1 }):Play()
 			task.delay(0.4, function()
@@ -121,8 +172,9 @@ function Tricks.reset()
 	combo = 0
 end
 
--- Someone else's trick: a short-range label over their boat for a moment.
-function Tricks.other(position, name)
+-- Someone else's trick: a short-range label over their boat for a moment, in their callout style.
+function Tricks.other(position, name, userId)
+	local style = styleOf(userId and Players:GetPlayerByUserId(userId))
 	local anchor = Instance.new("Part")
 	anchor.Name = "TrickLabel"
 	anchor.Anchored = true
@@ -145,9 +197,10 @@ function Tricks.other(position, name)
 	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
 	label.Text = name
-	label.TextColor3 = nextColor()
+	label.TextColor3 = nextColor(style)
 	label.TextStrokeTransparency = 0
 	label.Rotation = math.random(-8, 8)
+	dress(label, style, nil)
 	label.Parent = board
 	TweenService:Create(anchor, TweenInfo.new(1.1), { CFrame = anchor.CFrame + Vector3.new(0, 10, 0) }):Play()
 	TweenService

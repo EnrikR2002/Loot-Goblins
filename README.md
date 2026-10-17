@@ -1,6 +1,6 @@
 # Loot Goblins
 
-Steal ridiculous treasure from dangerous islands and other players, then somehow get it home. This is the V9 prototype (**Relentless Chaos**): six-minute raids that start on a flying pirate ship, and whatever guards a treasure **follows you home across the sea**. A stone Guardian in a tiny speedboat that launches you into the sky, the Leviathan right behind your boat waiting for you to slow down, a tiny crystal Echo darting at your wake, a ghost fleet whose pirates chase you in rowing boats, all the way to the gold lights round Goblin Cove. Ride tornadoes, jump ramps, and do stylish boat tricks in the air. V9 was tested by one AI on one client: nobody has played it yet, and it has never had a second player.
+Steal ridiculous treasure from dangerous islands and other players, then somehow get it home. This is **V11, Goblin Life**: six-minute raids that start on a flying pirate ship, guardians that **follow you home across the sea** (a stone Guardian in a tiny speedboat, the Leviathan, a ghost fleet), tornadoes, ramps and stylish boat tricks, in V10's sunlit storybook look. Between raids you spend the **Shinies** you earned in the Goblin Wardrobe: dress your goblin in ridiculous hats and coats, paint your boat, pick a trail and a trick style, learn emotes, and adopt a pet that follows you everywhere. V11 was tested by one AI on one client: nobody has played it yet, it has never had a second player, and Robux purchases are switched off.
 
 ## Play it
 
@@ -22,7 +22,7 @@ The world appears when Play starts. While editing, this game's Rojo connection u
 
 ## The raid
 
-Explore, take treasure, survive the chase, escape, and bank at the Hoard. A raid is six minutes of play and starts on the skyship (a 20-second launch window first; the clock starts after it): climb into a cannon with `E`, look at where you want to land (the gold ring), click or press `Space` to fire. In the air you tumble; hold `Space` to glide (a brake and a soft landing), hold `Shift` to dive, and the sea skips you up to three times. Gold wins the raid; **Shinies** are what you keep between raids (open the locker with `P` for pets and starting gear). No treasure needs gear, and most are worth about the same (9 to 11 gold; the three nearest home 4 to 5), except the **Golden Idol** at the Sun Temple: 17 gold, and its Guardian comes after you in a boat. Whatever you steal, its guardian follows you across the sea until the gold lantern buoys round Goblin Cove: keep your speed up.
+Explore, take treasure, survive the chase, escape, and bank at the Hoard. A raid is six minutes of play and starts on the skyship (a 20-second launch window first; the clock starts after it): climb into a cannon with `E`, look at where you want to land (the gold ring), click or press `Space` to fire. In the air you tumble; hold `Space` to glide (a brake and a soft landing), hold `Shift` to dive, and the sea skips you up to three times. Gold wins the raid; **Shinies** are what you keep between raids: every raid pays some, banking and winning pay more, and trophies pay extra. Spend them in the **Goblin Wardrobe** (`P`, the 🧥 button, or the tailor's stall on the skyship). No treasure needs gear, and most are worth about the same (9 to 11 gold; the three nearest home 4 to 5), except the **Golden Idol** at the Sun Temple: 17 gold, and its Guardian comes after you in a boat. Whatever you steal, its guardian follows you across the sea until the gold lantern buoys round Goblin Cove: keep your speed up.
 
 ## Controls
 
@@ -52,7 +52,8 @@ Explore, take treasure, survive the chase, escape, and bank at the Hoard. A raid
 | `E` (no prompt showing) | **Poltergoblin**: leave your body and run as a faster spirit for 5 s, then snap back |
 | `E` at a zipline post | Ride the zipline. Jump to let go |
 | `M` | World map (island difficulty, who is on guard, tornadoes). The **minimap** is always top right |
-| `P` | The locker: Shinies, pets, starting gear |
+| `P` (or the 🧥 button) | **The Goblin Wardrobe**: shop and locker for cosmetics, boat paint, trails, emotes, pets and starting gear. Buying takes two presses |
+| `V` (or the 😀 button) | **Emote wheel**. Moving stops an emote |
 | `T` | Show every treasure on the board |
 | `H` | Show or hide the how-to-play panel |
 
@@ -62,6 +63,6 @@ Green pads and timed steam geysers launch you; catapults are aimed like the skys
 
 Tell the AI what to change or what felt bad. It handles GitHub, documentation, checks, and shared lessons. Playtest its changes and give it approval when you want them merged. Stop the previous AI writer before switching to another in the same folder.
 
-The single detailed source is [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md): current mechanics, future direction, decisions, bugs, and test limits. Dated evidence stays in [docs/reports/](docs/reports/). A second-player test of V9, the 32-player target, real saving, audio by ear, mobile, and broad fun/balance acceptance remain outstanding.
+The single detailed source is [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md): current mechanics, future direction, decisions, bugs, and test limits. Dated evidence stays in [docs/reports/](docs/reports/). A second-player test, the 32-player target, real saving on a published place, real Robux test purchases, audio by ear, mobile, and broad fun/balance acceptance remain outstanding. Robux setup is in [docs/MONETIZATION.md](docs/MONETIZATION.md).
 
 To ask another AI for ideas, ask your coding AI to open **GAME_GUIDE.md** and attach it. That generated file includes the complete game description, exact tuning, shared rubric/lessons, and dated history. [docs/SHARED_MEMORY.md](docs/SHARED_MEMORY.md) explains the system; the AI maintains it.

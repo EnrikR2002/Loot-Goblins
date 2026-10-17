@@ -37,7 +37,9 @@ Net.BoatJump = remote("BoatJumpRequest") -- The hop, for a boat the server is si
 Net.BoatRecall = remote("BoatRecallRequest") -- B: call a boat to the nearest shore.
 Net.Steal = remote("StealRequest") -- (target Player): E at close range on a carrier you have knocked down.
 Net.Deploy = remote("DeployRequest") -- (islandId | nil): choose where to land, and (second argument true) go.
-Net.Shop = remote("ShopRequest") -- (action, id): buy, equip or unequip something with Shinies.
+Net.Shop = remote("ShopRequest") -- (action, a, b): buy, equip, unequip, outfit presets (V11: server/Progress.lua).
+-- V11:
+Net.Emote = remote("EmoteRequest") -- (emoteId | "stop"): strike a pose you own (server/Emotes.lua).
 Net.GameEvent = remote("GameEvent")
 folder.Parent = ReplicatedStorage
 

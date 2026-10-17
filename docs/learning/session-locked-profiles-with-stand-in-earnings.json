@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "session-locked-profiles-with-stand-in-earnings",
+  "title": "Let a player play on a stand-in profile while another server still holds their save",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-17",
+  "topics": [
+    "persistence",
+    "datastore",
+    "progression"
+  ],
+  "observation": "Profiles were opened and saved with one UpdateAsync that checks a session lock. In a Studio test with an in-memory store, a fresh lock planted by 'another server' made this server refuse to open the profile; after five tries (16 s) the player kept playing on a blank stand-in, earned 18 Shinies from a raid while purchases were refused, and the stored profile stayed untouched. When the other lock was released, a background retry opened the real profile within 20 s and added the earnings (525 + 18 = 543). Separately, a crashed server's stale lock was taken over and its late save was refused, so newer data survived.",
+  "recommendation": "Check a session lock inside every UpdateAsync (refuse writes when the lock is not yours), let players start at once on a stand-in profile, block purchases until the real profile is open, and merge only earned currency and stats when it opens.",
+  "applies_when": [
+    "A game saves currency or purchases per player",
+    "Players can rejoin quickly or be in two servers"
+  ],
+  "limits": [
+    "Tested on an in-memory DataStore stand-in in Studio, not Roblox's live DataStore",
+    "Lock timings (180 s stale, 20 s retry) are this game's choices, not measured optima"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/0635aec9368565ade07d534144be178fead2fb95/docs/reports/2026-10-17-v11-goblin-life.md",
+      "detail": "Section 23: the planted-lock rejoin test and the automated stale-lock and refused-late-save tests."
+    }
+  ],
+  "rubric_checks": [
+    "CL-38",
+    "CL-39"
+  ]
+}

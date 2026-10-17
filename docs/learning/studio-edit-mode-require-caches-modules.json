@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "studio-edit-mode-require-caches-modules",
+  "title": "Studio's Edit mode keeps old module code after a script is changed",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-17",
+  "topics": [
+    "testing",
+    "studio",
+    "tooling"
+  ],
+  "observation": "A Luau test suite run in Studio's Edit mode (through Studio MCP's execute_luau) kept failing on a bug that had already been fixed and synced into the ModuleScript's Source: require returned the cached result of the old source. Replacing every game and test ModuleScript with a fresh Clone (same name and parent) before requiring made the next run use the new code, and the test passed.",
+  "recommendation": "Before re-running Edit-mode tests after changing a ModuleScript's Source, replace each changed ModuleScript with a fresh clone (or reopen the place), and treat a failure that matches already-fixed code as a cache symptom first.",
+  "applies_when": [
+    "Running Luau tests or tools from Studio's command bar or Studio MCP in Edit mode",
+    "Syncing script sources into Studio without the Rojo plugin"
+  ],
+  "limits": [
+    "Observed in one Studio version in October 2026 through Studio MCP execute_luau",
+    "Play mode starts fresh VMs and was not affected"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/0635aec9368565ade07d534144be178fead2fb95/docs/reports/2026-10-17-v11-goblin-life.md",
+      "detail": "GAME_DESIGN.md V11 lessons (2) and the report's section 22: the preset test failed after its fix was synced, then passed once the modules were replaced with clones."
+    }
+  ]
+}
