@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "fingerprint-collision-after-visual-passes",
+  "title": "Prove a visual pass changed no collision by fingerprinting the built world",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-17",
+  "topics": [
+    "testing",
+    "art",
+    "level-design"
+  ],
+  "observation": "A visual-only pass quietly made decoration solid in several places (new palm trunk pieces, extra rocks, coral arms, column bases, a lantern post where boats tie up) even though every landmark had been written as non-colliding. Reading the diff found them; a machine check proved the fix. Every anchored part that was solid or hit by rays was listed by folder, name, position to 0.1 stud, size and rotation, grouped and hashed, in the new build and in a build of the previous version's exact sources (served into Studio from a second loopback server). All groups matched except things that move by themselves (parked boats bobbing, windmill sails turning), whose sizes were compared separately. Where a solid prop was redesigned, keeping its old solid exactly (invisible, same random draws) under a non-solid new look made the fingerprints match.",
+  "recommendation": "After any art or decoration pass on a generated world, fingerprint solid and ray-hit anchored parts in both versions and compare by group; expect differences only in parts that move by themselves. Keep redesigned props' old collision as invisible parts rather than reshaping what players bump into.",
+  "applies_when": [
+    "A change is meant to be visual only",
+    "World geometry is generated at runtime, so a file diff does not show what collides"
+  ],
+  "limits": [
+    "One world, one comparison, in October 2026",
+    "Parts that are unanchored or move at runtime need their own comparison",
+    "Terrain voxels were not included in the fingerprint"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/bb012932062b858a02e9e3a4276cea12c999a32d/docs/reports/2026-10-17-v10-living-archipelago.md",
+      "detail": "Section 24: 2,025 solid or ray-hit parts fingerprinted in V10 and in V9 at 713995e; identical apart from parked boat hulls and windmill sails, whose sizes matched."
+    }
+  ]
+}

@@ -493,15 +493,19 @@ local function buildMaelstrom()
 			local a = arm * math.pi / 2 + t * 2.6
 			local r = 250 - t * 190
 			local p = v3(cx + math.cos(a) * r, 0.5, cz + math.sin(a) * r)
+			-- V10: long thin ellipses along the flow (V9's were flat squares that read as floating tiles).
 			local piece = Kit.partOf(
 				foam,
 				"Foam",
-				v3(6 + (1 - t) * 14, 0.3, 16),
+				v3(3 + (1 - t) * 4, 0.4, 24 + (1 - t) * 16),
 				CFrame.lookAt(p, p + v3(-math.sin(a), 0, math.cos(a))),
 				Color3.fromRGB(235, 245, 255),
 				Enum.Material.Neon
 			)
-			piece.Transparency = 0.45
+			local streak = Instance.new("SpecialMesh")
+			streak.MeshType = Enum.MeshType.Sphere
+			streak.Parent = piece
+			piece.Transparency = 0.5
 			piece.CanCollide = false
 			piece.CanQuery = false
 			piece.CanTouch = false
@@ -564,22 +568,45 @@ local function buildFrost()
 		40,
 		1.8
 	)
-	-- Northern lights: huge soft neon curtains high over the island, visible from far away.
-	for i, color in ipairs({
-		Color3.fromRGB(120, 255, 190),
-		Color3.fromRGB(150, 200, 255),
-		Color3.fromRGB(210, 150, 255),
+	-- Northern lights (V10): three rippling curtains high over the island. Each is a row of overlapping rays
+	-- along a wave, in three bands (green hem, cyan middle, violet top, fading out as they rise), so they read
+	-- as curtains of light, not sheets of glass. One persistent model: it is meant to be seen from far away.
+	local aurora = Instance.new("Model")
+	aurora.Name = "Aurora"
+	aurora.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	local bands = {
+		{ share = 0.45, transparency = 0.72 },
+		{ share = 0.32, transparency = 0.8 },
+		{ share = 0.4, transparency = 0.88 },
+	}
+	for i, colors in ipairs({
+		{ Color3.fromRGB(110, 255, 170), Color3.fromRGB(110, 230, 255), Color3.fromRGB(190, 140, 255) },
+		{ Color3.fromRGB(130, 255, 200), Color3.fromRGB(140, 210, 255), Color3.fromRGB(220, 140, 255) },
+		{ Color3.fromRGB(100, 240, 160), Color3.fromRGB(120, 220, 255), Color3.fromRGB(200, 130, 255) },
 	}) do
-		local curtain = decor(
-			"Aurora",
-			v3(300, 150, 1),
-			CFrame.new(cx + (i - 2) * 90, 330, cz - 80 + i * 22) * CFrame.Angles(0, math.rad(15 * (i - 2)), 0),
-			color,
-			Enum.Material.Neon
-		)
-		curtain.Transparency = 0.82
-		curtain.CastShadow = false
+		local frame = CFrame.new(cx + (i - 2) * 90, 290, cz - 80 + i * 22) * CFrame.Angles(0, math.rad(15 * (i - 2)), 0)
+		for k = 0, 15 do
+			local x = (k - 7.5) * 19
+			local z = math.sin(k * 0.7 + i) * 26
+			local tall = 70 + math.sin(k * 1.3 + i * 2) * 22
+			local y = 0
+			for n, band in ipairs(bands) do
+				local h = tall * band.share
+				local ray = decor(
+					"Aurora",
+					v3(22, h, 1),
+					frame * CFrame.new(x, y + h / 2, z) * CFrame.Angles(0, math.cos(k * 0.7 + i) * 0.6, 0),
+					colors[n],
+					Enum.Material.Neon
+				)
+				ray.Transparency = band.transparency
+				ray.CastShadow = false
+				ray.Parent = aurora
+				y += h
+			end
+		end
 	end
+	aurora.Parent = folders.landmarks
 	local random = Kit.rng(55)
 	for _ = 1, 22 do
 		local ang = random:NextNumber(0, math.pi * 2)

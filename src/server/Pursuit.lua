@@ -41,6 +41,7 @@ local Archipelago = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitFo
 local Sea = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Sea"))
 local Twister = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Twister"))
 local Util = require(script.Parent.Util)
+local GuardianLook = require(script.Parent.GuardianLook)
 local Net = require(script.Parent.Net)
 local Boats = require(script.Parent.Boats)
 local Loot = require(script.Parent.Loot)
@@ -342,8 +343,6 @@ end
 -- Forms -----------------------------------------------------------------------------------------------
 local WOOD = Color3.fromRGB(122, 84, 52)
 local DARK_WOOD = Color3.fromRGB(78, 52, 34)
-local STONE = Color3.fromRGB(150, 70, 60)
-local STONE_DARK = Color3.fromRGB(90, 45, 40)
 local GOLD = Color3.fromRGB(255, 205, 40)
 
 local function ball(name, size, offset, color, material, transparency)
@@ -812,17 +811,115 @@ forms.Crystal = defaults({
 	size = 3,
 	startDelay = 2.5, -- never an attack the moment it appears
 	trail = Color3.fromRGB(230, 160, 255),
+	-- V10: still tiny, now a character. A crystal imp crouched on a sliver of crystal like a surfer: a faceted
+	-- violet body round a glowing core, a diamond head with two cyan eyes and crystal horns, a crown of three
+	-- shards down its back, arms thrown out for balance. The board glows cyan underneath; the trail is violet.
 	body = {
-		block("Shard", Vector3.new(2, 0.8, 5.4), nil, Color3.fromRGB(215, 120, 255), Enum.Material.Neon, 0.3),
-		ball("Rider", 2, CFrame.new(0, 1.4, 0.6), Color3.fromRGB(240, 190, 255), Enum.Material.Neon, 0.15),
-		ball("Head", 1.3, CFrame.new(0, 2.8, 0.4), Color3.fromRGB(250, 220, 255), Enum.Material.Neon, 0.1),
+		block("Shard", Vector3.new(2, 0.6, 5.4), nil, Color3.fromRGB(176, 110, 255), Enum.Material.Glass, 0.15),
+		block(
+			"ShardNose",
+			Vector3.new(1.42, 0.6, 1.42),
+			CFrame.new(0, 0, -2.7) * CFrame.Angles(0, math.rad(45), 0),
+			Color3.fromRGB(176, 110, 255),
+			Enum.Material.Glass,
+			0.15
+		),
+		block(
+			"ShardGlow",
+			Vector3.new(1.6, 0.2, 5),
+			CFrame.new(0, -0.38, 0),
+			Color3.fromRGB(110, 230, 255),
+			Enum.Material.Neon,
+			0.1
+		),
+		block(
+			"Body",
+			Vector3.new(1.3, 1.3, 1.3),
+			CFrame.new(0, 1.3, 0.5) * CFrame.Angles(math.rad(45), math.rad(45), 0),
+			Color3.fromRGB(196, 140, 255),
+			Enum.Material.Glass,
+			0.2
+		),
+		ball("Core", 0.8, CFrame.new(0, 1.3, 0.5), Color3.fromRGB(255, 230, 255), Enum.Material.Neon, 0),
+		block(
+			"Head",
+			Vector3.new(1, 1, 1),
+			CFrame.new(0, 2.5, 0.2) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+			Color3.fromRGB(214, 170, 255),
+			Enum.Material.Glass,
+			0.1
+		),
+		block(
+			"EyeL",
+			Vector3.new(0.22, 0.22, 0.12),
+			CFrame.new(-0.25, 2.55, -0.38),
+			Color3.fromRGB(110, 240, 255),
+			Enum.Material.Neon,
+			0
+		),
+		block(
+			"EyeR",
+			Vector3.new(0.22, 0.22, 0.12),
+			CFrame.new(0.25, 2.55, -0.38),
+			Color3.fromRGB(110, 240, 255),
+			Enum.Material.Neon,
+			0
+		),
+		block(
+			"HornL",
+			Vector3.new(0.2, 1, 0.2),
+			CFrame.new(-0.4, 3.2, 0.2) * CFrame.Angles(0, 0, math.rad(25)),
+			Color3.fromRGB(240, 200, 255),
+			Enum.Material.Neon,
+			0.1
+		),
+		block(
+			"HornR",
+			Vector3.new(0.2, 1, 0.2),
+			CFrame.new(0.4, 3.2, 0.2) * CFrame.Angles(0, 0, math.rad(-25)),
+			Color3.fromRGB(240, 200, 255),
+			Enum.Material.Neon,
+			0.1
+		),
+		block(
+			"ArmL",
+			Vector3.new(1.3, 0.25, 0.25),
+			CFrame.new(-1, 1.5, 0.4) * CFrame.Angles(0, 0, math.rad(-20)),
+			Color3.fromRGB(196, 140, 255),
+			Enum.Material.Glass,
+			0.2
+		),
+		block(
+			"ArmR",
+			Vector3.new(1.3, 0.25, 0.25),
+			CFrame.new(1, 1.7, 0.4) * CFrame.Angles(0, 0, math.rad(30)),
+			Color3.fromRGB(196, 140, 255),
+			Enum.Material.Glass,
+			0.2
+		),
 		block(
 			"Spike",
-			Vector3.new(0.4, 2.6, 0.4),
-			CFrame.new(0, 3.6, 0.9) * CFrame.Angles(math.rad(25), 0, 0),
+			Vector3.new(0.3, 1.6, 0.3),
+			CFrame.new(0, 1.9, 1.3) * CFrame.Angles(math.rad(35), 0, 0),
 			Color3.fromRGB(240, 190, 255),
 			Enum.Material.Neon,
-			0.2
+			0.15
+		),
+		block(
+			"Spike",
+			Vector3.new(0.25, 1.2, 0.25),
+			CFrame.new(-0.35, 1.6, 1.4) * CFrame.Angles(math.rad(40), 0, math.rad(20)),
+			Color3.fromRGB(240, 190, 255),
+			Enum.Material.Neon,
+			0.15
+		),
+		block(
+			"Spike",
+			Vector3.new(0.25, 1.2, 0.25),
+			CFrame.new(0.35, 1.6, 1.4) * CFrame.Angles(math.rad(40), 0, math.rad(-20)),
+			Color3.fromRGB(240, 190, 255),
+			Enum.Material.Neon,
+			0.15
 		),
 	},
 	-- Its own way of moving. Far off it cuts straight at you, taking every angle; close, it REPEATS you,
@@ -957,20 +1054,58 @@ forms.Fort = defaults({
 -- seconds, close enough, it raises its fists, a gold ring opens where you are going, and a stone fist punches up
 -- out of the sea: whatever is on the ring goes about twenty feet up. It keeps you, and your treasure, in one piece.
 local GUARDIAN_RIDER_SCALE = 1.15
+-- V10: the speedboat is a racing toy (a gold-striped stone hull with a big 7 on each side, a windshield, a
+-- chrome motor with a flame), and the rider is the island's own Guardian (GuardianLook), squeezed in up to its
+-- belt. Two sets of arms: gripping the gunwales, and (shown only for the launch) both fists overhead.
 local function guardianRider()
 	local s = GUARDIAN_RIDER_SCALE
 	local deck = 1.4
+	local HULL = Color3.fromRGB(132, 120, 108)
 	local parts = {
-		block("Hull", Vector3.new(8, 2.4, 13), nil, Color3.fromRGB(120, 112, 104), Enum.Material.Slate),
-		block("Trim", Vector3.new(8.4, 0.6, 13.4), CFrame.new(0, 1.3, 0), GOLD, Enum.Material.Metal),
+		block("Hull", Vector3.new(8, 2.4, 13), nil, HULL, Enum.Material.Slate),
 		block(
-			"Bow",
-			Vector3.new(6, 2, 4),
-			CFrame.new(0, 0.6, -7.4) * CFrame.Angles(math.rad(-25), 0, 0),
-			Color3.fromRGB(120, 112, 104),
+			"Keel",
+			Vector3.new(5.6, 1.4, 12),
+			CFrame.new(0, -1.6, 0.4),
+			Color3.fromRGB(96, 86, 80),
 			Enum.Material.Slate
 		),
-		block("Motor", Vector3.new(3, 4, 2.4), CFrame.new(0, 2, 7.4), Color3.fromRGB(60, 60, 66), Enum.Material.Metal),
+		block("Trim", Vector3.new(8.4, 0.6, 13.4), CFrame.new(0, 1.3, 0), GOLD, Enum.Material.Metal),
+		block(
+			"Stripe",
+			Vector3.new(8.5, 0.7, 9),
+			CFrame.new(0, 0.1, 1.5),
+			Color3.fromRGB(226, 64, 52),
+			Enum.Material.SmoothPlastic
+		),
+		block(
+			"Bow",
+			Vector3.new(6, 2, 4.6),
+			CFrame.new(0, 0.5, -7.6) * CFrame.Angles(math.rad(-25), 0, 0),
+			HULL,
+			Enum.Material.Slate
+		),
+		block(
+			"BowTip",
+			Vector3.new(3.4, 1.4, 3),
+			CFrame.new(0, 0.1, -9.8) * CFrame.Angles(math.rad(-38), 0, 0),
+			GOLD,
+			Enum.Material.Metal
+		),
+		block(
+			"Motor",
+			Vector3.new(3, 4, 2.4),
+			CFrame.new(0, 2, 7.4),
+			Color3.fromRGB(196, 200, 210),
+			Enum.Material.DiamondPlate
+		),
+		block(
+			"MotorCap",
+			Vector3.new(3.4, 1, 2.8),
+			CFrame.new(0, 4.4, 7.4),
+			Color3.fromRGB(226, 64, 52),
+			Enum.Material.SmoothPlastic
+		),
 		block(
 			"Flame",
 			Vector3.new(2, 2, 3),
@@ -988,53 +1123,35 @@ local function guardianRider()
 			0.4
 		),
 	}
-	local function rider(name, size, at, color, material, transparency)
-		table.insert(parts, {
-			"Rider" .. name,
-			size * s,
-			CFrame.new(at.X * s, deck + at.Y * s, at.Z * s),
-			color,
-			material,
-			nil,
-			transparency or 0,
-		})
+	for _, spec in ipairs(GuardianLook.posed(1.15, 0)) do
+		if spec.name ~= "LegL" and spec.name ~= "LegR" and spec.name ~= "FootL" and spec.name ~= "FootR" then
+			local cf = spec.cframe
+			table.insert(parts, {
+				"Rider" .. spec.name,
+				spec.size * s,
+				CFrame.new(cf.Position.X * s, deck + (cf.Position.Y - 6) * s, cf.Position.Z * s + 0.5) * cf.Rotation,
+				spec.name == "Eye" and Color3.fromRGB(255, 60, 40) or spec.color, -- awake, and furious
+				spec.material,
+				spec.shape,
+				0,
+			})
+		end
 	end
-	rider("LegL", Vector3.new(3.4, 7, 3.4), Vector3.new(-2.4, 3.5, 0.5), STONE_DARK, Enum.Material.Slate)
-	rider("LegR", Vector3.new(3.4, 7, 3.4), Vector3.new(2.4, 3.5, 0.5), STONE_DARK, Enum.Material.Slate)
-	rider("Torso", Vector3.new(9, 9, 6), Vector3.new(0, 11.5, 0.5), STONE, Enum.Material.Slate)
-	rider(
-		"Moss",
-		Vector3.new(9.2, 1.5, 6.2),
-		Vector3.new(0, 16.3, 0.5),
-		Color3.fromRGB(70, 140, 60),
-		Enum.Material.Grass
-	)
-	rider("Head", Vector3.new(6, 5, 5), Vector3.new(0, 18.5, 0), STONE, Enum.Material.Slate)
-	rider("Brow", Vector3.new(6.4, 1.2, 1.4), Vector3.new(0, 20, -2.1), STONE_DARK, Enum.Material.Slate)
-	rider(
-		"EyeL",
-		Vector3.new(1.3, 0.9, 0.4),
-		Vector3.new(-1.4, 19, -2.55),
-		Color3.fromRGB(255, 60, 40),
-		Enum.Material.Neon
-	)
-	rider(
-		"EyeR",
-		Vector3.new(1.3, 0.9, 0.4),
-		Vector3.new(1.4, 19, -2.55),
-		Color3.fromRGB(255, 60, 40),
-		Enum.Material.Neon
-	)
-	-- Arms forward, gripping the gunwales (driving)...
-	rider("ArmL", Vector3.new(3, 9, 3), Vector3.new(-6.2, 11, -2), STONE_DARK, Enum.Material.Slate)
-	rider("ArmR", Vector3.new(3, 9, 3), Vector3.new(6.2, 11, -2), STONE_DARK, Enum.Material.Slate)
-	rider("FistL", Vector3.new(3.6, 3.6, 3.6), Vector3.new(-6.2, 6, -3), STONE, Enum.Material.Slate)
-	rider("FistR", Vector3.new(3.6, 3.6, 3.6), Vector3.new(6.2, 6, -3), STONE, Enum.Material.Slate)
-	-- ...and raised overhead for the launch (shown only during its tell).
-	rider("UpArmL", Vector3.new(3, 9, 3), Vector3.new(-6.2, 20.5, 0.5), STONE_DARK, Enum.Material.Slate, 1)
-	rider("UpArmR", Vector3.new(3, 9, 3), Vector3.new(6.2, 20.5, 0.5), STONE_DARK, Enum.Material.Slate, 1)
-	rider("UpFistL", Vector3.new(3.6, 3.6, 3.6), Vector3.new(-6.2, 26, 0.5), STONE, Enum.Material.Slate, 1)
-	rider("UpFistR", Vector3.new(3.6, 3.6, 3.6), Vector3.new(6.2, 26, 0.5), STONE, Enum.Material.Slate, 1)
+	-- ...and the raised arms for the launch (shown only during its tell).
+	for _, spec in ipairs(GuardianLook.posed(2.8, 0)) do
+		if spec.limb == "armL" or spec.limb == "armR" then
+			local cf = spec.cframe
+			table.insert(parts, {
+				"RiderUp" .. spec.name,
+				spec.size * s,
+				CFrame.new(cf.Position.X * s, deck + (cf.Position.Y - 6) * s, cf.Position.Z * s + 0.5) * cf.Rotation,
+				spec.color,
+				spec.material,
+				spec.shape,
+				1,
+			})
+		end
+	end
 	return parts
 end
 
@@ -1061,7 +1178,7 @@ local function launchFist(at, color)
 	fist.Name = "GuardianFist"
 	fist.Size = Vector3.new(14, 26, 14)
 	fist.Material = Enum.Material.Slate
-	fist.Color = Color3.fromRGB(150, 70, 60)
+	fist.Color = GuardianLook.STONE
 	fist.Anchored = true
 	fist.CanCollide = false
 	fist.CanQuery = false

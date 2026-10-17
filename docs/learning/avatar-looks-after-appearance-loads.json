@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "avatar-looks-after-appearance-loads",
+  "title": "Apply character cosmetics after the avatar's appearance has loaded, idempotently",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-17",
+  "topics": [
+    "characters",
+    "testing",
+    "timing"
+  ],
+  "observation": "Ears and a nose welded to a player's Head, and body colours set on spawn, disappeared: in a Studio test the avatar's appearance loaded in the same moment as CharacterAdded and replaced the Head (and the BodyColors) just after the code ran, and Player:HasAppearanceLoaded could already read true. A first attempt to wait for it timed the wait with os.clock(), which is CPU time in Luau and barely advances while a script waits, so the wait stalled. Applying the look on Player.CharacterAppearanceLoaded and again two seconds after spawning, rebuilding only if the welded parts were not on the current Head, worked on spawn and on respawn.",
+  "recommendation": "Apply avatar cosmetics on CharacterAppearanceLoaded plus a short delayed retry, make the apply idempotent (check the weld's Part0 is the current Head), set colours every time, and time waits with time() or task.wait, never os.clock().",
+  "applies_when": [
+    "Adding parts or colours to player characters on spawn",
+    "Cosmetics appear in a direct test but not on a real spawn"
+  ],
+  "limits": [
+    "Observed in Roblox Studio solo play on R15 avatars in October 2026",
+    "Live servers with slower avatar loading were not tested"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/bb012932062b858a02e9e3a4276cea12c999a32d/docs/reports/2026-10-17-v10-living-archipelago.md",
+      "detail": "Sections 13 and 24: the vanishing ears, the cause, and the fix checked on spawn and respawn."
+    }
+  ]
+}

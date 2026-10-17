@@ -40,10 +40,12 @@ local function now()
 end
 
 -- Building the ship -----------------------------------------------------------------------------
-local WOOD = Color3.fromRGB(122, 84, 52)
-local DARK_WOOD = Color3.fromRGB(78, 52, 34)
-local SAIL = Color3.fromRGB(240, 232, 205)
-local TRIM = Color3.fromRGB(255, 205, 50)
+local WOOD = Color3.fromRGB(150, 98, 58)
+local WOOD_LIGHT = Color3.fromRGB(184, 128, 76)
+local DARK_WOOD = Color3.fromRGB(88, 56, 36)
+local SAIL = Color3.fromRGB(246, 236, 210)
+local TRIM = Color3.fromRGB(255, 196, 46)
+local RED = Color3.fromRGB(214, 58, 48)
 
 local function part(name, size, cf, color, material, collide, shape)
 	local p = Instance.new(shape or "Part")
@@ -156,6 +158,228 @@ local function buildCannon(index, x, z, outward)
 	})
 	cannon.restDirection = rest
 	table.insert(cannons, cannon)
+end
+
+-- V10: the dressing that makes it the GOLDEN GOBLIN (docs/ART_DIRECTION.md). A rounded hull in three tiers of
+-- planking with a gold stripe, a curved prow with a golden goblin figurehead and a bowsprit, a jib, striped
+-- sails, rigging, a crow's nest and a pennant, glowing stern windows and lanterns, and two propellers (the
+-- clients spin them). Every piece here is decoration: non-colliding and not hit by rays, so the deck, the
+-- wings, the cannons and the aim are exactly what they were.
+local function line(name, a, b, width, color)
+	local mid = (a + b) / 2
+	local p = part(
+		name,
+		Vector3.new(width, width, (b - a).Magnitude),
+		CFrame.lookAt(mid, b),
+		color,
+		Enum.Material.Wood,
+		false
+	)
+	p.CastShadow = false
+	return p
+end
+
+local function dressShip()
+	local B = S.BEAM
+	for _, side in ipairs({ -1, 1 }) do
+		-- The hull's belly: three tiers of planking curving in toward the keel.
+		part(
+			"HullSide",
+			Vector3.new(2.6, 7, 116),
+			CFrame.new(side * 22.4, -2.8, 0) * CFrame.Angles(0, 0, side * math.rad(-14)),
+			WOOD_LIGHT,
+			Enum.Material.WoodPlanks,
+			false
+		)
+		part(
+			"HullSide",
+			Vector3.new(2.6, 7, 108),
+			CFrame.new(side * 19.2, -8.8, 1) * CFrame.Angles(0, 0, side * math.rad(-32)),
+			WOOD,
+			Enum.Material.WoodPlanks,
+			false
+		)
+		part(
+			"HullSide",
+			Vector3.new(2.6, 6, 96),
+			CFrame.new(side * 14.6, -13.6, 2) * CFrame.Angles(0, 0, side * math.rad(-50)),
+			DARK_WOOD,
+			Enum.Material.WoodPlanks,
+			false
+		)
+		part(
+			"HullStripe",
+			Vector3.new(0.7, 1.4, 117),
+			CFrame.new(side * 23.5, -0.9, 0),
+			TRIM,
+			Enum.Material.Metal,
+			false
+		)
+		-- The prow: two panels closing to a point under the bow.
+		part(
+			"BowHull",
+			Vector3.new(2.6, 11, 36),
+			CFrame.new(side * 8.4, -4.5, -84) * CFrame.Angles(0, side * math.rad(-25), side * math.rad(-14)),
+			WOOD_LIGHT,
+			Enum.Material.WoodPlanks,
+			false
+		)
+		part(
+			"BowStripe",
+			Vector3.new(0.7, 1.4, 36),
+			CFrame.new(side * 9.9, -0.9, -84) * CFrame.Angles(0, side * math.rad(-25), 0),
+			TRIM,
+			Enum.Material.Metal,
+			false
+		)
+		-- Stern lanterns on the quarterdeck's corners.
+		part(
+			"SternPost",
+			Vector3.new(0.9, 7, 0.9),
+			CFrame.new(side * 20.5, 10.5, 86),
+			DARK_WOOD,
+			Enum.Material.Wood,
+			false
+		)
+		local lamp = part(
+			"SternLamp",
+			Vector3.new(2, 2, 2),
+			CFrame.new(side * 20.5, 14.6, 86),
+			Color3.fromRGB(255, 206, 120),
+			Enum.Material.Neon,
+			false
+		)
+		lamp.Shape = Enum.PartType.Ball
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 196, 120)
+		light.Range = 34
+		light.Brightness = 1.4
+		light.Parent = lamp
+	end
+	-- The figurehead: a golden goblin leaning out over the clouds, ears back.
+	local head = part("FigureHead", Vector3.new(6, 6, 6), CFrame.new(0, -0.5, -101), TRIM, Enum.Material.Metal, false)
+	head.Shape = Enum.PartType.Ball
+	part(
+		"FigureBody",
+		Vector3.new(5, 6, 4),
+		CFrame.new(0, -5, -99) * CFrame.Angles(math.rad(-20), 0, 0),
+		TRIM,
+		Enum.Material.Metal,
+		false
+	)
+	for _, side in ipairs({ -1, 1 }) do
+		part(
+			"FigureEar",
+			Vector3.new(0.8, 3, 5),
+			CFrame.new(side * 3.6, 1.2, -99.5)
+				* CFrame.Angles(math.rad(-25), side * math.rad(-30), side * math.rad(-35)),
+			TRIM,
+			Enum.Material.Metal,
+			false
+		)
+		local eye = part(
+			"FigureEye",
+			Vector3.new(1, 1, 1),
+			CFrame.new(side * 1.4, 0.4, -103.8),
+			Color3.fromRGB(110, 255, 210),
+			Enum.Material.Neon,
+			false
+		)
+		eye.Shape = Enum.PartType.Ball
+	end
+	-- Bowsprit and jib.
+	part(
+		"Bowsprit",
+		Vector3.new(1.8, 1.8, 36),
+		CFrame.new(0, 8, -106) * CFrame.Angles(math.rad(20), 0, 0),
+		DARK_WOOD,
+		Enum.Material.Wood,
+		false
+	)
+	local jib =
+		part("Jib", Vector3.new(0.5, 40, 66), CFrame.new(0, 25, -76), SAIL, Enum.Material.Fabric, false, "WedgePart")
+	jib.Transparency = 0.04
+	-- Sails: a red band and a gold hem on each; a crow's nest and a pennant on the mainmast.
+	for i, z in ipairs({ -42, -4, 40 }) do
+		local height = i == 2 and 96 or 78
+		part(
+			"SailBand",
+			Vector3.new(B * 1.3 + 0.2, height * 0.07, 0.9),
+			CFrame.new(0, height * 0.6, z - 0.8),
+			RED,
+			Enum.Material.Fabric,
+			false
+		)
+		part(
+			"SailHem",
+			Vector3.new(B * 1.3 + 0.2, 1.2, 0.9),
+			CFrame.new(0, height * 0.27, z - 0.8),
+			TRIM,
+			Enum.Material.Fabric,
+			false
+		)
+		-- Rigging from the masthead down to the rails, fore and aft on both sides.
+		for _, side in ipairs({ -1, 1 }) do
+			for _, dz in ipairs({ -16, 14 }) do
+				line(
+					"Rigging",
+					Vector3.new(0, height - 2, z),
+					Vector3.new(side * (B / 2 - 1), 3, z + dz),
+					0.3,
+					DARK_WOOD
+				)
+			end
+		end
+	end
+	local nest = part(
+		"CrowsNest",
+		Vector3.new(2, 8, 8),
+		CFrame.new(0, 80, -4) * CFrame.Angles(0, 0, math.rad(90)),
+		DARK_WOOD,
+		Enum.Material.Wood,
+		false
+	)
+	nest.Shape = Enum.PartType.Cylinder
+	part("Pennant", Vector3.new(0.3, 3.4, 20), CFrame.new(0, 99, 6), TRIM, Enum.Material.Fabric, false)
+	part("PennantTip", Vector3.new(0.3, 2.4, 6), CFrame.new(0, 99, 18.5), RED, Enum.Material.Fabric, false)
+	-- Glowing stern windows.
+	for _, x in ipairs({ -14, -7, 0, 7, 14 }) do
+		part(
+			"SternWindow",
+			Vector3.new(3.4, 4, 0.4),
+			CFrame.new(x, 11.5, 89.2),
+			Color3.fromRGB(255, 214, 130),
+			Enum.Material.Neon,
+			false
+		)
+	end
+	-- Two propellers under the stern. The server only builds them; every client spins its own (Skyship.lua).
+	for _, side in ipairs({ -1, 1 }) do
+		local hub = part(
+			"PropellerHub",
+			Vector3.new(4, 3, 3),
+			CFrame.new(side * 15, -7, 93) * CFrame.Angles(0, math.rad(90), 0),
+			TRIM,
+			Enum.Material.Metal,
+			false
+		)
+		hub.Shape = Enum.PartType.Cylinder
+		hub:SetAttribute("Spin", side)
+		for k = 0, 2 do
+			local blade = part(
+				"PropellerBlade",
+				Vector3.new(2.4, 12, 0.8),
+				CFrame.new(side * 15, -7, 94.5)
+					* CFrame.Angles(0, 0, math.rad(k * 120))
+					* CFrame.new(0, 6, 0)
+					* CFrame.Angles(0, math.rad(20), 0),
+				DARK_WOOD,
+				Enum.Material.Wood,
+				false
+			)
+			blade:SetAttribute("Spin", side)
+		end
+	end
 end
 
 function Skyship.build(_worldRefs)
@@ -330,6 +554,8 @@ function Skyship.build(_worldRefs)
 	label.TextColor3 = TRIM
 	label.TextScaled = true
 	label.Parent = gui
+
+	dressShip()
 
 	-- Where goblins stand when they arrive: a loose grid on the main deck.
 	for row = 0, 5 do

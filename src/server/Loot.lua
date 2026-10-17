@@ -66,6 +66,14 @@ local function decorate(core, name, size, offset, color, material, shape)
 	return p
 end
 
+-- V10 decoration that is looks only: rays (grapples, aim) pass through it, so a treasure's grab area stays what
+-- it was before V10 restyled it.
+local function trim(core, name, size, offset, color, material, shape)
+	local p = decorate(core, name, size, offset, color, material, shape)
+	p.CanQuery = false
+	return p
+end
+
 local GOLD = Color3.fromRGB(255, 200, 40)
 
 -- One builder per look (Config.LOOT's `visual`). Each resizes the core and welds on decoration;
@@ -104,20 +112,41 @@ local builders = {
 		core.Size = Vector3.new(4.4, 3.2, 3)
 		core.Material = Enum.Material.WoodPlanks
 		core.Color = def.color:Lerp(Color3.fromRGB(70, 40, 20), 0.55)
-		decorate(
+		-- V10: a domed lid propped open on a heap of coins, gold bands, a lock and a jewel on top.
+		trim(
 			core,
 			"Lid",
-			Vector3.new(4.6, 0.8, 3.2),
-			CFrame.new(0, 1.3, 0),
+			Vector3.new(4.6, 3.1, 3.1),
+			CFrame.new(0, 1.9, 1.1) * CFrame.Angles(math.rad(-35), 0, 0),
 			core.Color:Lerp(Color3.new(0, 0, 0), 0.2),
-			Enum.Material.WoodPlanks
+			Enum.Material.WoodPlanks,
+			Enum.PartType.Cylinder
 		)
 		for _, x in ipairs({ -1.6, 1.6 }) do
 			decorate(core, "Band", Vector3.new(0.4, 3.4, 3.2), CFrame.new(x, 0, 0), GOLD, Enum.Material.Metal)
 		end
 		decorate(core, "Lock", Vector3.new(0.8, 0.9, 0.4), CFrame.new(0, 0.6, -1.6), GOLD, Enum.Material.Metal)
-		decorate(core, "Spill", Vector3.new(3.6, 0.5, 2.4), CFrame.new(0, 1.8, 0), GOLD, Enum.Material.Neon).Transparency =
-			0.3
+		decorate(core, "Spill", Vector3.new(3.8, 0.6, 2.6), CFrame.new(0, 1.7, 0), GOLD, Enum.Material.Neon).Transparency =
+			0.2
+		for i, at in ipairs({ Vector3.new(-1, 2.1, -0.4), Vector3.new(0.6, 2.2, 0.3), Vector3.new(1.4, 2, -0.6) }) do
+			trim(
+				core,
+				"Coin",
+				Vector3.new(0.25, 1.1, 1.1),
+				CFrame.new(at) * CFrame.Angles(0, i * 0.9, math.rad(60 + i * 20)),
+				GOLD,
+				Enum.Material.Metal,
+				Enum.PartType.Cylinder
+			)
+		end
+		trim(
+			core,
+			"Jewel",
+			Vector3.new(0.9, 0.9, 0.9),
+			CFrame.new(-0.2, 2.3, 0.5) * CFrame.Angles(math.rad(45), math.rad(45), 0),
+			lighten(def.color, 0.2),
+			Enum.Material.Neon
+		)
 	end,
 	orb = function(core, def)
 		core.Shape = Enum.PartType.Ball
@@ -145,41 +174,155 @@ local builders = {
 			)
 		end
 	end,
+	-- V10: the Golden Idol is THE prize, so it looks it: a squat golden goblin king, ears out, ruby eyes and a
+	-- ruby on its brow, arms folded over a fat belly, a gold crown and (the Idol only) a sun halo behind its head.
 	idol = function(core, def)
 		core.Size = Vector3.new(3, 4.6, 3)
 		core.Material = Enum.Material.Metal
 		core.Color = def.color
-		core.Reflectance = 0.15
-		decorate(
-			core,
-			"IdolHead",
-			Vector3.new(2.6, 2.6, 2.6),
-			CFrame.new(0, 1.2, 0),
-			def.color,
-			Enum.Material.Metal,
-			Enum.PartType.Ball
-		)
-		for _, x in ipairs({ -0.55, 0.55 }) do
-			decorate(
+		-- The core keeps its size (it is what you carry and throw) but is invisible: the figure below is the look.
+		core.Transparency = 1
+		local deep = def.color:Lerp(Color3.fromRGB(150, 90, 20), 0.35)
+		local ruby = Color3.fromRGB(255, 40, 60)
+		local metal = Enum.Material.Metal
+		local ball = Enum.PartType.Ball
+		trim(core, "IdolBase", Vector3.new(3.2, 0.6, 3.2), CFrame.new(0, -2, 0), deep, metal)
+		trim(core, "IdolBelly", Vector3.new(3, 3, 3), CFrame.new(0, -0.6, 0), def.color, metal, ball).Reflectance = 0.2
+		trim(core, "IdolChest", Vector3.new(2.4, 1.4, 2), CFrame.new(0, 0.6, 0.1), def.color, metal)
+		trim(core, "IdolArms", Vector3.new(3, 0.7, 0.9), CFrame.new(0, 0.1, -1.2), deep, metal)
+		trim(core, "IdolHead", Vector3.new(2.4, 2.4, 2.4), CFrame.new(0, 1.7, 0), def.color, metal, ball).Reflectance =
+			0.2
+		for _, side in ipairs({ -1, 1 }) do
+			trim(
+				core,
+				"IdolEar",
+				Vector3.new(0.35, 0.9, 1.7),
+				CFrame.new(side * 1.4, 1.9, 0.1) * CFrame.Angles(0, side * math.rad(70), side * math.rad(-30)),
+				def.color,
+				metal,
+				Enum.PartType.Wedge
+			)
+			trim(
 				core,
 				"IdolEye",
 				Vector3.new(0.5, 0.35, 0.3),
-				CFrame.new(x, 1.3, -1.25),
-				Color3.fromRGB(255, 40, 40),
+				CFrame.new(side * 0.5, 1.8, -1.08),
+				ruby,
 				Enum.Material.Neon
 			)
 		end
+		trim(
+			core,
+			"IdolBrowGem",
+			Vector3.new(0.4, 0.4, 0.4),
+			CFrame.new(0, 2.35, -0.95) * CFrame.Angles(0, 0, math.rad(45)),
+			ruby,
+			Enum.Material.Neon
+		)
+		trim(
+			core,
+			"IdolCrownBand",
+			Vector3.new(0.5, 2, 2),
+			CFrame.new(0, 2.75, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			deep,
+			metal,
+			Enum.PartType.Cylinder
+		)
 		for i = 0, 4 do
 			local a = i / 5 * math.pi * 2
-			decorate(
+			trim(
 				core,
 				"IdolCrown",
-				Vector3.new(0.4, 1, 0.4),
-				CFrame.new(math.cos(a) * 0.9, 2.7, math.sin(a) * 0.9),
-				Color3.fromRGB(255, 120, 60),
-				Enum.Material.Neon
+				Vector3.new(0.4, 0.9, 0.4),
+				CFrame.new(math.cos(a) * 0.82, 3.2, math.sin(a) * 0.82),
+				Color3.fromRGB(255, 226, 110),
+				metal
 			)
 		end
+		if def.id == "Idol" then
+			local halo = trim(
+				core,
+				"IdolHalo",
+				Vector3.new(0.3, 4.4, 4.4),
+				CFrame.new(0, 1.8, 0.9) * CFrame.Angles(0, math.rad(90), 0),
+				Color3.fromRGB(255, 226, 120),
+				Enum.Material.Neon,
+				Enum.PartType.Cylinder
+			)
+			halo.Transparency = 0.35
+		end
+	end,
+	-- V10: the Jade Frog: a fat jade frog squatting on a gold lily pad, bulging gold-ringed eyes.
+	frog = function(core, def)
+		core.Size = Vector3.new(3, 4.6, 3)
+		core.Material = Enum.Material.Glass
+		core.Transparency = 1 -- same size and physics as before; the frog below is the look
+		core.Color = def.color
+		trim(
+			core,
+			"FrogBody",
+			Vector3.new(3.8, 3.8, 3.8),
+			CFrame.new(0, -0.6, 0),
+			def.color,
+			Enum.Material.Glass,
+			Enum.PartType.Ball
+		)
+		trim(
+			core,
+			"FrogHead",
+			Vector3.new(3, 3, 3),
+			CFrame.new(0, 1.2, -0.6),
+			def.color,
+			Enum.Material.Glass,
+			Enum.PartType.Ball
+		)
+		for _, side in ipairs({ -1, 1 }) do
+			trim(
+				core,
+				"FrogEye",
+				Vector3.new(1.1, 1.1, 1.1),
+				CFrame.new(side * 0.9, 2.4, -0.9),
+				GOLD,
+				Enum.Material.Metal,
+				Enum.PartType.Ball
+			)
+			trim(
+				core,
+				"FrogPupil",
+				Vector3.new(0.5, 0.5, 0.5),
+				CFrame.new(side * 0.95, 2.5, -1.35),
+				Color3.fromRGB(20, 20, 20),
+				Enum.Material.SmoothPlastic,
+				Enum.PartType.Ball
+			)
+			trim(
+				core,
+				"FrogLeg",
+				Vector3.new(1.4, 1.4, 1.4),
+				CFrame.new(side * 1.8, -1.7, -0.6),
+				def.color,
+				Enum.Material.Glass,
+				Enum.PartType.Ball
+			)
+		end
+		trim(
+			core,
+			"FrogGlow",
+			Vector3.new(1.4, 1.4, 1.4),
+			CFrame.new(0, -0.4, 0),
+			lighten(def.color, 0.5),
+			Enum.Material.Neon,
+			Enum.PartType.Ball
+		)
+		trim(
+			core,
+			"LilyPad",
+			Vector3.new(0.4, 5, 5),
+			CFrame.new(0, -2.4, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			GOLD,
+			Enum.Material.Metal,
+			Enum.PartType.Cylinder
+		)
 	end,
 	gear = function(core, def)
 		core.Shape = Enum.PartType.Cylinder
@@ -240,6 +383,16 @@ local builders = {
 		).Transparency =
 			0.2
 		decorate(core, "GemGlow", Vector3.new(1.4, 1.4, 1.4), CFrame.new(), Color3.new(1, 1, 1), Enum.Material.Neon)
+		-- V10: a gold setting round its middle.
+		trim(
+			core,
+			"GemSetting",
+			Vector3.new(0.5, 3.3, 3.3),
+			CFrame.Angles(0, 0, math.rad(90)),
+			GOLD,
+			Enum.Material.Metal,
+			Enum.PartType.Cylinder
+		)
 		decorate(
 			core,
 			"GemTop",
@@ -395,6 +548,13 @@ local function buildItem(def, spot, parent)
 	sparkles.SpreadAngle = Vector2.new(180, 180)
 	sparkles.Size = NumberSequence.new(0.5, 0)
 	sparkles.Parent = core
+	if def.id == "Idol" then
+		-- V10: the prize glows brighter and sparkles harder than anything else.
+		light.Range = 22
+		light.Brightness = 2
+		sparkles.Rate = 18
+		sparkles.Size = NumberSequence.new(0.8, 0)
+	end
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "LootPrompt"

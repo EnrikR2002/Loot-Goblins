@@ -939,7 +939,39 @@ function Skyship.lookAt(point)
 end
 
 -- The map's island buttons call Skyship.choose; Main starts this once the HUD exists.
+-- V10: the skyship's propellers turn (on every client, for itself: no replication, two small sets of parts).
+local propellers
+local function spinPropellers(dt)
+	if not propellers then
+		local model = ship()
+		if not model then
+			return
+		end
+		propellers = {}
+		for _, p in ipairs(model:GetChildren()) do
+			local side = p:GetAttribute("Spin")
+			if side then
+				local hub = nil
+				for _, other in ipairs(model:GetChildren()) do
+					if other.Name == "PropellerHub" and other:GetAttribute("Spin") == side then
+						hub = other
+					end
+				end
+				if hub then
+					table.insert(propellers, { part = p, axis = hub.Position, side = side })
+				end
+			end
+		end
+	end
+	for _, entry in ipairs(propellers) do
+		local p = entry.part
+		local pivot = CFrame.new(entry.axis)
+		p.CFrame = pivot * CFrame.Angles(0, 0, dt * 7 * entry.side) * pivot:Inverse() * p.CFrame
+	end
+end
+
 function Skyship.start()
+	RunService.RenderStepped:Connect(spinPropellers)
 	build()
 	Map.setSelector(Skyship.choose)
 	RunService.RenderStepped:Connect(update)

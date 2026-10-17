@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "coloured-lights-and-terrain-colours-mislead",
+  "title": "Judge colours in a screenshot: lights and terrain shading change them a lot",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-17",
+  "topics": [
+    "art",
+    "lighting",
+    "terrain"
+  ],
+  "observation": "Several colours chosen by number rendered very differently in a sunny Studio scene with a colour grade. A grey stone head with a red neon eye read pink because the eye's 40-stud red PointLight lit the whole head; removing the light (the neon still glowed) made it grey. A skull lit by two long teal lights read teal all over. Terrain Rock and Slate set to warm violet greys read lilac; Basalt set to warm reds read teal, while a neutral charcoal read as volcanic rock. Near-white sand under clear shallow water read as a white sheet in full sun; a warmer gold read as sand.",
+  "recommendation": "Check every new material colour and light in a screenshot from where players will see it. Keep coloured PointLights short (or rely on Neon's own glow) near anything that should keep its own colour, and expect terrain material colours to need several tries.",
+  "applies_when": [
+    "Setting terrain material colours or part colours for an art pass",
+    "Adding coloured lights to eyes, lanterns or effects"
+  ],
+  "limits": [
+    "One place's lighting (late afternoon, a warm colour grade, bloom) in October 2026",
+    "Other lighting technologies or times of day may shift colours differently"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/bb012932062b858a02e9e3a4276cea12c999a32d/docs/reports/2026-10-17-v10-living-archipelago.md",
+      "detail": "Sections 4 and 23: the colour table of first and final values and the light fixes, each checked in a screenshot."
+    }
+  ]
+}

@@ -14,6 +14,7 @@ local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+local Palette = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Palette"))
 
 local World = {}
 
@@ -52,6 +53,7 @@ local Outlands = require(script.Parent.Outlands)
 local Seaways = require(script.Parent.Seaways)
 local Searuns = require(script.Parent.Searuns)
 local Landform = require(script.Parent.Landform)
+local Art = require(script.Parent.Art)
 local Archipelago = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Archipelago"))
 local terrain = Kit.terrain
 local W = Kit.world -- Builder space to world space, for anything left in `refs`.
@@ -116,41 +118,91 @@ local ropeBridge = Kit.ropeBridge
 local deck = Kit.deck
 
 -- Ocean, sky and lighting -------------------------------------------------------
+-- V10 (docs/ART_DIRECTION.md): "a sunlit storybook sea". Most of the world's beauty is the light and the
+-- water, so they come first: a warm late-afternoon sun, a gentle colour grade, soft white clouds, and a
+-- sea that is deep teal over the open floor and turquoise over sand. The trick that makes the shallows:
+-- the open sea floor is laid in its own dark material (Mud, used nowhere else) while every island,
+-- shoal and reef is built of sand, so the clear water shows dark where it is deep and bright where it
+-- is not. Terrain materials are coloured once here for the whole world.
+local function lightEffect(className, name, props)
+	local effect = Lighting:FindFirstChild(name) or Instance.new(className)
+	effect.Name = name
+	for key, value in pairs(props) do
+		effect[key] = value
+	end
+	effect.Parent = Lighting
+	return effect
+end
+
 local function buildEnvironment()
 	local sea = Kit.realTerrain
 	sea:Clear()
-	sea.WaterColor = Color3.fromRGB(35, 150, 185)
-	sea.WaterTransparency = 0.45
-	sea.WaterWaveSize = 0.12
+	sea.WaterColor = Palette.WATER
+	sea.WaterTransparency = 0.62
+	sea.WaterWaveSize = 0.14
 	sea.WaterWaveSpeed = 8
-	sea.WaterReflectance = 0.6
-	sea:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(96, 186, 78))
-	sea:SetMaterialColor(Enum.Material.Sand, Color3.fromRGB(238, 216, 160))
-	sea:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(128, 120, 118))
-	sea:SetMaterialColor(Enum.Material.Basalt, Color3.fromRGB(72, 60, 96))
-	sea:SetMaterialColor(Enum.Material.LeafyGrass, Color3.fromRGB(58, 150, 70)) -- Jungle: deeper than the meadows.
+	sea.WaterReflectance = 0.32
+	local M = Enum.Material
+	sea:SetMaterialColor(M.Grass, Palette.MEADOW)
+	sea:SetMaterialColor(M.LeafyGrass, Palette.JUNGLE) -- Jungle: deeper than the meadows.
+	sea:SetMaterialColor(M.Sand, Palette.SAND)
+	sea:SetMaterialColor(M.Rock, Palette.ROCK)
+	sea:SetMaterialColor(M.Slate, Color3.fromRGB(146, 132, 124)) -- warm grey: cooler values read lilac
+	sea:SetMaterialColor(M.Basalt, Color3.fromRGB(44, 40, 44)) -- charcoal: warmer values render teal
+	sea:SetMaterialColor(M.CrackedLava, Color3.fromRGB(255, 104, 36))
+	sea:SetMaterialColor(M.Snow, Palette.SNOW)
+	sea:SetMaterialColor(M.Glacier, Color3.fromRGB(150, 214, 240))
+	sea:SetMaterialColor(M.Ice, Color3.fromRGB(196, 236, 250))
+	sea:SetMaterialColor(M.Salt, Palette.BONE)
+	sea:SetMaterialColor(M.Cobblestone, Color3.fromRGB(158, 150, 146))
+	sea:SetMaterialColor(M.Sandstone, Palette.SANDSTONE)
+	sea:SetMaterialColor(M.Mud, Palette.SEA_FLOOR)
+	-- Fair-weather clouds. (Client/Weather darkens them under a storm.)
+	local clouds = sea:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+	-- Kept thin: the skyship flies at 540 and its goblins must see the islands below through them.
+	clouds.Cover = 0.4
+	clouds.Density = 0.3
+	clouds.Color = Color3.fromRGB(255, 252, 246)
+	clouds.Parent = sea
 
-	Lighting.ClockTime = 14.5
-	Lighting.Brightness = 2.2
-	Lighting.Ambient = Color3.fromRGB(70, 70, 82)
-	Lighting.OutdoorAmbient = Color3.fromRGB(140, 140, 150)
+	Lighting.ClockTime = 15.2
+	Lighting.GeographicLatitude = 30
+	Lighting.Brightness = 2.7
+	Lighting.Ambient = Color3.fromRGB(104, 100, 116)
+	Lighting.OutdoorAmbient = Color3.fromRGB(176, 176, 190)
+	Lighting.ColorShift_Top = Color3.fromRGB(255, 236, 206)
+	Lighting.ColorShift_Bottom = Color3.fromRGB(110, 140, 170)
+	Lighting.EnvironmentDiffuseScale = 0.55
+	Lighting.EnvironmentSpecularScale = 0.45
+	Lighting.ExposureCompensation = 0.05
+	Lighting.ShadowSoftness = 0.3
 	Lighting.GlobalShadows = true
-	-- Thin enough haze that the next island is a silhouette on the horizon.
+	-- Haze: distant islands go blue, and the far edge of the sea melts into the sky.
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-	atmosphere.Density = 0.13
-	atmosphere.Offset = 0.25
-	atmosphere.Color = Color3.fromRGB(199, 222, 255)
-	atmosphere.Decay = Color3.fromRGB(110, 140, 180)
-	atmosphere.Glare = 0.2
-	atmosphere.Haze = 1
+	atmosphere.Density = 0.15 -- (0.24 washed the whole sea out from the skyship's height)
+	atmosphere.Offset = 0.3
+	atmosphere.Color = Color3.fromRGB(196, 224, 255)
+	atmosphere.Decay = Color3.fromRGB(96, 146, 196)
+	atmosphere.Glare = 0.35
+	atmosphere.Haze = 0.9
 	atmosphere.Parent = Lighting
+	-- The grade: a little warmer, a little richer, a soft bloom on what glows, faint sun rays.
+	lightEffect("ColorCorrectionEffect", "LootGoblinsGrade", {
+		Saturation = 0.16,
+		Contrast = 0.08,
+		Brightness = 0.01,
+		TintColor = Color3.fromRGB(255, 250, 242),
+	})
+	lightEffect("BloomEffect", "LootGoblinsBloom", { Intensity = 0.35, Size = 26, Threshold = 0.93 })
+	lightEffect("SunRaysEffect", "LootGoblinsSunRays", { Intensity = 0.05, Spread = 0.55 })
 
 	local min, max = Config.BOUNDS_MIN, Config.BOUNDS_MAX
 	local midX, midZ = (min.X + max.X) / 2, (min.Z + max.Z) / 2
 	local spanX, spanZ = max.X - min.X, max.Z - min.Z
 
-	-- Sea floor. The water itself is poured in last, into every gap below sea level.
-	sea:FillBlock(CFrame.new(midX, -34, midZ), Vector3.new(spanX + 80, 12, spanZ + 80), Enum.Material.Sand)
+	-- Sea floor: dark (Mud), so the open sea reads deep. The water itself is poured in last, into every
+	-- gap below sea level. (Islands and shoals are sand from their own builders: the shallows.)
+	sea:FillBlock(CFrame.new(midX, -34, midZ), Vector3.new(spanX + 80, 12, spanZ + 80), Enum.Material.Mud)
 
 	-- Invisible walls keep swimmers, boats and thrown loot inside the map. A part can't
 	-- pass 2048 studs, so long walls are several parts.
@@ -185,7 +237,7 @@ local function buildEnvironment()
 			"FarSea",
 			Vector3.new(sx, 1, sz),
 			CFrame.new(cx, -0.9, cz),
-			Color3.fromRGB(52, 150, 188),
+			Palette.FAR_SEA,
 			Enum.Material.SmoothPlastic,
 			folders.decor
 		)
@@ -193,7 +245,7 @@ local function buildEnvironment()
 		p.CanQuery = false
 		p.CanTouch = false
 		p.CastShadow = false
-		p.Reflectance = 0.12
+		p.Reflectance = 0.24
 	end
 	local function strip(x0, x1, z0, z1)
 		local nx, ny = math.ceil((x1 - x0) / tile), math.ceil((z1 - z0) / tile)
@@ -1423,6 +1475,9 @@ function World.build()
 	stage("sea runs")
 	pourSea()
 	stage("water")
+	-- Each island's signature landmark (V10): last, because it looks for open ground and open water.
+	Art.dress(refs)
+	stage("landmarks")
 	refs.buildTimings = table.concat(timings, ", ")
 	return refs
 end
