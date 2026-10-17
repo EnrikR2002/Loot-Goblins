@@ -138,6 +138,126 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### Studio screenshots arrive too late to catch short animations
+
+**ID:** studio-screenshots-miss-short-shows | **Status:** observation | **Game:** EnrikR2002/Tiny-Wins-Tycoon | **Date:** 2026-10-15
+**Related checks:** General
+
+**Observed / proposed:** Studio MCP screen captures arrived one to two seconds after the input that started a show, so repeated attempts missed 1 to 2 second spectacles (a toast flight, a satellite launch). The sequences were confirmed instead by client-reported events (toaster_chain_seen, gag_recovered), server state, and before/after screenshots.
+
+**Recommendation:** For short animations, have the client report that the sequence ran and capture still before and after states; do not conclude an effect is broken from a capture that missed it.
+
+**Applies when:** Verifying short visual effects through Studio MCP screenshots
+
+**Limits:** Timing observed on one Windows machine with one Studio version; A human watching the screen remains the real test of how a show feels
+
+- [studio-test](https://github.com/EnrikR2002/Tiny-Wins-Tycoon/blob/69b80ec51299883d0a77aeb5a9812c66388d604f/docs/reports/2026-10-15-v0-1-vertical-slice.md): The report's 'Not tested, and limits' section and Studio test 1 describe how shows were verified.
+
+### Sync repository scripts into Studio when the Rojo plugin is not connected
+
+**ID:** live-sync-studio-without-rojo-plugin | **Status:** observation | **Game:** EnrikR2002/Tiny-Wins-Tycoon | **Date:** 2026-10-15
+**Related checks:** General
+
+**Observed / proposed:** Rojo serve was running but the Studio plugin was not connected, which needs a click in Studio. To keep iterating, the AI served src/ with Python's http.server on 127.0.0.1, turned on HttpService.HttpEnabled in the disposable built place for the session, and set each script's Source from the files through Studio MCP between play sessions. One call synced all 27 scripts; about a dozen edit-play cycles ran this way, with the repository as the only edited copy.
+
+**Recommendation:** When an AI must reload code in Studio and nobody is there to connect the Rojo plugin, pull the files from the repository over localhost instead of editing scripts in Studio, keep the repository as the source of truth, and switch HttpEnabled back off afterwards.
+
+**Applies when:** An AI iterates on code through the Studio MCP; The Rojo plugin in that Studio window is not connected
+
+**Limits:** Used on one Windows machine with a disposable place regenerated from the repository; Only scripts were synced; other instances still need Rojo or a rebuild; Never use it on a place holding unrepresented human work, and never save the HttpEnabled change into a shared place
+
+- [studio-test](https://github.com/EnrikR2002/Tiny-Wins-Tycoon/blob/69b80ec51299883d0a77aeb5a9812c66388d604f/docs/reports/2026-10-15-v0-1-vertical-slice.md): The report section 'How the AI iterated without the Rojo plugin' describes the setup; every later Studio test in that report ran on code synced this way.
+
+### Blueprint holograms vanish against a bright floor
+
+**ID:** hologram-contrast-against-floor | **Status:** observation | **Game:** EnrikR2002/Tiny-Wins-Tycoon | **Date:** 2026-10-15
+**Related checks:** CL-07, CL-21
+
+**Observed / proposed:** Unbuilt machines drawn as light-blue ForceField parts, then as light-blue Neon at 0.74 transparency, could not be seen from about 70 studs against a cream plot floor; overview screenshots showed an apparently empty plot. Deeper blue Glass (RGB 60, 140, 255) at 0.35 transparency read clearly from the same camera. The light-blue neon still read well for a large structure seen against sky and grass.
+
+**Recommendation:** Pick a hologram's colour and material for what it will be seen against, and check aspirational silhouettes in a wide screenshot from the spawn and from above before calling them visible.
+
+**Applies when:** Showing locked or unbuilt content as a ghost or blueprint; A light floor or sky sits behind the ghost
+
+**Limits:** Seen in Studio screenshots at default graphics settings; Glass can look different on low graphics settings and phones, which were not checked
+
+- [studio-test](https://github.com/EnrikR2002/Tiny-Wins-Tycoon/blob/69b80ec51299883d0a77aeb5a9812c66388d604f/docs/reports/2026-10-15-v0-1-vertical-slice.md): Bug 6 in the report: before and after overview screenshots of the same plot, and the screenshot 02-plot-blueprints-overview.jpg saved next to the report.
+
+### Hold celebration text until the world spectacle has played
+
+**ID:** hold-celebration-text-until-spectacle-ends | **Status:** observation | **Game:** EnrikR2002/Tiny-Wins-Tycoon | **Date:** 2026-10-15
+**Related checks:** CL-12, CL-16, CL-27
+
+**Observed / proposed:** A centre-screen completion banner fired together with the toaster's activation show and covered exactly the part of the screen where the chain reaction played, so the frame showed text over the machine instead of the payoff. Delaying banners by each machine's show length (2.4 to 7.8 s) and moving them higher kept the spectacle visible. Separately, an objective card at the top centre covered the guide arrow above the target until it moved to the bottom.
+
+**Recommendation:** When an action sets off a world spectacle, queue text celebrations until it ends and keep them out of the screen centre; check that persistent HUD cards do not sit where the camera usually frames the next target.
+
+**Applies when:** An action triggers both an animation in the world and a text banner; A persistent HUD card shares the screen with a world-space guide
+
+**Limits:** Based on Studio screenshots from one desktop layout; How players perceive the delay is untested
+
+- [studio-test](https://github.com/EnrikR2002/Tiny-Wins-Tycoon/blob/69b80ec51299883d0a77aeb5a9812c66388d604f/docs/reports/2026-10-15-v0-1-vertical-slice.md): Bugs 1 and 7 in the report, with the screenshot comparison described there.
+
+### A follower rig can fill the screen when the camera pops in
+
+**ID:** follower-rigs-can-block-a-close-camera | **Status:** observation | **Game:** EnrikR2002/Tiny-Wins-Tycoon | **Date:** 2026-10-15
+**Related checks:** CL-11
+
+**Observed / proposed:** A hovering helper creature placed beside the player filled the whole screen with one giant ear when the camera was pushed close to the character by a nearby machine. Fading the helper's parts with LocalTransparencyModifier when they come within 7 studs of the camera fixed it in the next capture.
+
+**Recommendation:** Fade or hide pets and other follower rigs by distance to the camera, as Roblox does for the local character, and test with the camera forced close against a wall or machine.
+
+**Applies when:** Client-rendered pets or helpers follow the player; The camera can be pushed in by nearby geometry
+
+**Limits:** Seen once in a single-client Studio session with mouse camera control; Touch and gamepad cameras were not checked
+
+- [studio-test](https://github.com/EnrikR2002/Tiny-Wins-Tycoon/blob/69b80ec51299883d0a77aeb5a9812c66388d604f/docs/reports/2026-10-15-v0-1-vertical-slice.md): Bug 8 in the report: the blocked capture and the fix.
+
+### Ambient world systems can spoil a movement test and suggest the wrong bug
+
+**ID:** physics-test-site-confounders | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-14
+**Related checks:** General
+
+**Observed / proposed:** A client-driven boat was aimed at a tornado to test whether the client applied its lift. It never rode the tornado, which looked like a client-side bug. The trace showed two sudden 50-stud hops with a jump in speed before the funnel: the boat had hit two ambient puffer fish, which bounced it off its line. Rerun on open water with no creatures on the path, the same client caught the boat and lifted it to 198 studs.
+
+**Recommendation:** Before a movement or physics test, check the test path for ambient hazards (creatures, ramps, currents, hoops) or move to a cleared site. When one machine's result disagrees with an equivalent test elsewhere, look in the trace for sudden changes of height or speed caused by something outside the system under test before changing code.
+
+**Applies when:** Testing vehicle or character physics in a populated world; A test result contradicts an equivalent test that passed
+
+**Limits:** One incident in one game's Studio session; A cleared test site removes interactions that real players will meet; test those separately
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/fba0c4aba12ff518ee221fae92fa9c5faa82793c/docs/reports/2026-10-14-v9-relentless-chaos.md): Section 16 and item 12 in section 22: the puffer-spoiled tornado test and the clean rerun with real keys.
+
+### A fast chaser with momentum can fly through its target during its wind-up
+
+**ID:** chaser-tell-overshoot | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-14
+**Related checks:** General
+
+**Observed / proposed:** A small pursuer moving at over 300 studs/s started its 0.3 s attack wind-up when close to a boat while steering at a point slightly ahead of it. Every strike missed. Summary numbers (closest approach 1 to 2 studs) suggested it should have hit; a frame-by-frame probe of its state and distance showed it passing through the boat during the wind-up and arriving 28 studs past when the strike was checked. Locking the attacker onto the target and matching its speed during the wind-up made strikes land against a steady target while a target that boosted away still escaped.
+
+**Recommendation:** During an attack's tell, have a fast chaser hold onto its target (aim at the target, match its speed) rather than carry momentum toward a lead point, so the tell is the dodge window and not a coin flip. When an attack never lands, log the attacker every frame through the tell before tuning numbers.
+
+**Applies when:** A kinematic or physics chaser has momentum and a wind-up before a contact attack; An attack's hit rate is near zero even though the attacker gets very close
+
+**Limits:** One game's kinematic sea pursuers, measured in Studio with a test autopilot as the target; Whether the locked-on wind-up feels fair to players is untested by people
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/fba0c4aba12ff518ee221fae92fa9c5faa82793c/docs/reports/2026-10-14-v9-relentless-chaos.md): Sections 7 and 11 and bug 4 in section 22: the Echo's strikes all missed until its tell locked on; afterwards it hit a cruising boat twice in 13 s and missed a boosting one.
+
+### A rounded CanvasGroup may draw its children unclipped
+
+**ID:** canvasgroup-may-not-clip | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-14
+**Related checks:** General
+
+**Observed / proposed:** A round minimap was built as a CanvasGroup with a full-radius UICorner, relying on it to clip island markers at its rim. In a Studio play test, large island markers were drawn well past the rim and over the label beneath it, and setting ClipsDescendants on the CanvasGroup did not change that. Replacing it with an ordinary Frame with ClipsDescendants (a rounded square) clipped correctly in the next screenshot.
+
+**Recommendation:** Do not rely on a CanvasGroup to clip a HUD element whose contents must stay inside it. Use a Frame with ClipsDescendants, accept a rectangular clip (rounded corners are cosmetic), and check the result in a screenshot with content near the edges.
+
+**Applies when:** Building a minimap, radar or any HUD element that must clip moving markers; A rounded clipping container looks right in the editor but content spills in play
+
+**Limits:** Observed in one Studio session on one Windows PC; the graphics settings in effect were not identified; Not checked on a phone or console, where CanvasGroup behaviour may differ
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/fba0c4aba12ff518ee221fae92fa9c5faa82793c/docs/reports/2026-10-14-v9-relentless-chaos.md): Section 19 and bug 9 in section 22: the round CanvasGroup minimap spilled past its rim; the clipped Frame version is shown in the ghost dinghy screenshot.
+
 ### Check a carved terrain space by reading the terrain, not the script
 
 **ID:** thin-terrain-fills-remove-nothing | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-13
