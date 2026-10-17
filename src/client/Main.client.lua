@@ -17,6 +17,10 @@ local Weather = require(script.Parent.Weather)
 local BoatDrive = require(script.Parent.BoatDrive)
 local Skyship = require(script.Parent.Skyship)
 local Shop = require(script.Parent.Shop)
+local Looks = require(script.Parent.Looks)
+local Pets = require(script.Parent.Pets)
+local Emotes = require(script.Parent.Emotes)
+local Results = require(script.Parent.Results)
 local Tricks = require(script.Parent.Tricks)
 local Twisters = require(script.Parent.Twisters)
 local Minimap = require(script.Parent.Minimap)
@@ -973,6 +977,53 @@ local handlers = {}
 Skyship.install(handlers)
 Skyship.start()
 Shop.start()
+-- V11 (Goblin Life): style on boats and emotes, pets, the emote wheel, the raid's results and rewards.
+Looks.start()
+Pets.start()
+Emotes.start(Shop.dock)
+Results.start(function()
+	Shop.open("shop")
+end)
+
+function handlers.ShopResult(p)
+	Shop.result(p)
+	if not Shop.isOpen() and p.message and p.action ~= "opened" then
+		Hud.toast(p.message)
+	end
+end
+
+function handlers.Welcome(p)
+	Shop.welcome(p)
+end
+
+-- A trophy: a moment of celebration, short and out of the way.
+function handlers.Achievement(p)
+	Hud.banner("TROPHY: " .. string.upper(p.name or ""), Color3.fromRGB(196, 128, 255), 3.5)
+	Hud.toast(
+		string.format("+%d Shinies", p.shinies or 0)
+			.. (p.rewardName and (" and the " .. p.rewardName .. " (in your locker)") or "")
+	)
+	Effects.chime({ 1, 1.26, 1.5, 2, 2.5 }, 0.8)
+	Pets.react(player.UserId, "cheer")
+end
+
+function handlers.Premium(p)
+	Hud.banner(
+		"THANK YOU! " .. string.upper(table.concat(p.names or {}, ", ")) .. " IS YOURS",
+		Color3.fromRGB(90, 226, 176),
+		4
+	)
+	Effects.chime(Effects.CHIME_GOOD, 0.8)
+end
+
+function handlers.RaidReward(p)
+	Results.reward(p)
+end
+
+function handlers.Celebrate(p)
+	Looks.celebrate(p)
+	Pets.react(p.userId, "dance")
+end
 
 function handlers.Message(p)
 	Hud.banner(p.text or "", p.color, p.duration)
@@ -997,9 +1048,11 @@ function handlers.Stolen(p)
 	Effects.chime(Effects.CHIME_STEAL, 0.8)
 	Effects.burst(p.position, color, 40, 24)
 	Effects.ring(p.position, color, 16, 0.6)
+	Pets.react(p.userId, "cheer")
 end
 
 function handlers.Snatched(p)
+	Pets.react(p.userId, "cheer")
 	if isMe(p) then
 		Hud.banner("GOT IT! " .. string.upper(p.itemName) .. " IS YOURS", GOLD, 2)
 		Effects.chime(Effects.CHIME_GOOD, 0.6)
@@ -1027,6 +1080,7 @@ function handlers.LootLoose(p)
 end
 
 function handlers.Banked(p)
+	Pets.react(p.userId, "cheer")
 	local color = LOOT_COLORS[p.item] or GOLD
 	if isMe(p) then
 		Hud.banner(
@@ -1364,6 +1418,7 @@ BoatDrive.onEvent(function(kind, position, chain, extra)
 			name = extra == -1 and "PORT ROLL" or "STARBOARD ROLL"
 		end
 		Tricks.started(name)
+		Looks.trick(BoatDrive.model())
 		Effects.sound("whoosh", { speed = 1.6, volume = 0.9 })
 		return
 	elseif kind == "trick" then
@@ -1372,6 +1427,7 @@ BoatDrive.onEvent(function(kind, position, chain, extra)
 		return
 	elseif kind == "trickland" then
 		Tricks.landed(chain or 1)
+		Looks.landed(BoatDrive.model(), chain or 1)
 		Effects.spray(position, 0.9)
 		Effects.ring(position, Color3.fromRGB(170, 255, 60), 26, 0.5)
 		Effects.chime({ 1, 1.26, 1.5, 2 }, 0.7)
@@ -1616,9 +1672,11 @@ function handlers.BoatFx(p)
 	end
 	if p.kind == "trick" then
 		-- Someone else's trick, shown over their boat so it reads as deliberate.
-		Tricks.other(p.position, OTHER_TRICK_NAMES[p.trick] or "TRICK!")
+		Tricks.other(p.position, OTHER_TRICK_NAMES[p.trick] or "TRICK!", p.userId)
+		Looks.trick(Looks.boatOf(p.userId))
 		Effects.sound("rise", { position = p.position, speed = 1.6, volume = 0.7, range = 300 })
 	elseif p.kind == "trickland" then
+		Looks.landed(Looks.boatOf(p.userId), p.tricks or 1)
 		Effects.spray(p.position, 0.8)
 		Effects.ring(p.position, Color3.fromRGB(170, 255, 60), 22, 0.5)
 	elseif p.kind == "sketchy" or p.kind == "bail" then
@@ -1633,6 +1691,7 @@ function handlers.GuardianLaunch(p)
 	if typeof(p.position) ~= "Vector3" then
 		return
 	end
+	Pets.react(p.userId, "tumble")
 	Effects.sound("boom", { position = p.position, speed = 0.55, volume = 1, range = 700 })
 	Effects.spray(p.position, 1.4)
 	Effects.shakeAt(p.position, 1, 0.6, 260)
@@ -1750,13 +1809,16 @@ function handlers.Burn()
 end
 
 function handlers.RaidStart()
-	Hud.hideResults()
+	Results.hide()
 	Hud.banner("RAID START! STEAL LOOT, BRING IT TO THE HOARD", GOLD, 4)
 	Effects.chime(Effects.CHIME_GOOD, 0.9)
 end
 
 function handlers.RaidEnd(p)
-	Hud.showResults(p.results or {}, p.winners or {})
+	Results.show(p.results or {}, p.winners or {})
+	if p.winners and #p.winners > 0 then
+		Skyship.holdMap(5.5) -- everyone on the deck sees the winner's dance before the map opens
+	end
 	Hud.banner("RAID OVER!", GOLD, 3)
 	Effects.chime({ 2, 1.5, 1.26, 1, 1.5, 2 }, 0.8)
 end

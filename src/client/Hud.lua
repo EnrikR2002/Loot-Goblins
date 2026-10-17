@@ -23,7 +23,7 @@ local WINDED = Color3.fromRGB(255, 90, 80)
 
 local gui, scale
 local timer, heatFill, heatLabel, heatHint, banner, feedList, board, boardTitle, objective, toast, flash
-local results, resultsTitle, resultsList, resultsFooter, help
+local help
 local slots = {}
 local boardRows = {}
 local boardOrder = {} -- ids, richest first
@@ -391,40 +391,6 @@ local function buildBottom()
 	}, gui)
 end
 
-local function buildResults()
-	results = panel(gui, {
-		Name = "Results",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.45),
-		Size = UDim2.fromOffset(460, 330),
-		BackgroundTransparency = 0.12,
-		Visible = false,
-		ZIndex = 5,
-	})
-	make("UIStroke", { Color = GOLD, Thickness = 2 }, results)
-	resultsTitle = text(results, {
-		Position = UDim2.fromOffset(16, 12),
-		Size = UDim2.new(1, -32, 0, 40),
-		Font = Enum.Font.GothamBlack,
-		TextColor3 = GOLD,
-		ZIndex = 6,
-	})
-	resultsList = make("Frame", {
-		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(24, 62),
-		Size = UDim2.new(1, -48, 0, 220),
-		ZIndex = 6,
-	}, results)
-	make("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4) }, resultsList)
-	resultsFooter = text(results, {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 16, 1, -10),
-		Size = UDim2.new(1, -32, 0, 24),
-		Font = Enum.Font.GothamMedium,
-		ZIndex = 6,
-	})
-end
-
 local HELP_LINES = {
 	{
 		"START",
@@ -566,7 +532,6 @@ function Hud.init(hoard)
 	buildAbilities()
 	buildBoatPanel()
 	buildBottom()
-	buildResults()
 	buildHelp()
 	buildWaypoint()
 	Map.build(gui, hoardPart.Position)
@@ -670,40 +635,6 @@ function Hud.heatHint(message, color)
 				:Play()
 		end
 	end)
-end
-
-function Hud.showResults(list, winners)
-	for _, child in ipairs(resultsList:GetChildren()) do
-		if child:IsA("TextLabel") then
-			child:Destroy()
-		end
-	end
-	if #winners == 0 then
-		resultsTitle.Text = "RAID OVER - NOBODY BANKED ANYTHING"
-	elseif #winners == 1 then
-		resultsTitle.Text = string.upper(winners[1]) .. " WINS THE RAID!"
-	else
-		resultsTitle.Text = "TIE: " .. string.upper(table.concat(winners, " & "))
-	end
-	for i, entry in ipairs(list) do
-		if i > 8 then
-			break
-		end
-		local mine = entry.userId == player.UserId
-		text(resultsList, {
-			Size = UDim2.new(1, 0, 0, 24),
-			Text = string.format("%d.  %s    %d gold", i, entry.name, entry.gold),
-			TextColor3 = mine and GOLD or WHITE,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			LayoutOrder = i,
-			ZIndex = 6,
-		})
-	end
-	results.Visible = true
-end
-
-function Hud.hideResults()
-	results.Visible = false
 end
 
 function Hud.showHelp(seconds)
@@ -1054,9 +985,6 @@ function Hud.update(now)
 	Map.update(now)
 	updateObjective(now, phase, root, carrying)
 	updateWaypoint(root, carrying)
-	if results.Visible and phase == "intermission" then
-		resultsFooter.Text = "Next raid in " .. math.max(0, math.ceil(phaseEndsAt - now))
-	end
 end
 
 return Hud

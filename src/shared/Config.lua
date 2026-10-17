@@ -1059,15 +1059,20 @@ Config.ALERT = {
 	},
 }
 
--- Lasting progress (V7, server/Progress.lua) -------------------------------------------------------------
+-- Lasting progress (V7, V11: server/Progress.lua, Economy.lua, ProfileStore.lua) ---------------------------------------
 -- SHINIES are what a goblin keeps; raid GOLD is what wins a raid. A raid pays PARTICIPATION to
 -- everyone who was there for MIN_PRESENT seconds, PER_GOLD for each gold banked (up to GOLD_CAP), a WIN
 -- bonus for the winner (a tie shares it) and an UNDERDOG bonus to a goblin who banked something and sits at or
--- below the middle. At most RAID_CAP a raid. A pet costs 120 to 200: two to five raids.
+-- below the middle. At most RAID_CAP a raid.
 -- V9: raids are about half as long, so a raid pays a little over half what it did and Shinies per HOUR stay
 -- about where V8 had them. (V8: participation 10, gold cap 30, win 25, underdog 5, cap 70, present 90 s.)
+-- V11 economy (docs/GAME_DESIGN.md "V11: Goblin Life", the report's economy section): the raid formula is V9's.
+-- A goblin who takes part earns about 6 (nothing banked) to 15 (one treasure) to 28 (several) a raid, a winner
+-- about 40; roughly 9 raids an hour. Prices follow from that (shared/Catalog.lua): commons 25 to 80 (one to three
+-- raids, sooner with the welcome Shinies), uncommons 80 to 150, rares 180 to 280, legendaries 600 to 700 (a few
+-- hours), pets 100 to 220. Achievements pay 25 to 150 once each.
 Config.PROGRESS = {
-	STORE = "LootGoblinsProfile_v1",
+	STORE = "LootGoblinsProfile_v1", -- The same DataStore V7 wrote: V7 profiles are migrated in place (never reset).
 	PARTICIPATION = 6,
 	PER_GOLD = 1,
 	GOLD_CAP = 22,
@@ -1075,14 +1080,28 @@ Config.PROGRESS = {
 	UNDERDOG = 3,
 	RAID_CAP = 42,
 	MIN_PRESENT = 60,
-	AUTOSAVE = 120,
+	WELCOME = 60, -- Shinies on a goblin's first visit (new and migrated profiles): enough for a first cosmetic at once.
+	AUTOSAVE = 60, -- Seconds between saves of a changed profile (each save also refreshes the session lock).
+	LOCK_STALE = 180, -- A lock not refreshed for this long belongs to a server that is gone: it may be taken over.
+	OPEN_RETRY = 4, -- Seconds between attempts to open a profile another server is still closing...
+	OPEN_TRIES = 5, -- ...this many times before playing on unsaved and retrying in the background...
+	BACKGROUND_RETRY = 20, -- ...every this many seconds.
+	PRESETS = 3, -- Outfit presets per goblin.
+	HISTORY = 40, -- Purchases remembered in the profile.
+	RECEIPTS_KEEP = 500, -- Robux receipt ids remembered (so a re-sent receipt grants once).
+	ACTIONS_PER_SECOND = 8, -- Shop requests a goblin may make; more are ignored.
+	STUDIO_MOCK = true, -- In Studio without DataStore access, use an in-memory store (progress resets when Play stops).
 }
-Config.KIT_PRICE = 90 -- Starting a raid already carrying one piece of gear.
--- Five pets, each a different VERB rather than a different percentage. Equipped one at a time.
+Config.KIT_PRICE = 90 -- Starting a raid already carrying one piece of gear (Catalog kit_* items).
+-- Five pets, each a different VERB rather than a different percentage. Equipped one at a time. Every one can be
+-- bought with Shinies (Catalog); Robux is only ever a second way to the same pet. V11: cheaper (100 to 220, was
+-- 120 to 200 for V7's longer raids, reordered by how much each helps), and the Shell Tortoise rests 45 s (V7: 30)
+-- with its shell glowing when ready, so the one pet that touches player-versus-player is visible and rarer.
+-- Pets can be changed only where nothing is chasing you: on the skyship, at the Hoard, or between raids.
 Config.PETS = {
 	Crab = {
 		name = "Tug Crab",
-		price = 120,
+		price = 100,
 		color = Color3.fromRGB(235, 110, 90),
 		effect = "Boat calls arrive on a 40% shorter wait.",
 	},
@@ -1090,23 +1109,23 @@ Config.PETS = {
 		name = "Scout Gull",
 		price = 150,
 		color = Color3.fromRGB(240, 240, 245),
-		effect = "Shows how far the nearest waiting treasure is.",
+		effect = "Flies toward the nearest waiting treasure and tells you how far it is.",
 	},
 	Frog = {
 		name = "Spring Frog",
-		price = 140,
+		price = 130,
 		color = Color3.fromRGB(110, 220, 110),
 		effect = "Your dash recharges 35% faster.",
 	},
 	Tortoise = {
 		name = "Shell Tortoise",
-		price = 180,
+		price = 220,
 		color = Color3.fromRGB(110, 150, 90),
-		effect = "The first grapple catch on you each 30 s bounces off.",
+		effect = "Bounces off one grapple catch, then rests 45 s. Its shell glows while it is ready, for everyone to see.",
 	},
 	Ghost = {
 		name = "Pocket Ghost",
-		price = 200,
+		price = 180,
 		color = Color3.fromRGB(190, 220, 255),
 		effect = "Poltergoblin recharges 25% faster.",
 	},
@@ -1114,11 +1133,38 @@ Config.PETS = {
 Config.PET_CRAB_RECALL = 0.6 -- Recall cooldown multiple.
 Config.PET_FROG_DASH = 0.65 -- Dash cooldown multiple.
 Config.PET_GHOST_COOLDOWN = 0.75 -- Poltergoblin cooldown multiple.
-Config.PET_TORTOISE_REST = 30 -- Seconds before the shell works again.
+Config.PET_TORTOISE_REST = 45 -- Seconds before the shell works again (V7: 30).
 Config.PET_GULL_RANGE = 1400 -- How far the gull sees.
--- Robux. EMPTY until a human creates Developer Products and pastes their ids here:
---   [123456789] = { pet = "Gull" },
-Config.MONETIZATION = { PRODUCTS = {} }
+-- Pets drawn on each client (client/Pets.lua): how far other goblins' pets are drawn, and the distance within which
+-- they are updated every frame (to 140 studs every 2nd frame, beyond that every 4th; your own always every frame).
+Config.PET_DRAW_RANGE = 360
+Config.PET_FULL_RATE_RANGE = 50
+
+-- Robux (V7, V11: server/Monetization.lua, server/Receipts.lua). NOTHING HERE IS ON SALE until a human:
+--   1. creates the Game Pass (recommended for permanent items: Roblox itself remembers who owns it) or Developer
+--      Product in the Creator Dashboard, with its own price and icon;
+--   2. pastes its numeric id into `id` below (and sets `kind` to "pass" or "product" to match what was created);
+--   3. sets SALES_ENABLED = true.
+-- No id or price is invented here. Until then no purchase window ever opens: a premium item is hidden in live
+-- servers, and in Studio it is shown, previewable and marked "not on sale yet" (SHOW_UNCONFIGURED_IN_STUDIO).
+-- Every pet listed here is also sold for Shinies; the premium-only items are cosmetic.
+-- Setup and testing: docs/MONETIZATION.md.
+Config.MONETIZATION = {
+	SALES_ENABLED = false,
+	SHOW_UNCONFIGURED_IN_STUDIO = true,
+	DUPLICATE_SHINIES = 150, -- A permanent item paid for twice: the second payment becomes this many Shinies.
+	PRODUCTS = {
+		pet_Crab = { kind = "pass", id = nil, grants = { "Crab" } },
+		pet_Frog = { kind = "pass", id = nil, grants = { "Frog" } },
+		pet_Gull = { kind = "pass", id = nil, grants = { "Gull" } },
+		pet_Ghost = { kind = "pass", id = nil, grants = { "Ghost" } },
+		pet_Tortoise = { kind = "pass", id = nil, grants = { "Tortoise" } },
+		outfit_admiral = { kind = "pass", id = nil, grants = { "outfit_admiral" } },
+		livery_starlit = { kind = "pass", id = nil, grants = { "livery_starlit" } },
+		trail_aurora = { kind = "pass", id = nil, grants = { "trail_aurora" } },
+		petskin_crab_gold = { kind = "pass", id = nil, grants = { "petskin_crab_gold" } },
+	},
+}
 
 -- Navigation (V7). The compass strip only lists treasure this close (all nineteen across the top was the
 -- clutter), and a carrier gets a waypoint arrow toward the Hoard.
