@@ -40,8 +40,12 @@ local Pursuit = require(script.Parent.Pursuit)
 local Leviathan = {}
 
 local L = Config.LEVIATHAN
-local DEEP = Color3.fromRGB(46, 86, 96)
+local DEEP = Color3.fromRGB(38, 82, 98)
+local DEEP_DARK = Color3.fromRGB(24, 52, 66)
 local BELLY = Color3.fromRGB(150, 205, 190)
+local FIN = Color3.fromRGB(64, 186, 170)
+local HORN = Color3.fromRGB(236, 226, 196)
+local MOUTH = Color3.fromRGB(96, 26, 40)
 local PURPLE = Color3.fromRGB(150, 90, 220)
 
 local folder
@@ -50,6 +54,10 @@ local humps = {}
 local neck = {}
 local head
 local jawTop, jawBottom, eyes
+local headParts = {} -- V10: { part, offset (scaled), on = "head" | "top" | "bottom" }
+local fins = {} -- hump index -> its dorsal fin
+local flukes = {}
+local wakes = {}
 local phase = 0
 local headAt = nil
 local generation = 0
@@ -84,24 +92,139 @@ local function part(name, size, color, shape)
 	return p
 end
 
+-- V10: an ellipsoid (a block with a sphere mesh): skull, snout, body segments. Organic shapes, no assets.
+local function shell(name, size, color)
+	local p = part(name, size, color, Enum.PartType.Block)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	return p
+end
+
+-- V10: one creature, not a string of balls. A broad skull and a long snout (both ellipsoids), heavy brows,
+-- swept-back bone horns, a pair of frills, glowing amber eyes with black slit pupils in deep sockets, a dark
+-- mouth with teeth in both jaws, and a body of overlapping segments (each lying along the path) that rises
+-- and falls as one travelling wave, with dorsal fins and a tail fluke. Foam breaks round its head when it
+-- runs at the surface. About fifty plain parts, all moved with one BulkMoveTo a frame.
 function Leviathan.build(threatsFolder, home)
 	folder = threatsFolder
 	center = home
 	local s = L.SCALE
 	for i = 1, L.HUMPS do
-		humps[i] = part("LeviathanHump", Vector3.new(1, 1, 1) * (13 - i * 0.6) * s, DEEP)
+		local d = (13 - i * 0.6) * s
+		humps[i] = shell("LeviathanHump", Vector3.new(d, d * 0.8, d * 1.6), DEEP)
+		if i % 2 == 0 and i < L.HUMPS then
+			local fin = part("LeviathanFin", Vector3.new(0.9, d * 0.62, d * 0.95), FIN, Enum.PartType.Block)
+			fin.Shape = Enum.PartType.Block
+			fins[i] = fin
+		end
+	end
+	local tailD = (13 - L.HUMPS * 0.6) * s
+	for _, side in ipairs({ -1, 1 }) do
+		flukes[side] = part("LeviathanFluke", Vector3.new(tailD * 1.3, 1.2 * s, tailD * 0.7), FIN, Enum.PartType.Block)
 	end
 	for i = 1, L.NECK do
 		neck[i] = part("LeviathanNeck", Vector3.new(1, 1, 1) * (11 - i * 0.3) * s, DEEP)
 	end
-	head = part("LeviathanHead", Vector3.new(22, 14, 26) * s, DEEP)
-	jawTop = part("LeviathanJawTop", Vector3.new(15, 4, 18) * s, BELLY, Enum.PartType.Block)
-	jawBottom = part("LeviathanJawBottom", Vector3.new(13, 3, 16) * s, BELLY, Enum.PartType.Block)
+	head = shell("LeviathanHead", Vector3.new(24, 15, 28) * s, DEEP)
+	jawTop = shell("LeviathanJawTop", Vector3.new(16, 7, 21) * s, DEEP)
+	jawBottom = shell("LeviathanJawBottom", Vector3.new(13, 4.4, 17) * s, BELLY)
 	eyes = {}
+	local function attach(name, size, color, offset, on, material, shape)
+		local p
+		if shape == "shell" then
+			p = shell(name, size * s, color)
+		else
+			p = part(name, size * s, color, shape or Enum.PartType.Block)
+		end
+		p.Material = material or Enum.Material.Slate
+		table.insert(
+			headParts,
+			{ part = p, offset = CFrame.new(offset.Position * s) * offset.Rotation, on = on or "head" }
+		)
+		return p
+	end
 	for _, side in ipairs({ -1, 1 }) do
-		local eye = part("LeviathanEye", Vector3.new(4, 4, 4) * s, Color3.fromRGB(255, 190, 70))
+		attach(
+			"LeviathanBrow",
+			Vector3.new(7, 3, 13),
+			DEEP_DARK,
+			CFrame.new(side * 6.4, 6.4, -6) * CFrame.Angles(-0.15, side * 0.12, side * 0.3)
+		)
+		attach(
+			"LeviathanHorn",
+			Vector3.new(3, 3, 11),
+			HORN,
+			CFrame.new(side * 7.2, 8, 5) * CFrame.Angles(0.55, side * 0.28, 0)
+		)
+		attach(
+			"LeviathanHorn",
+			Vector3.new(1.8, 1.8, 8),
+			HORN,
+			CFrame.new(side * 9.2, 12.2, 12) * CFrame.Angles(0.95, side * 0.34, 0)
+		)
+		attach(
+			"LeviathanFrill",
+			Vector3.new(0.8, 9, 13),
+			FIN,
+			CFrame.new(side * 12.4, 1.5, 4) * CFrame.Angles(0, side * 0.35, side * 0.35)
+		)
+		attach(
+			"LeviathanSocket",
+			Vector3.new(6, 5, 6),
+			DEEP_DARK,
+			CFrame.new(side * 8.4, 3.6, -8.6),
+			"head",
+			nil,
+			"shell"
+		)
+		attach(
+			"LeviathanPupil",
+			Vector3.new(0.7, 3.6, 1.2),
+			Color3.fromRGB(10, 10, 12),
+			CFrame.new(side * 12, 3.9, -10.3),
+			"head",
+			Enum.Material.SmoothPlastic
+		)
+		local eye = part("LeviathanEye", Vector3.new(4.6, 4.6, 4.6) * s, Color3.fromRGB(255, 190, 70))
 		eye.Material = Enum.Material.Neon
 		eyes[side] = eye
+	end
+	attach("LeviathanCrest", Vector3.new(1.2, 6, 10), FIN, CFrame.new(0, 8.6, 3) * CFrame.Angles(-0.2, 0, 0))
+	attach(
+		"LeviathanMouth",
+		Vector3.new(11, 5, 15),
+		MOUTH,
+		CFrame.new(0, -2.6, -13),
+		"head",
+		Enum.Material.SmoothPlastic
+	)
+	for i, x in ipairs({ -5.2, -2, 2, 5.2 }) do
+		local z = (i == 2 or i == 3) and -8 or -5
+		attach(
+			"LeviathanTooth",
+			Vector3.new(1.5, 3.2, 1.5),
+			HORN,
+			CFrame.new(x, -3.2, z) * CFrame.Angles(math.pi, 0, 0),
+			"top",
+			Enum.Material.SmoothPlastic,
+			Enum.PartType.Wedge
+		)
+		attach(
+			"LeviathanTooth",
+			Vector3.new(1.2, 2.4, 1.2),
+			HORN,
+			CFrame.new(x * 0.85, 2.2, z + 1),
+			"bottom",
+			Enum.Material.SmoothPlastic,
+			Enum.PartType.Wedge
+		)
+	end
+	for _, side in ipairs({ -1, 1 }) do
+		local foam = shell("LeviathanWake", Vector3.new(12, 1.2, 30) * s, Color3.fromRGB(240, 250, 255))
+		foam.Material = Enum.Material.SmoothPlastic
+		foam.Transparency = 0.3
+		wakes[side] = foam
 	end
 	head:SetAttribute("Pursuer", "The Leviathan")
 end
@@ -118,6 +241,14 @@ local function hide()
 	for _, p in ipairs(humps) do
 		p.CFrame = AWAY
 	end
+	for _, list in ipairs({ fins, flukes, wakes }) do
+		for _, p in pairs(list) do
+			p.CFrame = AWAY
+		end
+	end
+	for _, entry in ipairs(headParts) do
+		entry.part.CFrame = AWAY
+	end
 	hideNeck()
 	head.CFrame = AWAY
 	jawTop.CFrame = AWAY
@@ -129,15 +260,76 @@ local function hide()
 	head:SetAttribute("Chasing", nil)
 end
 
-local function placeHead(cf, open)
+local function placeHead(cf, open, foam)
 	local s = L.SCALE
-	head.CFrame = cf
-	jawTop.CFrame = cf * CFrame.new(0, (3 + open * 3) * s, -15 * s) * CFrame.Angles(math.rad(-6 - open * 14), 0, 0)
-	jawBottom.CFrame = cf * CFrame.new(0, (-5 - open * 3) * s, -12 * s) * CFrame.Angles(math.rad(8 + open * 16), 0, 0)
+	local top = cf * CFrame.new(0, (2.5 + open * 3) * s, -15 * s) * CFrame.Angles(math.rad(-6 - open * 14), 0, 0)
+	local bottom = cf * CFrame.new(0, (-5 - open * 3) * s, -12 * s) * CFrame.Angles(math.rad(8 + open * 16), 0, 0)
+	local parts, cframes = { head, jawTop, jawBottom }, { cf, top, bottom }
 	for side, eye in pairs(eyes) do
-		eye.CFrame = cf * CFrame.new(side * 7 * s, 4 * s, -9 * s)
+		table.insert(parts, eye)
+		table.insert(cframes, cf * CFrame.new(side * 9.6 * s, 3.8 * s, -9.6 * s))
 	end
+	for _, entry in ipairs(headParts) do
+		local basis = entry.on == "top" and top or (entry.on == "bottom" and bottom or cf)
+		table.insert(parts, entry.part)
+		table.insert(cframes, basis * entry.offset)
+	end
+	-- Foam either side of the head while it runs at the surface: you see it coming before you see it.
+	for side, wake in pairs(wakes) do
+		table.insert(parts, wake)
+		if foam then
+			local look = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+			look = look.Magnitude > 0.1 and look.Unit or Vector3.new(0, 0, -1)
+			local right = Vector3.new(-look.Z, 0, look.X)
+			local at = cf.Position + right * side * 11 * s + look * 2 * s
+			table.insert(
+				cframes,
+				CFrame.lookAt(Vector3.new(at.X, foam, at.Z), Vector3.new(at.X, foam, at.Z) + look)
+					* CFrame.Angles(0, side * 0.25, 0)
+			)
+		else
+			table.insert(cframes, AWAY)
+		end
+	end
+	workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
 	headAt = cf.Position
+end
+
+-- The body along `points` (flat positions, nearest the head first): every segment lies along the path and
+-- rides one wave that travels down its length, so it reads as one animal arching through the sea. `sink`
+-- (0 to 1) pulls it under (lurking unaware, or flinching).
+local function placeBody(points, headFlat, t, sink)
+	local parts, cframes = {}, {}
+	local count = #humps
+	for i, p in ipairs(humps) do
+		local at = points[i]
+		local ahead = points[i - 1] or headFlat
+		local d = p.Size.X
+		local phaseAt = t * 2.2 - i * 0.75
+		local wave = math.sin(phaseAt)
+		local y = d * (-0.36 + 0.42 * wave) - sink * d * 0.5
+		local dir = Vector3.new(ahead.X - at.X, 0, ahead.Z - at.Z)
+		dir = dir.Magnitude > 0.1 and dir.Unit or Vector3.new(0, 0, -1)
+		local spot = Vector3.new(at.X, y, at.Z)
+		local cf = CFrame.lookAt(spot, spot + dir) * CFrame.Angles(math.cos(phaseAt) * 0.28, 0, 0)
+		table.insert(parts, p)
+		table.insert(cframes, cf)
+		local fin = fins[i]
+		if fin then
+			table.insert(parts, fin)
+			table.insert(cframes, cf * CFrame.new(0, d * 0.42, d * 0.1))
+		end
+		if i == count then
+			for side, fluke in pairs(flukes) do
+				table.insert(parts, fluke)
+				table.insert(
+					cframes,
+					cf * CFrame.new(side * d * 0.55, d * 0.05, d * 0.95) * CFrame.Angles(0, side * 0.55, side * 0.12)
+				)
+			end
+		end
+	end
+	workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
 end
 
 -- The snout runs at h.position; the head's middle sits this far behind it (so the jaws reach the snout).
@@ -149,13 +341,15 @@ end
 local function lurk(dt, awareness)
 	phase += dt * L.SWIM_SPEED / L.RADIUS
 	local rise = L.LURK_MIN + (1 - L.LURK_MIN) * awareness
-	for i, p in ipairs(humps) do
+	local points = {}
+	for i = 1, #humps do
 		local angle = phase - (i - 1) * L.GAP
-		local x, z = center.X + math.cos(angle) * L.RADIUS, center.Z + math.sin(angle) * L.RADIUS
-		local wave = math.max(0, math.sin(phase * 3 - i * 1.1))
-		local size = p.Size.X
-		p.CFrame = CFrame.new(x, -size * 0.55 + size * 0.9 * wave * rise, z)
+		points[i] = Vector3.new(center.X + math.cos(angle) * L.RADIUS, 0, center.Z + math.sin(angle) * L.RADIUS)
 	end
+	local headAngle = phase + 0.2
+	local headFlat =
+		Vector3.new(center.X + math.cos(headAngle) * L.RADIUS, 0, center.Z + math.sin(headAngle) * L.RADIUS)
+	placeBody(points, headFlat, now(), 1 - rise)
 	-- The head follows the first hump, just under the surface.
 	local angle = phase + 0.2
 	local x, z = center.X + math.cos(angle) * L.RADIUS, center.Z + math.sin(angle) * L.RADIUS
@@ -490,19 +684,19 @@ local function huntTick(dt, t)
 		)
 			* CFrame.Angles(rise > 0 and math.rad(25) or 0, 0, 0)
 			* (h.state == "flinch" and CFrame.Angles(0, 0, math.sin(t * 18) * 0.25) or CFrame.new()),
-		low and 0.1 or open
+		low and 0.1 or open,
+		(not low and rise < 1) and (wave + 0.5) or nil
 	)
 	if low then
 		headAt = nil
 	end
 	hideNeck()
-	for i, p in ipairs(humps) do
+	local points = {}
+	for i = 1, #humps do
 		local at = trail[#trail - i * 4] or trail[1] or h.position
-		at = at - h.heading * headBack()
-		local size = p.Size.X
-		local bob = math.max(0, math.sin(t * 4 - i * 0.9))
-		p.CFrame = CFrame.new(at.X, -size * 0.5 + size * (low and 0.25 or 0.8) * bob, at.Z)
+		points[i] = at - h.heading * headBack()
 	end
+	placeBody(points, headCenter, t, low and 0.7 or 0)
 end
 
 -- Each tick from the Sleeper. awareness is 0 to 1.

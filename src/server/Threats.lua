@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Util = require(script.Parent.Util)
+local GuardianLook = require(script.Parent.GuardianLook)
 local Net = require(script.Parent.Net)
 local Loot = require(script.Parent.Loot)
 local Impact = require(script.Parent.Impact)
@@ -22,8 +23,6 @@ Threats.handlers = {} -- trouble kind -> function(item, player), filled by Troub
 Threats.text = {} -- trouble kind -> banner text
 local refs
 
-local GUARDIAN_STONE = Color3.fromRGB(150, 70, 60)
-local GUARDIAN_DARK = Color3.fromRGB(90, 45, 40)
 local EYE_SLEEP = Color3.fromRGB(60, 25, 25)
 local EYE_HUNT = Color3.fromRGB(255, 60, 40)
 local EYE_FRENZY = Color3.fromRGB(255, 170, 40)
@@ -110,81 +109,41 @@ standParams.IgnoreWater = true
 local function buildGuardian()
 	local model = Instance.new("Model")
 	model.Name = "Guardian"
-	local function gpart(name, size, color, material, pivot, hang)
-		-- V9: everything GS times its V8 size, from the feet up.
-		pivot = CFrame.new(pivot.Position * GS) * pivot.Rotation
-		hang = hang and (CFrame.new(hang.Position * GS) * hang.Rotation) or nil
+	-- V10: the body is GuardianLook's design (the same one rides the speedboat). GS scales it from the feet up.
+	local torso, head
+	local eyes = {}
+	for _, spec in ipairs(GuardianLook.parts()) do
 		local p = Instance.new("Part")
-		p.Name = name
-		p.Size = size * GS
-		p.Color = color
-		p.Material = material
+		p.Name = spec.name
+		p.Size = spec.size * GS
+		p.Color = spec.color
+		p.Material = spec.material
+		if spec.shape then
+			p.Shape = spec.shape
+		end
 		p.Anchored = true
 		p.CanCollide = false
 		p.CanQuery = false
 		p.CanTouch = false
+		p.CastShadow = spec.limb ~= "halo"
 		p.Parent = model
-		-- pivot: joint position in the rig; hang: offset from joint to part center.
-		table.insert(guardian.parts, { part = p, name = name, pivot = pivot, hang = hang or CFrame.new() })
-		return p
+		table.insert(guardian.parts, {
+			part = p,
+			name = spec.name,
+			limb = spec.limb,
+			pivot = CFrame.new(spec.pivot.Position * GS) * spec.pivot.Rotation,
+			hang = CFrame.new(spec.hang.Position * GS) * spec.hang.Rotation,
+		})
+		if spec.name == "Torso" then
+			torso = p
+		elseif spec.name == "Head" then
+			head = p
+		elseif spec.name == "Eye" then
+			table.insert(eyes, p)
+		end
 	end
-	-- The rig's origin is between the feet.
-	local torso = gpart("Torso", Vector3.new(9, 9, 6), GUARDIAN_STONE, Enum.Material.Slate, CFrame.new(0, 11.5, 0))
-	local head = gpart("Head", Vector3.new(6, 5, 5), GUARDIAN_STONE, Enum.Material.Slate, CFrame.new(0, 18.5, -0.5))
-	gpart("Brow", Vector3.new(6.4, 1.2, 1.4), GUARDIAN_DARK, Enum.Material.Slate, CFrame.new(0, 20, -2.6))
-	local eyeL = gpart("Eye", Vector3.new(1.3, 0.9, 0.4), EYE_SLEEP, Enum.Material.Neon, CFrame.new(-1.4, 19, -3.05))
-	local eyeR = gpart("Eye", Vector3.new(1.3, 0.9, 0.4), EYE_SLEEP, Enum.Material.Neon, CFrame.new(1.4, 19, -3.05))
-	gpart(
-		"ArmL",
-		Vector3.new(3, 9, 3),
-		GUARDIAN_DARK,
-		Enum.Material.Slate,
-		CFrame.new(-6.2, 15.5, 0),
-		CFrame.new(0, -4.5, 0)
-	)
-	gpart(
-		"ArmR",
-		Vector3.new(3, 9, 3),
-		GUARDIAN_DARK,
-		Enum.Material.Slate,
-		CFrame.new(6.2, 15.5, 0),
-		CFrame.new(0, -4.5, 0)
-	)
-	gpart(
-		"FistL",
-		Vector3.new(3.6, 3.6, 3.6),
-		GUARDIAN_STONE,
-		Enum.Material.Slate,
-		CFrame.new(-6.2, 15.5, 0),
-		CFrame.new(0, -9.5, 0)
-	)
-	gpart(
-		"FistR",
-		Vector3.new(3.6, 3.6, 3.6),
-		GUARDIAN_STONE,
-		Enum.Material.Slate,
-		CFrame.new(6.2, 15.5, 0),
-		CFrame.new(0, -9.5, 0)
-	)
-	gpart(
-		"LegL",
-		Vector3.new(3.4, 7, 3.4),
-		GUARDIAN_DARK,
-		Enum.Material.Slate,
-		CFrame.new(-2.4, 7, 0),
-		CFrame.new(0, -3.5, 0)
-	)
-	gpart(
-		"LegR",
-		Vector3.new(3.4, 7, 3.4),
-		GUARDIAN_DARK,
-		Enum.Material.Slate,
-		CFrame.new(2.4, 7, 0),
-		CFrame.new(0, -3.5, 0)
-	)
-	gpart("Moss", Vector3.new(9.2, 1.5, 6.2), Color3.fromRGB(70, 140, 60), Enum.Material.Grass, CFrame.new(0, 16.3, 0))
 	model.PrimaryPart = torso
-	guardian.eyes = { eyeL, eyeR }
+	guardian.eyes = eyes
 
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "GuardianTag"
@@ -226,20 +185,25 @@ local function poseGuardian()
 	local parts, cframes = {}, {}
 	-- Both fists high overhead while it winds up a stomp: the tell to get off the ground.
 	local raised = (g.stomp ~= nil or g.state == "board") and 2.8 or nil
+	-- V10: the sun halo turns slowly (faster when it is hunting), the arms swing wide and heavy.
+	local halo = now() * (sleeping and 0.15 or 0.6)
 	for _, entry in ipairs(g.parts) do
-		local angle = 0
-		if entry.name == "ArmL" or entry.name == "FistL" then
-			angle = raised or (recovering and 1.3 or swing)
-		elseif entry.name == "ArmR" or entry.name == "FistR" then
-			angle = raised or (recovering and 1.3 or -swing)
-		elseif entry.name == "LegL" then
-			angle = -swing * 0.8
-		elseif entry.name == "LegR" then
-			angle = swing * 0.8
+		local rot = CFrame.new()
+		local limb = entry.limb
+		if limb == "armL" then
+			rot = CFrame.Angles(raised or (recovering and 1.3 or swing), 0, sleeping and 0 or 0.12)
+		elseif limb == "armR" then
+			rot = CFrame.Angles(raised or (recovering and 1.3 or -swing), 0, sleeping and 0 or -0.12)
+		elseif limb == "legL" then
+			rot = CFrame.Angles(-swing * 0.8, 0, 0)
+		elseif limb == "legR" then
+			rot = CFrame.Angles(swing * 0.8, 0, 0)
+		elseif limb == "halo" then
+			rot = CFrame.Angles(0, 0, halo)
 		end
 		table.insert(parts, entry.part)
 		-- Positive angle swings the limb forward (toward -Z).
-		table.insert(cframes, base * entry.pivot * CFrame.Angles(angle, 0, 0) * entry.hang)
+		table.insert(cframes, base * entry.pivot * rot * entry.hang)
 	end
 	workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
 end

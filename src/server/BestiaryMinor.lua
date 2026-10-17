@@ -101,6 +101,59 @@ local function cinderling(index, dx, dz)
 				{ "Crown", v3(1.2, 2.2, 1.2), CFrame.new(0, 2, 0), Color3.fromRGB(255, 220, 90), M.Neon },
 				{ "EyeL", v3(0.5, 0.7, 0.3), CFrame.new(-0.6, 0.3, -1.4), Color3.fromRGB(40, 20, 10), M.SmoothPlastic },
 				{ "EyeR", v3(0.5, 0.7, 0.3), CFrame.new(0.6, 0.3, -1.4), Color3.fromRGB(40, 20, 10), M.SmoothPlastic },
+				-- V10: a crust of cooled rock, flickering side flames, a wicked grin and two stubby feet.
+				{
+					"CrustA",
+					v3(1.3, 1.3, 1.3),
+					CFrame.new(1.1, -0.6, 0.9) * CFrame.Angles(0.4, 0.6, 0),
+					Color3.fromRGB(56, 44, 44),
+					M.Slate,
+				},
+				{
+					"CrustB",
+					v3(1.1, 1.1, 1.1),
+					CFrame.new(-1.0, 0.8, 1.0) * CFrame.Angles(0.7, 0.2, 0.3),
+					Color3.fromRGB(56, 44, 44),
+					M.Slate,
+				},
+				{
+					"CrustC",
+					v3(1, 1, 1),
+					CFrame.new(-0.7, -1.1, -0.9) * CFrame.Angles(0.2, 0.9, 0.5),
+					Color3.fromRGB(56, 44, 44),
+					M.Slate,
+				},
+				{
+					"FlameL",
+					v3(0.8, 1.7, 0.8),
+					CFrame.new(-0.9, 1.6, 0.3) * CFrame.Angles(0, 0, rad(25)),
+					Color3.fromRGB(255, 176, 60),
+					M.Neon,
+				},
+				{
+					"FlameR",
+					v3(0.8, 1.5, 0.8),
+					CFrame.new(0.9, 1.5, 0.3) * CFrame.Angles(0, 0, rad(-25)),
+					Color3.fromRGB(255, 176, 60),
+					M.Neon,
+				},
+				{ "Grin", v3(1.3, 0.3, 0.2), CFrame.new(0, -0.5, -1.42), Color3.fromRGB(40, 20, 10), M.SmoothPlastic },
+				{
+					"FootL",
+					v3(0.9, 0.9, 0.9),
+					CFrame.new(-0.7, -1.5, -0.2),
+					Color3.fromRGB(56, 44, 44),
+					M.Slate,
+					Enum.PartType.Ball,
+				},
+				{
+					"FootR",
+					v3(0.9, 0.9, 0.9),
+					CFrame.new(0.7, -1.5, -0.2),
+					Color3.fromRGB(56, 44, 44),
+					M.Slate,
+					Enum.PartType.Ball,
+				},
 			})
 			local light = Instance.new("PointLight")
 			light.Color = HOT
@@ -216,6 +269,65 @@ local function chill()
 				{ "Wisp1", v3(4, 4, 4), CFrame.new(7, 3, 2), ICE, M.Neon, Enum.PartType.Ball, 0.5 },
 				{ "Wisp2", v3(3, 3, 3), CFrame.new(-6, -2, 5), ICE, M.Neon, Enum.PartType.Ball, 0.5 },
 				{ "Wisp3", v3(3.5, 3.5, 3.5), CFrame.new(2, 5, -7), ICE, M.Neon, Enum.PartType.Ball, 0.5 },
+				-- V10: a face in the frost (two dark eyes and a cold little mouth) and a crown of icicles.
+				{
+					"ChillEyeL",
+					v3(1.6, 0.8, 0.3),
+					CFrame.new(-1.7, 1, -4.35),
+					Color3.fromRGB(24, 50, 96),
+					M.SmoothPlastic,
+				},
+				{
+					"ChillEyeR",
+					v3(1.6, 0.8, 0.3),
+					CFrame.new(1.7, 1, -4.35),
+					Color3.fromRGB(24, 50, 96),
+					M.SmoothPlastic,
+				},
+				{
+					"ChillMouth",
+					v3(1.4, 0.5, 0.3),
+					CFrame.new(0, -1.6, -4.4),
+					Color3.fromRGB(24, 50, 96),
+					M.SmoothPlastic,
+				},
+				{ "Icicle1", v3(1, 4, 1), CFrame.new(0, 5.6, 0), ICE, M.Glass, nil, 0.2 },
+				{
+					"Icicle2",
+					v3(0.9, 3.4, 0.9),
+					CFrame.new(2.4, 4.8, 0) * CFrame.Angles(0, 0, rad(-25)),
+					ICE,
+					M.Glass,
+					nil,
+					0.2,
+				},
+				{
+					"Icicle3",
+					v3(0.9, 3.4, 0.9),
+					CFrame.new(-2.4, 4.8, 0) * CFrame.Angles(0, 0, rad(25)),
+					ICE,
+					M.Glass,
+					nil,
+					0.2,
+				},
+				{
+					"Icicle4",
+					v3(0.8, 3, 0.8),
+					CFrame.new(0, 4.6, 2.4) * CFrame.Angles(rad(25), 0, 0),
+					ICE,
+					M.Glass,
+					nil,
+					0.2,
+				},
+				{
+					"Icicle5",
+					v3(0.8, 3, 0.8),
+					CFrame.new(0, 4.6, -2.4) * CFrame.Angles(rad(-25), 0, 0),
+					ICE,
+					M.Glass,
+					nil,
+					0.2,
+				},
 			}, nil, Config.GUARDIAN_SCALE.Chill) -- V9: bigger
 		end,
 
@@ -454,6 +566,48 @@ local function maw()
 					Color3.fromRGB(40, 52, 68),
 					M.SmoothPlastic,
 				},
+				-- V10: a blunt snout with a row of teeth, yellow eyes, side fins and a pale belly line, so the thing
+				-- circling the whirlpool reads as a huge fish, not a floating plank.
+				{ "Snout", v3(7, 4, 6), CFrame.new(0, 0.8, -15), Color3.fromRGB(46, 60, 78), M.SmoothPlastic },
+				{
+					"Teeth",
+					v3(6.4, 1.1, 0.8),
+					CFrame.new(0, -0.3, -18) * CFrame.Angles(rad(180), 0, 0),
+					Color3.fromRGB(244, 240, 226),
+					M.SmoothPlastic,
+					Enum.PartType.Wedge,
+				},
+				{
+					"MawEyeL",
+					v3(1, 1, 1),
+					CFrame.new(-3.6, 2.2, -13),
+					Color3.fromRGB(255, 214, 60),
+					M.Neon,
+					Enum.PartType.Ball,
+				},
+				{
+					"MawEyeR",
+					v3(1, 1, 1),
+					CFrame.new(3.6, 2.2, -13),
+					Color3.fromRGB(255, 214, 60),
+					M.Neon,
+					Enum.PartType.Ball,
+				},
+				{
+					"SideFinL",
+					v3(6, 0.6, 3.4),
+					CFrame.new(-6, 0, -4) * CFrame.Angles(0, rad(-20), rad(-15)),
+					Color3.fromRGB(40, 52, 68),
+					M.SmoothPlastic,
+				},
+				{
+					"SideFinR",
+					v3(6, 0.6, 3.4),
+					CFrame.new(6, 0, -4) * CFrame.Angles(0, rad(20), rad(15)),
+					Color3.fromRGB(40, 52, 68),
+					M.SmoothPlastic,
+				},
+				{ "Belly", v3(8.4, 1, 24), CFrame.new(0, -2.2, 0), Color3.fromRGB(196, 206, 214), M.SmoothPlastic },
 			}, nil, Config.GUARDIAN_SCALE.Maw) -- V9: bigger
 		end,
 
@@ -586,6 +740,26 @@ local function gobbo()
 				},
 				{ "Hat", v3(2.8, 0.6, 2.8), CFrame.new(0, 3.9, 0), Color3.fromRGB(190, 40, 46), M.Fabric },
 				{ "Legs", v3(2, 1.6, 1.2), CFrame.new(0, -1.6, 0), Color3.fromRGB(60, 50, 44), M.Fabric },
+				-- V10: Gobbo looks like the goblins he cheers on: a big nose, eyes, a belt and a gold buckle.
+				{ "Nose", v3(0.9, 0.9, 0.9), CFrame.new(0, 2.3, -1.25), GREEN, M.SmoothPlastic, Enum.PartType.Ball },
+				{
+					"GobboEyeL",
+					v3(0.5, 0.5, 0.5),
+					CFrame.new(-0.55, 2.9, -1.05),
+					Color3.fromRGB(250, 246, 220),
+					M.SmoothPlastic,
+					Enum.PartType.Ball,
+				},
+				{
+					"GobboEyeR",
+					v3(0.5, 0.5, 0.5),
+					CFrame.new(0.55, 2.9, -1.05),
+					Color3.fromRGB(250, 246, 220),
+					M.SmoothPlastic,
+					Enum.PartType.Ball,
+				},
+				{ "Belt", v3(2.7, 0.4, 1.9), CFrame.new(0, -0.6, 0), Color3.fromRGB(60, 40, 30), M.Fabric },
+				{ "Buckle", v3(0.6, 0.5, 0.2), CFrame.new(0, -0.6, -0.98), Color3.fromRGB(255, 200, 60), M.Metal },
 			})
 			self.position, self.yaw = self.home, math.pi
 			C.pose(self)

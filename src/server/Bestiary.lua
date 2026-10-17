@@ -82,6 +82,14 @@ local function watcher(index, dx, dz)
 					STONE,
 					M.Cobblestone,
 				},
+				-- V10: a heavy brow, a slot of a mouth, stone shoulders, moss on the crown, a rune cut in the chest.
+				{ "Brow", v3(3, 0.7, 1), CFrame.new(0, 9.9, -1.05), DARK, M.Slate },
+				{ "Mouth", v3(1.6, 0.35, 0.2), CFrame.new(0, 8.2, -1.36), Color3.fromRGB(34, 28, 30), M.Slate },
+				{ "ShoulderL", v3(1.8, 1.8, 1.8), CFrame.new(-1.9, 7.2, 0), STONE, M.Slate, Enum.PartType.Ball },
+				{ "ShoulderR", v3(1.8, 1.8, 1.8), CFrame.new(1.9, 7.2, 0), STONE, M.Slate, Enum.PartType.Ball },
+				{ "Moss", v3(2.4, 0.4, 2.4), CFrame.new(0, 10.4, 0), Color3.fromRGB(98, 170, 74), M.Grass },
+				{ "Rune", v3(0.4, 2.2, 0.2), CFrame.new(0, 5, -1.25), Color3.fromRGB(110, 30, 30), M.Neon },
+				{ "RuneBar", v3(1.4, 0.4, 0.2), CFrame.new(0, 5.6, -1.25), Color3.fromRGB(110, 30, 30), M.Neon },
 			}, nil, S)
 			self.eyes = { self.model.EyeL, self.model.EyeR }
 		end,
@@ -229,6 +237,56 @@ local function echo()
 						CFrame.new(0, 0.6, 1) * CFrame.Angles(rad(30), 0, rad(20)),
 						CRYSTAL,
 						M.Neon,
+						nil,
+						0.2,
+					},
+					-- V10: the island Echo matches the one at sea: a little crystal imp with horns and a glowing core.
+					{
+						"Core",
+						v3(0.9, 0.9, 0.9),
+						CFrame.new(0, 0.2, -0.5),
+						Color3.fromRGB(240, 210, 255),
+						M.Neon,
+						Enum.PartType.Ball,
+					},
+					{
+						"EyeL",
+						v3(0.35, 0.25, 0.2),
+						CFrame.new(-0.35, 2.1, -0.76),
+						Color3.fromRGB(110, 255, 240),
+						M.Neon,
+					},
+					{
+						"EyeR",
+						v3(0.35, 0.25, 0.2),
+						CFrame.new(0.35, 2.1, -0.76),
+						Color3.fromRGB(110, 255, 240),
+						M.Neon,
+					},
+					{
+						"HornL",
+						v3(0.3, 1.2, 0.3),
+						CFrame.new(-0.5, 3, 0) * CFrame.Angles(0, 0, rad(25)),
+						CRYSTAL,
+						M.Glass,
+						nil,
+						0.15,
+					},
+					{
+						"HornR",
+						v3(0.3, 1.2, 0.3),
+						CFrame.new(0.5, 3, 0) * CFrame.Angles(0, 0, rad(-25)),
+						CRYSTAL,
+						M.Glass,
+						nil,
+						0.15,
+					},
+					{
+						"ShardL",
+						v3(0.5, 1.8, 0.5),
+						CFrame.new(-1.3, 1, 0.3) * CFrame.Angles(0, 0, rad(40)),
+						CRYSTAL,
+						M.Glass,
 						nil,
 						0.2,
 					},
@@ -396,6 +454,114 @@ local function crab()
 				{ "ClawR", v3(3, 2.4, 5), CFrame.new(6.5, -0.6, -4), SHELL, M.Slate },
 				{ "EyeL", v3(0.9, 2.2, 0.9), CFrame.new(-1.6, 2.2, -4.6), Color3.fromRGB(250, 240, 200), M.Neon },
 				{ "EyeR", v3(0.9, 2.2, 0.9), CFrame.new(1.6, 2.2, -4.6), Color3.fromRGB(250, 240, 200), M.Neon },
+				-- V10: six walking legs, pincers on its claws, pupils on its eye stalks, barnacles on the shell and the
+				-- wreck's broken mast still flying a rag.
+				{
+					"LegL1",
+					v3(5, 0.9, 0.9),
+					CFrame.new(-6.4, -1.4, -1.2) * CFrame.Angles(0, rad(12), rad(-28)),
+					SHELL,
+					M.Slate,
+				},
+				{
+					"LegL2",
+					v3(5, 0.9, 0.9),
+					CFrame.new(-6.6, -1.4, 1.4) * CFrame.Angles(0, 0, rad(-28)),
+					SHELL,
+					M.Slate,
+				},
+				{
+					"LegL3",
+					v3(5, 0.9, 0.9),
+					CFrame.new(-6.2, -1.4, 3.9) * CFrame.Angles(0, rad(-14), rad(-28)),
+					SHELL,
+					M.Slate,
+				},
+				{
+					"LegR1",
+					v3(5, 0.9, 0.9),
+					CFrame.new(6.4, -1.4, -1.2) * CFrame.Angles(0, rad(-12), rad(28)),
+					SHELL,
+					M.Slate,
+				},
+				{ "LegR2", v3(5, 0.9, 0.9), CFrame.new(6.6, -1.4, 1.4) * CFrame.Angles(0, 0, rad(28)), SHELL, M.Slate },
+				{
+					"LegR3",
+					v3(5, 0.9, 0.9),
+					CFrame.new(6.2, -1.4, 3.9) * CFrame.Angles(0, rad(14), rad(28)),
+					SHELL,
+					M.Slate,
+				},
+				{
+					"PincerL",
+					v3(2.4, 1.4, 3.6),
+					CFrame.new(-6.5, 0.9, -5.4) * CFrame.Angles(rad(-18), 0, 0),
+					Color3.fromRGB(226, 120, 80),
+					M.Slate,
+					Enum.PartType.Wedge,
+				},
+				{
+					"PincerR",
+					v3(2.4, 1.4, 3.6),
+					CFrame.new(6.5, 0.9, -5.4) * CFrame.Angles(rad(-18), 0, 0),
+					Color3.fromRGB(226, 120, 80),
+					M.Slate,
+					Enum.PartType.Wedge,
+				},
+				{
+					"PupilL",
+					v3(0.7, 0.7, 0.7),
+					CFrame.new(-1.6, 3.3, -5.05),
+					Color3.fromRGB(20, 20, 24),
+					M.SmoothPlastic,
+					Enum.PartType.Ball,
+				},
+				{
+					"PupilR",
+					v3(0.7, 0.7, 0.7),
+					CFrame.new(1.6, 3.3, -5.05),
+					Color3.fromRGB(20, 20, 24),
+					M.SmoothPlastic,
+					Enum.PartType.Ball,
+				},
+				{
+					"Barnacle1",
+					v3(1.4, 1.4, 1.4),
+					CFrame.new(-3.6, 2.4, 3),
+					Color3.fromRGB(222, 214, 196),
+					M.Slate,
+					Enum.PartType.Ball,
+				},
+				{
+					"Barnacle2",
+					v3(1.1, 1.1, 1.1),
+					CFrame.new(4, 2, -1.6),
+					Color3.fromRGB(222, 214, 196),
+					M.Slate,
+					Enum.PartType.Ball,
+				},
+				{
+					"Barnacle3",
+					v3(1.2, 1.2, 1.2),
+					CFrame.new(2.6, 1.6, 4.2),
+					Color3.fromRGB(222, 214, 196),
+					M.Slate,
+					Enum.PartType.Ball,
+				},
+				{
+					"Mast",
+					v3(0.8, 9, 0.8),
+					CFrame.new(0.6, 9, 1.4) * CFrame.Angles(rad(10), 0, rad(16)),
+					Color3.fromRGB(96, 70, 50),
+					M.Wood,
+				},
+				{
+					"Rag",
+					v3(0.2, 3.4, 4.4),
+					CFrame.new(-0.4, 11.6, 3.4) * CFrame.Angles(rad(10), 0, rad(16)),
+					Color3.fromRGB(224, 210, 176),
+					M.Fabric,
+				},
 			}, nil, self.scale)
 		end,
 
@@ -544,6 +710,39 @@ local function ram()
 				},
 				{ "LegsF", v3(3, 2.2, 0.9), CFrame.new(0, -2.7, -2.2), Color3.fromRGB(70, 60, 58), M.SmoothPlastic },
 				{ "LegsB", v3(3, 2.2, 0.9), CFrame.new(0, -2.7, 2.2), Color3.fromRGB(70, 60, 58), M.SmoothPlastic },
+				-- V10: a proper fleece (curls of wool all over), a pale muzzle, mean yellow eyes, curled horn tips,
+				-- dark hooves and a woolly tail.
+				{ "WoolA", v3(2.6, 2.6, 2.6), CFrame.new(-1.4, 1.5, -1.8), WOOL, M.Fabric, Enum.PartType.Ball },
+				{ "WoolB", v3(2.6, 2.6, 2.6), CFrame.new(1.4, 1.5, -1.8), WOOL, M.Fabric, Enum.PartType.Ball },
+				{ "WoolC", v3(2.8, 2.8, 2.8), CFrame.new(-1.5, 1.4, 1.4), WOOL, M.Fabric, Enum.PartType.Ball },
+				{ "WoolD", v3(2.8, 2.8, 2.8), CFrame.new(1.5, 1.4, 1.4), WOOL, M.Fabric, Enum.PartType.Ball },
+				{ "WoolE", v3(2.8, 2.8, 2.8), CFrame.new(0, 2, -0.2), WOOL, M.Fabric, Enum.PartType.Ball },
+				{ "WoolTail", v3(1.6, 1.6, 1.6), CFrame.new(0, 1, 3.4), WOOL, M.Fabric, Enum.PartType.Ball },
+				{
+					"Muzzle",
+					v3(1.7, 1.3, 1.2),
+					CFrame.new(0, 0.4, -5.2),
+					Color3.fromRGB(120, 104, 98),
+					M.SmoothPlastic,
+				},
+				{ "RamEyeL", v3(0.55, 0.45, 0.2), CFrame.new(-0.8, 1.5, -5.25), Color3.fromRGB(255, 206, 70), M.Neon },
+				{ "RamEyeR", v3(0.55, 0.45, 0.2), CFrame.new(0.8, 1.5, -5.25), Color3.fromRGB(255, 206, 70), M.Neon },
+				{
+					"CurlL",
+					v3(0.8, 0.8, 2.2),
+					CFrame.new(-2.5, 0.9, -3.3) * CFrame.Angles(rad(-70), rad(-20), 0),
+					HORN,
+					M.Slate,
+				},
+				{
+					"CurlR",
+					v3(0.8, 0.8, 2.2),
+					CFrame.new(2.5, 0.9, -3.3) * CFrame.Angles(rad(-70), rad(20), 0),
+					HORN,
+					M.Slate,
+				},
+				{ "HoovesF", v3(3.1, 0.5, 1), CFrame.new(0, -3.9, -2.2), Color3.fromRGB(40, 34, 32), M.SmoothPlastic },
+				{ "HoovesB", v3(3.1, 0.5, 1), CFrame.new(0, -3.9, 2.2), Color3.fromRGB(40, 34, 32), M.SmoothPlastic },
 			}, nil, Config.GUARDIAN_SCALE.Ram)
 		end,
 
@@ -674,6 +873,64 @@ local function eel()
 				part.CanCollide, part.CanQuery, part.CanTouch, part.CastShadow = false, false, false, false
 				part.Transparency = i == 1 and 0 or 0.25
 				self.parts[i] = part
+				-- V10: a dark back and a fin on every segment; a face on the first (each faces along the body).
+				local function onto(name, partSize, offset, color, material, shape)
+					local bit = Util.part(name, partSize, part.CFrame * offset, color, material, model)
+					if shape then
+						bit.Shape = shape
+					end
+					bit.Anchored = false
+					bit.Massless = true
+					bit.CanCollide, bit.CanQuery, bit.CanTouch, bit.CastShadow = false, false, false, false
+					local weld = Instance.new("WeldConstraint")
+					weld.Part0, weld.Part1 = part, bit
+					weld.Parent = bit
+					return bit
+				end
+				onto(
+					"Back",
+					v3(1, 1, 1) * size * 0.92,
+					CFrame.new(0, size * 0.13, 0),
+					Color3.fromRGB(24, 70, 92),
+					M.SmoothPlastic,
+					Enum.PartType.Ball
+				)
+				onto(
+					"Fin",
+					v3(size * 0.12, size * 0.55, size * 0.8),
+					CFrame.new(0, size * 0.62, 0.1 * size),
+					Color3.fromRGB(150, 250, 255),
+					M.Neon,
+					Enum.PartType.Wedge
+				).Transparency =
+					0.2
+				if i == 1 then
+					for _, side in ipairs({ -1, 1 }) do
+						onto(
+							"Eye",
+							v3(1, 1, 1) * size * 0.26,
+							CFrame.new(side * size * 0.3, size * 0.2, -size * 0.36),
+							Color3.fromRGB(255, 250, 230),
+							M.Neon,
+							Enum.PartType.Ball
+						)
+						onto(
+							"Pupil",
+							v3(1, 1, 1) * size * 0.13,
+							CFrame.new(side * size * 0.32, size * 0.22, -size * 0.48),
+							Color3.fromRGB(10, 20, 30),
+							M.SmoothPlastic,
+							Enum.PartType.Ball
+						)
+					end
+					onto(
+						"Jaw",
+						v3(size * 0.7, size * 0.18, size * 0.5),
+						CFrame.new(0, -size * 0.12, -size * 0.42),
+						Color3.fromRGB(16, 44, 58),
+						M.SmoothPlastic
+					)
+				end
 			end
 			model.Parent = C.refs().folders.threats
 			self.trail = {}
@@ -695,8 +952,17 @@ local function eel()
 				table.remove(self.trail)
 			end
 			for i, part in ipairs(self.parts) do
-				local at = self.trail[math.min((i - 1) * 4 + 1, #self.trail)]
-				part.CFrame = CFrame.new(at.X, 0.4, at.Z)
+				local index = math.min((i - 1) * 4 + 1, #self.trail)
+				local at = self.trail[index]
+				-- Face along the body: toward the point ahead of it on the trail.
+				local ahead = self.trail[math.max(1, index - 4)]
+				local behind = self.trail[math.min(#self.trail, index + 1)]
+				local dir = v3(ahead.X - behind.X, 0, ahead.Z - behind.Z)
+				if dir.Magnitude > 0.05 then
+					part.CFrame = CFrame.lookAt(v3(at.X, 0.4, at.Z), v3(at.X + dir.X, 0.4, at.Z + dir.Z))
+				else
+					part.CFrame = CFrame.new(at.X, 0.4, at.Z) * part.CFrame.Rotation
+				end
 			end
 		end,
 
@@ -830,6 +1096,39 @@ local function imp(index, perchIndex)
 				{ "EyeL", v3(0.4, 0.4, 0.2), CFrame.new(-0.45, 2.2, -1.1), Color3.fromRGB(255, 220, 90), M.Neon },
 				{ "EyeR", v3(0.4, 0.4, 0.2), CFrame.new(0.45, 2.2, -1.1), Color3.fromRGB(255, 220, 90), M.Neon },
 				{ "Tail", v3(0.5, 0.5, 3), CFrame.new(0, -0.6, 2.2) * CFrame.Angles(rad(35), 0, 0), FUR, M.Fabric },
+				-- V10: a wide toothy grin, a pale belly, little horns, hands, and a tuft on the tail.
+				{
+					"Grin",
+					v3(1.2, 0.3, 0.2),
+					CFrame.new(0, 1.55, -1.12),
+					Color3.fromRGB(250, 246, 230),
+					M.SmoothPlastic,
+				},
+				{ "Belly", v3(1.5, 1.6, 0.2), CFrame.new(0, -0.1, -0.92), Color3.fromRGB(176, 214, 150), M.Fabric },
+				{
+					"ImpHornL",
+					v3(0.3, 0.8, 0.3),
+					CFrame.new(-0.5, 3.1, -0.2) * CFrame.Angles(0, 0, rad(20)),
+					Color3.fromRGB(60, 46, 40),
+					M.Slate,
+				},
+				{
+					"ImpHornR",
+					v3(0.3, 0.8, 0.3),
+					CFrame.new(0.5, 3.1, -0.2) * CFrame.Angles(0, 0, rad(-20)),
+					Color3.fromRGB(60, 46, 40),
+					M.Slate,
+				},
+				{ "HandL", v3(0.8, 0.8, 0.8), CFrame.new(-1.4, -0.3, -0.6), FUR, M.Fabric, Enum.PartType.Ball },
+				{ "HandR", v3(0.8, 0.8, 0.8), CFrame.new(1.4, -0.3, -0.6), FUR, M.Fabric, Enum.PartType.Ball },
+				{
+					"TailTip",
+					v3(0.9, 0.9, 0.9),
+					CFrame.new(0, -1.46, 3.43),
+					Color3.fromRGB(60, 46, 40),
+					M.Fabric,
+					Enum.PartType.Ball,
+				},
 			})
 		end,
 
@@ -1043,6 +1342,42 @@ local function marine(index, route)
 					M.Neon,
 					nil,
 					0.55,
+				},
+				-- V10: a proper Navy marine: tricorn with a white plume, gold epaulettes, a white belt with a gold
+				-- buckle, eyes and a bristling moustache, and a musket on the shoulder.
+				{ "HatCrown", v3(1.9, 0.8, 1.9), CFrame.new(0, 3.9, 0), Color3.fromRGB(30, 30, 40), M.Fabric },
+				{ "Plume", v3(0.4, 1.3, 0.4), CFrame.new(0.7, 4.7, 0.2), Color3.fromRGB(245, 245, 240), M.Fabric },
+				{ "EpauletteL", v3(1, 0.35, 1.1), CFrame.new(-1.45, 1.55, 0), Color3.fromRGB(255, 200, 60), M.Metal },
+				{ "EpauletteR", v3(1, 0.35, 1.1), CFrame.new(1.45, 1.55, 0), Color3.fromRGB(255, 200, 60), M.Metal },
+				{ "Belt", v3(2.7, 0.4, 1.7), CFrame.new(0, -0.9, 0), Color3.fromRGB(240, 240, 235), M.Fabric },
+				{ "Buckle", v3(0.5, 0.5, 0.2), CFrame.new(0, -0.9, -0.88), Color3.fromRGB(255, 200, 60), M.Metal },
+				{
+					"MarineEyeL",
+					v3(0.25, 0.3, 0.1),
+					CFrame.new(-0.35, 2.55, -0.82),
+					Color3.fromRGB(24, 24, 28),
+					M.SmoothPlastic,
+				},
+				{
+					"MarineEyeR",
+					v3(0.25, 0.3, 0.1),
+					CFrame.new(0.35, 2.55, -0.82),
+					Color3.fromRGB(24, 24, 28),
+					M.SmoothPlastic,
+				},
+				{
+					"Moustache",
+					v3(1, 0.22, 0.12),
+					CFrame.new(0, 2.1, -0.84),
+					Color3.fromRGB(80, 50, 32),
+					M.SmoothPlastic,
+				},
+				{
+					"Musket",
+					v3(0.3, 0.3, 4.4),
+					CFrame.new(-1.2, 1.8, 0.4) * CFrame.Angles(rad(70), 0, rad(-10)),
+					Color3.fromRGB(100, 70, 46),
+					M.Wood,
 				},
 			})
 			local light = Instance.new("SpotLight")

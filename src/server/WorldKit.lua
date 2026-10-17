@@ -5,18 +5,21 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+local Palette = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Palette"))
 local Util = require(script.Parent.Util)
 local Sea = require(script.Parent.Sea)
 
 local Kit = {}
 
 local SEA_Y = 0
-local STONE = Color3.fromRGB(150, 145, 140)
-local DARK_STONE = Color3.fromRGB(85, 80, 90)
-local SANDSTONE = Color3.fromRGB(226, 190, 122)
-local WOOD = Color3.fromRGB(120, 80, 48)
-local DARK_WOOD = Color3.fromRGB(78, 52, 34)
-local GOLD = Color3.fromRGB(255, 200, 40)
+-- V10: the kit's base colours are the art direction's (docs/ART_DIRECTION.md, shared/Palette.lua), so every
+-- builder that uses them follows it: warmer wood, violet-grey stone instead of neutral grey.
+local STONE = Palette.STONE
+local DARK_STONE = Color3.fromRGB(98, 90, 104)
+local SANDSTONE = Palette.SANDSTONE
+local WOOD = Palette.WOOD
+local DARK_WOOD = Palette.WOOD_DARK
+local GOLD = Palette.GOLD
 local CAVE_GLOW = Color3.fromRGB(120, 255, 200)
 Kit.SEA_Y = SEA_Y
 Kit.STONE, Kit.DARK_STONE, Kit.SANDSTONE = STONE, DARK_STONE, SANDSTONE
@@ -240,23 +243,68 @@ local function groundY(x, z, default)
 	return hit and hit.Position.Y or default
 end
 
+-- V10: a palm with some life in it. The trunk is three tapering segments, each leaning a little further
+-- than the last (a curve, not a stick); the crown is seven drooping fronds in two greens round a cluster of
+-- coconuts. Deterministic from its position, so the same palm grows in the same place every raid.
+local TRUNK, TRUNK_LIGHT = Color3.fromRGB(150, 110, 70), Color3.fromRGB(176, 134, 88)
+local FROND, FROND_DARK = Color3.fromRGB(86, 178, 70), Color3.fromRGB(52, 140, 62)
+local COCONUT = Color3.fromRGB(110, 74, 44)
 local function palm(x, z, y, lean)
 	y = y or groundY(x, z, 6)
+	-- What you bump into is exactly V9's trunk (a straight leaning post), kept invisible; everything you see is
+	-- decoration, so V10 changes no collision.
 	local base = Vector3.new(x, y, z)
 	local tilt = CFrame.Angles(math.rad(lean or 8), math.rad((x * 7 + z * 3) % 360), 0)
 	local trunkTop = base + (CFrame.new(base) * tilt).UpVector * 14
-	local trunk = plank("PalmTrunk", base, trunkTop, 1.4, 1.4, Color3.fromRGB(140, 100, 60), Enum.Material.Wood)
+	local trunk = plank("PalmTrunk", base, trunkTop, 1.4, 1.4, TRUNK, Enum.Material.Wood)
+	trunk.Transparency = 1
+	trunk.CastShadow = false
 	trunk.Parent = folders.structures
-	for i = 0, 4 do
-		local yaw = math.rad(i * 72)
-		local frond = CFrame.new(trunkTop) * CFrame.Angles(0, yaw, 0) * CFrame.new(0, -0.6, -3.2)
+	local seed = math.floor(math.abs(x * 7 + z * 3)) % 100000
+	local random = Random.new(seed)
+	local yaw = math.rad(seed % 360)
+	local bend = math.rad(lean or 8)
+	local height = random:NextNumber(15, 20)
+	local pos = Vector3.new(x, y - 0.6, z)
+	local width = 1.9
+	for i = 1, 3 do
+		local segTilt = CFrame.Angles(0, yaw, 0) * CFrame.Angles(bend * (0.4 + i * 0.5), 0, 0)
+		local top = pos + segTilt.UpVector * (height / 3)
+		local mid = (pos + top) / 2
+		decor(
+			"PalmTrunkLook",
+			Vector3.new(width, width, (top - pos).Magnitude),
+			CFrame.lookAt(mid, top),
+			i == 2 and TRUNK_LIGHT or TRUNK,
+			Enum.Material.Wood
+		)
+		pos = top - segTilt.UpVector * 0.3
+		width *= 0.8
+	end
+	local crown = pos + Vector3.new(0, 0.6, 0)
+	for i = 0, 6 do
+		local around = math.rad(i * (360 / 7) + random:NextNumber(-14, 14))
+		local length = random:NextNumber(7.5, 10)
+		local droop = math.rad(random:NextNumber(18, 34))
+		local frame = CFrame.new(crown) * CFrame.Angles(0, around, 0) * CFrame.Angles(-droop, 0, 0)
 		decor(
 			"PalmFrond",
-			Vector3.new(2.4, 0.3, 7),
-			frond * CFrame.Angles(math.rad(-18), 0, 0),
-			Color3.fromRGB(60, 170, 70),
+			Vector3.new(random:NextNumber(2.6, 3.2), 0.3, length),
+			frame * CFrame.new(0, 0, -length / 2 + 0.6) * CFrame.Angles(0, 0, math.rad(random:NextNumber(-12, 12))),
+			i % 2 == 0 and FROND or FROND_DARK,
 			Enum.Material.Grass
 		)
+	end
+	for i = 0, 1 do
+		local nut = decor(
+			"Coconut",
+			Vector3.new(1.3, 1.3, 1.3),
+			CFrame.new(crown + Vector3.new(math.cos(i * 2.6 + yaw) * 0.9, -1, math.sin(i * 2.6 + yaw) * 0.9)),
+			COCONUT,
+			Enum.Material.Wood
+		)
+		nut.Shape = Enum.PartType.Ball
+		nut.CastShadow = false
 	end
 end
 
@@ -280,14 +328,30 @@ local function palmRing(center, radius, count, startDegrees, keepClear)
 	end
 end
 
+-- V10: rocks come in clusters (one big, two smaller, leaning), in the warm violet grey of the art direction.
 local function rockPile(position, size)
+	local random = Random.new(math.floor(math.abs(position.X * 3 + position.Z * 5)) % 100000)
 	structure(
 		"Rock",
 		size,
 		CFrame.new(position) * CFrame.Angles(0.3, position.X % 3, 0.2),
-		DARK_STONE,
+		Palette.ROCK,
 		Enum.Material.Slate
 	)
+	for i = 1, 2 do
+		local a = random:NextNumber(0, math.pi * 2)
+		local s = size * random:NextNumber(0.4, 0.6)
+		local at = position
+			+ Vector3.new(math.cos(a) * size.X * 0.55, -size.Y * 0.25 + s.Y * 0.3, math.sin(a) * size.Z * 0.55)
+		decor(
+			"Rock",
+			s,
+			CFrame.new(at)
+				* CFrame.Angles(random:NextNumber(-0.5, 0.5), random:NextNumber(0, 6), random:NextNumber(-0.5, 0.5)),
+			i == 1 and Palette.ROCK_LIGHT or Palette.ROCK_DARK,
+			Enum.Material.Slate
+		)
+	end
 end
 
 local function pointLight(parent, color, range, brightness)
@@ -420,7 +484,34 @@ local function dock(shore, sea, sides, types)
 	local direction = flatDirection(a, b)
 	local right = Vector3.new(-direction.Z, 0, direction.X)
 	local length = (b - a).Magnitude
-	ground("Dock", Vector3.new(8, 1, length), CFrame.lookAt((a + b) / 2, b), WOOD, Enum.Material.WoodPlanks)
+	local deckFrame = CFrame.lookAt((a + b) / 2, b)
+	ground("Dock", Vector3.new(8, 1, length), deckFrame, WOOD, Enum.Material.WoodPlanks)
+	-- V10: a dark trim beam down each edge, and a lantern post at the sea end so a dock reads from the water.
+	for _, side in ipairs({ -1, 1 }) do
+		decor(
+			"DockTrim",
+			Vector3.new(0.6, 0.7, length),
+			deckFrame * CFrame.new(side * 3.9, 0.35, 0),
+			DARK_WOOD,
+			Enum.Material.Wood
+		)
+	end
+	local lampAt = b - direction * 1.5 + right * 3.4
+	decor(
+		"DockLampPost",
+		Vector3.new(0.6, 7, 0.6),
+		CFrame.new(lampAt + Vector3.new(0, 4, 0)),
+		DARK_WOOD,
+		Enum.Material.Wood
+	)
+	local lamp = decor(
+		"DockLamp",
+		Vector3.new(1.2, 1.5, 1.2),
+		CFrame.new(lampAt + Vector3.new(0, 7.6, 0)),
+		Color3.fromRGB(255, 196, 110),
+		Enum.Material.Neon
+	)
+	pointLight(lamp, Color3.fromRGB(255, 190, 110), 22, 1.1)
 	for d = 8, length - 2, 14 do
 		for _, side in ipairs({ -3.5, 3.5 }) do
 			local p = a + direction * d + right * side
@@ -608,65 +699,132 @@ function Kit.blob(cx, cz, beachR, topR, topY, lobes, seed, bodyMaterial, topMate
 	return list
 end
 
--- A tree: a trunk and a few leafy balls. Trunks are walkable-ish decoration (they block).
+-- A tree (V10): a round canopy in two greens (a darker mass underneath, lighter puffs on top), so it reads as
+-- one rounded shape with light on it. Trunks block (exactly as in V9); leaves do not.
 function Kit.tree(x, z, y, height, leafColor)
 	height = height or 14
+	local random = Random.new(math.floor(math.abs(x * 5 + z * 11)) % 100000)
+	-- The trunk is V9's (same size and place: it blocks); only its colour and the canopy are new.
 	local trunk = structure(
 		"TreeTrunk",
 		Vector3.new(2.2, height, 2.2),
 		CFrame.new(x, y + height / 2, z),
-		Color3.fromRGB(110, 80, 50),
+		Palette.WOOD,
 		Enum.Material.Wood
 	)
-	for i = 0, 2 do
-		local a = i * 2.1
-		local ball = decor(
-			"Leaves",
-			Vector3.new(11, 8, 11),
-			CFrame.new(x + math.cos(a) * 3, y + height + 1 + (i % 2) * 2, z + math.sin(a) * 3),
-			leafColor or Color3.fromRGB(58, 160, 70),
-			Enum.Material.Grass
-		)
+	local top = Vector3.new(x, y + height, z)
+	local dark, light
+	if leafColor then
+		dark = Color3.new(leafColor.R * 0.72, leafColor.G * 0.72, leafColor.B * 0.72)
+		light = leafColor
+	else
+		local pair = Palette.LEAVES.default
+		light, dark = pair[1], pair[2]
+	end
+	local spread = random:NextNumber(0.9, 1.15)
+	local function leaves(offset, size, color)
+		local ball = decor("Leaves", size * spread, CFrame.new(top + offset * spread), color, Enum.Material.Grass)
 		ball.Shape = Enum.PartType.Ball
+		return ball
+	end
+	leaves(Vector3.new(0, 0.5, 0), Vector3.new(13, 9, 13), dark)
+	for i = 0, 2 do
+		local a = i * 2.1 + random:NextNumber(-0.3, 0.3)
+		leaves(Vector3.new(math.cos(a) * 3.2, 3.2 + (i % 2), math.sin(a) * 3.2), Vector3.new(8.5, 7, 8.5), light)
 	end
 	return trunk
 end
 
 -- A stone column, optionally snapped off at a ragged height.
+-- V10: a column has a base and (unless broken) a capital, so ruins read as built things, not tubes.
 function Kit.column(position, height, radius, color, broken)
+	radius = radius or 2
 	local h = broken and height * (0.35 + (position.X * 7 + position.Z * 3) % 10 / 25) or height
-	return cylinder(
+	local shaft = cylinder(
 		"Column",
-		radius or 2,
+		radius,
 		h,
 		position + Vector3.new(0, h / 2, 0),
 		color or STONE,
 		Enum.Material.Marble,
 		folders.structures
 	)
+	decor(
+		"ColumnBase",
+		Vector3.new(radius * 2.7, 1.2, radius * 2.7),
+		CFrame.new(position + Vector3.new(0, 0.6, 0)),
+		color or STONE,
+		Enum.Material.Marble
+	)
+	if not broken then
+		decor(
+			"ColumnCap",
+			Vector3.new(radius * 2.9, 1.1, radius * 2.9),
+			CFrame.new(position + Vector3.new(0, h - 0.2, 0)),
+			color or STONE,
+			Enum.Material.Marble
+		)
+	end
+	return shaft
 end
 
--- Colorful coral heads and rock spikes for reefs. Cheap parts, no terrain.
+-- Coral (V10): branching heads, each a stem with two or three arms ending in a round tip, in the reef
+-- colours of the palette. Cheap parts, no terrain.
 function Kit.coral(position, seed, count)
+	-- What a boat bumps into is exactly V9's coral (same random draws, same blocks), kept invisible.
 	local random = Random.new(seed or 1)
-	local colors = {
-		Color3.fromRGB(255, 120, 140),
-		Color3.fromRGB(255, 170, 70),
-		Color3.fromRGB(190, 110, 255),
-		Color3.fromRGB(80, 220, 200),
-	}
 	for _ = 1, count or 5 do
 		local height = random:NextNumber(3, 9)
 		local offset = Vector3.new(random:NextNumber(-6, 6), 0, random:NextNumber(-6, 6))
-		decor(
+		local body = decor(
 			"Coral",
 			Vector3.new(random:NextNumber(1.5, 3.5), height, random:NextNumber(1.5, 3.5)),
 			CFrame.new(position + offset + Vector3.new(0, height / 2 - 1, 0))
 				* CFrame.Angles(random:NextNumber(-0.25, 0.25), random:NextNumber(0, 6), random:NextNumber(-0.25, 0.25)),
-			colors[random:NextInteger(1, #colors)],
+			Palette.CORALS[random:NextInteger(1, 4)],
 			Enum.Material.Slate,
 			true
 		)
+		body.Transparency = 1
+		body.CastShadow = false
+	end
+	-- What you see: branching heads in the reef colours, decoration only.
+	local look = Random.new((seed or 1) + 7919)
+	for _ = 1, count or 5 do
+		local color = Palette.CORALS[look:NextInteger(1, #Palette.CORALS)]
+		local height = look:NextNumber(3, 8)
+		local base = position + Vector3.new(look:NextNumber(-6, 6), -1, look:NextNumber(-6, 6))
+		local thick = look:NextNumber(1.2, 2)
+		decor(
+			"CoralLook",
+			Vector3.new(thick, height, thick),
+			CFrame.new(base + Vector3.new(0, height / 2, 0))
+				* CFrame.Angles(look:NextNumber(-0.2, 0.2), 0, look:NextNumber(-0.2, 0.2)),
+			color,
+			Enum.Material.Slate
+		)
+		for arm = 1, look:NextInteger(1, 2) do
+			local a = arm * 2.1 + look:NextNumber(-0.4, 0.4)
+			local tilt = look:NextNumber(0.5, 0.9)
+			local length = height * look:NextNumber(0.45, 0.7)
+			local from = base + Vector3.new(0, height * look:NextNumber(0.45, 0.8), 0)
+			local frame = CFrame.new(from) * CFrame.Angles(0, a, 0) * CFrame.Angles(0, 0, tilt)
+			decor(
+				"CoralLook",
+				Vector3.new(thick * 0.7, length, thick * 0.7),
+				frame * CFrame.new(0, length / 2, 0),
+				color,
+				Enum.Material.Slate
+			)
+			local tip = decor(
+				"CoralTip",
+				Vector3.new(1, 1, 1) * thick * 1.15,
+				frame * CFrame.new(0, length, 0),
+				color:Lerp(Color3.new(1, 1, 1), 0.25),
+				Enum.Material.Slate
+			)
+			tip.Shape = Enum.PartType.Ball
+		end
 	end
 end
 

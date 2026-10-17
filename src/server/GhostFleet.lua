@@ -32,6 +32,11 @@ local G = Config.GHOST_FLEET
 local GHOST = Color3.fromRGB(110, 255, 210)
 local GHOST_DIM = Color3.fromRGB(70, 170, 160)
 local HULL = Color3.fromRGB(60, 120, 120)
+-- V10: the sails are pale and torn, the hull darker and much less see-through than V9's (0.35), so a ship
+-- reads as a SHIP in fog: spectral by its glow and its rags, not by being hard to see.
+local SAIL = Color3.fromRGB(196, 255, 232)
+local HULL_DARK = Color3.fromRGB(34, 78, 82)
+local BONE = Color3.fromRGB(226, 232, 214)
 local CREW_SCALE = 1.35
 
 local fleet = nil
@@ -56,113 +61,166 @@ local function block(name, size, offset, color, material, transparency, shape)
 end
 
 -- Bodies -----------------------------------------------------------------------------------------------
+-- A ghost galleon (V10): a long dark hull with a glowing waterline and gunwale, a pointed bow carrying a
+-- bowsprit and a bone skull figurehead, a two-tier stern castle with green-lit windows, cannon ports down each
+-- side, three masts of torn glowing sails (each sail two ragged halves), a crow's nest and a black skull flag.
 local function shipBody()
-	return {
-		block("Hull", Vector3.new(18, 9, 50), nil, HULL, Enum.Material.Glass, 0.35),
-		block("Gunwale", Vector3.new(18.6, 0.8, 50.6), CFrame.new(0, 4.6, 0), GHOST, Enum.Material.Neon, 0.3),
-		block("Deck", Vector3.new(16, 1, 46), CFrame.new(0, 4, 0), GHOST_DIM, Enum.Material.WoodPlanks, 0.3),
+	local GLASS, NEON, FABRIC = Enum.Material.Glass, Enum.Material.Neon, Enum.Material.Fabric
+	local parts = {
+		block("Hull", Vector3.new(18, 8, 50), nil, HULL, GLASS, 0.18),
+		block("Keel", Vector3.new(12, 3, 46), CFrame.new(0, -4.6, 0), HULL_DARK, GLASS, 0.15),
+		block("Waterline", Vector3.new(18.4, 0.6, 50.4), CFrame.new(0, -2.2, 0), GHOST, NEON, 0.35),
+		block("Gunwale", Vector3.new(18.6, 0.8, 50.6), CFrame.new(0, 4.4, 0), GHOST, NEON, 0.25),
+		block("Deck", Vector3.new(16, 1, 46), CFrame.new(0, 4, 0), GHOST_DIM, Enum.Material.WoodPlanks, 0.2),
 		block(
 			"Bow",
-			Vector3.new(12, 7, 12),
-			CFrame.new(0, 1.4, -27) * CFrame.Angles(math.rad(-30), math.rad(45), 0),
+			Vector3.new(12.7, 8, 12.7),
+			CFrame.new(0, 0, -25) * CFrame.Angles(0, math.rad(45), 0),
 			HULL,
-			Enum.Material.Glass,
-			0.35
-		),
-		block("Castle", Vector3.new(16, 6, 11), CFrame.new(0, 7.5, 19), HULL, Enum.Material.Glass, 0.35),
-		block("MastA", Vector3.new(1.6, 40, 1.6), CFrame.new(0, 24, -9), GHOST_DIM, Enum.Material.Wood, 0.2),
-		block("MastB", Vector3.new(1.6, 34, 1.6), CFrame.new(0, 21, 9), GHOST_DIM, Enum.Material.Wood, 0.2),
-		block("SailA1", Vector3.new(17, 9, 0.4), CFrame.new(0, 33, -9), GHOST, Enum.Material.Glass, 0.55),
-		block("SailA2", Vector3.new(14, 7, 0.4), CFrame.new(1.5, 22, -9), GHOST, Enum.Material.Glass, 0.6),
-		block("SailB1", Vector3.new(15, 9, 0.4), CFrame.new(-1, 28, 9), GHOST, Enum.Material.Glass, 0.55),
-		block(
-			"Flag",
-			Vector3.new(0.3, 4, 6),
-			CFrame.new(0, 44, -9),
-			Color3.fromRGB(20, 20, 24),
-			Enum.Material.Fabric,
-			0
+			GLASS,
+			0.18
 		),
 		block(
-			"FlagSkull",
-			Vector3.new(0.4, 1.6, 1.6),
-			CFrame.new(0, 44, -9),
-			Color3.fromRGB(235, 235, 220),
-			Enum.Material.Neon,
-			0,
-			Enum.PartType.Ball
-		),
-		block(
-			"LanternBow",
-			Vector3.new(1.6, 1.6, 1.6),
-			CFrame.new(0, 7, -24),
+			"BowRail",
+			Vector3.new(13, 0.8, 13),
+			CFrame.new(0, 4.4, -25) * CFrame.Angles(0, math.rad(45), 0),
 			GHOST,
-			Enum.Material.Neon,
-			0,
-			Enum.PartType.Ball
+			NEON,
+			0.25
 		),
 		block(
-			"LanternStern",
-			Vector3.new(1.6, 1.6, 1.6),
-			CFrame.new(0, 12, 24),
-			GHOST,
-			Enum.Material.Neon,
+			"Bowsprit",
+			Vector3.new(1.2, 1.2, 22),
+			CFrame.new(0, 8, -40) * CFrame.Angles(math.rad(18), 0, 0),
+			GHOST_DIM,
+			Enum.Material.Wood,
+			0.1
+		),
+		block(
+			"Figurehead",
+			Vector3.new(3.4, 3.4, 3.4),
+			CFrame.new(0, 3.4, -34.5),
+			BONE,
+			Enum.Material.SmoothPlastic,
 			0,
 			Enum.PartType.Ball
 		),
+		block("FigureheadEyes", Vector3.new(2.4, 0.6, 0.4), CFrame.new(0, 3.8, -36.2), GHOST, NEON, 0),
+		block("Castle", Vector3.new(16, 6, 12), CFrame.new(0, 7.5, 19), HULL, GLASS, 0.18),
+		block("CastleTop", Vector3.new(14, 4, 7), CFrame.new(0, 12.5, 21.5), HULL, GLASS, 0.18),
+		block("CastleRail", Vector3.new(16.4, 0.7, 12.4), CFrame.new(0, 10.7, 19), GHOST, NEON, 0.25),
+		block(
+			"SternWindows",
+			Vector3.new(12, 2, 0.4),
+			CFrame.new(0, 7.8, 25.2),
+			Color3.fromRGB(150, 255, 120),
+			NEON,
+			0.1
+		),
+		block("MastA", Vector3.new(1.6, 44, 1.6), CFrame.new(0, 26, -12), GHOST_DIM, Enum.Material.Wood, 0.1),
+		block("MastB", Vector3.new(1.8, 50, 1.8), CFrame.new(0, 29, 2), GHOST_DIM, Enum.Material.Wood, 0.1),
+		block("MastC", Vector3.new(1.4, 34, 1.4), CFrame.new(0, 21, 14), GHOST_DIM, Enum.Material.Wood, 0.1),
+		block(
+			"CrowsNest",
+			Vector3.new(1.8, 4.6, 4.6),
+			CFrame.new(0, 47, 2) * CFrame.Angles(0, 0, math.rad(90)),
+			GHOST_DIM,
+			Enum.Material.Wood,
+			0.1,
+			Enum.PartType.Cylinder
+		),
+		block("Flag", Vector3.new(0.3, 4, 7), CFrame.new(0, 55, 2), Color3.fromRGB(20, 20, 24), FABRIC, 0),
+		block("FlagSkull", Vector3.new(0.4, 1.8, 1.8), CFrame.new(0, 55, 1.6), BONE, NEON, 0, Enum.PartType.Ball),
+		block("LanternBow", Vector3.new(1.8, 1.8, 1.8), CFrame.new(0, 8.4, -30), GHOST, NEON, 0, Enum.PartType.Ball),
+		block("LanternStern", Vector3.new(1.8, 1.8, 1.8), CFrame.new(0, 16, 24), GHOST, NEON, 0, Enum.PartType.Ball),
 	}
+	-- Torn sails: two ragged halves per yard, hanging at different lengths, slightly twisted.
+	for _, mast in ipairs({
+		{ z = -12, y = 34, w = 18, h = 11 },
+		{ z = 2, y = 38, w = 20, h = 13 },
+		{ z = 2, y = 22, w = 17, h = 9 },
+		{ z = 14, y = 26, w = 14, h = 9 },
+	}) do
+		for _, side in ipairs({ -1, 1 }) do
+			local hang = mast.h * (side < 0 and 1 or 0.72)
+			table.insert(
+				parts,
+				block(
+					"Sail",
+					Vector3.new(mast.w * 0.48, hang, 0.4),
+					CFrame.new(side * mast.w * 0.26, mast.y - (mast.h - hang) / 2, mast.z - 0.6)
+						* CFrame.Angles(0, side * 0.08, side * 0.04),
+					SAIL,
+					NEON,
+					0.58
+				)
+			)
+		end
+		table.insert(
+			parts,
+			block(
+				"Yard",
+				Vector3.new(mast.w + 2, 0.8, 0.8),
+				CFrame.new(0, mast.y + mast.h / 2, mast.z),
+				GHOST_DIM,
+				Enum.Material.Wood,
+				0.1
+			)
+		)
+	end
+	-- Cannon ports.
+	for _, side in ipairs({ -1, 1 }) do
+		for i = 0, 2 do
+			table.insert(
+				parts,
+				block(
+					"Port",
+					Vector3.new(0.4, 2, 2.4),
+					CFrame.new(side * 9.1, 1.2, -12 + i * 10),
+					Color3.fromRGB(14, 30, 32),
+					Enum.Material.SmoothPlastic,
+					0
+				)
+			)
+		end
+	end
+	return parts
 end
 
-local function dinghyBody()
-	local s = CREW_SCALE
-	return {
-		block("Hull", Vector3.new(5, 1.6, 9), nil, HULL, Enum.Material.Glass, 0.3),
-		block("Rim", Vector3.new(5.4, 0.5, 9.4), CFrame.new(0, 0.9, 0), GHOST, Enum.Material.Neon, 0.25),
-		block("OarL", Vector3.new(5, 0.3, 0.8), CFrame.new(-4.2, 0.8, 0.5), GHOST_DIM, Enum.Material.Wood, 0.2),
-		block("OarR", Vector3.new(5, 0.3, 0.8), CFrame.new(4.2, 0.8, 0.5), GHOST_DIM, Enum.Material.Wood, 0.2),
-		-- Its pirate, standing in the bow.
-		block("Body", Vector3.new(1.8, 2.6, 1.2) * s, CFrame.new(0, 1 + 2.2 * s, -1), GHOST, Enum.Material.Glass, 0.3),
-		block(
-			"Head",
-			Vector3.new(1.6, 1.6, 1.6) * s,
-			CFrame.new(0, 1 + 4.3 * s, -1),
-			GHOST,
-			Enum.Material.Glass,
-			0.25,
-			Enum.PartType.Ball
-		),
-		block(
-			"Hat",
-			Vector3.new(2.6, 0.6, 1.8) * s,
-			CFrame.new(0, 1 + 5.3 * s, -1),
-			Color3.fromRGB(25, 25, 30),
-			Enum.Material.Fabric,
-			0
-		),
-		block(
-			"Eyes",
-			Vector3.new(1, 0.25, 0.2) * s,
-			CFrame.new(0, 1 + 4.45 * s, -1 - 0.8 * s),
-			Color3.fromRGB(180, 255, 120),
-			Enum.Material.Neon,
-			0
-		),
-		block(
-			"Cutlass",
-			Vector3.new(0.25, 0.25, 3) * s,
-			CFrame.new(1.4 * s, 1 + 3.4 * s, -1 - 1.4 * s) * CFrame.Angles(math.rad(25), 0, 0),
-			Color3.fromRGB(210, 220, 230),
-			Enum.Material.Metal,
-			0
-		),
-	}
-end
-
--- One crew member on a ship's deck: a few loose anchored parts posed every frame from the ship.
+-- A ghost pirate's dinghy (V10): a tiny glowing tub with a pointed bow, two oars and a lantern on a pole, and
+-- its pirate (the same figure as the ships' crews) standing in the bow waving a cutlass.
+-- One ghost pirate (V10): a translucent long coat with a belt, a round glowing head with green eyes and a wispy
+-- beard, a black tricorn (a brim and a crown), a cutlass, and a ghostly tail where the legs should be.
+-- { name, size, offset, color, material, transparency, round, rotation }
 local CREW_PARTS = {
-	{ "Body", Vector3.new(1.8, 2.6, 1.2), Vector3.new(0, 2.2, 0), GHOST, Enum.Material.Glass, 0.3 },
-	{ "Head", Vector3.new(1.6, 1.6, 1.6), Vector3.new(0, 4.3, 0), GHOST, Enum.Material.Glass, 0.25, true },
-	{ "Hat", Vector3.new(2.6, 0.6, 1.8), Vector3.new(0, 5.3, 0), Color3.fromRGB(25, 25, 30), Enum.Material.Fabric, 0 },
+	{ "Body", Vector3.new(1.9, 2.6, 1.3), Vector3.new(0, 2.3, 0), GHOST, Enum.Material.Glass, 0.25 },
+	{ "Belt", Vector3.new(2, 0.4, 1.4), Vector3.new(0, 1.7, 0), Color3.fromRGB(26, 26, 30), Enum.Material.Fabric, 0 },
+	{ "Tail", Vector3.new(1.3, 1.8, 0.9), Vector3.new(0, 0.3, 0.2), GHOST, Enum.Material.Glass, 0.5 },
+	{ "Head", Vector3.new(1.6, 1.6, 1.6), Vector3.new(0, 4.3, 0), GHOST, Enum.Material.Glass, 0.2, true },
+	{
+		"Beard",
+		Vector3.new(1.1, 0.9, 0.5),
+		Vector3.new(0, 3.6, -0.6),
+		Color3.fromRGB(200, 255, 236),
+		Enum.Material.Glass,
+		0.3,
+	},
+	{
+		"HatBrim",
+		Vector3.new(2.8, 0.3, 2.2),
+		Vector3.new(0, 5.15, 0),
+		Color3.fromRGB(22, 22, 28),
+		Enum.Material.Fabric,
+		0,
+	},
+	{
+		"HatCrown",
+		Vector3.new(1.7, 0.9, 1.5),
+		Vector3.new(0, 5.6, 0),
+		Color3.fromRGB(22, 22, 28),
+		Enum.Material.Fabric,
+		0,
+	},
 	{
 		"Eyes",
 		Vector3.new(1, 0.25, 0.2),
@@ -180,6 +238,49 @@ local CREW_PARTS = {
 		0,
 	},
 }
+
+local function dinghyBody()
+	local s = CREW_SCALE
+	local parts = {
+		block("Hull", Vector3.new(5, 1.6, 9), nil, HULL, Enum.Material.Glass, 0.2),
+		block(
+			"Bow",
+			Vector3.new(3.6, 1.6, 3.6),
+			CFrame.new(0, 0, -4.6) * CFrame.Angles(0, math.rad(45), 0),
+			HULL,
+			Enum.Material.Glass,
+			0.2
+		),
+		block("Rim", Vector3.new(5.4, 0.5, 9.4), CFrame.new(0, 0.9, 0), GHOST, Enum.Material.Neon, 0.25),
+		block("OarL", Vector3.new(5, 0.3, 0.8), CFrame.new(-4.2, 0.8, 0.5), GHOST_DIM, Enum.Material.Wood, 0.1),
+		block("OarR", Vector3.new(5, 0.3, 0.8), CFrame.new(4.2, 0.8, 0.5), GHOST_DIM, Enum.Material.Wood, 0.1),
+		block("Pole", Vector3.new(0.3, 4.6, 0.3), CFrame.new(1.8, 3, 3.6), GHOST_DIM, Enum.Material.Wood, 0.1),
+		block(
+			"Lantern",
+			Vector3.new(1, 1, 1),
+			CFrame.new(1.8, 5.5, 3.6),
+			Color3.fromRGB(150, 255, 120),
+			Enum.Material.Neon,
+			0,
+			Enum.PartType.Ball
+		),
+	}
+	for _, spec in ipairs(CREW_PARTS) do
+		table.insert(
+			parts,
+			block(
+				spec[1],
+				spec[2] * s,
+				CFrame.new(spec[3].X * s, 1 + spec[3].Y * s, -1 + spec[3].Z * s) * (spec[8] or CFrame.new()),
+				spec[4],
+				spec[5],
+				spec[6],
+				spec[7] and Enum.PartType.Ball or nil
+			)
+		)
+	end
+	return parts
+end
 
 local function makeCrew(model)
 	local member = { parts = {} }
@@ -331,6 +432,16 @@ function GhostFleet.rise(player, spawns)
 		local water = SeaNav.nearestWater(at.X, at.Z, 3.8)
 		at = water and Vector3.new(water.X, 0, water.Z) or at
 		local model, root = Pursuit.body("GhostShip", shipBody(), 1)
+		for _, name in ipairs({ "LanternBow", "SternWindows" }) do
+			local lamp = model:FindFirstChild(name)
+			if lamp then
+				local light = Instance.new("PointLight")
+				light.Color = Color3.fromRGB(130, 255, 190)
+				light.Range = 34
+				light.Brightness = 1.6
+				light.Parent = lamp
+			end
+		end
 		model:SetAttribute("Pursuer", "The Ghost Fleet")
 		model:SetAttribute("Chasing", player.UserId)
 		local light = Instance.new("PointLight")

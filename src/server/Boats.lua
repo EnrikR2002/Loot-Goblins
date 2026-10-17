@@ -28,6 +28,7 @@ local Shared = ReplicatedStorage:WaitForChild("LootGoblins")
 local Config = require(Shared:WaitForChild("Config"))
 local Twister = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Twister"))
 local BoatSim = require(Shared:WaitForChild("BoatSim"))
+local Palette = require(Shared:WaitForChild("Palette"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Sea = require(script.Parent.Sea)
@@ -37,7 +38,7 @@ local Boats = {}
 Boats.list = {}
 Boats.Sunk = Util.signal() -- (boat, cause)
 
-local WOOD = Color3.fromRGB(110, 72, 44)
+local WOOD = Palette.BOATS.skiff.hull
 local TRIM = {
 	Color3.fromRGB(255, 210, 75),
 	Color3.fromRGB(110, 220, 255),
@@ -133,6 +134,52 @@ local function buildVisuals(spec, typeName, model, hull, trim)
 		Enum.Material.Wood
 	).Transparency =
 		1
+	-- V10 (docs/ART_DIRECTION.md): a livery that says what the boat is from across the water. Two-tone wood, a
+	-- class stripe down each side (skiff gold, cutter teal, Navy blue), dark cap rails, a transom, a bow
+	-- lantern. Decoration only: welded, massless, non-colliding; the hull part physics uses is unchanged.
+	local look = Palette.BOATS[typeName] or Palette.BOATS.default
+	hull.Color = look.hull
+	for _, side in ipairs({ -1, 1 }) do
+		detail(
+			model,
+			hull,
+			"Strake",
+			Vector3.new(0.35, size.Y * 0.36, size.Z * 0.78),
+			CFrame.new(side * (size.X / 2 + 0.12), top * 0.2, size.Z * 0.05),
+			look.stripe,
+			Enum.Material.SmoothPlastic
+		)
+		detail(
+			model,
+			hull,
+			"CapRail",
+			Vector3.new(0.7, 0.45, size.Z * 0.8),
+			CFrame.new(side * (size.X / 2 - 0.2), top + 0.2, size.Z * 0.04),
+			look.trim,
+			Enum.Material.Wood
+		)
+	end
+	detail(
+		model,
+		hull,
+		"Transom",
+		Vector3.new(size.X + 0.3, size.Y * 0.9, 0.5),
+		CFrame.new(0, 0.05, size.Z / 2 + 0.1),
+		look.trim,
+		Enum.Material.WoodPlanks
+	)
+	local bowLamp = detail(
+		model,
+		hull,
+		"BowLamp",
+		Vector3.new(0.7, 0.7, 0.7),
+		CFrame.new(0, top + 0.9, bow - size.Z * 0.12),
+		Color3.fromRGB(255, 214, 120),
+		Enum.Material.Neon
+	)
+	bowLamp.Shape = Enum.PartType.Ball
+	-- Sail stripes and yards (added after the rigs below by striping every sail they made).
+	model:SetAttribute("Livery", typeName)
 	if typeName == "skiff" then
 		detail(model, hull, "Mast", Vector3.new(0.7, 12, 0.7), CFrame.new(0, top + 6, -2), Color3.fromRGB(88, 58, 36))
 		detail(
@@ -230,6 +277,47 @@ local function buildVisuals(spec, typeName, model, hull, trim)
 	end
 end
 
+-- V10: every sail gets a coloured band across it and a yard along its top; every mast a little cap.
+local function dressSails(model, hull, typeName)
+	local look = Palette.BOATS[typeName] or Palette.BOATS.default
+	for _, p in ipairs(model:GetChildren()) do
+		if p:IsA("BasePart") and p.Name == "Sail" then
+			p.Color = look.sail
+			local offset = hull.CFrame:ToObjectSpace(p.CFrame)
+			detail(
+				model,
+				hull,
+				"SailStripe",
+				Vector3.new(p.Size.X + 0.06, p.Size.Y * 0.16, p.Size.Z + 0.02),
+				offset * CFrame.new(0, p.Size.Y * 0.08, 0),
+				look.sailStripe,
+				Enum.Material.Fabric
+			)
+			detail(
+				model,
+				hull,
+				"Yard",
+				Vector3.new(0.45, 0.45, p.Size.Z + 1.2),
+				offset * CFrame.new(-0.1, p.Size.Y / 2, 0),
+				look.trim,
+				Enum.Material.Wood
+			)
+		elseif p:IsA("BasePart") and p.Name == "Mast" then
+			local offset = hull.CFrame:ToObjectSpace(p.CFrame)
+			local cap = detail(
+				model,
+				hull,
+				"MastCap",
+				Vector3.new(1, 1, 1) * (p.Size.X + 0.5),
+				offset * CFrame.new(0, p.Size.Y / 2, 0),
+				look.stripe,
+				Enum.Material.SmoothPlastic
+			)
+			cap.Shape = Enum.PartType.Ball
+		end
+	end
+end
+
 local function buildBoat(spawn)
 	lastIndex += 1
 	local typeName = spawn.type or "skiff"
@@ -256,6 +344,7 @@ local function buildBoat(spawn)
 	hull.Parent = model
 	model.PrimaryPart = hull
 	buildVisuals(spec, typeName, model, hull, trim)
+	dressSails(model, hull, typeName)
 
 	-- V7: the Navy is WHITE, so a patrol ship stands out against pirate wood and the sea: white hull and
 	-- superstructure, a deep blue stripe and sails, brass trim. (An original livery: no real-world flag.)
@@ -265,8 +354,12 @@ local function buildBoat(spawn)
 		for _, p in ipairs(model:GetDescendants()) do
 			if p:IsA("BasePart") and p.Transparency < 0.9 then
 				local n = p.Name
-				if n == "Sail" or n == "Flag" then
-					p.Color, p.Material = BLUE, Enum.Material.Fabric
+				if n == "Sail" or n == "Flag" or n == "Strake" then
+					p.Color, p.Material = BLUE, (n == "Strake") and Enum.Material.SmoothPlastic or Enum.Material.Fabric
+				elseif n == "BowLamp" then
+					p.Color = Color3.fromRGB(255, 240, 200) -- stays a lamp
+				elseif n == "MastCap" then
+					p.Color, p.Material = BRASS, Enum.Material.Metal
 				elseif n == "Cannon" or n == "Anchor" then
 					p.Color = Color3.fromRGB(60, 62, 72)
 				else
