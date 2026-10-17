@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "pets-ride-and-cling-to-keep-up",
+  "title": "Make a follower pet ride or cling instead of chasing a fast player",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-17",
+  "topics": [
+    "pets",
+    "movement",
+    "presentation"
+  ],
+  "observation": "A ground pet following its owner with a plain spring trailed about 10 studs behind a player walking at 28 studs/s and could never keep up with boats at 160 studs/s or launches. Leading the spring target by the owner's velocity kept walking pets beside the owner; placing ground pets on the boat's deck relative to the driver's seat, clinging to the owner's body in the air, water or above 60 studs/s, and holding flying pets in the owner's own frame of reference kept every pet with its owner at any speed without teleporting. Moving 32 pets of 562 anchored parts with one BulkMoveTo cost about 2 ms a frame on a desktop.",
+  "recommendation": "Give follower pets modes: walk with a velocity-led spring on foot, ride the vehicle, cling to the character when airborne or very fast, and keep fliers in the owner's frame; blend between modes with a short hop, and budget their updates by distance.",
+  "applies_when": [
+    "Client-drawn pets or followers in a game with fast vehicles, launches or flight"
+  ],
+  "limits": [
+    "Single-client Studio tests; other players' pets were not watched",
+    "The performance figure is one desktop PC with level of detail added afterwards and not re-measured"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/0635aec9368565ade07d534144be178fead2fb95/docs/reports/2026-10-17-v11-goblin-life.md",
+      "detail": "Sections 15 and 25: the 10-stud trail, the deck and cling measurements, and the 32-pet benchmark."
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "drive-ui-tests-by-instance-path-in-one-sequence",
+  "title": "Click interface tests by instance path, and send multi-press actions in one sequence",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-17",
+  "topics": [
+    "testing",
+    "ui",
+    "studio"
+  ],
+  "observation": "Studio MCP mouse coordinates taken from a screenshot did not land where expected (the click hit a modal's backdrop and closed the window), while user_mouse_input with an instance_path clicked the intended buttons reliably once the buttons had unique names. A two-press purchase confirmation with a 3 s window also failed when the second click was sent in a separate MCP call: the round trip took longer than the window, so the click re-armed instead of buying; sending both clicks in one input sequence worked.",
+  "recommendation": "Give interactive UI objects unique names and drive tests by instance_path; put every step of a timed multi-press interaction in one input sequence; and size human confirmation windows generously (this game moved to 5 s).",
+  "applies_when": [
+    "Testing a Roblox interface through Studio MCP input tools",
+    "An interaction needs two presses within a time window"
+  ],
+  "limits": [
+    "One Windows PC and one Studio window size in October 2026",
+    "Touch and gamepad input were not driven this way"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/0635aec9368565ade07d534144be178fead2fb95/docs/reports/2026-10-17-v11-goblin-life.md",
+      "detail": "Sections 16 and 22, and GAME_DESIGN.md V11 lessons (3) and (4)."
+    }
+  ]
+}
