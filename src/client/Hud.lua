@@ -439,8 +439,8 @@ local HELP_LINES = {
 	},
 	{ "POLTERGOBLIN", "E: leave your body, run as a spirit, snap back. Loot you grab comes back with you." },
 	{
-		"LOCKER",
-		"P: your Shinies (kept for good), pets and starting gear. T: all the treasure, not just what is loose or carried.",
+		"WARDROBE",
+		"P: spend Shinies (kept for good: every raid pays some) on outfits, boat paint, trails, pets. V: emotes. T: all the treasure.",
 	},
 	{
 		"DANGER",
