@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "canvasgroup-may-not-clip",
+  "title": "A rounded CanvasGroup may draw its children unclipped",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-14",
+  "topics": [
+    "ui",
+    "hud"
+  ],
+  "observation": "A round minimap was built as a CanvasGroup with a full-radius UICorner, relying on it to clip island markers at its rim. In a Studio play test, large island markers were drawn well past the rim and over the label beneath it, and setting ClipsDescendants on the CanvasGroup did not change that. Replacing it with an ordinary Frame with ClipsDescendants (a rounded square) clipped correctly in the next screenshot.",
+  "recommendation": "Do not rely on a CanvasGroup to clip a HUD element whose contents must stay inside it. Use a Frame with ClipsDescendants, accept a rectangular clip (rounded corners are cosmetic), and check the result in a screenshot with content near the edges.",
+  "applies_when": [
+    "Building a minimap, radar or any HUD element that must clip moving markers",
+    "A rounded clipping container looks right in the editor but content spills in play"
+  ],
+  "limits": [
+    "Observed in one Studio session on one Windows PC; the graphics settings in effect were not identified",
+    "Not checked on a phone or console, where CanvasGroup behaviour may differ"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/fba0c4aba12ff518ee221fae92fa9c5faa82793c/docs/reports/2026-10-14-v9-relentless-chaos.md",
+      "detail": "Section 19 and bug 9 in section 22: the round CanvasGroup minimap spilled past its rim; the clipped Frame version is shown in the ghost dinghy screenshot."
+    }
+  ]
+}

@@ -17,6 +17,9 @@ local Weather = require(script.Parent.Weather)
 local BoatDrive = require(script.Parent.BoatDrive)
 local Skyship = require(script.Parent.Skyship)
 local Shop = require(script.Parent.Shop)
+local Tricks = require(script.Parent.Tricks)
+local Twisters = require(script.Parent.Twisters)
+local Minimap = require(script.Parent.Minimap)
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
@@ -49,6 +52,8 @@ for _, def in ipairs(Config.LOOT) do
 end
 
 Hud.init(hoardPart)
+Twisters.init()
+Minimap.build(hoardPart.Position)
 
 -- Storm warnings: name the heading so the player can steer around it.
 local COMPASS_NAMES = { "NORTH", "NORTH-EAST", "EAST", "SOUTH-EAST", "SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST" }
@@ -862,6 +867,7 @@ ContextActionService:BindActionAtPriority("LootGoblinsBoatHop", function(_, stat
 end, false, Enum.ContextActionPriority.High.Value + 10, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
 
 -- Input ------------------------------------------------------------------------------------
+local lastTrickHint = -math.huge
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
@@ -929,6 +935,12 @@ UserInputService.InputBegan:Connect(function(input, processed)
 			prompt:InputHoldBegin()
 		else
 			pressPoltergoblin()
+		end
+	elseif (input.KeyCode == Enum.KeyCode.R or input.KeyCode == Enum.KeyCode.ButtonR1) and seatedInBoat() then
+		-- V9: a trick, in the air. On the water it only says how.
+		if not BoatDrive.trick() and os.clock() - lastTrickHint > 4 then
+			lastTrickHint = os.clock()
+			Hud.toast("Tricks are for the air: jump (SPACE), hit a ramp or ride a tornado, then R.")
 		end
 	elseif input.KeyCode == Enum.KeyCode.H then
 		Hud.toggleHelp()
@@ -1343,7 +1355,43 @@ local function boatFx(kind, position, mine)
 	end
 end
 
-BoatDrive.onEvent(function(kind, position, chain)
+local TRICK_SOUND = { 1.25, 1.45, 1.7, 1.95, 2.2 }
+BoatDrive.onEvent(function(kind, position, chain, extra)
+	if kind == "trickstart" then
+		-- V9: the name lands with the motion, loud and tilted (client/Tricks.lua).
+		local name = BoatDrive.TRICK_NAMES[chain] or "TRICK"
+		if chain == "roll" then
+			name = extra == -1 and "PORT ROLL" or "STARBOARD ROLL"
+		end
+		Tricks.started(name)
+		Effects.sound("whoosh", { speed = 1.6, volume = 0.9 })
+		return
+	elseif kind == "trick" then
+		Effects.sound("rise", { speed = TRICK_SOUND[math.clamp(extra or 1, 1, #TRICK_SOUND)], volume = 0.9 })
+		Effects.burst(position, Color3.fromRGB(255, 120, 230), 24, 30)
+		return
+	elseif kind == "trickland" then
+		Tricks.landed(chain or 1)
+		Effects.spray(position, 0.9)
+		Effects.ring(position, Color3.fromRGB(170, 255, 60), 26, 0.5)
+		Effects.chime({ 1, 1.26, 1.5, 2 }, 0.7)
+		Effects.punchFov(100)
+		return
+	elseif kind == "sketchy" then
+		Tricks.sketchy()
+		Effects.spray(position, 0.8)
+		Effects.sound("thud", { speed = 0.7, volume = 1 })
+		return
+	elseif kind == "bail" then
+		Effects.sound("whoosh", { speed = 0.8, volume = 1 })
+		Effects.punchFov(104)
+		Hud.toast("BAILED OUT OF THE TORNADO!")
+		return
+	elseif kind == "twister" then
+		Hud.toast("IN THE TORNADO! Ride it up and trick (R), or bail out with SPACE.")
+		Effects.sound("whoosh", { speed = 0.6, volume = 1 })
+		return
+	end
 	boatFx(kind, position, true)
 	if kind == "hoop" and (chain or 1) >= 2 then
 		-- A chain of hoops: say so (in the boat panel), and let the note climb with it.
@@ -1554,9 +1602,57 @@ function handlers.RecallCalled(p)
 	end
 end
 
+local OTHER_TRICK_NAMES = {
+	spin = "SPIN CYCLE!",
+	spin2 = "DOUBLE SPIN!",
+	roll = "BARREL ROLL!",
+	backflip = "KEEL FLIP!",
+	frontflip = "BOW FLIP!",
+	corkscrew = "CORKSCREW!",
+}
 function handlers.BoatFx(p)
-	if not isMe(p) then
+	if isMe(p) or typeof(p.position) ~= "Vector3" then
+		return
+	end
+	if p.kind == "trick" then
+		-- Someone else's trick, shown over their boat so it reads as deliberate.
+		Tricks.other(p.position, OTHER_TRICK_NAMES[p.trick] or "TRICK!")
+		Effects.sound("rise", { position = p.position, speed = 1.6, volume = 0.7, range = 300 })
+	elseif p.kind == "trickland" then
+		Effects.spray(p.position, 0.8)
+		Effects.ring(p.position, Color3.fromRGB(170, 255, 60), 22, 0.5)
+	elseif p.kind == "sketchy" or p.kind == "bail" then
+		Effects.spray(p.position, 0.7)
+	else
 		boatFx(p.kind, p.position, false)
+	end
+end
+
+-- V9: the Guardian's stone fist came up under someone.
+function handlers.GuardianLaunch(p)
+	if typeof(p.position) ~= "Vector3" then
+		return
+	end
+	Effects.sound("boom", { position = p.position, speed = 0.55, volume = 1, range = 700 })
+	Effects.spray(p.position, 1.4)
+	Effects.shakeAt(p.position, 1, 0.6, 260)
+	if isMe(p) then
+		Effects.punchFov(110)
+		Hud.flash(Color3.fromRGB(255, 205, 40), 0.25)
+	end
+end
+
+-- V9: tornadoes forming, and throwing a goblin.
+function handlers.TwisterBorn(p)
+	if typeof(p.position) == "Vector3" then
+		Effects.sound("boom", { position = p.position, speed = 0.35, volume = 0.8, range = 1600 })
+	end
+end
+
+function handlers.TwisterThrow(p)
+	if typeof(p.position) == "Vector3" then
+		Effects.sound("whoosh", { position = p.position, speed = 0.7, volume = 1, range = 500 })
+		Effects.spray(p.position, 1)
 	end
 end
 
@@ -1615,6 +1711,15 @@ local SEA_FX = {
 	nibble = { "blip", 3.4, 0.9, Color3.fromRGB(170, 200, 215), 0.5 },
 	boing = { "rise", 1.2, 1, Color3.fromRGB(255, 205, 90), 1.4 },
 	lance = { "whoosh", 1.5, 1, Color3.fromRGB(110, 170, 230), 0.7 },
+	-- V9
+	stone = { "thud", 0.5, 1, Color3.fromRGB(190, 180, 160), 0.5 },
+	dart = { "whoosh", 2.2, 0.8, Color3.fromRGB(230, 160, 255), 0.4 },
+	gfist = { "rise", 0.45, 1, Color3.fromRGB(255, 205, 40) },
+	quit = { "splash", 0.6, 1, Color3.fromRGB(255, 215, 90), 1 },
+	roar = { "boom", 0.3, 1, Color3.fromRGB(150, 90, 220) },
+	spout = { "splash", 1.4, 0.7, Color3.fromRGB(220, 240, 255), 0.6 },
+	yarr = { "rise", 0.8, 1, Color3.fromRGB(110, 255, 210) },
+	cannon = { "boom", 1.1, 0.9, Color3.fromRGB(110, 255, 210) },
 }
 
 function handlers.SeaFx(p)

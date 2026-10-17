@@ -4,14 +4,18 @@ local Config = {}
 
 -- Raid -----------------------------------------------------------------------
 -- A raid is one timed match. Bank the most gold before the timer runs out.
-Config.RAID_DURATION = 720 -- V7: twelve minutes for a server of up to 32, a sixteen-island sea and a deployment from the skyship. (V5/V6: 540, V4: 600, V3: 420)
-Config.LAST_CALL = 60 -- The HUD turns red for the final stretch.
+-- V9: SIX MINUTES of real play. The clock does not run while the skyship is deploying: the raid opens with the
+-- launch window (SKYSHIP.WINDOW, 20 s) and the six-minute clock starts when that window closes, so a goblin who
+-- fires late still gets the whole six minutes and one who fires at once gets a head start. (V7/V8: 720, with the
+-- clock running through a 40 s deployment; V5/V6: 540, V4: 600, V3: 420.)
+Config.RAID_DURATION = 360
+Config.LAST_CALL = 30 -- The HUD turns red for the final stretch.
 -- V7, the final rush: in the last FINAL_RUSH seconds every treasure banked pays FINAL_RUSH_MULT times its gold. It
 -- gives everybody a reason to run for the Hoard at the end, and lets a goblin who is behind catch up with one big
 -- run; it is a multiplier on what is banked, never on what is held, so a rival still has to be robbed to profit.
-Config.FINAL_RUSH = 90
+Config.FINAL_RUSH = 50 -- V9: one run's worth of a six-minute raid (V7/V8: 90 of twelve minutes).
 Config.FINAL_RUSH_MULT = 1.25
-Config.INTERMISSION = 12
+Config.INTERMISSION = 10 -- V9 (V8: 12). Spent on the deck: results, then pick where to land.
 Config.FIRST_INTERMISSION = 6 -- Gives the first players time to load in.
 Config.RESPAWN_TIME = 3
 
@@ -58,6 +62,8 @@ Config.AIR_JUMP_POWER = 52
 -- everyone to do sums instead of going where looked fun. Now the three islands beside home pay 4 to 5 (and come
 -- back slowly, 150 s, so they cannot be farmed), the keys 7 to 8, and every other island 9 to 11. A goblin picks an
 -- island because of what lives on it. Weight, carry speed, heat and trouble still differ.
+-- V9: ONE exception: the Golden Idol (17) is the prize of the sea, guarded by a Guardian that follows you home in a
+-- boat. The three nearest home respawn after 100 to 105 s (V8: 150 to 160) in a six-minute raid.
 -- (Was: the rule of the map: more gold means farther, harder to carry and nastier trouble.)
 -- Values follow travel time: a near treasure earns about 2.5 gold a minute for a goblin working
 -- alone, a middle one 4 to 5, a far one 6 to 8 (and far ones go wrong). V5 pulled the islands in
@@ -74,7 +80,7 @@ Config.LOOT = {
 		weight = 1,
 		carrySpeed = 27,
 		heat = 4,
-		respawn = 150,
+		respawn = 100,
 		trouble = "Gulls",
 		color = Color3.fromRGB(255, 225, 150),
 	},
@@ -88,7 +94,7 @@ Config.LOOT = {
 		weight = 1,
 		carrySpeed = 26.5,
 		heat = 6,
-		respawn = 160,
+		respawn = 105,
 		trouble = "Gulls",
 		color = Color3.fromRGB(255, 190, 220),
 	},
@@ -102,7 +108,7 @@ Config.LOOT = {
 		weight = 2,
 		carrySpeed = 26,
 		heat = 8,
-		respawn = 160,
+		respawn = 105,
 		trouble = "Bell",
 		color = Color3.fromRGB(190, 150, 100),
 	},
@@ -280,7 +286,7 @@ Config.LOOT = {
 		place = "the Sun Temple",
 		island = "Temple",
 		visual = "idol",
-		value = 11,
+		value = 17, -- V9: the single most valuable treasure (V8: 11). Everything else stays at 4 to 11.
 		weight = 4,
 		carrySpeed = 23.5,
 		heat = 40,
@@ -337,7 +343,7 @@ Config.LOOT = {
 -- least 1 gold), so a far prize left alone gains as much, in proportion, as a near one. A
 -- treasure everyone ignores becomes the best deal on the map, so the crowd is always deciding
 -- between "now, with company" and "later".
-Config.LOOT_INTEREST_EVERY = 80
+Config.LOOT_INTEREST_EVERY = 45 -- V9 (V8: 80, in a raid twice as long)
 Config.LOOT_INTEREST_MAX = 3
 Config.LOOT_INTEREST_SHARE = 0.12 -- The Skull Chalice (20) gains 2 a step, up to +6.
 
@@ -630,8 +636,16 @@ Config.BOAT_CHAIN_WINDOW = 4
 Config.BOAT_CHAIN_KICK = 7 -- (V6: 5)
 Config.BOAT_CHAIN_MAX = 5 -- (V6: 4)
 Config.BOAT_CHAIN_TOP = 8 -- A kick stops at the boat's boosted top speed plus this per link (a skiff: 210 to 242; V6 151 to 175).
-Config.BOAT_KICK_SPEED = 76 -- Upward speed a kicker ramp gives a fast boat.
+Config.BOAT_KICK_SPEED = 76 -- Upward speed a kicker ramp gives a boat at BOAT_KICK_MIN_SPEED...
+Config.BOAT_KICK_PER_SPEED = 0.2 -- ...plus this much for every stud/s faster (V9: a ramp at boost speed throws higher)...
+Config.BOAT_KICK_MAX = 112 -- ...up to this: about 32 studs up and 2.2 s in the air, room for two or three tricks.
 Config.BOAT_KICK_MIN_SPEED = 34 -- Slower than this and a kicker is only a bump.
+-- V9: FORGIVING HOOPS. A hoop counts if the hull visibly touches it, not only if its middle passes the middle.
+-- The check sweeps the hull from where it was last frame to where it is now (so nothing is stepped over at 240
+-- studs/s or at 10 frames a second), and counts a pass if the hull crossed the hoop's plane within the hoop's
+-- radius plus half the hull's width plus this:
+Config.BOAT_HOOP_REACH = 2
+Config.BOAT_HOOP_DEPTH = 0.6 -- A hull that ends a frame this share of its own length from the plane also counts (a glancing touch).
 
 -- Crashes. The server watches each hull's velocity; a change the boat's own forces cannot
 -- explain is a collision. Harder hits cost more, one hit never sinks a healthy boat, and a
@@ -665,15 +679,37 @@ Config.BOAT_RECLAIM_TIME = 5 -- Seconds the server then drives it before handing
 -- clock runs from the moment the bell goes; WINDOW seconds later whoever is still aboard is fired off.
 -- Pursuit (V8): what lives on an island follows a thief out to sea (server/Pursuit.lua). Each form's own
 -- numbers (speed, tell, rest) are beside its description there; these are the rules they all share.
+-- V9: a pursuit no longer ends on a timer or a leash. It follows the thief ALMOST HOME and stops at the
+-- sanctuary (SANCTUARY, below): danger stays close until the Hoard is in sight. What keeps it fair is pacing
+-- (PACE), not distance: a pursuer that falls far behind surges, one that is close hangs just behind, and a
+-- thief who loses speed (a rock, a missed hoop, a rival) is the one it catches.
 Config.PURSUIT = {
-	MAX = 5, -- Pursuers out at once in the whole sea.
+	MAX = 14, -- Pursuers out at once in the whole sea: one per island, so this only guards against a bug.
+	PER_TARGET = 2, -- At most this many island pursuers on one goblin (a thief carries one treasure, but a
+	-- pursuer whose treasure was snatched may still be closing on its new holder).
 	CHECK = 0.5, -- Seconds between looks for a new thief to follow.
 	CLEAR = 70, -- A thief must be this far off the island's shore, on the water, before it sets out.
-	LEASH = 1100, -- Studs from its island's SHORE at which a pursuer gives up (a form may set its own).
-	TIME = 50, -- Seconds a pursuit lasts at most.
-	COOLDOWN = 40, -- Seconds before the same island can send its pursuer again.
+	LEASH = 99999, -- V9: no distance leash (V8: 1100 studs from the shore). A form may still set its own.
+	TIME = 150, -- Seconds a pursuit lasts at most: a backstop for one stuck behind an island, not a design limit (V8: 50).
+	COOLDOWN = 25, -- Seconds before the same island can send its pursuer again (V8: 40, of a twelve-minute raid).
 	FLINCH = 4, -- Seconds a pursuer reels from an explosion; the second one sends it home.
 	MISS_REST = 1.6, -- After a strike that MISSED it rests only this long (its form's own rest is for a hit).
+	-- Pacing: speeds are set from the gap to the thief, not fixed.
+	SURGE_GAP = 320, -- Farther behind than this a pursuer surges at its form's `surge` speed.
+	FAR_GAP = 900, -- Farther than this, out of the thief's sight behind them, it may resurface closer (see `catchUp`).
+	CATCH_UP_TO = 420, -- ...to this far behind them, along their wake. Never in front, never within sight of their bow.
+	STUCK_TIME = 3, -- Seconds blocked by land before it takes the long way (it resurfaces behind the thief).
+	LIFT_GRACE = 3, -- After a pursuer launches a goblin high (the Guardian's ability), no world hit for this long.
+	GRAVITY = 140, -- Studs/s/s on a pursuer thrown into the air (a ramp, a tornado).
+}
+-- V9, the SANCTUARY: the water round Goblin Cove. A pursuer that reaches it with its thief gives up there,
+-- with a show of it; none enters it; the Leviathan turns back at its edge. It is marked on the water by a
+-- ring of gold lantern buoys and on the minimap and map. (PvP is not affected: a rival can still catch you.)
+Config.SANCTUARY = {
+	RADIUS = 450, -- Studs from the Hoard: just off Goblin Cove's coast all round. The harbor mouth (the harbor jump)
+	-- is 326 out and the docks about 210. (520 was tried first: Coral Atoll's shore was inside it, so its clam
+	-- never got to chase anyone.)
+	BUOYS = 28, -- Lantern buoys round the edge (only where there is water).
 }
 -- Sea mobs (V8): the ordinary life of the open water (server/SeaMobs.lua). A fixed number, placed once.
 Config.SEA_MOBS = {
@@ -702,8 +738,10 @@ Config.STORM_CEILING = 200 -- Lightning and storm-seeding ignore goblins above t
 Config.SKYSHIP = {
 	POSITION = Vector3.new(0, 540, -80), -- Centre of the deck. The sea's walls are 700 high.
 	BEAM = 44,
-	WINDOW = 40, -- Seconds from the raid's start: the deployment window (V7: 28; there are wings to walk and an aim to take now).
-	COUNTDOWN = 3, -- The cannons unlock this long after the raid starts (so a crowd goes together).
+	-- V9: the deployment window is 20 s (V8: 40, V7: 28) and the six-minute clock starts when it closes (Raid.lua).
+	-- A goblin can climb into a cannon and aim during the intermission; the cannons fire from COUNTDOWN on.
+	WINDOW = 20,
+	COUNTDOWN = 2, -- The cannons unlock this long after the raid starts (so a crowd goes together). (V8: 3)
 }
 Config.DIVE = {
 	-- V8: the THROW gives the reach (a plain arc under GRAVITY, aimed where you look); the air gives
@@ -1026,15 +1064,17 @@ Config.ALERT = {
 -- everyone who was there for MIN_PRESENT seconds, PER_GOLD for each gold banked (up to GOLD_CAP), a WIN
 -- bonus for the winner (a tie shares it) and an UNDERDOG bonus to a goblin who banked something and sits at or
 -- below the middle. At most RAID_CAP a raid. A pet costs 120 to 200: two to five raids.
+-- V9: raids are about half as long, so a raid pays a little over half what it did and Shinies per HOUR stay
+-- about where V8 had them. (V8: participation 10, gold cap 30, win 25, underdog 5, cap 70, present 90 s.)
 Config.PROGRESS = {
 	STORE = "LootGoblinsProfile_v1",
-	PARTICIPATION = 10,
+	PARTICIPATION = 6,
 	PER_GOLD = 1,
-	GOLD_CAP = 30,
-	WIN = 25,
-	UNDERDOG = 5,
-	RAID_CAP = 70,
-	MIN_PRESENT = 90,
+	GOLD_CAP = 22,
+	WIN = 15,
+	UNDERDOG = 3,
+	RAID_CAP = 42,
+	MIN_PRESENT = 60,
 	AUTOSAVE = 120,
 }
 Config.KIT_PRICE = 90 -- Starting a raid already carrying one piece of gear.
@@ -1083,38 +1123,52 @@ Config.MONETIZATION = { PRODUCTS = {} }
 -- Navigation (V7). The compass strip only lists treasure this close (all nineteen across the top was the
 -- clutter), and a carrier gets a waypoint arrow toward the Hoard.
 Config.COMPASS_LOOT_RANGE = 1300
+-- V9: NO TEXT ON THE HORIZON. Every sign in the world (island names, the sea's landmarks, lanes, courses,
+-- ramps, currents) is a close-range label now; the map (M) and the minimap carry names and tiers. Short
+-- prompts (E to steal...) are unchanged.
+Config.WORLD_LABEL_RANGE = 220 -- Studs: a landmark's name shows only when you are nearly on it (V8: 420 to 700).
+Config.ISLAND_SIGN_RANGE = 240 -- An island's name, from its middle (V8: 1,500: every island named across the sea).
+Config.LOOT_TAG_RANGE = 170 -- A treasure's name and value over it (V8: 3,000, always on top: the whole map).
 Config.WAYPOINT_HIDE_WITHIN = 90 -- The arrow goes away this close to the Hoard: you are there.
 
 -- The Leviathan's body (server/Leviathan.lua): drawn by the Sleeper's tick, no health, no AI of its own.
+-- V9: NO SPECIAL ATTACK. The V8 breach (a ring, then the head up through it) is gone. The danger is the body
+-- and how CLOSE it is: it swims right behind a fleeing boat, matching its speed, all the way to the sanctuary.
+-- It has momentum (it cannot brake like a boat), so a boat that loses speed (a rock, a missed hoop, a rival,
+-- a bad landing) is run into. A clean, fast run is never touched. It still roars and lunges, and a lunge
+-- falls just short of a boat that keeps its speed.
 Config.LEVIATHAN = {
-	SCALE = 2.2, -- V8: every part of it is this many times its V7 size (the head is 48 x 31 x 57 studs).
-	HUMPS = 9,
+	SCALE = 2.6, -- Every part of it is this many times its V7 size (V8: 2.2; the head is now 57 x 36 x 68 studs).
+	HUMPS = 11,
 	NECK = 12,
 	RADIUS = 150, -- Of the circle its back swims while it lurks.
 	SWIM_SPEED = 22,
 	LURK_MIN = 0.25, -- How much of its back shows when the Sleeper is hardly aware.
 	GAP = 0.2, -- Radians between humps on the circle.
-	-- The hunt (V8).
-	SPEED = 165, -- Studs/s. A cruising skiff does 135 and a boost 215: it gains on one, loses to the other.
-	TURN = 1.3, -- Radians/s: wide turns. A hard turn (a drift) gets inside it.
-	SIGHT = 520, -- It re-picks the nearest crewed boat within this of its head.
-	SURGE_SPEED = 260, -- When the boat has got more than SURGE_GAP ahead (after a breach) it surges to catch up...
-	SURGE_GAP = 260, -- ...so one dodge is not the end of the hunt. It drops back to SPEED once it is close.
-	LEASH = 2400, -- Studs from its home at which it turns back (a cruising skiff is there in about 16 s: two breaches).
-	SHALLOW = 9, -- Water shallower than this (studs) it will not enter: after 3 s there it gives up.
-	HUNT_TIME = 55,
+	-- The hunt.
+	FOLLOW = 46, -- Studs between its snout and the boat's stern while it shadows a boat that keeps its speed.
+	CLOSE_RATE = 40, -- Studs/s it gains on a boat while closing to FOLLOW from farther back (plus the boat's speed).
+	SURGE_GAP = 300, -- Farther back than this it surges...
+	SURGE_SPEED = 300, -- ...at this (a boost is 202, a full hoop chain 242: a surge catches anything).
+	ACCEL = 150, -- Studs/s/s it can speed up...
+	DECEL = 55, -- ...and slow down. It cannot stop like a boat: a boat that slows is caught.
+	MIN_SPEED = 60, -- It never drops below this while hunting (it does not stop behind a stopped boat: it hits it).
+	TURN = 2.2, -- Radians/s: wide turns, wider than a skiff's at speed (V8: 1.3). A drift gets inside it.
+	SIGHT = 600, -- It may change to a nearer crewed boat within this of its head...
+	SWITCH_RATIO = 0.55, -- ...only one this much nearer than its target...
+	SWITCH_GAP = 5, -- ...and no more often than this.
+	CONTACT = 18, -- Studs between its snout and the hull's nearest end that count as a catch.
+	CONTACT_REST = 4, -- Seconds after a catch before it can catch the same boat again (it drops back to FOLLOW).
+	CONTACT_HULL = 8, -- Hull damage of a catch (before IMPACT.HULL_SCALE; never below IMPACT.HULL_FLOOR).
+	CONTACT_DAMAGE = 10, -- To a goblin it catches swimming.
+	LUNGE_GAP = 7, -- Seconds between lunges (a roar, jaws open, a burst of speed)...
+	LUNGE_SPEED = 55, -- ...this much faster than it was going...
+	LUNGE_TIME = 0.8, -- ...for this long. Against a boat holding its speed it falls about 10 studs short.
+	SHALLOW = 7, -- Water shallower than this (studs) it will not enter: it waits at the edge...
+	SHALLOW_GIVE_UP = 10, -- ...and gives up after the boat has stayed in it this long.
+	HUNT_TIME = 180, -- A backstop, not a design limit (V8: 55 s and a 2,400-stud leash; now the sanctuary ends it).
 	FLINCH = 4.5, -- Seconds it reels from an explosion on its head; the third sends it home.
-	RECOVER = 2, -- Seconds after a breach before it swims on.
-	BREACH_RANGE = 220, -- It breaches when this close behind (the ring opens where the boat is GOING, not where it is)...
-	BREACH_GAP = 7, -- ...and no more often than this.
-	BREACH_DELAY = 1.6, -- From the ring opening to the head coming up through it.
-	BREACH_RADIUS = 30,
-	BREACH_HEIGHT = 85,
-	BREACH_SHOW = 2, -- Seconds the head is out of the water: up fast, a hang at the top, back down.
-	BREACH_DAMAGE = 22, -- To a goblin (before IMPACT.DAMAGE_SCALE).
-	BREACH_HULL = 48, -- To a hull (before IMPACT.HULL_SCALE; never below IMPACT.HULL_FLOOR).
-	BREACH_PUSH = 110,
-	WAKE_RADIUS = 62, -- Boats this close to the swimming head are thrown aside by its bow wave...
+	WAKE_RADIUS = 70, -- Boats this close beside the swimming head are thrown aside by its bow wave...
 	WAKE_PUSH = 58, -- ...this hard. No damage.
 	THIEF_WINDOW = 90, -- Seconds after the Tooth is taken in which putting to sea starts a hunt.
 }
@@ -1136,6 +1190,133 @@ Config.GRIP = {
 	SLIP_TIME = 6,
 	RECOVER = 10,
 	HEAVY = { guardianleap = true },
+}
+
+-- V9: TORNADOES (shared/Twister.lua, server/Tornadoes.lua, client/Twisters.lua). Independent of the storms: they
+-- wander open water in fine weather. A tornado LIFTS whatever enters its funnel (a boat, a goblin, a pursuer, a
+-- patrol ship) in a spiral up to its top and throws it out: a ride, not a trap. A driver can bail out at any
+-- point with the jump key; a goblin is thrown into the skydive (glide, dive, water skips all work).
+Config.TWISTER = {
+	MAX = 3, -- At once on the whole sea.
+	FIRST = 25, -- Seconds into a raid before the first.
+	GAP = { 14, 26 }, -- Seconds between one ending and another starting.
+	LIFE = { 70, 105 }, -- Seconds each lasts (plus FADE either side).
+	FADE = 5,
+	SPEED = { 8, 16 }, -- Studs/s it wanders.
+	WANDER = 300, -- Studs from its alley's middle it may wander.
+	HOME_CLEAR = 1100, -- Never this close to the Hoard.
+	RADIUS = 30, -- Of the funnel at the water (it widens with height).
+	FLARE = 1.7, -- The funnel's radius at the top, as a multiple of RADIUS.
+	CATCH = 1.5, -- Things within this many radii are drawn in.
+	HEIGHT = 190, -- The top of the funnel: things are thrown out there.
+	RISE = 74, -- Studs/s up while inside: the ride to the top takes about 2.5 s.
+	SWIRL = 58, -- Studs/s round the funnel.
+	PULL = 3, -- How hard it holds things in toward its middle.
+	CAPTURE = 5, -- Per second: how quickly motion across is turned into the swirl inside the funnel (a boat at
+	-- 110 studs/s went straight through with 2.2; at 5 it is taken up).
+	THROW = 95, -- Studs/s outward at the top...
+	THROW_UP = 30, -- ...and up.
+	BAIL = 120, -- Studs/s a boat is thrown the way it points when its driver bails out (the jump key)...
+	BAIL_UP = 34,
+	IGNORE = 2, -- ...after which the funnel ignores it this long (it would only pull it back in).
+	GOBLIN_UP = 112, -- A goblin caught on foot or swimming is thrown into a skydive this fast upward...
+	GOBLIN_SWIRL = 46, -- ...and round...
+	GOBLIN_REHIT = 2.5, -- ...and can be caught again after this long (fall back in and it throws you again).
+	GOBLIN_LOW = 45, -- Only goblins below this height are caught (one already high in it is mid-throw).
+	HULL_DAMAGE = 0, -- A ride costs nothing.
+	ALTITUDE = 300, -- The anti-cheat's altitude limit for a hull near a tornado or just thrown by one (normally BOAT_MAX_ALTITUDE).
+	SPEED_ALLOW = 170, -- Extra speed the anti-cheat allows for the same.
+	ALLOW_TIME = 7, -- Seconds after leaving a tornado that those allowances last.
+	-- Where they wander: open water on the routes goblins sail (x, z), each a long way from any shore.
+	ALLEYS = {
+		{ -720, 560, "the West Run" },
+		{ 860, 330, "the Eastern Reach" },
+		{ 740, -420, "the Open Sea" },
+		{ -560, -1560, "the Leviathan Road" },
+		{ 470, -1640, "the Far North" },
+		{ 1930, -1330, "the Cinders" },
+		{ -2040, -150, "Navy Waters" },
+		{ 2140, 300, "the Maelstrom Reach" },
+	},
+}
+
+-- V9: BOAT TRICKS. In the air, the trick key (R, gamepad R1) throws the boat into a trick: a flat spin first, then
+-- each further press in the same flight the next in a combo (corkscrew, front flip, double spin); A or D held: a
+-- roll that way; S held: a backflip. A press during a trick is kept for when it ends. Each takes TIME seconds;
+-- a hull still mid-trick when it lands comes down level anyway (a sketchy landing: no burst). Landing clean after
+-- tricks pays a burst and hands back some boost cooldown: style, not gold.
+Config.TRICK = {
+	TIME = { spin = 0.45, roll = 0.5, flip = 0.6, corkscrew = 0.7 }, -- (a super jump is about 1.2 s in the air)
+	MIN_HEIGHT = 5, -- The hull must be at least this far above the water to start one.
+	KICK = 9, -- Speed added on a clean landing, per trick (up to MAX_PAID)...
+	REFUND = 0.8, -- ...and seconds off the boost cooldown, per trick.
+	MAX_PAID = 4,
+}
+
+-- V9: THE SUN TEMPLE GUARDIAN'S BOAT (server/Pursuit.lua, forms.Temple). When the Golden Idol's thief puts to sea
+-- the Guardian leaps onto a tiny stone speedboat and chases them at an absurd speed. It turns wide and overshoots,
+-- and every COOLDOWN seconds it can LAUNCH: a stone fist punches up out of the sea under the thief (marked first)
+-- and throws them, boat and all, about 20 feet up. No damage to speak of, the treasure stays in their hands.
+Config.GUARDIAN_BOAT = {
+	SPEED = 250, -- Cruise while it closes (a skiff 135, a boost 202).
+	SURGE = 360, -- "Mach 7": when it is far behind.
+	ACCEL = 190,
+	TURN = 1.9, -- Wide: at full speed it overshoots a boat that turns, then skids round.
+	FOLLOW = 40, -- How close behind it hangs between launches.
+	COOLDOWN = 9, -- Seconds between launches.
+	REACH = 120, -- It launches when the thief is this close.
+	TELL = 0.85, -- Seconds the mark shows before the fist comes up.
+	RADIUS = 20, -- Of the mark.
+	LIFT = 118, -- Studs/s up (about 35 studs, roughly 20 feet of goblin-scale height, 1.2 s in the air).
+	PUSH = 30, -- Studs/s along the thief's way: it throws you on, not back.
+	HULL = 4,
+	LEAP_TIME = 1.6, -- The Guardian's leap from where it stands onto its boat.
+}
+
+-- V9: THE GHOST FLEET (server/GhostFleet.lua). Taking the Skull Chalice raises SHIPS ghost ships crewed by ghost
+-- pirates. They sail after the thief together, spread out, firing marked volleys. Once the thief is DEPLOY studs
+-- from Skull Rock's shore the pirates take to tiny rowing boats (DINGHIES, one or two from each ship) that chase
+-- much faster than the ships and keep going to the sanctuary; the ships fall back into the fog.
+Config.GHOST_FLEET = {
+	SHIPS = 3,
+	CREW = 4, -- Ghost pirates on each ship's deck.
+	SHIP_SPEED = 170,
+	SHIP_SURGE = 230,
+	SHIP_TURN = 1.1,
+	SPACING = 110, -- Studs apart across the thief's wake.
+	VOLLEY_GAP = 4.5, -- Seconds between a ship's volleys.
+	VOLLEY_RANGE = 360,
+	VOLLEY_DELAY = 1.5,
+	VOLLEY_SHOTS = 2,
+	SHELL_RADIUS = 12,
+	SHELL_HULL = 22, -- Before IMPACT.HULL_SCALE, never below the hull floor: ghosts batter, they do not sink.
+	SHELL_PUSH = 60,
+	DEPLOY = 650, -- Studs off Skull Rock's shore at which the dinghies go over the side.
+	DINGHIES = 5, -- In all.
+	DINGHY_SPEED = 190,
+	DINGHY_SURGE = 290,
+	DINGHY_TURN = 3.2,
+	BOARD_REACH = 20, -- A pirate this close leaps for the treasure (a grip hit, no damage)...
+	BOARD_TELL = 0.7, -- ...after waving its cutlass this long.
+	BOARD_REST = 6, -- Fleet-wide: with the tell, 6.7 s between leaps, longer than the grip's SLIP_TIME (6), so
+	-- pirates alone never strip a thief; it takes a pirate and something else.
+	SHIP_FADE = 14, -- Seconds after the dinghies go before the ships sink into the fog.
+	HEAD_START = 18, -- Seconds late if the Captain's shade was dozing (BestiaryMinor).
+}
+
+-- V9: how much bigger the guardians are than V8 (island bodies and their sea forms). The Crystal Echo is the
+-- exception: it stays small (ECHO_SCALE shrinks its sea form).
+Config.GUARDIAN_SCALE = {
+	Guardian = 1.7,
+	Watcher = 1.6,
+	Crab = 1.6,
+	Ram = 1.7,
+	Eel = 1.6,
+	Chill = 1.5,
+	Clam = 1.5,
+	Maw = 1.4,
+	SeaForm = 1.6, -- Every sea form except the Echo's.
+	ECHO = 0.55,
 }
 
 -- Recall (B): a boat for a goblin with none. See server/Recall.lua.
@@ -1189,9 +1370,9 @@ Config.WINDMILL_DAMAGE = 14
 Config.WINDMILL_RAGE_TIME = 25
 
 -- Storms and lightning ---------------------------------------------------------------------------------
-Config.STORM_FIRST_DELAY = 50 -- Quiet time at the start of a raid.
-Config.STORM_GAP_MIN = 45 -- Seconds between new ambient storms (each lasts 90-125 s). (V3: 95-140, one at a time)
-Config.STORM_GAP_MAX = 75
+Config.STORM_FIRST_DELAY = 40 -- Quiet time at the start of a raid. (V8: 50, of twelve minutes)
+Config.STORM_GAP_MIN = 35 -- V9 (V8: 45). Seconds between new ambient storms (each lasts 90-125 s). (V3: 95-140, one at a time)
+Config.STORM_GAP_MAX = 60
 Config.STORM_MAX_AMBIENT = 3 -- At once. The sea is big; one storm would never be met.
 Config.STORM_NEAR_MIN = 600 -- A storm starts this far from someone out at sea...
 Config.STORM_NEAR_MAX = 1050 -- ...and blows back across their water.
@@ -1303,7 +1484,6 @@ Config.AVALANCHE_WARNING = 2
 Config.KRAKEN_TIME = 36
 Config.KRAKEN_GAP = 3
 Config.KRAKEN_DELAY = 1.6
-Config.GHOST_SHIPS = 2
 Config.GHOST_FOG_TIME = 80
 Config.QUAKE_DELAY = 1.6
 
@@ -1317,7 +1497,7 @@ Config.CREATURES = {
 		carrySpeed = 13, -- With treasure in its arms it is slow, and it moves whether watched or not.
 		sight = 170, -- A goblin this close who is facing it holds it still...
 		gaze = 0.35, -- ...where "facing" is this dot product or better (about 70 degrees either side).
-		reach = 5,
+		reach = 7.5, -- V9: the Watchers are 1.6 times the size (V8: 5)
 		island = 340, -- They wake for carriers this close to the island's center, and never go farther.
 		topple = 8, -- Seconds on its back after a blast.
 		restAfter = 6, -- With no carrier about for this long they go back to their plinths.
@@ -1329,7 +1509,7 @@ Config.CREATURES = {
 		speed = 34,
 		island = 370,
 		erupt = 0.85, -- Seconds of warning ring before it comes up.
-		radius = 10,
+		radius = 14, -- V9: a bigger crab (V8: 10)
 		toss = 72,
 		damage = 10,
 		exposed = 4, -- Seconds it sits above ground afterwards: the time to hit it.
@@ -1355,7 +1535,7 @@ Config.CREATURES = {
 		radius = 78,
 		speed = 26,
 		huntSpeed = 40,
-		reach = 12,
+		reach = 16, -- V9: a bigger eel (V8: 12)
 		damage = 12,
 		lift = 34,
 		hunt = 30, -- Seconds it hunts after the pearl is taken.
@@ -1400,7 +1580,7 @@ Config.CREATURES = {
 		quench = 20, -- A carrier standing in the sea this close: the cinderling jumps in after them and goes out.
 	},
 	-- Frost Spire. A drifting cold that drains stamina.
-	Chill = { speed = 15, carrierSpeed = 21, aura = 30, wakeHeight = 30, leash = 270, scatter = 12 },
+	Chill = { speed = 15, carrierSpeed = 21, aura = 40, wakeHeight = 30, leash = 270, scatter = 12 }, -- V9: aura 40 (V8: 30), it is bigger
 	-- Leviathan's Rest. Something under the water that wakes to the noise of fast boats.
 	Sleeper = {
 		range = 240,
@@ -1417,7 +1597,7 @@ Config.CREATURES = {
 	-- Skull Rock. The Captain's shade dozes: the skull's eyes go dark. Steal then for a head start.
 	Shade = { awake = 16, asleep = 9, headStart = 18 },
 	-- Maelstrom Rock. A fin that circles the whirlpool and shoves boats along.
-	Maw = { radius = 150, speed = 30, reach = 20, push = 70 },
+	Maw = { radius = 150, speed = 30, reach = 26, push = 70 }, -- V9: reach 26 (V8: 20), it is bigger
 	-- Coral Atoll. The pearl's clam opens and shuts.
 	Clam = { open = 5, shut = 3, toss = 58, damage = 8, reach = 6.5 },
 	-- Goblin Cove. Gobbo the dockhand hands out kegs and shouts warnings.

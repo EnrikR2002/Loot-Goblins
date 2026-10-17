@@ -171,8 +171,9 @@ local function buildBoard()
 	local rowsCount = #Config.LOOT
 	board = panel(gui, {
 		Name = "LootBoard",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -10, 0.46, 0),
+		-- V9: below the minimap (client/Minimap.lua), top right.
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -10, 0, 236),
 		Size = UDim2.fromOffset(300, 26 + rowsCount * BOARD_ROW),
 	})
 	boardTitle = text(board, {
@@ -435,16 +436,19 @@ local HELP_LINES = {
 	},
 	{
 		"STEAL",
-		"Hold E on a glowing treasure to pry it off its spot. That causes TROUBLE, and whatever lives there may follow you out to sea. No treasure needs gear.",
+		"Hold E on a glowing treasure to pry it off its spot. Whatever guards it will FOLLOW YOU HOME across the sea, until the gold lights round Goblin Cove.",
 	},
-	{ "BANK", "Carry it to THE HOARD (gold beam at Goblin Cove). Deeper treasure is worth more. Most gold wins." },
+	{
+		"BANK",
+		"Carry it to THE HOARD (gold beam at Goblin Cove). The GOLDEN IDOL is worth the most. Six minutes; most gold wins.",
+	},
 	{
 		"BOATS",
-		"E boards, X leaves. W/S/A/D drive, SHIFT boosts, hold C in a turn to DRIFT. SPACE hops; at boost speed it is a SUPER JUMP. B calls a boat if you are stranded.",
+		"E boards, X leaves. W/S/A/D drive, SHIFT boosts, C drifts, SPACE hops (a SUPER JUMP at boost speed). In the air, R does a TRICK (press again for a combo; A/D roll, S flips). B calls a boat.",
 	},
 	{
 		"THE SEA",
-		"A ring on the water means something lands there: steer off it or jump it. One hit only loosens your grip; a second soon after drops the treasure.",
+		"A ring on the water means something lands there: steer off it. Keep your speed up: pursuers catch whoever slows. TORNADOES lift you: trick, or SPACE to bail.",
 	},
 	{
 		"MOVE",
@@ -732,11 +736,22 @@ end
 
 local function updateTop(now, phase, phaseEndsAt)
 	local left = phaseEndsAt - now
-	if phase == "raid" then
+	local clockAt = workspace:GetAttribute("RaidClockAt")
+	if phase == "raid" and clockAt and now < clockAt then
+		-- V9: the launch window. The six-minute clock waits for it.
+		timer.Text = string.format(
+			"LAUNCH WINDOW  %d   |   RAID %s STARTS AFTER",
+			math.max(0, math.ceil(clockAt - now)),
+			clock(phaseEndsAt - clockAt)
+		)
+		timer.TextColor3 = Color3.fromRGB(150, 230, 255)
+	elseif phase == "raid" then
 		local lastCall = left <= Config.LAST_CALL
-		timer.Text = (lastCall and "LAST CALL  " or "RAID  ") .. clock(left)
+		local rush = left <= Config.FINAL_RUSH
+		timer.Text = (lastCall and "LAST CALL  " or (rush and "FINAL RUSH  " or "RAID  ")) .. clock(left)
 		local pulse = lastCall and (math.sin(now * 8) > 0) or false
-		timer.TextColor3 = lastCall and (pulse and Color3.fromRGB(255, 90, 90) or WHITE) or WHITE
+		timer.TextColor3 = lastCall and (pulse and Color3.fromRGB(255, 90, 90) or WHITE)
+			or (rush and Color3.fromRGB(255, 170, 90) or WHITE)
 	else
 		timer.Text = "NEXT RAID IN " .. math.max(0, math.ceil(left))
 		timer.TextColor3 = Color3.fromRGB(190, 190, 200)
@@ -1001,8 +1016,10 @@ local function updateObjective(now, phase, root, carrying)
 	end
 end
 
+-- V9: the label over the Hoard shows only while you carry treasure (it is where you are going); the rest
+-- of the time the compass and the minimap say where home is, and the horizon stays clear.
 local function updateWaypoint(root, carrying)
-	if not root then
+	if not root or not carrying then
 		waypoint.Enabled = false
 		return
 	end

@@ -196,7 +196,10 @@ local function keyDown(...)
 	return false
 end
 
--- Names over the islands, so the sea reads like a map from the air ------------------------------
+-- The name over the island you are aiming at (or falling toward) ------------------------------------
+-- V8 hung all sixteen names and tiers over the sea while aiming. V9 shows only the one island the ring is
+-- on: the map (M) is where the whole sea is read. focusIsland is set by the aim and by the flight.
+local focusIsland = nil
 local labelsOn = false
 local signRange = setmetatable({}, { __mode = "k" })
 local function showLabels(on)
@@ -243,8 +246,8 @@ local function showLabels(on)
 			end
 		end
 	end
-	for _, entry in pairs(labels) do
-		entry.board.Enabled = on
+	for id, entry in pairs(labels) do
+		entry.board.Enabled = on and id == focusIsland
 	end
 	-- The world's own island signs only reach 1,500 studs; these take over while they are up, so no
 	-- island wears two names. (Main hides a sign that is beyond its MaxDistance.)
@@ -518,8 +521,15 @@ local function aimStep(dt, firing)
 			text = "Nothing down there."
 		else
 			local island = islandAt(first.position)
+			focusIsland = island and island.id or nil
+			local info = island and Config.ISLAND_INFO[island.id]
 			local distance = Vector3.new(first.position.X - from.X, 0, first.position.Z - from.Z).Magnitude
-			text = string.format("%s   |   %d studs", island and island.name or "OPEN SEA", distance)
+			text = string.format(
+				"%s%s   |   %d studs",
+				island and island.name or "OPEN SEA",
+				(info and info.major) and ("  (" .. (Config.TIER_NAMES[info.tier or 1] or "") .. ")") or "",
+				distance
+			)
 			if #touches > 1 then
 				local on = islandAt(touches[#touches].position)
 				text ..= string.format(
@@ -530,11 +540,17 @@ local function aimStep(dt, firing)
 				)
 			end
 		end
+		local bellAt = workspace:GetAttribute("DeployOpensAt")
+		local waiting = bellAt and t < bellAt
 		setBanner(
 			firing and "FIRING..."
 				or (
-					aimReach and "LOOK WHERE YOU WANT TO LAND   -   CLICK or SPACE: FIRE   -   X: CLIMB OUT"
-					or "OUT OF REACH: THE RED RING IS AS FAR AS IT THROWS"
+					waiting
+						and string.format("AIM NOW: THE CANNONS FIRE IN %d   -   X: CLIMB OUT", math.ceil(bellAt - t))
+					or (
+						aimReach and "LOOK WHERE YOU WANT TO LAND   -   CLICK or SPACE: FIRE   -   X: CLIMB OUT"
+						or "OUT OF REACH: THE RED RING IS AS FAR AS IT THROWS"
+					)
 				),
 			text,
 			aimReach and GOLD or RED
@@ -746,7 +762,7 @@ local function update(dt)
 	updateBeam()
 	local _, _, root = character()
 	local high = root and root.Position.Y > 150
-	showLabels(phase == "aboard" or ((phase == "loaded" or phase == "fuse" or flying) and high) or false)
+	showLabels(((phase == "loaded" or phase == "fuse" or flying) and high) or false)
 	if phase == "aboard" then
 		releaseView()
 		if Map.isOpen() then
@@ -755,8 +771,8 @@ local function update(dt)
 		elseif opensAt and t < opensAt then
 			Map.setTitle()
 			setBanner(
-				string.format("THE CANNONS UNLOCK IN %d", math.ceil(opensAt - t)),
-				"Walk about. The wings are deck too."
+				string.format("CLIMB INTO A CANNON (E) AND AIM: THEY FIRE IN %d", math.ceil(opensAt - t)),
+				"Walk about. The wings are deck too.   |   M: the map"
 			)
 		else
 			Map.setTitle()
@@ -780,6 +796,7 @@ local function update(dt)
 			local first = touches[1]
 			landing = first and { position = first.position, island = islandAt(first.position), skips = #touches - 1 }
 				or nil
+			focusIsland = landing and landing.island and landing.island.id or nil
 		end
 		local where = "?"
 		if landing then

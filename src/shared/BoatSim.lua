@@ -19,8 +19,48 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Sea = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Sea"))
+local Twister = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Twister"))
 
 local BoatSim = {}
+
+-- V9 TRICKS. A trick is not a force: while one runs, the hull's orientation is written outright from its
+-- heading when the trick began and how far through the trick it is, so it always ends exactly level and
+-- pointing the way it started, however it was spun. Position and velocity stay physics. Each entry:
+-- the rotation at progress 0..1 (in the hull's own frame, after its starting heading).
+local TAU = math.pi * 2
+local function ease(p)
+	return p * p * (3 - 2 * p)
+end
+BoatSim.TRICKS = {
+	spin = function(p, side)
+		return CFrame.Angles(0, TAU * ease(p) * side, 0)
+	end,
+	spin2 = function(p, side)
+		return CFrame.Angles(0, 2 * TAU * ease(p) * side, 0)
+	end,
+	roll = function(p, side)
+		return CFrame.Angles(0, 0, -TAU * ease(p) * side)
+	end,
+	backflip = function(p)
+		return CFrame.Angles(TAU * ease(p), 0, 0)
+	end,
+	frontflip = function(p)
+		return CFrame.Angles(-TAU * ease(p), 0, 0)
+	end,
+	corkscrew = function(p, side)
+		local e = ease(p)
+		return CFrame.Angles(0, TAU * e * side, 0) * CFrame.Angles(0, 0, -TAU * e * side)
+	end,
+}
+-- How long each takes (Config.TRICK.TIME by family).
+local TRICK_FAMILY = {
+	spin = "spin",
+	spin2 = "corkscrew",
+	roll = "roll",
+	backflip = "flip",
+	frontflip = "flip",
+	corkscrew = "corkscrew",
+}
 
 -- Buoyancy points under a hull: three rows, two columns.
 function BoatSim.points(spec)
@@ -56,7 +96,40 @@ function BoatSim.new(hull, spec)
 		wasBoosting = false,
 		grounded = false, -- On land (or a beach): the ground, not the water, is holding the hull.
 		out = {},
+		-- V9
+		trick = nil, -- The trick running now: { kind, side, startedAt, duration, base (CFrame: heading only) }.
+		tricksDone = 0, -- Tricks finished since the hull left the water.
+		gatePosition = nil, -- Where the hull was at the last gate check (hoops are swept from there).
+		twistedAt = -math.huge, -- When a tornado last held it.
+		twisterIgnoreUntil = 0, -- After bailing out of a funnel, it lets go for a moment.
 	}
+end
+
+-- Starts a trick if the hull is in the air and free. kind: a key of BoatSim.TRICKS; side: 1 or -1.
+-- Returns true if it started.
+function BoatSim.startTrick(boat, kind, side, t)
+	local hull = boat.hull
+	if boat.trick or boat.sinking or boat.moored or not BoatSim.TRICKS[kind] then
+		return false
+	end
+	local position = hull.Position
+	if boat.out.wet ~= 0 or boat.grounded then
+		return false
+	end
+	if position.Y - Sea.waveAt(position.X, position.Z, t) < Config.TRICK.MIN_HEIGHT then
+		return false
+	end
+	local look = hull.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	flat = flat.Magnitude > 0.05 and flat.Unit or Vector3.new(0, 0, -1)
+	boat.trick = {
+		kind = kind,
+		side = side or 1,
+		startedAt = t,
+		duration = Config.TRICK.TIME[TRICK_FAMILY[kind]] or 0.6,
+		base = CFrame.lookAt(Vector3.zero, flat),
+	}
+	return true
 end
 
 -- V7: on land the hull drives slowly instead of being shoved (Config.BOAT_LAND_*), and a jump needs
@@ -119,6 +192,27 @@ function BoatSim.step(boat, input, dt, t)
 	end
 	boat.grounded = grounded and wet < 0.2
 	grounded = boat.grounded
+
+	-- V9: a tornado. Its funnel lifts the hull in a spiral and throws it out at the top; the jump key bails out.
+	local twist, twistState = nil, nil
+	if t >= boat.twisterIgnoreUntil and not boat.sinking then
+		twist, twistState = Twister.accel(position, velocity, t, workspace.Gravity)
+	end
+	out.twister = twistState
+	if twist then
+		boat.twistedAt = t
+		hull:ApplyImpulse(twist * mass * dt)
+		if input.jump == true and t >= boat.jumpReadyAt then
+			local bail = Twister.bail(position, cf.LookVector, t)
+			if bail then
+				boat.jumpReadyAt = t + Config.BOAT_JUMP_COOLDOWN
+				boat.twisterIgnoreUntil = t + Config.TWISTER.IGNORE
+				hull.AssemblyLinearVelocity = bail + Vector3.new(velocity.X, 0, velocity.Z) * 0.25
+				out.event = "bail"
+				input.jump = false
+			end
+		end
+	end
 
 	local throttle, steer = input.throttle or 0, input.steer or 0
 	local sinking = boat.sinking
@@ -291,17 +385,49 @@ function BoatSim.step(boat, input, dt, t)
 		-- Full lock while the drift key is held, even on an analogue stick.
 		yawTarget = -math.sign(steer) * yawRate
 	end
-	local yawNow = spin:Dot(up)
-	local yawInertia = mass * (size.X * size.X + size.Z * size.Z) / 12
-	hull:ApplyAngularImpulse(up * (yawTarget - yawNow) * math.min(1, dt * Config.BOAT_YAW_SNAP) * yawInertia)
+	if twistState == "inside" then
+		yawTarget += 2.4 -- Round and round with the funnel.
+	end
+	local trick = boat.trick
+	if trick then
+		-- V9: a trick owns the hull's orientation (see BoatSim.TRICKS). A hull that touches the water mid-trick
+		-- comes down level anyway: a sketchy landing, never a capsized boat.
+		local progress = (t - trick.startedAt) / trick.duration
+		local landed = wet > 0.25 or grounded or sinking
+		local rotation
+		if landed or progress >= 1 then
+			rotation = trick.base
+			boat.trick = nil
+			if landed then
+				boat.tricksDone = 0
+				boat.sketchy = true
+				out.event = "sketchy"
+			else
+				boat.tricksDone += 1
+				out.event = "trick"
+				out.trick = trick.kind
+				out.tricks = boat.tricksDone
+			end
+		else
+			rotation = trick.base * BoatSim.TRICKS[trick.kind](progress, trick.side)
+		end
+		hull.CFrame = CFrame.new(position) * rotation
+		hull.AssemblyAngularVelocity = Vector3.zero
+	else
+		local yawNow = spin:Dot(up)
+		local yawInertia = mass * (size.X * size.X + size.Z * size.Z) / 12
+		hull:ApplyAngularImpulse(up * (yawTarget - yawNow) * math.min(1, dt * Config.BOAT_YAW_SNAP) * yawInertia)
 
-	-- Bank into the turn (harder in a drift) and stay upright.
-	local rollInertia = mass * (size.X * size.X + size.Y * size.Y) / 12
-	local lean = steer * spec.lean * math.clamp(speedAbs / (spec.maxSpeed * 0.6), 0, 1) * wet * (loose and 1.5 or 1)
-	local tilt = up:Cross(Vector3.yAxis)
-	local flatSpin = spin - up * yawNow
-	local righting = 14 * (0.55 + 0.45 * wet)
-	hull:ApplyAngularImpulse((cf.LookVector * lean + tilt * righting - flatSpin * 2.2 * (0.4 + wet)) * rollInertia * dt)
+		-- Bank into the turn (harder in a drift) and stay upright.
+		local rollInertia = mass * (size.X * size.X + size.Y * size.Y) / 12
+		local lean = steer * spec.lean * math.clamp(speedAbs / (spec.maxSpeed * 0.6), 0, 1) * wet * (loose and 1.5 or 1)
+		local tilt = up:Cross(Vector3.yAxis)
+		local flatSpin = spin - up * yawNow
+		local righting = 14 * (0.55 + 0.45 * wet)
+		hull:ApplyAngularImpulse(
+			(cf.LookVector * lean + tilt * righting - flatSpin * 2.2 * (0.4 + wet)) * rollInertia * dt
+		)
+	end
 
 	-- The hop. (After the forces, so the spring does not eat it.)
 	out.jumped = false
@@ -335,36 +461,42 @@ function BoatSim.step(boat, input, dt, t)
 	elseif grounded then
 		-- Down on land: a thump, never a burst.
 		if boat.airTime >= Config.BOAT_AIR_MIN then
-			out.event = "splash"
+			out.event = out.event or "splash"
 		end
 		boat.airTime = 0
 		boat.hopOnly = false
+		boat.tricksDone = 0
+		boat.sketchy = false
 	elseif wet >= 0.3 then
 		if boat.airTime >= Config.BOAT_AIR_MIN then
-			-- A burst needs a real flight (a ramp, a boosted hop), not a plain hop from rest.
-			if
-				boat.airTime >= Config.BOAT_LANDING_AIR
-				and not boat.hopOnly
-				and up.Y > 0.8
-				and slip < 0.3
-				and forwardSpeed > spec.maxSpeed * 0.4
-				and not sinking
-			then
+			-- A burst needs a real flight (a ramp, a boosted hop), not a plain hop from rest. A hop with a
+			-- trick in it is a real flight (V9).
+			local tricks = boat.tricksDone
+			local clean = up.Y > 0.8 and slip < 0.3 and forwardSpeed > spec.maxSpeed * 0.4 and not sinking
+			if clean and tricks > 0 and not boat.sketchy then
+				local paid = math.min(tricks, Config.TRICK.MAX_PAID)
+				boat.miniUntil = math.max(boat.miniUntil, t + Config.BOAT_MINI_TIME[2])
+				hull:ApplyImpulse(forward * (Config.BOAT_LANDING_KICK + Config.TRICK.KICK * paid) * mass)
+				out.event = "trickland"
+				out.tricks = tricks
+			elseif clean and boat.airTime >= Config.BOAT_LANDING_AIR and not boat.hopOnly and not boat.sketchy then
 				boat.miniUntil = math.max(boat.miniUntil, t + Config.BOAT_MINI_TIME[1])
 				hull:ApplyImpulse(forward * Config.BOAT_LANDING_KICK * mass)
 				out.event = "landing"
 			else
-				out.event = "splash"
+				out.event = out.event or "splash"
 			end
 			boat.hopOnly = false
 		end
 		boat.airTime = 0
+		boat.tricksDone = 0
+		boat.sketchy = false
 	end
 
 	-- Capsized (or nearly) for a moment: the hull pops back upright where it lies, with a hop,
 	-- so no one is ever stuck under a boat. (A push is not enough: an upside-down hull has no
 	-- buoyancy points in the water and simply sits there.)
-	if up.Y < 0.3 then
+	if up.Y < 0.3 and not boat.trick then
 		boat.flippedFor += dt
 		if boat.flippedFor > Config.BOAT_FLIP_TIME then
 			boat.flippedFor = 0
@@ -391,21 +523,69 @@ function BoatSim.step(boat, input, dt, t)
 end
 
 -- Boost hoops give a burst of speed; kicker ramps launch a fast boat into the air.
--- gates: { { x, y, z, r, kind = "boost" | "kick", dx, dz } }. Returns the kind of the gate the
+-- gates: { { x, y, z, r, kind = "boost" | "kick", dx, dz, cy } }. Returns the kind of the gate the
 -- boat just went through, or nil. With apply = false it only detects (the server does that for
 -- a boat someone else is simulating, to show the effect and allow the speed).
+--
+-- V9: FORGIVING, SWEPT DETECTION. V8 asked whether the hull's middle was inside a circle round the hoop on
+-- the frame it was checked. At 240 studs/s a hull moves 4 to 24 studs a frame (60 to 10 frames a second), so
+-- a boat could step clean over a hoop it went through, and one that clipped a hoop's edge with half its hull
+-- got nothing. Now the hull is swept from where it was at the last check to where it is now: a hoop counts if
+-- that path crosses the hoop's plane within the hoop's radius plus half the hull's width (plus
+-- BOAT_HOOP_REACH), or if the hull ends a frame with its own length across the plane (a glancing touch). Height
+-- counts too, so a boat that jumps through a hoop gets it and one that jumps clean over it does not.
+local function hoopPass(gate, from, to, halfLength, halfWidth, halfHeight)
+	local nx, nz = gate.dx, gate.dz
+	local cy = gate.cy or 5
+	local a0 = (from.X - gate.x) * nx + (from.Z - gate.z) * nz
+	local a1 = (to.X - gate.x) * nx + (to.Z - gate.z) * nz
+	local hit
+	if (a0 <= 0 and a1 >= 0) or (a0 >= 0 and a1 <= 0) then
+		local span = a0 - a1
+		hit = math.abs(span) > 1e-6 and from:Lerp(to, a0 / span) or to
+	elseif math.min(math.abs(a0), math.abs(a1)) < halfLength * Config.BOAT_HOOP_DEPTH then
+		hit = math.abs(a0) < math.abs(a1) and from or to
+	else
+		return false
+	end
+	local along = (hit.X - gate.x) * nx + (hit.Z - gate.z) * nz
+	local lx, lz = hit.X - gate.x - nx * along, hit.Z - gate.z - nz * along
+	local ly = hit.Y - cy
+	-- Across, the hull's half-width counts; up and down, only its half-height (a boat flying over a hoop
+	-- does not get it).
+	local across = (lx * lx + lz * lz) / (gate.r + halfWidth + Config.BOAT_HOOP_REACH) ^ 2
+	local vertical = (ly * ly) / (gate.r + halfHeight + Config.BOAT_HOOP_REACH) ^ 2
+	return across + vertical < 1
+end
+
+-- A kicker ramp: the hull's path passes over its middle.
+local function rampPass(gate, from, to)
+	local seg = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
+	local rel = Vector3.new(gate.x - from.X, 0, gate.z - from.Z)
+	local lengthSq = seg:Dot(seg)
+	local k = lengthSq > 1e-6 and math.clamp(rel:Dot(seg) / lengthSq, 0, 1) or 1
+	local closest = Vector3.new(from.X + seg.X * k, 0, from.Z + seg.Z * k)
+	local y = from.Y + (to.Y - from.Y) * k
+	return (closest - Vector3.new(gate.x, 0, gate.z)).Magnitude < gate.r and math.abs(y - gate.y) < 14
+end
+
 function BoatSim.gate(boat, gates, t, apply)
 	local hull = boat.hull
 	local position = hull.Position
+	local from = boat.gatePosition
+	boat.gatePosition = position
+	if not from or (from - position).Magnitude > 90 then
+		from = position -- (a teleport, a respawn: nothing to sweep)
+	end
+	local size = boat.spec.size
+	local halfLength, halfWidth = size.Z * 0.5, size.X * 0.5
 	for index, gate in ipairs(gates) do
-		local dx, dz = position.X - gate.x, position.Z - gate.z
-		if
-			dx * dx + dz * dz < gate.r * gate.r
-			and math.abs(position.Y - gate.y) < 14
-			and t - (boat.gateAt[index] or -10) > 1.5
-		then
+		-- A cheap first test: is the gate anywhere near this frame's path?
+		local mx, mz = (from.X + position.X) * 0.5 - gate.x, (from.Z + position.Z) * 0.5 - gate.z
+		local near = gate.r + halfLength + (from - position).Magnitude * 0.5 + 6
+		if mx * mx + mz * mz < near * near and t - (boat.gateAt[index] or -10) > 1.5 then
 			local velocity = hull.AssemblyLinearVelocity
-			if gate.kind == "boost" then
+			if gate.kind == "boost" and hoopPass(gate, from, position, halfLength, halfWidth, size.Y * 0.5) then
 				boat.gateAt[index] = t
 				boat.boostUntil = math.max(boat.boostUntil, t + Config.BOAT_HOOP_TIME)
 				boat.wasBoosting = true -- the hoop's own kick is enough: no second punch from the boost it starts
@@ -431,11 +611,26 @@ function BoatSim.gate(boat, gates, t, apply)
 					hull:ApplyImpulse(Vector3.new(gate.dx, 0, gate.dz) * way * hull.AssemblyMass * kick)
 				end
 				return "boost"
-			elseif Vector3.new(velocity.X, 0, velocity.Z).Magnitude > Config.BOAT_KICK_MIN_SPEED then
+			elseif
+				gate.kind == "kick"
+				and rampPass(gate, from, position)
+				and Vector3.new(velocity.X, 0, velocity.Z).Magnitude > Config.BOAT_KICK_MIN_SPEED
+			then
 				boat.gateAt[index] = t
 				if apply then
-					hull.AssemblyLinearVelocity =
-						Vector3.new(velocity.X * 1.08, Config.BOAT_KICK_SPEED, velocity.Z * 1.08)
+					-- V9: the faster you hit a ramp, the higher it throws you.
+					local speed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
+					local up = math.min(
+						Config.BOAT_KICK_MAX,
+						Config.BOAT_KICK_SPEED + (speed - Config.BOAT_KICK_MIN_SPEED) * Config.BOAT_KICK_PER_SPEED
+					)
+					hull.AssemblyLinearVelocity = Vector3.new(velocity.X * 1.08, up, velocity.Z * 1.08)
+					-- The plank's own push tips the bow up; at V9's kick that turned a jump into a backflip and a
+					-- capsized landing (measured: upright 1.0 to -0.68 in the air). The ramp throws the boat
+					-- level: no pitch or roll spin, only the turn it already had.
+					local upAxis = hull.CFrame.UpVector
+					local spin = hull.AssemblyAngularVelocity
+					hull.AssemblyAngularVelocity = upAxis * spin:Dot(upAxis)
 				end
 				return "kick"
 			end

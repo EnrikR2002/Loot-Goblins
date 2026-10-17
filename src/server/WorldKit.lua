@@ -385,7 +385,7 @@ local function islandSign(position, text, color)
 	holder.Parent = model
 	model.PrimaryPart = holder
 	model.Parent = folders.landmarks
-	sign(holder, text, color or Color3.fromRGB(255, 245, 220), Vector3.zero, 1500)
+	sign(holder, text, color or Color3.fromRGB(255, 245, 220), Vector3.zero, Config.ISLAND_SIGN_RANGE)
 end
 
 -- Stone watcher. Threats animates the eye and fires from it.
@@ -999,6 +999,7 @@ function Kit.hoop(center, direction, radius, color, oneWay)
 	end
 	local gate = {
 		position = Vector3.new(center.X, 1, center.Z) + shift,
+		ringY = center.Y + shift.Y, -- V9: the hoop's own middle (the swept check counts height).
 		radius = radius + 1,
 		kind = "boost",
 		direction = direction,
@@ -1072,7 +1073,7 @@ function Kit.stream(name, a, b, halfWidth, speed)
 		nil
 	)
 	holder.Transparency = 1
-	sign(holder, name, Color3.fromRGB(190, 235, 255), Vector3.zero, 520)
+	sign(holder, name, Color3.fromRGB(190, 235, 255), Vector3.zero, Config.WORLD_LABEL_RANGE)
 end
 
 -- A hook post: a mast with a perch on top and a ring of light, standing in the sea or on a shore.

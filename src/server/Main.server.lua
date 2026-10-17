@@ -61,6 +61,8 @@ local Creatures = require(script.Parent.Creatures)
 local Pursuit = require(script.Parent.Pursuit)
 local Leviathan = require(script.Parent.Leviathan)
 local SeaMobs = require(script.Parent.SeaMobs)
+local Tornadoes = require(script.Parent.Tornadoes)
+local GhostFleet = require(script.Parent.GhostFleet)
 require(script.Parent.Bestiary)
 require(script.Parent.BestiaryMinor)
 local Raid = require(script.Parent.Raid)
@@ -106,7 +108,9 @@ Troubles.build(refs)
 Escalation.build(refs)
 Creatures.build(refs)
 Pursuit.build(refs)
+GhostFleet.build()
 SeaMobs.build(refs)
+Tornadoes.build(refs)
 Combat.init(refs)
 Raid.init(refs)
 Progress.init()
@@ -207,6 +211,8 @@ local LOOSE_TEXT = {
 	imp = "An imp snatched the %s!",
 	marine = "The Garrison threw %s out: the %s stayed behind!",
 	shatter = "%s's spirit was shattered and dropped the %s",
+	leviathan = "The Leviathan caught %s: the %s went flying!",
+	ghost = "A ghost pirate wrenched the %s out of %s's hands!",
 	left = "%s left and dropped the %s",
 }
 
@@ -222,6 +228,8 @@ Loot.Loosened:Connect(function(item, reason, byPlayer, fromPlayer)
 		text = string.format(LOOSE_TEXT.guardian, def.name, holder)
 	elseif reason == "imp" then
 		text = string.format(LOOSE_TEXT.imp, def.name)
+	elseif reason == "ghost" then
+		text = string.format(LOOSE_TEXT.ghost, def.name, holder)
 	else
 		text = string.format(LOOSE_TEXT[reason] or "%s dropped the %s", holder, def.name)
 	end
@@ -303,6 +311,9 @@ Players.PlayerRemoving:Connect(function(player)
 	Skyship.forget(player)
 	Impact.forget(player)
 	Progress.forget(player)
+	Pursuit.forget(player)
+	GhostFleet.forget(player)
+	Tornadoes.forget(player)
 end)
 
 Net.Throw.OnServerEvent:Connect(function(player)
@@ -335,9 +346,21 @@ Net.BoatBoard.OnServerEvent:Connect(function(player)
 		Boats.board(boat, player, Config.GRAPPLE_PULL_RANGE)
 	end
 end)
-Net.BoatFx.OnServerEvent:Connect(function(player, kind)
-	if kind == "mini1" or kind == "mini2" or kind == "landing" or kind == "jump" or kind == "super" then
-		Boats.relayFx(player, kind)
+local RELAYED_FX = {
+	mini1 = true,
+	mini2 = true,
+	landing = true,
+	jump = true,
+	super = true,
+	-- V9
+	trick = true,
+	trickland = true,
+	sketchy = true,
+	bail = true,
+}
+Net.BoatFx.OnServerEvent:Connect(function(player, kind, extra)
+	if RELAYED_FX[kind] then
+		Boats.relayFx(player, kind, extra)
 	end
 end)
 Net.Deploy.OnServerEvent:Connect(function(player, action, a)
@@ -403,6 +426,8 @@ RunService.Heartbeat:Connect(function(dt)
 	Skyship.tick(dt)
 	Flight.tick(dt)
 	Pursuit.tick(dt)
+	GhostFleet.tick(dt)
+	Tornadoes.tick(dt, active)
 	SeaMobs.tick(dt)
 	Progress.tick(dt, active)
 	if active then

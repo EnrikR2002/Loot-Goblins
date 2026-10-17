@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "physics-test-site-confounders",
+  "title": "Ambient world systems can spoil a movement test and suggest the wrong bug",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-14",
+  "topics": [
+    "testing",
+    "physics"
+  ],
+  "observation": "A client-driven boat was aimed at a tornado to test whether the client applied its lift. It never rode the tornado, which looked like a client-side bug. The trace showed two sudden 50-stud hops with a jump in speed before the funnel: the boat had hit two ambient puffer fish, which bounced it off its line. Rerun on open water with no creatures on the path, the same client caught the boat and lifted it to 198 studs.",
+  "recommendation": "Before a movement or physics test, check the test path for ambient hazards (creatures, ramps, currents, hoops) or move to a cleared site. When one machine's result disagrees with an equivalent test elsewhere, look in the trace for sudden changes of height or speed caused by something outside the system under test before changing code.",
+  "applies_when": [
+    "Testing vehicle or character physics in a populated world",
+    "A test result contradicts an equivalent test that passed"
+  ],
+  "limits": [
+    "One incident in one game's Studio session",
+    "A cleared test site removes interactions that real players will meet; test those separately"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/fba0c4aba12ff518ee221fae92fa9c5faa82793c/docs/reports/2026-10-14-v9-relentless-chaos.md",
+      "detail": "Section 16 and item 12 in section 22: the puffer-spoiled tornado test and the clean rerun with real keys."
+    }
+  ]
+}

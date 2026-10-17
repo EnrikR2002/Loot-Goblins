@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Archipelago = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Archipelago"))
 local Weather = require(script.Parent.Weather)
+local Twisters = require(script.Parent.Twisters)
 
 local Map = {}
 
@@ -25,6 +26,8 @@ local lootViews = {}
 local stormViews = {}
 local hoardMarker
 local hoardPosition
+local sanctuaryView
+local twisterViews = {}
 local visible = false
 
 -- Compass
@@ -186,6 +189,32 @@ function Map.build(gui, hoard)
 		ZIndex = 26,
 	}, canvas)
 	make("UICorner", { CornerRadius = UDim.new(0, 4) }, hoardMarker)
+	-- V9: the sanctuary's lights round Goblin Cove (nothing follows you inside), and the tornadoes.
+	local sanctuaryW = Config.SANCTUARY.RADIUS * 2 / spanX * MAP_W
+	sanctuaryView = make("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = toMap(hoard.X, hoard.Z),
+		Size = UDim2.fromOffset(sanctuaryW, sanctuaryW * (spanX / spanZ) * (MAP_H / MAP_W)),
+		BackgroundTransparency = 1,
+		ZIndex = 25,
+	}, canvas)
+	make("UICorner", { CornerRadius = UDim.new(1, 0) }, sanctuaryView)
+	make("UIStroke", { Color = GOLD, Thickness = 2, Transparency = 0.25 }, sanctuaryView)
+	for i = 1, Config.TWISTER.MAX + 1 do
+		twisterViews[i] = make("TextLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Size = UDim2.fromOffset(64, 16),
+			BackgroundColor3 = Color3.fromRGB(70, 76, 92),
+			BackgroundTransparency = 0.2,
+			Font = Enum.Font.GothamBlack,
+			Text = "TORNADO",
+			TextColor3 = Color3.fromRGB(220, 230, 255),
+			TextSize = 10,
+			ZIndex = 26,
+			Visible = false,
+		}, canvas)
+		make("UICorner", { CornerRadius = UDim.new(1, 0) }, twisterViews[i])
+	end
 
 	for _, def in ipairs(Config.LOOT) do
 		local dot = make("TextLabel", {
@@ -240,7 +269,7 @@ function Map.build(gui, hoard)
 		Position = UDim2.new(0, 14, 1, -6),
 		Size = UDim2.new(1, -28, 0, 16),
 		Font = Enum.Font.GothamMedium,
-		Text = "Numbers are gold. Bright = waiting, pulsing = being carried, grey = banked. Higher gold is deeper in.",
+		Text = "Numbers are gold (the Golden Idol is the prize). Pulsing = carried, grey = banked. Gold ring: the sanctuary.",
 		TextColor3 = Color3.fromRGB(190, 190, 200),
 		TextSize = 11,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -436,7 +465,19 @@ function Map.update(now)
 		end
 		if waypoint then
 			local toHoard = hoardPosition and Vector3.new(hoardPosition.X - from.X, 0, hoardPosition.Z - from.Z) or nil
-			if carrying and toHoard and toHoard.Magnitude > Config.WAYPOINT_HIDE_WITHIN then
+			-- V9: one marker at a time. While the Hoard is on screen its own label marks it (Hud.lua); the arrow
+			-- round the middle of the screen is for when it is not.
+			local onScreen = false
+			if hoardPosition then
+				local point, visibleNow = camera:WorldToViewportPoint(hoardPosition + Vector3.new(0, 16, 0))
+				local size = camera.ViewportSize
+				onScreen = visibleNow
+					and point.X > size.X * 0.1
+					and point.X < size.X * 0.9
+					and point.Y > size.Y * 0.1
+					and point.Y < size.Y * 0.9
+			end
+			if carrying and toHoard and toHoard.Magnitude > Config.WAYPOINT_HIDE_WITHIN and not onScreen then
 				local bearing = math.deg(math.atan2(toHoard.X, -toHoard.Z))
 				local delta = math.rad(wrap(bearing - heading))
 				waypoint.Visible = true
@@ -516,6 +557,14 @@ function Map.update(now)
 	end
 	for k = i + 1, #stormViews do
 		stormViews[k].Visible = false
+	end
+	local positions = Twisters.positions()
+	for k, view in ipairs(twisterViews) do
+		local tw = positions[k]
+		view.Visible = tw ~= nil
+		if tw then
+			view.Position = toMap(tw.x, tw.z)
+		end
 	end
 	if root then
 		youMarker.Position = toMap(root.Position.X, root.Position.Z)

@@ -27,6 +27,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Archipelago = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Archipelago"))
+local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Kit = require(script.Parent.WorldKit)
 local Seaways = require(script.Parent.Seaways)
 
@@ -40,7 +41,7 @@ local TIMED = Color3.fromRGB(255, 185, 80)
 local COIN = Color3.fromRGB(255, 215, 60)
 local BIG_COIN = Color3.fromRGB(255, 140, 40)
 local COIN_Y = 3.4
-local LANE_SIGN_RANGE = 300
+local LANE_SIGN_RANGE = 180 -- V9 (V8: 300)
 -- A lap's radius. At chain speed a skiff cannot hold a circle 190 studs across the middle (driven,
 -- it missed half the hoops of one). At 290 it can, with care; at 330 it has steering to spare.
 -- (V7: the skiff is a quarter faster, so a lap's radius grew with it: V6 had 330 and 290.)
@@ -155,7 +156,7 @@ end
 local function runSign(position, text)
 	local holder = Kit.decor("RunSign", v3(1, 1, 1), CFrame.new(position), Color3.new(1, 1, 1), nil)
 	holder.Transparency = 1
-	local gui = Kit.sign(holder, text, TIMED, Vector3.zero, 420)
+	local gui = Kit.sign(holder, text, TIMED, Vector3.zero, Config.WORLD_LABEL_RANGE)
 	gui.Size = UDim2.fromOffset(300, 44)
 	return gui:FindFirstChildOfClass("TextLabel")
 end
@@ -276,7 +277,21 @@ end
 -- A ramp with coins hanging over where a boat that takes it fast will fly.
 local function ramp(at, direction, label)
 	direction = v3(direction.X, 0, direction.Z).Unit
+	-- V9: a ramp needs open water to ride up and open water to land in.
+	local landing = at + direction * 140
+	if depthAt(at) < 4 or depthAt(at - direction * 40) < 3.5 or depthAt(landing) < 3 then
+		warn_(
+			string.format(
+				"%s at (%.0f, %.0f) has no clear approach or landing: not built",
+				label or "A ramp",
+				at.X,
+				at.Z
+			)
+		)
+		return false
+	end
 	Kit.kicker(at, direction, 16)
+	table.insert(refs.ramps, { position = at, direction = direction, name = label })
 	local lip = at + direction * 15
 	for k, air in ipairs({ { 24, 13 }, { 40, 17 }, { 56, 13 } }) do
 		coin(v3(lip.X, air[2], lip.Z) + direction * air[1], direction, k == 2 and 5 or 1, true)
@@ -284,7 +299,81 @@ local function ramp(at, direction, label)
 	if label then
 		local holder = Kit.decor("RampSign", v3(1, 1, 1), CFrame.new(at + v3(0, 18, 0)), Color3.new(1, 1, 1), nil)
 		holder.Transparency = 1
-		Kit.sign(holder, label, Color3.fromRGB(255, 220, 90), Vector3.zero, 300)
+		Kit.sign(holder, label, Color3.fromRGB(255, 220, 90), Vector3.zero, 180)
+	end
+	return true
+end
+
+-- V9: MORE RAMPS. Each one stands BESIDE a lane (never on its line, so a chain of hoops is never thrown off),
+-- pointing the way the lane runs, where a goblin running from something would want an alternate line: the
+-- long open lanes, the escape routes from the islands with the worst pursuers, and the way home from the
+-- far north. A ramp at boost speed throws a boat about 30 studs up (BoatSim.gate): room for a trick or two.
+local function rampBeside(a, b, fraction, side, label)
+	local direction = v3(b.X - a.X, 0, b.Z - a.Z).Unit
+	local across = v3(-direction.Z, 0, direction.X)
+	return ramp(a:Lerp(b, fraction) + across * side, direction, label)
+end
+
+local function buildRamps()
+	local home = from("Home")
+	-- CHIMNEY RUN, the way back from Crystal Isle (the Echo's island): a jump toward home.
+	local chimneyA, chimneyB = home + v3(470, 0, -662), from("Crystal", -240, 105)
+	rampBeside(chimneyB, chimneyA, 0.4, -46, "CHIMNEY JUMP")
+	-- MILL RUN, from Windmill Hills (Bramble's island) toward home.
+	local millA, millB = home + v3(500, 0, -237), from("Windmill", -345, 132)
+	rampBeside(millB, millA, 0.45, 44, "MILL JUMP")
+	-- EMBER ROAD: the longest open lane, the place to hold a chain; a ramp on the way home from Ember.
+	local emberA, emberB = from("Cross", 230, -480), from("Ember", -470, 200)
+	rampBeside(emberB, emberA, 0.5, 50, "EMBER ROAD JUMP")
+	-- FROST ROAD, home from Frost Spire past the Two Sisters.
+	local sisters = Seaways.rock("Sisters")
+	local frostA = from("Temple", 440, 360)
+	local frostB = frostA + (sisters + v3(-60, 0, 0) - frostA) * 1.5
+	rampBeside(frostB, frostA, 0.55, -48, "FROST ROAD JUMP")
+	-- TANGLE LANE, home from Tangle Isle and Navy Waters.
+	local tangleA, tangleB = from("Cross", -560, -130), from("Tangle", 40, 250)
+	rampBeside(tangleB, tangleA, 0.5, 46, "TANGLE JUMP")
+	-- LEVIATHAN ROAD: the escape from Leviathan's Rest. The monster cannot follow a boat into the air.
+	local levA, levB = from("Tangle", 540, -220), from("Bone", 295, 365)
+	rampBeside(levB, levA, 0.35, -50, "LEVIATHAN LEAP")
+	-- SKULL RUN: south-west from Skull Rock toward the Cinders, the ghost fleet behind you.
+	local skull = from("Skull")
+	local skullOut = skull + v3(-560, 0, 470)
+	ramp(skullOut, skullOut - skull, "SKULL RUN JUMP")
+end
+
+-- V9: THE SANCTUARY. Gold lantern buoys round Goblin Cove at Config.SANCTUARY.RADIUS from the Hoard: inside
+-- them, nothing that has followed a thief from an island goes on (Pursuit.lua). Only where there is water.
+local function buildSanctuary()
+	local hoard = refs.hoard.position
+	local radius = Config.SANCTUARY.RADIUS
+	local count = Config.SANCTUARY.BUOYS
+	local GOLD_LAMP = Color3.fromRGB(255, 215, 90)
+	refs.sanctuary = { position = hoard, radius = radius, buoys = {} }
+	for k = 0, count - 1 do
+		local a = k / count * math.pi * 2
+		local x, z = hoard.X + math.cos(a) * radius, hoard.Z + math.sin(a) * radius
+		if depthAt(v3(x, 0, z)) > 2.5 then
+			local float = Kit.cylinder(
+				"SanctuaryBuoy",
+				2.4,
+				3,
+				v3(x, 0.4, z),
+				Color3.fromRGB(200, 60, 50),
+				Enum.Material.SmoothPlastic,
+				folders.decor
+			)
+			float.CanCollide = false
+			float.CanQuery = false
+			local pole =
+				Kit.cylinder("SanctuaryPole", 0.4, 7, v3(x, 5, z), Kit.DARK_WOOD, Enum.Material.Wood, folders.decor)
+			pole.CanCollide = false
+			pole.CanQuery = false
+			local lamp = Kit.neon(Kit.decor("SanctuaryLamp", v3(2.4, 2.4, 2.4), CFrame.new(x, 9.4, z), GOLD_LAMP))
+			lamp.Shape = Enum.PartType.Ball
+			Kit.pointLight(lamp, GOLD_LAMP, 34, 1.6)
+			table.insert(refs.sanctuary.buoys, v3(x, 0, z))
+		end
 	end
 end
 
@@ -601,12 +690,15 @@ function Searuns.build()
 	refs.coins = {}
 	refs.runs = {}
 	refs.lanes = {}
+	refs.ramps = {}
 	buildHomeWaters()
+	buildSanctuary()
 	buildLanes()
 	task.wait()
 	buildShallows()
 	buildCourses()
 	buildDiscoveries()
+	buildRamps()
 	refs.coinTotal = #refs.coins
 end
 

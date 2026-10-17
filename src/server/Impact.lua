@@ -55,6 +55,14 @@ function Impact.damage(humanoid, amount)
 	return before - humanoid.Health
 end
 
+-- V9: nothing from the world lands on this goblin for `seconds` (after a launch high into the air: they
+-- should get to enjoy the flight and land before anything else happens to them).
+function Impact.protect(player, seconds)
+	local t = now()
+	lastHit[player] = math.max(lastHit[player] or -math.huge, t + seconds - Config.IMPACT.GRACE)
+	player:SetAttribute("WorldHitAt", t)
+end
+
 function Impact.forget(player)
 	lastHit[player] = nil
 end

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "chaser-tell-overshoot",
+  "title": "A fast chaser with momentum can fly through its target during its wind-up",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-14",
+  "topics": [
+    "ai",
+    "combat",
+    "testing"
+  ],
+  "observation": "A small pursuer moving at over 300 studs/s started its 0.3 s attack wind-up when close to a boat while steering at a point slightly ahead of it. Every strike missed. Summary numbers (closest approach 1 to 2 studs) suggested it should have hit; a frame-by-frame probe of its state and distance showed it passing through the boat during the wind-up and arriving 28 studs past when the strike was checked. Locking the attacker onto the target and matching its speed during the wind-up made strikes land against a steady target while a target that boosted away still escaped.",
+  "recommendation": "During an attack's tell, have a fast chaser hold onto its target (aim at the target, match its speed) rather than carry momentum toward a lead point, so the tell is the dodge window and not a coin flip. When an attack never lands, log the attacker every frame through the tell before tuning numbers.",
+  "applies_when": [
+    "A kinematic or physics chaser has momentum and a wind-up before a contact attack",
+    "An attack's hit rate is near zero even though the attacker gets very close"
+  ],
+  "limits": [
+    "One game's kinematic sea pursuers, measured in Studio with a test autopilot as the target",
+    "Whether the locked-on wind-up feels fair to players is untested by people"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/fba0c4aba12ff518ee221fae92fa9c5faa82793c/docs/reports/2026-10-14-v9-relentless-chaos.md",
+      "detail": "Sections 7 and 11 and bug 4 in section 22: the Echo's strikes all missed until its tell locked on; afterwards it hit a cruising boat twice in 13 s and missed a boosting one."
+    }
+  ]
+}

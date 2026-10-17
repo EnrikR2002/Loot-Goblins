@@ -23,6 +23,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Archipelago = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Archipelago"))
+local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Kit = require(script.Parent.WorldKit)
 local Landform = require(script.Parent.Landform)
 
@@ -51,7 +52,14 @@ end
 local function nameplate(position, text, color, distance)
 	local holder = decor("SeaSign", v3(1, 1, 1), CFrame.new(position), Color3.new(1, 1, 1), nil)
 	holder.Transparency = 1
-	Kit.sign(holder, text, color or Color3.fromRGB(190, 235, 255), Vector3.zero, distance or 520)
+	-- V9: a landmark's name is a close-range label (Config.WORLD_LABEL_RANGE), never a sign across the sea.
+	Kit.sign(
+		holder,
+		text,
+		color or Color3.fromRGB(190, 235, 255),
+		Vector3.zero,
+		math.min(distance or Config.WORLD_LABEL_RANGE, Config.WORLD_LABEL_RANGE)
+	)
 end
 
 -- Sea stacks: { x, z, radius, height } each (world), standing on a shallow foot.

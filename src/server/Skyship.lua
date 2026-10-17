@@ -140,13 +140,16 @@ local function buildCannon(index, x, z, outward)
 				setRing()
 			end)
 		end,
+		-- V9: climb in and aim any time you are aboard (the intermission too); it fires from the bell.
 		ready = function(player)
-			if not aboard[player] then
-				return false
-			end
+			return aboard[player] ~= nil
+		end,
+		canFire = function(_player)
 			local t = now()
-			if t < opensAt then
-				return false, "The cannons unlock in " .. math.ceil(opensAt - t) .. "..."
+			if workspace:GetAttribute("RaidPhase") ~= "raid" or opensAt <= 0 or t < opensAt then
+				local left = opensAt > 0 and math.max(1, math.ceil(opensAt - t)) or 0
+				return false,
+					left > 0 and ("The cannons fire at the bell: " .. left .. "...") or "The cannons fire at the bell."
 			end
 			return true
 		end,
@@ -395,9 +398,13 @@ function Skyship.board(player, since)
 	player:SetAttribute("DeployState", "aboard")
 end
 
-function Skyship.boardAll()
+-- `keepAboard` (V9, at the raid's start): leave goblins who are already on the ship where they are (one may
+-- be sitting in a cannon, aimed and waiting for the bell).
+function Skyship.boardAll(keepAboard)
 	for _, player in ipairs(Players:GetPlayers()) do
-		Skyship.board(player)
+		if not (keepAboard and aboard[player]) then
+			Skyship.board(player)
+		end
 	end
 end
 
@@ -447,6 +454,13 @@ function Skyship.reset()
 	opensAt, endsAt = 0, 0
 	workspace:SetAttribute("DeployOpensAt", nil)
 	workspace:SetAttribute("DeployEndsAt", nil)
+end
+
+-- V9: during the intermission the bell's time is already known, so a goblin can climb in, aim, and watch the
+-- countdown to it.
+function Skyship.preopen(at)
+	opensAt = at
+	workspace:SetAttribute("DeployOpensAt", at)
 end
 
 -- The island a goblin picked on the map: where the ship fires them if they are still aboard at the

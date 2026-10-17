@@ -302,7 +302,7 @@ local function makeTag(core, def)
 	gui.Size = UDim2.fromOffset(190, 52)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, core.Size.Y / 2 + 3.2, 0)
 	gui.AlwaysOnTop = true
-	gui.MaxDistance = 3000 -- Readable across the whole map.
+	gui.MaxDistance = Config.LOOT_TAG_RANGE -- V9: close range only (V8: 3,000, the whole map; the map has it all)
 	gui.LightInfluence = 0
 
 	local title = Instance.new("TextLabel")
