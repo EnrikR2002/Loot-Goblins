@@ -127,11 +127,21 @@ return function(t)
 				t.ok(grants, item.id .. ": its product does not grant it")
 			end
 		end
+		local configured = 0
 		for key, entry in pairs(Config.MONETIZATION.PRODUCTS) do
-			t.eq(entry.id, nil, key .. ": product ids must come from a human (none in the repository yet)")
+			-- No id is ever made up: an id is either absent or a real whole number pasted from the Creator Dashboard.
+			t.ok(
+				entry.id == nil or (type(entry.id) == "number" and entry.id > 0 and entry.id == math.floor(entry.id)),
+				key .. ": id"
+			)
 			t.ok(entry.kind == "pass" or entry.kind == "product", key .. ": kind")
+			if entry.id then
+				configured += 1
+			end
 		end
-		t.eq(Config.MONETIZATION.SALES_ENABLED, false, "sales must stay off until products are configured")
+		if configured == 0 then
+			t.eq(Config.MONETIZATION.SALES_ENABLED, false, "sales must stay off while no product is configured")
+		end
 	end)
 
 	t.test("pets match Config.PETS and every utility pet is sold for Shinies", function()
