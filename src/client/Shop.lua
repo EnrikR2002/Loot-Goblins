@@ -1104,10 +1104,11 @@ local function primaryPressed()
 			send("buy", item.id)
 			setMessage("Buying...", C.inkSoft)
 		else
-			armed = { id = item.id, untilTime = time() + 3 }
+			-- Five seconds to press again (three was too short in a test; a touch player needs time to read).
+			armed = { id = item.id, untilTime = time() + 5 }
 			setMessage("Press again to buy it for " .. item.price .. " Shinies.", C.ink)
 			Effects.sound("blip", { speed = 1.1, volume = 0.5 })
-			task.delay(3.05, function()
+			task.delay(5.05, function()
 				if armed and armed.id == item.id and time() >= armed.untilTime then
 					armed = nil
 					refreshInfo()
