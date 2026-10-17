@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ball-parts-ignore-uneven-sizes",
+  "title": "Build ellipsoids from a block with a sphere mesh, not a Ball part",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-17",
+  "topics": [
+    "art",
+    "rendering",
+    "parts"
+  ],
+  "observation": "Storm clouds and fog built as Ball parts with flat sizes (for example 1.7 x 0.55 x 1.7 of a base size) kept that Size property but were drawn as small spheres, so a cloud bank read as scattered dark balls from a boat. Rebuilding each puff as a block with a SpecialMesh of type Sphere drew the intended flat ellipsoid at the same Size. Separately, overlapping see-through ellipsoids showed each other's insides and read as soap bubbles; opaque billows read as solid cartoon clouds.",
+  "recommendation": "For any squashed round shape (clouds, domes, skulls, pebbles, canopies), use a Block part with a SpecialMesh MeshType Sphere and check it in a screenshot. Make clouds that should look solid opaque; keep transparency for fog that should be seen through.",
+  "applies_when": [
+    "Making clouds, domes or organic shapes from primitive parts",
+    "A Ball part looks smaller or rounder than its Size suggests"
+  ],
+  "limits": [
+    "Observed in one place in Roblox Studio in October 2026",
+    "Collision and ray behaviour of mesh ellipsoids were not studied (the clouds are non-colliding)"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/bb012932062b858a02e9e3a4276cea12c999a32d/docs/reports/2026-10-17-v10-living-archipelago.md",
+      "detail": "Sections 17 and 23, with the before-storm and after-storm-clouds screenshots: V9's Ball puffs against V10's opaque sphere-mesh billows."
+    }
+  ]
+}
