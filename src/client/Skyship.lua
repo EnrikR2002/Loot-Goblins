@@ -56,6 +56,7 @@ local aimYaw, aimPitch = 0, -0.5
 local aimReady = false
 local aimTouched = false -- has the player turned the aim since climbing in?
 local aimTarget, aimVelocity, aimReach
+local pickedTarget = nil -- V12: a spot picked on the map, held until the goblin turns the view
 local lastAimSent = 0
 local aimCamera = false
 
@@ -268,7 +269,20 @@ local function showLabels(on)
 	end
 end
 
--- The destination beam: a column of light over the island you picked on the map.
+-- V12: where a pick of island `id` comes down (server/Skyship.lua publishes one dry spot near each island's
+-- treasure); the island's middle if it has none.
+local function landingFor(id)
+	local island = id and Archipelago.byId[id]
+	if not island then
+		return nil
+	end
+	local generated = workspace:FindFirstChild("LootGoblinsGenerated")
+	local spot = generated and generated:GetAttribute("Land_" .. id)
+	return typeof(spot) == "Vector3" and spot or Vector3.new(island.x, 0, island.z)
+end
+
+-- The destination beam: a column of light over the spot you will come down on (V12: the landing spot near the
+-- island's treasure; V11 stood it over the island's middle).
 local function updateBeam()
 	local id = player:GetAttribute("DeployDest")
 	local island = id and Archipelago.byId[id]
@@ -297,7 +311,8 @@ local function updateBeam()
 	end
 	local info = Config.ISLAND_INFO[id]
 	beam.Color = Config.TIER_COLORS[info and info.tier or 1] or WHITE
-	beam.CFrame = CFrame.new(island.x, 700, island.z) * CFrame.Angles(0, 0, math.rad(90))
+	local spot = landingFor(id)
+	beam.CFrame = CFrame.new(spot.X, 700, spot.Z) * CFrame.Angles(0, 0, math.rad(90))
 	beam.Parent = aimFolder
 end
 
@@ -444,6 +459,24 @@ local function releaseView()
 	aimReady = false
 end
 
+-- V12: aiming without a mouse. A controller's thumbsticks turn the view; a finger dragging across the screen
+-- turns it like the mouse does (through V11 only a mouse or the keyboard could aim, so a controller or a phone
+-- could only fire wherever a map pick had pointed the cannon).
+local stickAim = Vector2.zero
+local touchAim = Vector2.zero
+UserInputService.InputChanged:Connect(function(input, processed)
+	if input.KeyCode == Enum.KeyCode.Thumbstick1 or input.KeyCode == Enum.KeyCode.Thumbstick2 then
+		local v = Vector2.new(input.Position.X, input.Position.Y)
+		stickAim = v.Magnitude > 0.18 and v or Vector2.zero
+	elseif
+		input.UserInputType == Enum.UserInputType.Touch
+		and not processed
+		and player:GetAttribute("DeployState") == "loaded"
+	then
+		touchAim += Vector2.new(input.Delta.X, input.Delta.Y)
+	end
+end)
+
 local nextPreview = 0
 local function aimStep(dt, firing)
 	local from = player:GetAttribute("LaunchFrom")
@@ -457,6 +490,7 @@ local function aimStep(dt, firing)
 	if not aimReady then
 		aimReady = true
 		aimTouched = false
+		pickedTarget = nil
 		if typeof(start) == "Vector3" then
 			lookAtPoint(from, start)
 		end
@@ -468,14 +502,17 @@ local function aimStep(dt, firing)
 	-- Turning: the mouse (locked to the middle of the screen), or the keys.
 	if not firing and not Map.isOpen() then
 		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-		local delta = UserInputService:GetMouseDelta()
+		local delta = UserInputService:GetMouseDelta() + touchAim
+		touchAim = Vector2.zero
 		local turn = (keyDown(Enum.KeyCode.D, Enum.KeyCode.Right) and -1 or 0)
 			+ (keyDown(Enum.KeyCode.A, Enum.KeyCode.Left) and 1 or 0)
 		local tilt = (keyDown(Enum.KeyCode.W, Enum.KeyCode.Up) and 1 or 0)
 			+ (keyDown(Enum.KeyCode.S, Enum.KeyCode.Down) and -1 or 0)
+		turn -= stickAim.X
+		tilt += stickAim.Y
 		-- Slower when looking far away: near the horizon a small turn is a long way on the sea.
 		local fine = math.clamp(math.abs(math.sin(aimPitch)) * 2.2, 0.3, 1)
-		if delta.Magnitude > 0.5 or turn ~= 0 or tilt ~= 0 then
+		if delta.Magnitude > 0.5 or math.abs(turn) > 0.01 or math.abs(tilt) > 0.01 then
 			aimTouched = true
 		end
 		aimYaw += -delta.X * 0.0032 * fine + turn * 0.9 * fine * dt
@@ -497,7 +534,9 @@ local function aimStep(dt, firing)
 	rayParams.FilterDescendantsInstances = ignoreList()
 	local hit = workspace:Raycast(eye, look * D.AIM_RANGE, rayParams)
 	local target
-	if not aimTouched and typeof(start) == "Vector3" then
+	if not aimTouched and pickedTarget then
+		target = pickedTarget
+	elseif not aimTouched and typeof(start) == "Vector3" then
 		-- Nobody has turned it yet: it is aimed at exactly the place it started on (an island picked on the
 		-- map, or what a catapult was built to reach), not at whatever slope happens to be in front of that.
 		target = start
@@ -608,6 +647,49 @@ local function wantedMode()
 end
 
 -- The flight -----------------------------------------------------------------------------------------
+-- V12: the flight sets the goblin's velocity every frame, but Roblox's own gravity then acts on the body inside
+-- each physics step as well, so through V11 every throw sank below the arc the aim ring promised (measured: 25
+-- studs low after 7 s, 40 at touchdown, so a throw aimed at a beach came down in the water 58 studs short and
+-- skipped three times out past the island). While flying, a force that exactly cancels the world's gravity on
+-- the body is switched on; the flight's own gravity (Dive.step) is then the only one, as Dive.solve assumes.
+local antiGravity
+local function setAntiGravity(root)
+	if not root then
+		if antiGravity then
+			antiGravity.force.Enabled = false
+		end
+		return
+	end
+	if not antiGravity or antiGravity.root ~= root or not antiGravity.force.Parent then
+		if antiGravity and antiGravity.attachment then
+			antiGravity.attachment:Destroy()
+		end
+		local attachment = make("Attachment", { Name = "FlightLift" }, root)
+		local force = make("VectorForce", {
+			Name = "FlightLift",
+			Attachment0 = attachment,
+			RelativeTo = Enum.ActuatorRelativeTo.World,
+			ApplyAtCenterOfMass = true,
+			Enabled = false,
+		}, attachment)
+		antiGravity = { root = root, attachment = attachment, force = force }
+	end
+	-- The whole body's weight: while a goblin tumbles its limbs hang from loose joints (AnimationConstraints with
+	-- ball sockets: server/Flight.lua), so they are separate assemblies from the root and would still drag it down.
+	local body = root.Parent
+	if antiGravity.character ~= body then
+		local mass = 0
+		for _, p in ipairs(body:GetDescendants()) do
+			if p:IsA("BasePart") and not p.Massless then
+				mass += p:GetMass()
+			end
+		end
+		antiGravity.character, antiGravity.mass = body, mass
+	end
+	antiGravity.force.Force = Vector3.new(0, antiGravity.mass * workspace.Gravity, 0)
+	antiGravity.force.Enabled = true
+end
+
 local function startDive(v)
 	local _, humanoid, root = character()
 	if not root then
@@ -630,10 +712,16 @@ RunService.PreSimulation:Connect(function(dt)
 		return
 	end
 	local _, humanoid, root = character()
-	if not root or not player:GetAttribute("Diving") then
+	-- V12: the DiveStart message can arrive before the Diving attribute does (a remote and an attribute are not
+	-- ordered). Through V11 that first frame read "not diving" and dropped the throw, and the goblin fell
+	-- straight down off the deck under the world's gravity (seen once in about forty Studio launches). The end
+	-- of a dive is the attribute clearing (the handler in Skyship.start); here it only has a second to arrive.
+	if not root or (not player:GetAttribute("Diving") and diveClock > 1) then
 		diving = false
+		setAntiGravity(nil)
 		return
 	end
+	setAntiGravity(root)
 	dt = math.min(dt, 0.1)
 	diveClock += dt
 	humanoid.PlatformStand = true
@@ -648,6 +736,7 @@ RunService.PreSimulation:Connect(function(dt)
 		velocity = Vector3.zero
 		if os.clock() - restingSince > 2 then
 			diving = false
+			setAntiGravity(nil)
 			humanoid.PlatformStand = false
 			return
 		end
@@ -770,21 +859,28 @@ local function update(dt)
 	showLabels(((phase == "loaded" or phase == "fuse" or flying) and high) or false)
 	if phase == "aboard" then
 		releaseView()
+		-- V12: once an island is picked, the banner names it (the cannon you climb into is already aimed there).
+		local dest = player:GetAttribute("DeployDest")
+		local destIsland = dest and Archipelago.byId[dest]
+		local climb = destIsland and ("CLIMB INTO A CANNON (E): IT IS AIMED AT " .. destIsland.name)
+			or "CLIMB INTO A CANNON (E) AND LOOK WHERE YOU WANT TO LAND"
 		if Map.isOpen() then
 			Map.setTitle("CLICK AN ISLAND: your cannon starts pointed at it  -  M closes")
 			setBanner(nil)
 		elseif opensAt and t < opensAt then
 			Map.setTitle()
 			setBanner(
-				string.format("CLIMB INTO A CANNON (E) AND AIM: THEY FIRE IN %d", math.ceil(opensAt - t)),
-				"Walk about. The wings are deck too.   |   M: the map"
+				string.format("%s  -  FIRES IN %d", climb, math.ceil(opensAt - t)),
+				"Walk about. The wings are deck too.   |   M: the map   |   H: all controls"
 			)
 		else
 			Map.setTitle()
-			local left = endsAt and math.max(0, math.ceil(endsAt - t)) or 0
+			local by = player:GetAttribute("LaunchBy") or endsAt -- V12: a late arrival's own deadline
+			local left = by and math.max(0, math.ceil(by - t)) or 0
 			setBanner(
-				string.format("CLIMB INTO A CANNON (E) AND LOOK WHERE YOU WANT TO LAND  -  %d s", left),
-				"or walk out on a wing and step off   |   M: the map"
+				string.format("%s  -  %d s", climb, left),
+				destIsland and "M: pick another island   |   or walk out on a wing and step off   |   H: all controls"
+					or "or walk out on a wing and step off   |   M: the map   |   H: all controls"
 			)
 		end
 		hidePreview()
@@ -824,6 +920,23 @@ local function update(dt)
 end
 
 -- Keys that are not movement ---------------------------------------------------------------------
+-- Fire the loaded launcher where it is aimed (CLICK, SPACE, A, or the FIRE touch button: Main's TouchControls).
+function Skyship.fire()
+	if player:GetAttribute("DeployState") ~= "loaded" then
+		return
+	end
+	if aimTarget then
+		deployRemote:FireServer("aim", aimTarget)
+	end
+	deployRemote:FireServer("fire")
+end
+
+function Skyship.leave()
+	if player:GetAttribute("DeployState") == "loaded" then
+		deployRemote:FireServer("leave")
+	end
+end
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
@@ -835,12 +948,9 @@ UserInputService.InputBegan:Connect(function(input, processed)
 			or (input.UserInputType == Enum.UserInputType.MouseButton1 and not Map.isOpen())
 			or input.KeyCode == Enum.KeyCode.ButtonA
 		then
-			if aimTarget then
-				deployRemote:FireServer("aim", aimTarget)
-			end
-			deployRemote:FireServer("fire")
+			Skyship.fire()
 		elseif input.KeyCode == Enum.KeyCode.X or input.KeyCode == Enum.KeyCode.ButtonB then
-			deployRemote:FireServer("leave")
+			Skyship.leave()
 		end
 	end
 end)
@@ -853,9 +963,17 @@ function Skyship.choose(id)
 	local island = Archipelago.byId[id]
 	local from = player:GetAttribute("LaunchFrom")
 	if island and typeof(from) == "Vector3" and player:GetAttribute("DeployState") == "loaded" then
-		lookAtPoint(from, Vector3.new(island.x, 0, island.z))
-		aimTouched = true
+		lookAtPoint(from, landingFor(id))
+		-- V12: aimed at exactly that spot until the goblin turns the view themselves (a ray along the look
+		-- could catch a slope or a cliff in front of it).
+		pickedTarget = landingFor(id)
+		aimTouched = false
 		Map.show(false)
+	elseif island and player:GetAttribute("DeployState") == "aboard" then
+		-- V12: picked from the deck: the map steps aside so the cannons are in view (the banner names the island
+		-- and the beam stands over where you will come down).
+		Map.show(false)
+		Effects.chime(Effects.CHIME_GOOD, 0.5)
 	end
 end
 
@@ -983,6 +1101,7 @@ function Skyship.start()
 	player:GetAttributeChangedSignal("Diving"):Connect(function()
 		if not player:GetAttribute("Diving") then
 			diving = false
+			setAntiGravity(nil)
 			landing = nil
 			hidePreview()
 			local _, humanoid = character()
@@ -1010,8 +1129,8 @@ function Skyship.start()
 				end
 			end
 			task.delay(1, openMap)
-		elseif state == "loaded" or state == "fuse" or state == "diving" then
-			Map.show(false) -- the sky is the thing to look at
+		elseif state == "loaded" or state == "fuse" or state == "diving" or lastState == "aboard" then
+			Map.show(false) -- the sky is the thing to look at (V12: or off the deck any other way)
 		end
 		lastState = state
 	end)

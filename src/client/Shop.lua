@@ -36,6 +36,7 @@ local shopRemote = remotes:WaitForChild("ShopRequest")
 local emoteRemote = remotes:WaitForChild("EmoteRequest")
 
 local C = Ui.C
+local welcomeWaiting = nil -- V12: the welcome card's payload, until a calm moment shows it (see Shop.welcome)
 local W, H = 1000, 600 -- the window's design size (scaled to fit the screen)
 -- Short screens (a phone held sideways is about 390 points tall) get a shorter window and stage, so the window
 -- scales to about 0.8 instead of 0.6 and its text stays readable. Chosen once, when the window is built.
@@ -1980,6 +1981,7 @@ function Shop.open(which)
 	if not gui then
 		return
 	end
+	welcomeWaiting = nil -- found it on their own: no card needed
 	if which and which ~= tab then
 		tab = which
 	end
@@ -2096,7 +2098,53 @@ function Shop.result(p)
 end
 
 -- First visit: a short, skippable welcome (the server sends it once per goblin, ever).
+-- V12: the welcome card waits for a calm moment: the goblin standing at home (in the Hoard's ward, nothing in
+-- hand) or between raids. V11 showed it the moment a new goblin joined, on top of the launch window, the map and
+-- the help card: the first twenty seconds became four things to close. Until then the wardrobe button glows.
+local function calmMoment()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if workspace:GetAttribute("RaidPhase") ~= "raid" then
+		return false -- the results card speaks between raids (and opens the wardrobe)
+	end
+	if not root or player:GetAttribute("CarryingLoot") or player:GetAttribute("DeployState") ~= "landed" then
+		return false
+	end
+	local generated = workspace:FindFirstChild("LootGoblinsGenerated")
+	local marker = generated and generated:FindFirstChild("Landmarks")
+	marker = marker and marker:FindFirstChild("HoardMarker")
+	local hoard = marker and marker:FindFirstChild("Hoard")
+	return hoard ~= nil
+		and Vector3.new(root.Position.X - hoard.Position.X, 0, root.Position.Z - hoard.Position.Z).Magnitude
+			<= Config.WARD_RADIUS
+end
+
+local showWelcome
 function Shop.welcome(p)
+	if welcomeWaiting then
+		return
+	end
+	welcomeWaiting = p
+	local glow = dockWardrobe and Ui.stroke(dockWardrobe, C.gold, 3)
+	task.spawn(function()
+		while welcomeWaiting and not calmMoment() do
+			if glow then
+				glow.Transparency = 0.5 + 0.5 * math.sin(os.clock() * 5)
+			end
+			task.wait(0.1)
+		end
+		if glow then
+			glow:Destroy()
+		end
+		if welcomeWaiting then
+			local waiting = welcomeWaiting
+			welcomeWaiting = nil
+			showWelcome(waiting)
+		end
+	end)
+end
+
+showWelcome = function(p)
 	local dockGui = dock and dock.Parent
 	if not dockGui then
 		return

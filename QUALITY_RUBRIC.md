@@ -138,6 +138,51 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### Studio's Edit mode keeps old module code after a script is changed
+
+**ID:** studio-edit-mode-require-caches-modules | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-17
+**Related checks:** General
+
+**Observed / proposed:** A Luau test suite run in Studio's Edit mode (through Studio MCP's execute_luau) kept failing on a bug that had already been fixed and synced into the ModuleScript's Source: require returned the cached result of the old source. Replacing every game and test ModuleScript with a fresh Clone (same name and parent) before requiring made the next run use the new code, and the test passed.
+
+**Recommendation:** Before re-running Edit-mode tests after changing a ModuleScript's Source, replace each changed ModuleScript with a fresh clone (or reopen the place), and treat a failure that matches already-fixed code as a cache symptom first.
+
+**Applies when:** Running Luau tests or tools from Studio's command bar or Studio MCP in Edit mode; Syncing script sources into Studio without the Rojo plugin
+
+**Limits:** Observed in one Studio version in October 2026 through Studio MCP execute_luau; Play mode starts fresh VMs and was not affected
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/0635aec9368565ade07d534144be178fead2fb95/docs/reports/2026-10-17-v11-goblin-life.md): GAME_DESIGN.md V11 lessons (2) and the report's section 22: the preset test failed after its fix was synced, then passed once the modules were replaced with clones.
+
+### Let a player play on a stand-in profile while another server still holds their save
+
+**ID:** session-locked-profiles-with-stand-in-earnings | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-17
+**Related checks:** CL-38, CL-39
+
+**Observed / proposed:** Profiles were opened and saved with one UpdateAsync that checks a session lock. In a Studio test with an in-memory store, a fresh lock planted by 'another server' made this server refuse to open the profile; after five tries (16 s) the player kept playing on a blank stand-in, earned 18 Shinies from a raid while purchases were refused, and the stored profile stayed untouched. When the other lock was released, a background retry opened the real profile within 20 s and added the earnings (525 + 18 = 543). Separately, a crashed server's stale lock was taken over and its late save was refused, so newer data survived.
+
+**Recommendation:** Check a session lock inside every UpdateAsync (refuse writes when the lock is not yours), let players start at once on a stand-in profile, block purchases until the real profile is open, and merge only earned currency and stats when it opens.
+
+**Applies when:** A game saves currency or purchases per player; Players can rejoin quickly or be in two servers
+
+**Limits:** Tested on an in-memory DataStore stand-in in Studio, not Roblox's live DataStore; Lock timings (180 s stale, 20 s retry) are this game's choices, not measured optima
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/0635aec9368565ade07d534144be178fead2fb95/docs/reports/2026-10-17-v11-goblin-life.md): Section 23: the planted-lock rejoin test and the automated stale-lock and refused-late-save tests.
+
+### Make a follower pet ride or cling instead of chasing a fast player
+
+**ID:** pets-ride-and-cling-to-keep-up | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-17
+**Related checks:** General
+
+**Observed / proposed:** A ground pet following its owner with a plain spring trailed about 10 studs behind a player walking at 28 studs/s and could never keep up with boats at 160 studs/s or launches. Leading the spring target by the owner's velocity kept walking pets beside the owner; placing ground pets on the boat's deck relative to the driver's seat, clinging to the owner's body in the air, water or above 60 studs/s, and holding flying pets in the owner's own frame of reference kept every pet with its owner at any speed without teleporting. Moving 32 pets of 562 anchored parts with one BulkMoveTo cost about 2 ms a frame on a desktop.
+
+**Recommendation:** Give follower pets modes: walk with a velocity-led spring on foot, ride the vehicle, cling to the character when airborne or very fast, and keep fliers in the owner's frame; blend between modes with a short hop, and budget their updates by distance.
+
+**Applies when:** Client-drawn pets or followers in a game with fast vehicles, launches or flight
+
+**Limits:** Single-client Studio tests; other players' pets were not watched; The performance figure is one desktop PC with level of detail added afterwards and not re-measured
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/0635aec9368565ade07d534144be178fead2fb95/docs/reports/2026-10-17-v11-goblin-life.md): Sections 15 and 25: the 10-stud trail, the deck and cling measurements, and the 32-pet benchmark.
+
 ### Prove a visual pass changed no collision by fingerprinting the built world
 
 **ID:** fingerprint-collision-after-visual-passes | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-17
@@ -152,6 +197,36 @@ These are attributed observations and hypotheses, not automatic changes to the c
 **Limits:** One world, one comparison, in October 2026; Parts that are unanchored or move at runtime need their own comparison; Terrain voxels were not included in the fingerprint
 
 - [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/bb012932062b858a02e9e3a4276cea12c999a32d/docs/reports/2026-10-17-v10-living-archipelago.md): Section 24: 2,025 solid or ray-hit parts fingerprinted in V10 and in V9 at 713995e; identical apart from parked boat hulls and windmill sails, whose sizes matched.
+
+### Fabric material looks like knitted wool on small cosmetic parts
+
+**ID:** fabric-material-reads-as-knit-on-small-parts | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-17
+**Related checks:** CL-07
+
+**Observed / proposed:** A captain's coat, breeches and other clothing built from character-sized parts with Enum.Material.Fabric read in a Studio screenshot as a noisy dark knitted-wool texture that hid the colour and clashed with a clean toy-like art style. The same parts in SmoothPlastic read as clean, saturated colour blocks; large Fabric surfaces such as sails still looked fine.
+
+**Recommendation:** For a clean or toy-like style, build small cloth pieces (costume parts, pet accessories) in SmoothPlastic and keep Fabric for large cloth like sails and flags; check new materials in a screenshot at the distance players see them.
+
+**Applies when:** Building avatar cosmetics or accessories from parts; Choosing materials for small cloth-like props
+
+**Limits:** One place's lighting and colour grade in October 2026; Graphics quality settings and phones were not compared
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/0635aec9368565ade07d534144be178fead2fb95/docs/reports/2026-10-17-v11-goblin-life.md): Section 8 and the before-fabric screenshot: the first outfit pass in Fabric against the SmoothPlastic version.
+
+### Click interface tests by instance path, and send multi-press actions in one sequence
+
+**ID:** drive-ui-tests-by-instance-path-in-one-sequence | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-17
+**Related checks:** General
+
+**Observed / proposed:** Studio MCP mouse coordinates taken from a screenshot did not land where expected (the click hit a modal's backdrop and closed the window), while user_mouse_input with an instance_path clicked the intended buttons reliably once the buttons had unique names. A two-press purchase confirmation with a 3 s window also failed when the second click was sent in a separate MCP call: the round trip took longer than the window, so the click re-armed instead of buying; sending both clicks in one input sequence worked.
+
+**Recommendation:** Give interactive UI objects unique names and drive tests by instance_path; put every step of a timed multi-press interaction in one input sequence; and size human confirmation windows generously (this game moved to 5 s).
+
+**Applies when:** Testing a Roblox interface through Studio MCP input tools; An interaction needs two presses within a time window
+
+**Limits:** One Windows PC and one Studio window size in October 2026; Touch and gamepad input were not driven this way
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/0635aec9368565ade07d534144be178fead2fb95/docs/reports/2026-10-17-v11-goblin-life.md): Sections 16 and 22, and GAME_DESIGN.md V11 lessons (3) and (4).
 
 ### Judge colours in a screenshot: lights and terrain shading change them a lot
 

@@ -462,6 +462,7 @@ function BoatSim.step(boat, input, dt, t)
 		-- Down on land: a thump, never a burst.
 		if boat.airTime >= Config.BOAT_AIR_MIN then
 			out.event = out.event or "splash"
+			out.airTime = boat.airTime -- V12: for effects only (a long fall lands harder)
 		end
 		boat.airTime = 0
 		boat.hopOnly = false
@@ -469,6 +470,7 @@ function BoatSim.step(boat, input, dt, t)
 		boat.sketchy = false
 	elseif wet >= 0.3 then
 		if boat.airTime >= Config.BOAT_AIR_MIN then
+			out.airTime = boat.airTime -- V12: for effects only (a long fall lands harder)
 			-- A burst needs a real flight (a ramp, a boosted hop), not a plain hop from rest. A hop with a
 			-- trick in it is a real flight (V9).
 			local tricks = boat.tricksDone

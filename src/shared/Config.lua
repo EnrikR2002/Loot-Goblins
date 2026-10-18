@@ -180,6 +180,7 @@ Config.LOOT = {
 		heat = 25,
 		respawn = 60,
 		trouble = "CaveIn",
+		way = "through the tunnel at the foot of the spire", -- V12: the objective line's hint (it is under a roof)
 		color = Color3.fromRGB(215, 110, 255),
 	},
 	{
@@ -334,6 +335,7 @@ Config.LOOT = {
 		heat = 45,
 		respawn = 70,
 		trouble = "GhostFleet",
+		way = "in through the skull's mouth and up the ladder", -- V12: the objective line's hint (it is inside)
 		color = Color3.fromRGB(130, 255, 180),
 	},
 }
@@ -742,6 +744,9 @@ Config.SKYSHIP = {
 	-- A goblin can climb into a cannon and aim during the intermission; the cannons fire from COUNTDOWN on.
 	WINDOW = 20,
 	COUNTDOWN = 2, -- The cannons unlock this long after the raid starts (so a crowd goes together). (V8: 3)
+	-- V12: a goblin who comes aboard late in the window (a join, a respawn) is never fired off before this many
+	-- seconds on the deck: a first-timer gets time to find a cannon. The raid's clock is not changed.
+	MIN_DECK = 12,
 }
 Config.DIVE = {
 	-- V8: the THROW gives the reach (a plain arc under GRAVITY, aimed where you look); the air gives

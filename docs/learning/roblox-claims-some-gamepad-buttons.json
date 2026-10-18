@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "roblox-claims-some-gamepad-buttons",
+  "title": "Roblox takes L1, R1, R3 and Select from a controller before a script sees them",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-18",
+  "topics": [
+    "input",
+    "controls",
+    "gamepad"
+  ],
+  "observation": "Logging UserInputService.InputBegan in a game that gives players a Tool showed ButtonL1 and ButtonR1 arriving already processed (the hotbar's RBXHotbarEquip), ButtonR3 processed (the camera's RbxCameraGamepadZoom) and ButtonSelect processed (GUI navigation while GuiService.AutoSelectGuiEnabled is on). A handler that returned on processed input never ran for them: a boat trick bound to R1 had never worked on a controller. A ContextActionService binding above Roblox's priority received L1, R1 and R3 (Select still only showed its release), and the actions then worked while the sword stayed in hand.",
+  "recommendation": "Bind gamepad shoulder buttons and stick clicks with ContextActionService:BindActionAtPriority above the default priority, leave Select to Roblox, and test each binding by sending its key code and logging whether InputBegan reports it as processed.",
+  "applies_when": [
+    "Adding controller bindings",
+    "The game gives players a Tool (the hotbar is active)"
+  ],
+  "limits": [
+    "Key codes were sent through Studio MCP as keyboard input, not from a real controller",
+    "Observed with Roblox's default PlayerModule and backpack in October 2026"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md",
+      "detail": "Section C, H9: the processed-input log and the behaviour after the ContextActionService binding."
+    }
+  ]
+}

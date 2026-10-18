@@ -9,6 +9,8 @@ local TweenService = game:GetService("TweenService")
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Map = require(script.Parent.Map)
 local BoatDrive = require(script.Parent.BoatDrive)
+local BannerQueue = require(script.Parent.BannerQueue)
+local Objective = require(script.Parent.Objective)
 
 local Hud = {}
 
@@ -22,6 +24,7 @@ local STAMINA = Color3.fromRGB(120, 220, 255)
 local WINDED = Color3.fromRGB(255, 90, 80)
 
 local gui, scale
+local helpGui, helpScale -- V12: the controls card's own layer, over the hoard arrow and the danger arrows
 local timer, heatFill, heatLabel, heatHint, banner, feedList, board, boardTitle, objective, toast, flash
 local help
 local slots = {}
@@ -30,8 +33,10 @@ local boardOrder = {} -- ids, richest first
 local boardFull = false -- T: every treasure; by default only what is loose or carried
 local boatPanel, boatSpeed, boatHull, boatHullFill, boatBoost, boatBoostFill, boatDrift, boatDriftFill, boatNote
 local LOOT_WEIGHT = {}
+local LOOT_DEFS = {}
 for _, def in ipairs(Config.LOOT) do
 	LOOT_WEIGHT[def.id] = def.weight or 1
+	LOOT_DEFS[def.id] = def
 end
 -- The drift meter's colour says which burst releasing now would give: none, small, big.
 local DRIFT_COLORS = {
@@ -46,6 +51,10 @@ local shownStamina = Config.STAMINA_MAX
 local coinPanel, coinLabel
 local chainCount, chainUntil = 0, 0 -- The run of hoops the boat is on (shown in the boat panel).
 local bannerToken, toastToken, hintToken = 0, 0, 0
+-- V12: the banner has priorities (client/BannerQueue.lua): a lesser banner waits for the one showing.
+local bannerQueue = BannerQueue.new()
+-- V12: what the goblin is doing, which decides what the HUD shows ("ship", "flight", "boat" or "foot").
+local hudMode = "foot"
 
 -- Construction helpers ---------------------------------------------------------------
 local function make(className, props, parent)
@@ -391,111 +400,145 @@ local function buildBottom()
 	}, gui)
 end
 
-local HELP_LINES = {
+-- V12: the help card (H) is a controls card that fits on the screen: the goal, then the keys by where you
+-- are, then three rules of the sea. V9 to V11 opened a sixteen-row wall of sentences by itself at every join
+-- (its last rows spilled out of the panel) and it covered the first fourteen seconds of the launch window.
+local HELP_GOAL = "STEAL TREASURE, ESCAPE, BANK IT AT THE GOLD HOARD RING. MOST GOLD IN 6 MINUTES WINS."
+local HELP_COLUMNS = {
 	{
-		"START",
-		"You begin on the SKYSHIP. Climb into a cannon (E), LOOK at where you want to land, click or SPACE to fire. Or walk out on a wing and step off.",
+		"ON FOOT",
+		{
+			{ "hold E", "steal a glowing treasure" },
+			{ "E", "use: boats, cannons, levers" },
+			{ "SHIFT", "sprint" },
+			{ "C", "dash (also in the air)" },
+			{ "SPACE x2", "jump again in the air" },
+			{ "F", "grapple: a cliff or a carrier" },
+			{ "Q", "throw what you carry" },
+			{ "CLICK", "sword: knocks treasure loose" },
+			{ "G", "throw a powder keg" },
+			{ "E", "(nothing near) Poltergoblin" },
+		},
 	},
 	{
-		"FLYING",
-		"You tumble where you were thrown. Hold SPACE to glide: a brake and a soft landing, not extra distance. Hold SHIFT to dive. The sea skips you three times.",
+		"AT SEA",
+		{
+			{ "B", "call a boat to you" },
+			{ "W A S D", "drive  (S brakes)" },
+			{ "SHIFT", "boost" },
+			{ "hold C", "drift a turn, let go: burst" },
+			{ "SPACE", "jump (SUPER JUMP when fast)" },
+			{ "R", "trick in the air (again: combo)" },
+			{ "X", "leave the boat" },
+		},
 	},
 	{
-		"STEAL",
-		"Hold E on a glowing treasure to pry it off its spot. Whatever guards it will FOLLOW YOU HOME across the sea, until the gold lights round Goblin Cove.",
+		"IN THE AIR",
+		{
+			{ "LOOK", "aim a cannon: CLICK fires" },
+			{ "hold SPACE", "glide: a soft landing" },
+			{ "hold SHIFT", "dive" },
+		},
 	},
 	{
-		"BANK",
-		"Carry it to THE HOARD (gold beam at Goblin Cove). The GOLDEN IDOL is worth the most. Six minutes; most gold wins.",
+		"MENUS",
+		{
+			{ "M", "map: pick where to land" },
+			{ "P", "wardrobe   V emotes" },
+			{ "T", "every treasure   H this card" },
+		},
 	},
-	{
-		"BOATS",
-		"E boards, X leaves. W/S/A/D drive, SHIFT boosts, C drifts, SPACE hops (a SUPER JUMP at boost speed). In the air, R does a TRICK (press again for a combo; A/D roll, S flips). B calls a boat.",
-	},
-	{
-		"THE SEA",
-		"A ring on the water means something lands there: steer off it. Keep your speed up: pursuers catch whoever slows. TORNADOES lift you: trick, or SPACE to bail.",
-	},
-	{
-		"MOVE",
-		"You run fast for free. Stamina buys SHIFT sprint, C dash (also in the air) and a second jump in the air.",
-	},
-	{
-		"HOOK",
-		"F on a cliff, crag, mast or a passing boat reels you to it. Jump lets go. Catapults: E to climb in, look, SPACE.",
-	},
-	{
-		"MAP",
-		"M: islands, how dangerous each is, who is on guard (red ring). Carrying treasure? The arrow on the screen points home.",
-	},
-	{ "HEAT", "Stealing and carrying raise Heat. High Heat sends flares, the Navy and a tempest after the CARRIER." },
-	{
-		"FIGHT",
-		"Sword hits knock loot loose. F on a carrier within 40 studs CATCHES them: run up and press E to steal (Space gets you up).",
-	},
-	{
-		"TOYS",
-		"G throws a keg (from keg crates). E fires a cannon, pulls a lever, or lights a beacon: the Navy goes to look.",
-	},
-	{ "POLTERGOBLIN", "E: leave your body, run as a spirit, snap back. Loot you grab comes back with you." },
-	{
-		"WARDROBE",
-		"P: spend Shinies (kept for good: every raid pays some) on outfits, boat paint, trails, pets. V: emotes. T: all the treasure.",
-	},
-	{
-		"DANGER",
-		"A ring on the ground = something lands there: move. Every island has something living on it: watch it, learn it.",
-	},
-	{
-		"SEA",
-		"Teal hoops: a lane to an island, chain them. Orange hoops: a timed course. Coins: 10 = 1 gold. Green lamps: shallows.",
-	},
+}
+local HELP_RULES = {
+	"A ring on the ground or the sea means something lands there: move.",
+	"Whatever guards a treasure follows its thief home, until the gold buoys round Goblin Cove.",
+	"Keep your speed at sea: pursuers catch whoever slows down.",
+	"CONTROLLER: A jump / fire, X boost, B dash / drift, Y leave a boat, R1 trick, L2 hook, L1 throw, R3 (click) map.",
+	"D-pad: down calls a boat, left throws a keg, right the wardrobe, up the emotes.",
 }
 
 local function buildHelp()
-	help = panel(gui, {
+	helpGui = make("ScreenGui", { Name = "LootGoblinsHelp", ResetOnSpawn = false, DisplayOrder = 12 }, nil)
+	helpScale = make("UIScale", {}, helpGui)
+	help = panel(helpGui, {
 		Name = "Help",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(760, 580),
-		BackgroundTransparency = 0.1,
+		Size = UDim2.fromOffset(760, 452),
+		BackgroundTransparency = 0.08,
 		Visible = false,
 		ZIndex = 8,
 	})
 	make("UIStroke", { Color = GOLD, Thickness = 2 }, help)
 	text(help, {
 		Position = UDim2.fromOffset(16, 10),
-		Size = UDim2.new(1, -32, 0, 34),
-		Text = "LOOT GOBLINS: STEAL IT, ESCAPE, BANK IT",
+		Size = UDim2.new(1, -32, 0, 30),
+		Text = "LOOT GOBLINS",
 		Font = Enum.Font.GothamBlack,
 		TextColor3 = GOLD,
 		ZIndex = 9,
 	})
-	for i, line in ipairs(HELP_LINES) do
+	text(help, {
+		Position = UDim2.fromOffset(16, 40),
+		Size = UDim2.new(1, -32, 0, 20),
+		Text = HELP_GOAL,
+		Font = Enum.Font.GothamBold,
+		ZIndex = 9,
+	})
+	-- Two columns: foot and air on the left, sea and menus on the right.
+	local columnX = { 20, 400 }
+	local y = { 72, 72 }
+	for i, section in ipairs(HELP_COLUMNS) do
+		local side = (i == 1 or i == 3) and 1 or 2
 		text(help, {
-			Position = UDim2.fromOffset(20, 50 + (i - 1) * 34),
-			Size = UDim2.fromOffset(140, 30),
-			Text = line[1],
+			Position = UDim2.fromOffset(columnX[side], y[side]),
+			Size = UDim2.fromOffset(340, 18),
+			Text = section[1],
 			Font = Enum.Font.GothamBlack,
-			TextColor3 = line[1] == "POLTERGOBLIN" and SPIRIT or GOLD,
+			TextColor3 = GOLD,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 9,
 		})
+		y[side] += 22
+		for _, row in ipairs(section[2]) do
+			local chip = panel(help, {
+				Position = UDim2.fromOffset(columnX[side], y[side]),
+				Size = UDim2.fromOffset(96, 19),
+				BackgroundColor3 = Color3.fromRGB(60, 60, 76),
+				BackgroundTransparency = 0,
+				ZIndex = 9,
+			})
+			text(chip, { Text = row[1], Font = Enum.Font.GothamBlack, TextColor3 = WHITE, ZIndex = 10 })
+			text(help, {
+				Position = UDim2.fromOffset(columnX[side] + 104, y[side]),
+				Size = UDim2.fromOffset(236, 19),
+				Text = row[2],
+				Font = Enum.Font.GothamMedium,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				ZIndex = 9,
+			})
+			y[side] += 22
+		end
+		y[side] += 8
+	end
+	local rulesY = math.max(y[1], y[2]) + 2
+	for i, rule in ipairs(HELP_RULES) do
 		text(help, {
-			Position = UDim2.fromOffset(176, 50 + (i - 1) * 34),
-			Size = UDim2.new(1, -196, 0, 30),
-			Text = line[2],
+			Position = UDim2.fromOffset(20, rulesY + (i - 1) * 20),
+			Size = UDim2.new(1, -40, 0, 18),
+			Text = rule,
 			Font = Enum.Font.GothamMedium,
+			TextColor3 = Color3.fromRGB(255, 220, 140),
 			TextXAlignment = Enum.TextXAlignment.Left,
-			TextWrapped = true,
 			ZIndex = 9,
 		})
 	end
+	help.Size = UDim2.fromOffset(760, rulesY + #HELP_RULES * 20 + 34)
 	text(help, {
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 16, 1, -8),
-		Size = UDim2.new(1, -32, 0, 20),
-		Text = "H shows or hides this",
+		Size = UDim2.new(1, -32, 0, 16),
+		Text = "H closes this",
 		Font = Enum.Font.GothamMedium,
 		TextColor3 = Color3.fromRGB(180, 180, 190),
 		ZIndex = 9,
@@ -536,20 +579,25 @@ function Hud.init(hoard)
 	buildWaypoint()
 	Map.build(gui, hoardPart.Position)
 	gui.Parent = player:WaitForChild("PlayerGui")
+	helpGui.Parent = gui.Parent
 end
 
 -- One-off messages -------------------------------------------------------------------
-function Hud.banner(message, color, duration)
+local function showBanner(shown)
+	if not shown then
+		return
+	end
+	local duration = shown.duration or 2.5
 	bannerToken += 1
 	local token = bannerToken
-	banner.Text = message
-	banner.TextColor3 = color or WHITE
+	banner.Text = shown.message
+	banner.TextColor3 = shown.color or WHITE
 	banner.TextTransparency = 0
 	banner.TextStrokeTransparency = 0.2
 	banner.BackgroundTransparency = 0.15
 	banner.Size = UDim2.fromOffset(820, 52)
 	TweenService:Create(banner, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Size = UDim2.fromOffset(780, 46) }):Play()
-	task.delay(duration or 2.5, function()
+	task.delay(duration, function()
 		if token == bannerToken then
 			TweenService:Create(banner, TweenInfo.new(0.4), {
 				TextTransparency = 1,
@@ -558,6 +606,20 @@ function Hud.banner(message, color, duration)
 			}):Play()
 		end
 	end)
+end
+
+-- priority: 4 act now, 3 your own big moment, 2 the world reacting (default), 1 news. See BannerQueue.
+function Hud.banner(message, color, duration, priority)
+	showBanner(BannerQueue.offer(bannerQueue, os.clock(), {
+		message = message,
+		color = color,
+		duration = duration,
+		priority = priority,
+	}))
+end
+
+local function flushBanner()
+	showBanner(BannerQueue.flush(bannerQueue, os.clock()))
 end
 
 function Hud.feed(message, color)
@@ -669,9 +731,9 @@ local function updateTop(now, phase, phaseEndsAt)
 	local left = phaseEndsAt - now
 	local clockAt = workspace:GetAttribute("RaidClockAt")
 	if phase == "raid" and clockAt and now < clockAt then
-		-- V9: the launch window. The six-minute clock waits for it.
+		-- V9: the launch window. The six-minute clock waits for it. (V12: shorter; at two digits it wrapped.)
 		timer.Text = string.format(
-			"LAUNCH WINDOW  %d   |   RAID %s STARTS AFTER",
+			"LAUNCH  %ds   |   THEN RAID %s",
 			math.max(0, math.ceil(clockAt - now)),
 			clock(phaseEndsAt - clockAt)
 		)
@@ -892,58 +954,72 @@ local function updateBoatPanel(now)
 	boatNote.Text = table.concat(notes, "   ")
 end
 
--- One line that always says what to do next. While carrying, it also says what the world is doing about it.
-local function updateObjective(now, phase, root, carrying)
-	if phase ~= "raid" then
-		objective.Text = "Raid starting soon. Treasure glows at its spot: steal it and bring it to THE HOARD. M: map"
-		objective.TextColor3 = WHITE
-		return
+-- One line that always says what to do next, with the key for it (V12: the main way a first raid is taught;
+-- V11 said "find a boat!" even to a goblin walking into the Hoard and never said how). On the ship and in the
+-- air the skyship's own banner speaks instead, so this line is hidden there (see applyMode).
+local function nearestWaitingTreasure(position, folder)
+	local best, bestDistance
+	if not folder then
+		return nil
 	end
-	local def
-	for _, d in ipairs(Config.LOOT) do
-		if d.id == carrying then
-			def = d
+	for _, model in ipairs(folder:GetChildren()) do
+		local core = model:IsA("Model") and model.PrimaryPart
+		if core and (folder:GetAttribute(model.Name .. "State") or "spot") == "spot" then
+			local distance = (core.Position - position).Magnitude
+			if not bestDistance or distance < bestDistance then
+				best, bestDistance = model.Name, distance
+			end
 		end
 	end
+	return best, bestDistance
+end
+
+local OBJECTIVE_TONES = {
+	spirit = SPIRIT,
+	home = WARD,
+	water = Color3.fromRGB(150, 230, 255),
+	plain = WHITE,
+}
+
+local function updateObjective(now, phase, root, carrying)
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local inBoat = humanoid and humanoid.SeatPart and humanoid.SeatPart.Parent:GetAttribute("BoatType") ~= nil
-	if def then
-		local tier = workspace:GetAttribute("HeatTier") or 1
-		local distance = root and math.floor((root.Position - hoardPart.Position).Magnitude) or 0
-		local watchers = {}
-		if tier >= 2 then
-			table.insert(watchers, "you're lit up")
+	local folder = lootFolder()
+	local hoardDistance = root
+			and math.floor(
+				Vector3.new(root.Position.X - hoardPart.Position.X, 0, root.Position.Z - hoardPart.Position.Z).Magnitude
+			)
+		or 0
+	local def = carrying and LOOT_DEFS[carrying]
+	local nearest
+	if root and not def then
+		local id, distance = nearestWaitingTreasure(root.Position, folder)
+		if id and LOOT_DEFS[id] then
+			nearest =
+				{ name = LOOT_DEFS[id].name, distance = distance, color = LOOT_DEFS[id].color, way = LOOT_DEFS[id].way }
 		end
-		if tier >= 3 then
-			table.insert(watchers, "the Navy hunts")
-		end
-		if tier >= 4 then
-			table.insert(watchers, "a TEMPEST is coming")
-		end
-		objective.Text = string.format(
-			"YOU HAVE THE %s (%dg)! HOARD %d studs%s%s",
-			string.upper(def.name),
-			def.value,
-			distance,
-			#watchers > 0 and ("  -  " .. table.concat(watchers, ", ")) or "",
-			inBoat and "" or "  -  find a boat!"
-		)
-		local pulse = math.sin(now * 6) > 0
-		objective.TextColor3 = pulse and GOLD or WHITE
-	elseif player:GetAttribute("PolterEndsAt") then
-		objective.Text = "SPIRIT FORM: grab loot and snap back with it. Guard your body!"
-		objective.TextColor3 = SPIRIT
-	elseif root and inWard(root.Position) then
-		objective.Text =
-			"You're home. Take a boat (E), sail out, steal treasure (M map, compass up top), bring it back here."
-		objective.TextColor3 = WARD
-	elseif inBoat then
-		objective.Text = "Sailing: W/A/S/D steer, S brakes, SHIFT boost, hold C in a turn to drift. Mind the storms."
-		objective.TextColor3 = WHITE
+	end
+	local line, tone = Objective.line({
+		phase = phase,
+		carrying = def,
+		bonus = def and folder and folder:GetAttribute(def.id .. "Bonus") or 0,
+		hoardDistance = hoardDistance,
+		nearHoard = hoardDistance <= Config.WARD_RADIUS + 120 and not inBoat,
+		inBoat = inBoat,
+		swimming = humanoid and humanoid:GetState() == Enum.HumanoidStateType.Swimming,
+		inWard = root and inWard(root.Position),
+		spirit = player:GetAttribute("PolterEndsAt") ~= nil,
+		recallLeft = math.max(0, (player:GetAttribute("RecallReadyAt") or 0) - now),
+		nearest = nearest,
+	})
+	objective.Text = line
+	if tone == "carry" then
+		objective.TextColor3 = math.sin(now * 6) > 0 and GOLD or WHITE
+	elseif tone == "treasure" then
+		objective.TextColor3 = nearest and nearest.color or WHITE
 	else
-		objective.Text = "Steal treasure (light pillars) or rob a carrier, then bring it to THE HOARD."
-		objective.TextColor3 = WHITE
+		objective.TextColor3 = OBJECTIVE_TONES[tone] or WHITE
 	end
 end
 
@@ -967,11 +1043,56 @@ local function updateWaypoint(root, carrying)
 	end
 end
 
+-- V12: the HUD follows what the goblin is doing. On the ship and in the air the skyship's banner (client
+-- Skyship.lua) is the instruction, so the on-foot slots, the coin purse and the objective line step aside (V11
+-- kept all seven ability slots up while aiming a cannon and tumbling). At the wheel the boat panel takes over
+-- the stamina slots and the moves a driver cannot make. Toasts move so they never sit on the boat panel or
+-- the skyship's banner (they printed over the hull meter and the deck hint in V11).
+local function modeOf()
+	local state = player:GetAttribute("DeployState")
+	if player:GetAttribute("Diving") then
+		return "flight"
+	elseif state == "aboard" or state == "loaded" or state == "fuse" then
+		return "ship"
+	end
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local seat = humanoid and humanoid.SeatPart
+	if seat and seat.Parent and seat.Parent:GetAttribute("BoatType") then
+		return "boat"
+	end
+	return "foot"
+end
+
+local TOAST_Y = { foot = -112, boat = -184, ship = -84, flight = -84 }
+local function applyMode(mode)
+	if mode == hudMode then
+		return
+	end
+	hudMode = mode
+	local foot, boat = mode == "foot", mode == "boat"
+	for key, slot in pairs(slots) do
+		if key == "sprint" or key == "dash" or key == "keg" or key == "polter" then
+			slot.frame.Visible = foot
+		else
+			slot.frame.Visible = foot or boat
+		end
+	end
+	coinPanel.Visible = foot or boat
+	objective.Visible = foot or boat
+	toast.Position = UDim2.new(0.5, 0, 1, TOAST_Y[mode] or -112)
+end
+
+function Hud.mode()
+	return hudMode
+end
+
 function Hud.update(now)
 	local camera = workspace.CurrentCamera
 	if camera then
 		local viewport = camera.ViewportSize
 		scale.Scale = math.clamp(math.min(viewport.X / 1280, viewport.Y / 760), 0.6, 1.15)
+		helpScale.Scale = scale.Scale
 	end
 	local phase = workspace:GetAttribute("RaidPhase") or "intermission"
 	local phaseEndsAt = workspace:GetAttribute("PhaseEndsAt") or now
@@ -985,6 +1106,8 @@ function Hud.update(now)
 	Map.update(now)
 	updateObjective(now, phase, root, carrying)
 	updateWaypoint(root, carrying)
+	applyMode(modeOf())
+	flushBanner()
 end
 
 return Hud

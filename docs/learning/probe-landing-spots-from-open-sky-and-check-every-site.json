@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "probe-landing-spots-from-open-sky-and-check-every-site",
+  "title": "Choose landing spots with rays from the open sky, and measure every site",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-18",
+  "topics": [
+    "level-design",
+    "testing",
+    "tooling"
+  ],
+  "observation": "Automatic landing spots near each island's treasure were chosen by downward raycasts. Probing from just above the treasure's height accepted ground under a cave roof (Crystal Isle's treasure is inside a spire), and the throw hit the hillside. Probing from 900 studs up rejected anything under a roof or overhang. A fix checked on three islands passed; measuring all sixteen found two more islands that needed their own handling (a cave and a crater rim), and treasures under a roof needed a designer-given hint for where to aim.",
+  "recommendation": "Start placement rays from above the highest geometry so covered ground is rejected, require clear ground all round the spot, and measure the real path on every site rather than a sample.",
+  "applies_when": [
+    "Generating spawn, landing or drop points from raycasts",
+    "Validating a placement rule across many hand-built sites"
+  ],
+  "limits": [
+    "One archipelago of 16 islands, measured on one Studio client"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md",
+      "detail": "Section C1 and its 16-island table."
+    },
+    {
+      "kind": "source-review",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/GAME_DESIGN.md",
+      "detail": "The V12 chapter, Landing where you picked: the rule as built."
+    }
+  ]
+}

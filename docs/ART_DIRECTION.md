@@ -1,6 +1,6 @@
 # Loot Goblins: art direction
 
-How Loot Goblins looks, as a working system: what to use, where, and why. The colours below are the ones the code uses (`src/shared/Palette.lua` and `server/World.lua`); change them there and here together. Written for V10 (The Living Archipelago) and extended for V11 (Goblin Life: cosmetics, boat looks, pets, effects and the wardrobe interface); later passes extend it rather than replace it.
+How Loot Goblins looks, as a working system: what to use, where, and why. The colours below are the ones the code uses (`src/shared/Palette.lua` and `server/World.lua`); change them there and here together. Written for V10 (The Living Archipelago) and extended for V11 (Goblin Life: cosmetics, boat looks, pets, effects and the wardrobe interface) and V12 (the play screen); later passes extend it rather than replace it.
 
 ## The idea in one line
 
@@ -155,6 +155,17 @@ Trails, wakes, trick effects and callouts (`shared/StyleFx.lua`) are expressive 
 ### The interface (V11)
 
 The wardrobe, the emote wheel and the results card share one kit (`client/Ui.lua`): a dark-wood frame, parchment cards, goblin gold for the main action and anything good, FredokaOne for titles and Gotham for text, rounded corners, chunky buttons at least 44 points tall with a gold ring when a gamepad is on them. Rarity is a coloured edge and chip (common sand, uncommon green, rare blue, legendary gold, trophy violet, premium mint), never the only signal: the card also says the price, OWNED, WEARING ✔ or 🔒 TROPHY. Celebrations are short (a pop, a chime, a small burst) and never block play. Previews show the real thing: your own goblin, a real boat, the real pet.
+
+### The play screen (V12)
+
+What is on screen during a raid has a fixed place and one voice each, so a goblin learns where to look:
+
+- **Top middle**: the raid clock and Heat. **Top right**: the minimap, the treasure board under it. **Left**: the feed (news, one line per event; a burst of the same news is one line). **Bottom middle**: the objective line, the game's one steady instruction, always with the key for the next step. **Bottom corners**: stamina and dash (left), the ability slots (right). **Middle**: one banner at a time.
+- **Banners take turns by importance** (act now, your moment, the world reacting, news); a lesser one waits and is dropped if it goes stale. A banner is never wiped before it can be read.
+- **Show what the moment needs** (`Hud.mode()`): on the skyship and in the air the ability slots, the coin purse and the objective step aside for the deck or flight line; at the wheel the boat panel and the slots that work there; on foot everything. Toasts sit just above whatever panel is showing.
+- **Red points at danger, gold points home.** Whatever chases you gets a Danger red arrow on a ring round the middle of the screen (never over the clock or the bottom panels); the Hoard gets the gold arrow. Neither shows while its target is on screen.
+- **Cards are modal and on top** (the controls card, the welcome card): they open when asked or at a calm moment, never over the first seconds of a raid, and nothing draws over them.
+- **What you hold must not blind you**: the carried treasure is drawn faint for its own carrier only.
 
 ## Treasure
 

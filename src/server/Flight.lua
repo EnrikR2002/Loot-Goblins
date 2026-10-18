@@ -484,6 +484,17 @@ local function resolveLanding(player, s, humanoid, root)
 	if hit.Material == Enum.Material.Water then
 		-- The faster the fall, the sooner it counts: the server sees the goblin a moment late.
 		if gap <= 3.2 + math.max(0, -s.fall) * 0.06 then
+			-- V12: but only if it really is coming down in the water. A fast fall counts up to about 20 studs early,
+			-- and a throw coming in over the sea to a beach was declared a splash that far short of the sand (and
+			-- skipped three times away from the island it was aimed at). Where it will be when it has fallen the
+			-- gap, going on as it is: if that is dry land, the client will land it there.
+			local down = math.max(1, -velocity.Y)
+			local ahead = Vector3.new(velocity.X, 0, velocity.Z) * math.min(gap / down, 0.5)
+			local landing =
+				workspace:Raycast(root.Position + ahead + Vector3.new(0, 2, 0), Vector3.new(0, -400, 0), rayParams)
+			if gap > 3.2 and landing and landing.Material ~= Enum.Material.Water then
+				return
+			end
 			splash(player, s, humanoid, root, Vector3.new(root.Position.X, hit.Position.Y, root.Position.Z))
 		end
 		return

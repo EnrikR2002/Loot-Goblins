@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Archipelago = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Archipelago"))
 local Dive = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Dive"))
+local Landing = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Landing"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Poltergoblin = require(script.Parent.Poltergoblin)
@@ -32,6 +33,7 @@ local aboard = {} -- player -> { spot, autoFor }: goblins who are the ship's bus
 local chosen = {} -- player -> island id picked on the map
 local opensAt, endsAt = 0, 0
 local boardedFor = 0 -- a counter: a straggler is only auto-fired once per window
+local landing = {} -- V12: island id -> where a goblin who picks it comes down (see findLandings)
 
 local HULL_GROUP = Flight.HULL_GROUP
 
@@ -128,8 +130,7 @@ local function buildCannon(index, x, z, outward)
 		back = "aboard",
 		-- Climbing in with an island picked on the map: it starts pointed there.
 		restFor = function(player)
-			local island = chosen[player] and Archipelago.byId[chosen[player]]
-			return island and Vector3.new(island.x, 0, island.z) or nil
+			return chosen[player] and Skyship.landingFor(chosen[player]) or nil
 		end,
 		aim = function(direction)
 			aim(direction)
@@ -563,7 +564,122 @@ local function buildWardrobe()
 	prompt.Parent = promptPart
 end
 
-function Skyship.build(_worldRefs)
+-- V12: where a goblin who picks an island comes down. Through V11 a pick (the map, the ship's own auto-fire)
+-- aimed at the island's middle at sea level, which is often water: the throw came down in the sea beside the
+-- island and skipped three times on past it (measured: 390 studs beyond Pebble Isle's treasure). Now each
+-- island has one spot: dry, level, open ground (no roof, no lava) as near its treasure as there is, looked for
+-- first on the ship's side so the arc comes in over the sea. Every machine reads the same spot (published on
+-- the generated folder as `Land_<id>`), so the map's pick, the cannon's first aim, the beam and the auto-fire
+-- agree. Aiming by hand is unchanged: a goblin can still look anywhere and land anywhere.
+local function insideLava(position, zones)
+	for _, zone in ipairs(zones or {}) do
+		local p = zone.part
+		if p and p.Parent then
+			local localPos = p.CFrame:PointToObjectSpace(position)
+			local half = p.Size / 2 + Vector3.new(6, 6, 6)
+			if math.abs(localPos.X) <= half.X and math.abs(localPos.Y) <= half.Y and math.abs(localPos.Z) <= half.Z then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- From high in the sky, so a spot under an overhang, a cave roof or a building is never chosen.
+local SKY = 900
+local function findLandings(worldRefs)
+	if not worldRefs or not worldRefs.lootSpots then
+		return
+	end
+	local folders = worldRefs.folders
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { workspace.Terrain, folders.ground, folders.structures }
+	params.IgnoreWater = false
+	for id in pairs(Config.ISLAND_INFO) do
+		local spot
+		for _, def in ipairs(Config.LOOT) do
+			if def.island == id and worldRefs.lootSpots[def.id] then
+				spot = worldRefs.lootSpots[def.id].Position
+				break
+			end
+		end
+		-- V12: an island whose treasure is under a roof (Crystal Isle's Heart) names where to aim instead.
+		local hint = spot and worldRefs.landingHints and worldRefs.landingHints[id]
+		if hint then
+			spot = hint
+		end
+		if spot then
+			local function good(point, pass)
+				local hit = workspace:Raycast(Vector3.new(point.X, SKY, point.Z), Vector3.new(0, -SKY - 100, 0), params)
+				return hit
+					and Landing.acceptable({
+						y = hit.Position.Y,
+						normalY = hit.Normal.Y,
+						water = hit.Material == Enum.Material.Water,
+						structure = hit.Instance:IsDescendantOf(folders.structures),
+						lava = insideLava(hit.Position, worldRefs.lavaZones),
+					}, spot.Y, pass.sea)
+					and hit.Position
+			end
+			local found
+			for _, pass in ipairs(Landing.PASSES) do
+				local points = Landing.candidates(spot, shipCFrame.Position)
+				if hint then
+					table.insert(points, 1, hint) -- the hint itself first
+				end
+				for _, point in ipairs(points) do
+					local at = good(point, pass)
+					if at then
+						-- V12: dry ground all round it, and no water just before it on the way in (a throw comes down
+						-- a little short): slopes, rocks and roofs are fine there, the sea and lava are not.
+						local apron = true
+						local around = Landing.apron(point, pass.apron)
+						for _, back in ipairs(Landing.approach(point, shipCFrame.Position, pass.approach)) do
+							table.insert(around, back)
+						end
+						for _, other in ipairs(around) do
+							local hit = workspace:Raycast(
+								Vector3.new(other.X, SKY, other.Z),
+								Vector3.new(0, -SKY - 100, 0),
+								params
+							)
+							if
+								not hit
+								or hit.Material == Enum.Material.Water
+								or hit.Position.Y < spot.Y - Landing.BELOW
+								or insideLava(hit.Position, worldRefs.lavaZones)
+							then
+								apron = false
+								break
+							end
+						end
+						if apron then
+							found = at
+							break
+						end
+					end
+				end
+				if found then
+					break
+				end
+			end
+			landing[id] = found or spot
+			folders.root:SetAttribute("Land_" .. id, landing[id])
+		end
+	end
+end
+
+-- Where a pick of island `id` comes down: its landing spot, or (an island with no treasure) its middle.
+function Skyship.landingFor(id)
+	local island = id and Archipelago.byId[id]
+	if not island then
+		return nil
+	end
+	return landing[id] or Vector3.new(island.x, 0, island.z)
+end
+
+function Skyship.build(worldRefs)
 	local old = workspace:FindFirstChild("LootGoblinsGenerated")
 	local landmarks = old and old:FindFirstChild("Landmarks") or workspace
 	shipCFrame = CFrame.new(S.POSITION)
@@ -758,6 +874,7 @@ function Skyship.build(_worldRefs)
 	for _, c in ipairs(cannons) do
 		c.barrel.CastShadow = true
 	end
+	findLandings(worldRefs)
 end
 
 -- Goblins ---------------------------------------------------------------------------------------
@@ -798,6 +915,9 @@ function Skyship.board(player, since)
 	-- client, and the move to the deck can be undone by it (a test saw one put aboard, snap back to the sea
 	-- and "dive" into the seabed). The tick below puts them aboard again until it takes.
 	aboard[player] = { spot = spot, boardedAt = since or now() }
+	-- V12: a goblin who arrives late in the window (a join, a respawn) still gets MIN_DECK seconds on the deck.
+	local by = math.max(endsAt, (since or now()) + S.MIN_DECK)
+	player:SetAttribute("LaunchBy", workspace:GetAttribute("RaidPhase") == "raid" and endsAt > 0 and by or nil)
 	root.Anchored = false
 	humanoid.PlatformStand = false
 	root.CFrame = spot * CFrame.Angles(0, math.rad(180), 0)
@@ -858,11 +978,17 @@ function Skyship.open()
 	workspace:SetAttribute("DeployOpensAt", opensAt)
 	workspace:SetAttribute("DeployEndsAt", endsAt)
 	boardedFor += 1
+	for player in pairs(aboard) do
+		player:SetAttribute("LaunchBy", endsAt)
+	end
 	Net.broadcast("DeployOpen", { opensAt = opensAt, endsAt = endsAt })
 end
 
 function Skyship.reset()
 	Flight.reset()
+	for player in pairs(aboard) do
+		player:SetAttribute("LaunchBy", nil)
+	end
 	table.clear(aboard)
 	opensAt, endsAt = 0, 0
 	workspace:SetAttribute("DeployOpensAt", nil)
@@ -876,16 +1002,8 @@ function Skyship.preopen(at)
 	workspace:SetAttribute("DeployOpensAt", at)
 end
 
--- The island a goblin picked on the map: where the ship fires them if they are still aboard at the
--- end, and where their cannon points when they climb in (they can look anywhere from there).
-local function destinationPosition(id)
-	local island = id and Archipelago.byId[id]
-	if not island then
-		return nil
-	end
-	return Vector3.new(island.x, 0, island.z)
-end
-
+-- The island a goblin picked on the map is where the ship fires them if they are still aboard at the end, and
+-- where their cannon points when they climb in (they can look anywhere from there): Skyship.landingFor.
 local function defaultDestination()
 	local pool = {}
 	for id, info in pairs(Config.ISLAND_INFO) do
@@ -911,8 +1029,10 @@ function Skyship.tick(_dt)
 		return
 	end
 	local t = now()
-	local windowOver = endsAt > 0 and t >= endsAt and workspace:GetAttribute("RaidPhase") == "raid"
+	local raiding = endsAt > 0 and workspace:GetAttribute("RaidPhase") == "raid"
 	for player, entry in pairs(aboard) do
+		-- V12: each goblin's own deadline: the window, or MIN_DECK after they came aboard if that is later.
+		local windowOver = raiding and t >= math.max(endsAt, entry.boardedAt + S.MIN_DECK)
 		local root = Util.aliveRoot(player)
 		local phase = Flight.phaseOf(player)
 		if not root or not player.Parent or phase == "diving" or phase == "embedded" then
@@ -937,7 +1057,7 @@ function Skyship.tick(_dt)
 				-- The window is over: the ship fires the straggler at their island from where they stand.
 				entry.autoFor = boardedFor
 				local id = chosen[player] or player:GetAttribute("DeployDest") or defaultDestination()
-				local target = destinationPosition(id) or Vector3.new(0, 0, 380)
+				local target = Skyship.landingFor(id) or Vector3.new(0, 0, 380)
 				aboard[player] = nil
 				Flight.launch(player, (Dive.solve(root.Position, target, D.CANNON_ELEVATION, D.CANNON_SPEED)), nil)
 				Net.toast(player, "The ship fires you off at " .. Archipelago.byId[id].name .. "!")
@@ -945,7 +1065,7 @@ function Skyship.tick(_dt)
 		end
 	end
 	-- the window is over for everybody: tidy the attribute so the HUD can let go of it
-	if endsAt > 0 and t >= endsAt + 1 and workspace:GetAttribute("DeployEndsAt") then
+	if raiding and t >= endsAt + 1 and workspace:GetAttribute("DeployEndsAt") then
 		if next(aboard) == nil then
 			workspace:SetAttribute("DeployEndsAt", nil)
 			workspace:SetAttribute("DeployOpensAt", nil)

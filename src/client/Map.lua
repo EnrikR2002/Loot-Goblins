@@ -79,7 +79,7 @@ function Map.build(gui, hoard)
 		Name = "WorldMap",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(MAP_W + 24, MAP_H + 56),
+		Size = UDim2.fromOffset(MAP_W + 24, MAP_H + 78),
 		BackgroundColor3 = DARK,
 		BackgroundTransparency = 0.05,
 		BorderSizePixel = 0,
@@ -272,6 +272,20 @@ function Map.build(gui, hoard)
 		Text = "Numbers are gold (the Golden Idol is the prize). Pulsing = carried, grey = banked. Gold ring: the sanctuary.",
 		TextColor3 = Color3.fromRGB(190, 190, 200),
 		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 21,
+	}, panel)
+
+	-- V12: how a raid works, in one line, where a new goblin first looks (the map opens on the deck).
+	make("TextLabel", {
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 14, 1, -24),
+		Size = UDim2.new(1, -28, 0, 18),
+		Font = Enum.Font.GothamBlack,
+		Text = "1 PICK AN ISLAND   >   2 CANNON: E, then CLICK   >   3 HOLD E on a glowing treasure   >   4 BRING IT TO THE HOARD",
+		TextColor3 = GOLD,
+		TextSize = 12,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 21,
 	}, panel)
