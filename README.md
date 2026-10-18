@@ -1,6 +1,6 @@
 # Loot Goblins
 
-Steal ridiculous treasure from dangerous islands and other players, then somehow get it home. This is **V11, Goblin Life**: six-minute raids that start on a flying pirate ship, guardians that **follow you home across the sea** (a stone Guardian in a tiny speedboat, the Leviathan, a ghost fleet), tornadoes, ramps and stylish boat tricks, in V10's sunlit storybook look. Between raids you spend the **Shinies** you earned in the Goblin Wardrobe: dress your goblin in ridiculous hats and coats, paint your boat, pick a trail and a trick style, learn emotes, and adopt a pet that follows you everywhere. V11 was tested by one AI on one client: nobody has played it yet, it has never had a second player, and Robux purchases are switched off.
+Steal ridiculous treasure from dangerous islands and other players, then somehow get it home. This is **V12, the Cohesion Pass** (V11, Goblin Life, made to read and flow): six-minute raids that start on a flying pirate ship, guardians that **follow you home across the sea** (a stone Guardian in a tiny speedboat, the Leviathan, a ghost fleet), tornadoes, ramps and stylish boat tricks, in V10's sunlit storybook look. Between raids you spend the **Shinies** you earned in the Goblin Wardrobe: dress your goblin in ridiculous hats and coats, paint your boat, pick a trail and a trick style, learn emotes, and adopt a pet that follows you everywhere. Pick an island on the map and the cannon throws you onto dry ground beside its treasure; a line at the bottom of the screen always tells you the next step and its key. V11 and V12 were tested by one AI on one client: nobody has played them yet, they have never had a second player, phones and controllers are untried, and Robux purchases are switched off.
 
 ## Play it
 
@@ -8,7 +8,7 @@ Steal ridiculous treasure from dangerous islands and other players, then somehow
 2. Double-click **Play Loot Goblins** (the file ending in `.bat`).
 3. Wait. It gets the newest version, builds the game, and opens Roblox Studio. If Loot Goblins is already open in Studio, close that window first (other games can stay open).
 4. In Studio, press the blue **Play** button at the top. The sky stays blank until you press it.
-5. Press `H` in the game to read how to play.
+5. Read the line at the bottom of the screen: it always says what to do next. Press `H` for every control on one card.
 
 To test with friends on one computer: **Test tab > Server & Clients > 3 players > blue Play**.
 
@@ -33,8 +33,8 @@ Explore, take treasure, survive the chase, escape, and bank at the Hoard. A raid
 | `Shift` in the driver seat | Boost (2.4 s, 5 s cooldown) |
 | `Space` in the driver seat | Hop the boat. At boost speed it is a **super jump** (about 38 studs up). Inside a tornado it **bails out**. `X` leaves the boat |
 | `R` in the air, in the driver seat | **A trick.** Press again for a combo; hold `A`/`D` to roll, `S` to backflip. Land clean for a speed burst |
-| `B` | Call a boat to the nearest shore if you are stranded |
-| On the skyship: `E` at a cannon | Climb in. **Look** (mouse, or `W A S D`) at where you want to land, click or `Space` to fire, `X` climbs out. `M` then an island points the cannon at it. Or walk out on a wing and step off |
+| `B` | Call a boat to the nearest shore if you are stranded (the bottom line reminds you) |
+| On the skyship: `E` at a cannon | Climb in. **Look** (mouse, or `W A S D`) at where you want to land, click or `Space` to fire, `X` climbs out. `M` then an island points the cannon at a dry spot beside its treasure (the beam marks it). Or walk out on a wing and step off |
 | In the air | `W A S D` nudge. Hold `Space`: glide (brake, soft landing). Hold `Shift`: dive |
 | `E` at an island catapult | Climb in and aim it the same way as a cannon |
 | Hold `C` in a turn, in the driver seat | **Drift**: the boat slides round the turn. Let go for a burst of speed (bigger the longer you held the slide) |
@@ -49,15 +49,17 @@ Explore, take treasure, survive the chase, escape, and bank at the Hoard. A raid
 | Click (sword) | Swing. Hits knock treasure loose. Carriers swing too, but slow, short and tiring |
 | `F` | Grappling hook: pulls you to a surface or onto a passing boat (you take a seat), or **catches** a carrier within 40 studs (they fall; run up and press `E` to steal). While you carry, it only pulls, on a longer cooldown |
 | `Q` | Throw your treasure |
-| `E` (no prompt showing) | **Poltergoblin**: leave your body and run as a faster spirit for 5 s, then snap back |
+| `E` (no prompt showing) | **Poltergoblin**: leave your body and run as a faster spirit for 5 s, then snap back. A step short of a boat or a cannon it tells you to step closer instead |
 | `E` at a zipline post | Ride the zipline. Jump to let go |
 | `M` | World map (island difficulty, who is on guard, tornadoes). The **minimap** is always top right |
 | `P` (or the 🧥 button) | **The Goblin Wardrobe**: shop and locker for cosmetics, boat paint, trails, emotes, pets and starting gear. Buying takes two presses |
 | `V` (or the 😀 button) | **Emote wheel**. Moving stops an emote |
 | `T` | Show every treasure on the board |
-| `H` | Show or hide the how-to-play panel |
+| `H` | Show or hide the controls card |
+| Controller | `A` jump / fire, `X` boost, `B` dash / drift, `Y` leave a boat, `R1` trick, `L2` hook, `L1` throw, click the right stick for the map (left stick: sprint); D-pad: down calls a boat, left throws a keg, right the wardrobe, up the emotes |
+| Touch | Buttons appear when they mean something: FIRE in a cannon; BOAT, HOOK, THROW on foot; BOOST, HOP, TRICK at the wheel (untried on a real phone) |
 
-Green pads and timed steam geysers launch you; catapults are aimed like the skyship's cannons. Ladders, ramps and ziplines take you up and across the islands; tall crags and sea stacks are for the grapple. Home has bounce pads, a practice cannon with floating targets, keg crates and a harbor jump. Out at sea: a ring on the water means something is about to land there; ramps beside the hoop lanes throw a fast boat high; **tornadoes** lift you into the sky (trick on the way down); puffer fish bounce your boat into the air (a free jump); a jump shakes off nibblers and the clam. Turn and face a Watcher and it freezes.
+Green pads and timed steam geysers launch you; catapults are aimed like the skyship's cannons. Ladders, ramps and ziplines take you up and across the islands; tall crags and sea stacks are for the grapple. Home has bounce pads, a practice cannon with floating targets, keg crates and a harbor jump. Out at sea: a ring on the water means something is about to land there; ramps beside the hoop lanes throw a fast boat high; **tornadoes** lift you into the sky (trick on the way down); puffer fish bounce your boat into the air (a free jump); a jump shakes off nibblers and the clam. Turn and face a Watcher and it freezes. When something chases you, a red arrow at the edge of the screen points at it.
 
 ## Work and feedback
 
