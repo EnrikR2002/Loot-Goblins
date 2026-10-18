@@ -62,6 +62,12 @@ local function seatAndModel()
 	return nil, nil
 end
 
+-- V11: the boat model you are driving, or nil (client/Looks.lua draws its trick effects).
+function BoatDrive.model()
+	local _, model = seatAndModel()
+	return model
+end
+
 -- Main sets this: function(kind, position, a, b) for "mini1", "mini2", "landing", "splash", "hoop",
 -- "kick" (a: how many hoops in a row this one makes), and V9's "trickstart" (a: the trick), "trick" (a: the
 -- trick, b: how many this flight), "trickland" (a: how many), "sketchy", "bail", "twister".

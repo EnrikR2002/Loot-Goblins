@@ -382,6 +382,187 @@ local function dressShip()
 	end
 end
 
+-- V11: Madame Ragwort's wardrobe, a tailor's stall on the quarterdeck where every raid begins, so a goblin waiting for
+-- the cannons sees the shop. Decoration only (nothing here is solid or hit by rays); its prompt opens the wardrobe on
+-- the client (client/Shop.lua listens for prompts with the OpensWardrobe attribute).
+local function buildWardrobe()
+	local x, z = -13, 72
+	local SKIN = Color3.fromRGB(126, 184, 72)
+	local function ball(name, size, cf, color, material)
+		local p = part(name, size, cf, color, material or Enum.Material.SmoothPlastic, false)
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = p
+		return p
+	end
+	part(
+		"WardrobeCounter",
+		Vector3.new(8, 3, 2.4),
+		CFrame.new(x, 8.5, z - 2),
+		WOOD_LIGHT,
+		Enum.Material.WoodPlanks,
+		false
+	)
+	part(
+		"WardrobeCounterTop",
+		Vector3.new(8.6, 0.4, 2.8),
+		CFrame.new(x, 10.2, z - 2),
+		DARK_WOOD,
+		Enum.Material.Wood,
+		false
+	)
+	for _, px in ipairs({ -3.8, 3.8 }) do
+		for _, pz in ipairs({ -3.2, 3.6 }) do
+			part(
+				"WardrobePost",
+				Vector3.new(0.5, 7.4, 0.5),
+				CFrame.new(x + px, 10.7, z + pz),
+				DARK_WOOD,
+				Enum.Material.Wood,
+				false
+			)
+		end
+	end
+	for i = 0, 4 do
+		part(
+			"WardrobeAwning",
+			Vector3.new(1.8, 0.3, 8.2),
+			CFrame.new(x - 3.6 + i * 1.8, 14.6, z + 0.2) * CFrame.Angles(math.rad(14), 0, 0),
+			i % 2 == 0 and RED or Color3.fromRGB(246, 240, 226),
+			Enum.Material.Fabric,
+			false
+		)
+	end
+	-- The tailor: a stout goblin in spectacles with a tape measure round her neck.
+	ball(
+		"RagwortBody",
+		Vector3.new(2.4, 2.8, 1.9),
+		CFrame.new(x, 11.4, z + 0.4),
+		Color3.fromRGB(150, 70, 140),
+		Enum.Material.Fabric
+	)
+	ball("RagwortHead", Vector3.new(1.7, 1.6, 1.6), CFrame.new(x, 13.4, z + 0.3), SKIN)
+	ball("RagwortNose", Vector3.new(0.5, 0.5, 0.9), CFrame.new(x, 13.3, z - 0.6), SKIN)
+	ball("RagwortBun", Vector3.new(1.1, 1, 1.1), CFrame.new(x, 14.4, z + 0.6), Color3.fromRGB(196, 196, 214))
+	part(
+		"RagwortTape",
+		Vector3.new(0.25, 2.2, 0.08),
+		CFrame.new(x - 0.45, 12.3, z - 0.55),
+		Color3.fromRGB(255, 214, 60),
+		Enum.Material.Fabric,
+		false
+	)
+	part(
+		"RagwortTape",
+		Vector3.new(0.25, 2.2, 0.08),
+		CFrame.new(x + 0.45, 12.3, z - 0.55),
+		Color3.fromRGB(255, 214, 60),
+		Enum.Material.Fabric,
+		false
+	)
+	for _, side in ipairs({ -1, 1 }) do
+		local ear = part(
+			"RagwortEar",
+			Vector3.new(0.25, 0.7, 1.4),
+			CFrame.new(x + side * 1.15, 13.6, z + 0.4)
+				* CFrame.Angles(0, math.rad(180 + side * -20), side * math.rad(-62)),
+			SKIN,
+			Enum.Material.SmoothPlastic,
+			false,
+			"WedgePart"
+		)
+		ear.CastShadow = false
+		local lens = part(
+			"RagwortLens",
+			Vector3.new(0.08, 0.42, 0.42),
+			CFrame.new(x + side * 0.32, 13.65, z - 0.52) * CFrame.Angles(0, math.rad(90), 0),
+			Color3.fromRGB(220, 240, 255),
+			Enum.Material.Glass,
+			false
+		)
+		lens.Shape = Enum.PartType.Cylinder
+		lens.Transparency = 0.35
+		ball("RagwortHand", Vector3.new(0.6, 0.6, 0.6), CFrame.new(x + side * 1.3, 10.9, z - 0.9), SKIN)
+	end
+	-- Stock on the counter and a rack: hats, a folded coat, a little boat flag.
+	local tricorn = part(
+		"StockHat",
+		Vector3.new(1.5, 0.5, 1.5),
+		CFrame.new(x - 2.4, 10.7, z - 2.2),
+		Color3.fromRGB(40, 32, 38),
+		Enum.Material.Fabric,
+		false
+	)
+	tricorn.Shape = Enum.PartType.Cylinder
+	tricorn.CFrame = shipCFrame * CFrame.new(x - 2.4, 10.7, z - 2.2) * CFrame.Angles(0, 0, math.rad(90))
+	part(
+		"StockCoat",
+		Vector3.new(1.8, 0.5, 1.2),
+		CFrame.new(x + 2.2, 10.65, z - 2.1),
+		Color3.fromRGB(176, 36, 40),
+		Enum.Material.Fabric,
+		false
+	)
+	ball("StockCrown", Vector3.new(0.9, 0.6, 0.9), CFrame.new(x + 2.2, 11.1, z - 2.1), TRIM, Enum.Material.Metal)
+	part("RackPole", Vector3.new(0.35, 7, 0.35), CFrame.new(x + 6.2, 10.5, z + 1), DARK_WOOD, Enum.Material.Wood, false)
+	part(
+		"RackArm",
+		Vector3.new(2.6, 0.25, 0.25),
+		CFrame.new(x + 6.2, 13.6, z + 1),
+		DARK_WOOD,
+		Enum.Material.Wood,
+		false
+	)
+	part(
+		"RackCape",
+		Vector3.new(1.6, 3, 0.15),
+		CFrame.new(x + 5.5, 12, z + 1.1),
+		Color3.fromRGB(70, 110, 200),
+		Enum.Material.Fabric,
+		false
+	)
+	part(
+		"RackSack",
+		Vector3.new(1.2, 1.5, 1),
+		CFrame.new(x + 7, 12.4, z + 1.1),
+		Color3.fromRGB(178, 142, 92),
+		Enum.Material.Fabric,
+		false
+	)
+	-- The sign.
+	local board = part(
+		"WardrobeSign",
+		Vector3.new(8.4, 1.8, 0.3),
+		CFrame.new(x, 16.3, z - 3.6),
+		DARK_WOOD,
+		Enum.Material.WoodPlanks,
+		false
+	)
+	local signGui = Instance.new("SurfaceGui")
+	signGui.Face = Enum.NormalId.Front
+	signGui.Parent = board
+	local signLabel = Instance.new("TextLabel")
+	signLabel.Size = UDim2.fromScale(1, 1)
+	signLabel.BackgroundTransparency = 1
+	signLabel.Font = Enum.Font.FredokaOne
+	signLabel.Text = "WARDROBE"
+	signLabel.TextColor3 = TRIM
+	signLabel.TextScaled = true
+	signLabel.Parent = signGui
+	-- The prompt: walk up and press E (or tap it).
+	local promptPart = part("WardrobePrompt", Vector3.new(6, 4, 1), CFrame.new(x, 9.5, z - 3.4), TRIM, nil, false)
+	promptPart.Transparency = 1
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "WardrobePrompt"
+	prompt.ObjectText = "Madame Ragwort's Wardrobe"
+	prompt.ActionText = "Shop and dress up"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt:SetAttribute("OpensWardrobe", true)
+	prompt.Parent = promptPart
+end
+
 function Skyship.build(_worldRefs)
 	local old = workspace:FindFirstChild("LootGoblinsGenerated")
 	local landmarks = old and old:FindFirstChild("Landmarks") or workspace
@@ -556,6 +737,7 @@ function Skyship.build(_worldRefs)
 	label.Parent = gui
 
 	dressShip()
+	buildWardrobe()
 
 	-- Where goblins stand when they arrive: a loose grid on the main deck.
 	for row = 0, 5 do
@@ -636,6 +818,11 @@ end
 
 local function boardingTime()
 	return workspace:GetAttribute("RaidPhase") == "intermission" or now() < endsAt
+end
+
+-- V11: is this goblin the ship's business (on the deck or in a cannon)? Pets may be changed aboard.
+function Skyship.isAboard(player)
+	return aboard[player] ~= nil
 end
 
 function Skyship.isDeploying()

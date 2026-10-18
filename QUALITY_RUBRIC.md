@@ -138,6 +138,66 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### Prove a visual pass changed no collision by fingerprinting the built world
+
+**ID:** fingerprint-collision-after-visual-passes | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-17
+**Related checks:** General
+
+**Observed / proposed:** A visual-only pass quietly made decoration solid in several places (new palm trunk pieces, extra rocks, coral arms, column bases, a lantern post where boats tie up) even though every landmark had been written as non-colliding. Reading the diff found them; a machine check proved the fix. Every anchored part that was solid or hit by rays was listed by folder, name, position to 0.1 stud, size and rotation, grouped and hashed, in the new build and in a build of the previous version's exact sources (served into Studio from a second loopback server). All groups matched except things that move by themselves (parked boats bobbing, windmill sails turning), whose sizes were compared separately. Where a solid prop was redesigned, keeping its old solid exactly (invisible, same random draws) under a non-solid new look made the fingerprints match.
+
+**Recommendation:** After any art or decoration pass on a generated world, fingerprint solid and ray-hit anchored parts in both versions and compare by group; expect differences only in parts that move by themselves. Keep redesigned props' old collision as invisible parts rather than reshaping what players bump into.
+
+**Applies when:** A change is meant to be visual only; World geometry is generated at runtime, so a file diff does not show what collides
+
+**Limits:** One world, one comparison, in October 2026; Parts that are unanchored or move at runtime need their own comparison; Terrain voxels were not included in the fingerprint
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/bb012932062b858a02e9e3a4276cea12c999a32d/docs/reports/2026-10-17-v10-living-archipelago.md): Section 24: 2,025 solid or ray-hit parts fingerprinted in V10 and in V9 at 713995e; identical apart from parked boat hulls and windmill sails, whose sizes matched.
+
+### Judge colours in a screenshot: lights and terrain shading change them a lot
+
+**ID:** coloured-lights-and-terrain-colours-mislead | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-17
+**Related checks:** General
+
+**Observed / proposed:** Several colours chosen by number rendered very differently in a sunny Studio scene with a colour grade. A grey stone head with a red neon eye read pink because the eye's 40-stud red PointLight lit the whole head; removing the light (the neon still glowed) made it grey. A skull lit by two long teal lights read teal all over. Terrain Rock and Slate set to warm violet greys read lilac; Basalt set to warm reds read teal, while a neutral charcoal read as volcanic rock. Near-white sand under clear shallow water read as a white sheet in full sun; a warmer gold read as sand.
+
+**Recommendation:** Check every new material colour and light in a screenshot from where players will see it. Keep coloured PointLights short (or rely on Neon's own glow) near anything that should keep its own colour, and expect terrain material colours to need several tries.
+
+**Applies when:** Setting terrain material colours or part colours for an art pass; Adding coloured lights to eyes, lanterns or effects
+
+**Limits:** One place's lighting (late afternoon, a warm colour grade, bloom) in October 2026; Other lighting technologies or times of day may shift colours differently
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/bb012932062b858a02e9e3a4276cea12c999a32d/docs/reports/2026-10-17-v10-living-archipelago.md): Sections 4 and 23: the colour table of first and final values and the light fixes, each checked in a screenshot.
+
+### Build ellipsoids from a block with a sphere mesh, not a Ball part
+
+**ID:** ball-parts-ignore-uneven-sizes | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-17
+**Related checks:** General
+
+**Observed / proposed:** Storm clouds and fog built as Ball parts with flat sizes (for example 1.7 x 0.55 x 1.7 of a base size) kept that Size property but were drawn as small spheres, so a cloud bank read as scattered dark balls from a boat. Rebuilding each puff as a block with a SpecialMesh of type Sphere drew the intended flat ellipsoid at the same Size. Separately, overlapping see-through ellipsoids showed each other's insides and read as soap bubbles; opaque billows read as solid cartoon clouds.
+
+**Recommendation:** For any squashed round shape (clouds, domes, skulls, pebbles, canopies), use a Block part with a SpecialMesh MeshType Sphere and check it in a screenshot. Make clouds that should look solid opaque; keep transparency for fog that should be seen through.
+
+**Applies when:** Making clouds, domes or organic shapes from primitive parts; A Ball part looks smaller or rounder than its Size suggests
+
+**Limits:** Observed in one place in Roblox Studio in October 2026; Collision and ray behaviour of mesh ellipsoids were not studied (the clouds are non-colliding)
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/bb012932062b858a02e9e3a4276cea12c999a32d/docs/reports/2026-10-17-v10-living-archipelago.md): Sections 17 and 23, with the before-storm and after-storm-clouds screenshots: V9's Ball puffs against V10's opaque sphere-mesh billows.
+
+### Apply character cosmetics after the avatar's appearance has loaded, idempotently
+
+**ID:** avatar-looks-after-appearance-loads | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-17
+**Related checks:** General
+
+**Observed / proposed:** Ears and a nose welded to a player's Head, and body colours set on spawn, disappeared: in a Studio test the avatar's appearance loaded in the same moment as CharacterAdded and replaced the Head (and the BodyColors) just after the code ran, and Player:HasAppearanceLoaded could already read true. A first attempt to wait for it timed the wait with os.clock(), which is CPU time in Luau and barely advances while a script waits, so the wait stalled. Applying the look on Player.CharacterAppearanceLoaded and again two seconds after spawning, rebuilding only if the welded parts were not on the current Head, worked on spawn and on respawn.
+
+**Recommendation:** Apply avatar cosmetics on CharacterAppearanceLoaded plus a short delayed retry, make the apply idempotent (check the weld's Part0 is the current Head), set colours every time, and time waits with time() or task.wait, never os.clock().
+
+**Applies when:** Adding parts or colours to player characters on spawn; Cosmetics appear in a direct test but not on a real spawn
+
+**Limits:** Observed in Roblox Studio solo play on R15 avatars in October 2026; Live servers with slower avatar loading were not tested
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/bb012932062b858a02e9e3a4276cea12c999a32d/docs/reports/2026-10-17-v10-living-archipelago.md): Sections 13 and 24: the vanishing ears, the cause, and the fix checked on spawn and respawn.
+
 ### Studio screenshots arrive too late to catch short animations
 
 **ID:** studio-screenshots-miss-short-shows | **Status:** observation | **Game:** EnrikR2002/Tiny-Wins-Tycoon | **Date:** 2026-10-15

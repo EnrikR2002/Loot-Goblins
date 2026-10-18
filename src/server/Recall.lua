@@ -237,6 +237,7 @@ function Recall.request(player)
 	boat.model:SetAttribute("Moored", false)
 	boat.input = { throttle = 0, steer = 0, boost = false }
 	boat.model:SetAttribute("Recalled", player.UserId)
+	Boats.style(boat, player) -- V11: it arrives in the caller's colours
 	active[boat] = {
 		player = player,
 		goal = goal,

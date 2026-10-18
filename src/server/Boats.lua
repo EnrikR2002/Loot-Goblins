@@ -33,10 +33,12 @@ local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Sea = require(script.Parent.Sea)
 local SeaNav = require(script.Parent.SeaNav)
+local BoatStyle = require(script.Parent.BoatStyle)
 
 local Boats = {}
 Boats.list = {}
 Boats.Sunk = Util.signal() -- (boat, cause)
+Boats.TrickLanded = Util.signal() -- (player, count): a clean landing after tricks the server itself saw (V11)
 
 local WOOD = Palette.BOATS.skiff.hull
 local TRIM = {
@@ -664,6 +666,7 @@ function Boats.relayFx(player, kind, extra)
 		if t - (boat.lastHighAt or -math.huge) < 2 and (boat.lastPaidAt or -math.huge) < (boat.lastHighAt or 0) then
 			boat.lastPaidAt = t
 			Boats.refund(boat, count * Config.TRICK.REFUND)
+			Boats.TrickLanded:Fire(player, count)
 		end
 	end
 	Net.broadcast("BoatFx", payload)
@@ -982,6 +985,12 @@ function Boats.place(boat, cframe)
 	hull.AssemblyAngularVelocity = Vector3.zero
 end
 
+-- V11: a player boat wears its driver's look (server/BoatStyle.lua has the whole policy).
+function Boats.style(boat, player)
+	boat.styledFor = player
+	BoatStyle.dress(boat, player)
+end
+
 local function respawn(boat)
 	local hull = boat.hull
 	setPilot(boat, nil)
@@ -1013,6 +1022,9 @@ local function respawn(boat)
 		hull:SetNetworkOwner(nil)
 	end)
 	Boats.place(boat, boat.home)
+	if boat.styledFor then
+		Boats.style(boat, nil) -- back to its class colours
+	end
 end
 
 function Boats.build(worldRefs)
@@ -1040,6 +1052,38 @@ function Boats.build(worldRefs)
 		local entry = typeof(spawn) == "CFrame" and { cf = spawn, type = "skiff" } or spawn
 		table.insert(Boats.list, buildBoat(entry))
 	end
+	-- V11: a still copy of each player boat class for the shop's preview, so it shows the real boat.
+	local preview = ReplicatedStorage:FindFirstChild("LootGoblinsPreview")
+	if preview then
+		preview:Destroy()
+	end
+	preview = Instance.new("Folder")
+	preview.Name = "LootGoblinsPreview"
+	for _, typeName in ipairs({ "skiff", "cutter" }) do
+		for _, boat in ipairs(Boats.list) do
+			if boat.typeName == typeName and not boat.ai then
+				local archivable = boat.model.Archivable
+				boat.model.Archivable = true
+				local copy = boat.model:Clone()
+				boat.model.Archivable = archivable
+				for _, item in ipairs(copy:GetDescendants()) do
+					if item:IsA("ProximityPrompt") or item:IsA("BaseScript") then
+						item:Destroy()
+					elseif item:IsA("BasePart") then
+						item.Anchored = true
+						item.CanCollide = false
+						item.CanQuery = false
+						item.CanTouch = false
+					end
+				end
+				copy.Name = typeName
+				copy:PivotTo(CFrame.new(0, 0, 0))
+				copy.Parent = preview
+				break
+			end
+		end
+	end
+	preview.Parent = ReplicatedStorage
 
 	-- What a driver's client needs to float its own boat on the same sea: the currents, the
 	-- shelter map and the gates. It never changes, so it is sent once.
@@ -1181,6 +1225,13 @@ function Boats.tick(dt)
 				local driver = nil
 				if Config.BOAT_CLIENT_PHYSICS and not boat.ai and t >= boat.reclaimUntil then
 					driver = driverOf(boat)
+				end
+				-- V11: a new driver repaints the boat in their look.
+				if not boat.ai then
+					local seated = driver or driverOf(boat)
+					if seated and seated ~= boat.styledFor then
+						Boats.style(boat, seated)
+					end
 				end
 				setPilot(boat, driver)
 				if boat.pilot then
