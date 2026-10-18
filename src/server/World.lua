@@ -1101,6 +1101,10 @@ local function buildCrystalIsle()
 
 	ground("HeartPedestal", Vector3.new(3, 3, 3), CFrame.new(c.X, 3.5, c.Z + 8), DARK_STONE, Enum.Material.Slate)
 	refs.lootSpots.Heart = W(CFrame.new(c.X, 5 + 1.9, c.Z + 8))
+	-- V12: the Heart is under the spire, so a cannon throw aims for the low shelf over the west tunnel mouth (the
+	-- side facing the skyship and home): the beach and the way in are one drop below. Aimed at the Heart itself,
+	-- every throw hit the spire and slid into the sea.
+	refs.landingHints.Crystal = W(Vector3.new(c.X - 136, 21.5, c.Z))
 
 	-- Cave-in: a rock plug that seals the west half of the tunnel (the side facing home).
 	refs.caveIn = {
@@ -1418,6 +1422,7 @@ function World.build()
 	refs.folders = folders
 	refs.totems = {}
 	refs.lootSpots = {}
+	refs.landingHints = {} -- V12: where a cannon throw aims when an island's treasure is out of the sky's reach
 	refs.boatSpawns = {}
 	-- Data for the mechanism modules: the builders only describe, they never run logic.
 	refs.spinners = {}

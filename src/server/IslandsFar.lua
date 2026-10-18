@@ -801,6 +801,9 @@ local function buildSkull()
 		Enum.Material.Slate
 	)
 	Kit.lootSpot("Chalice", CFrame.new(cx, 24.5 + 3, cz - 20))
+	-- V12: the Chalice is inside the skull, so a cannon throw aims for the beach beside its mouth: in through the
+	-- mouth, across the lagoon, up the ladder. (Aimed at the Chalice, throws came down on a ledge of the cheek.)
+	refs.landingHints.Skull = Kit.world(v3(cx - 32, 2, cz + 82))
 	pointLight(
 		decor(
 			"ChaliceGlow",

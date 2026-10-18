@@ -24,6 +24,8 @@ local Results = require(script.Parent.Results)
 local Tricks = require(script.Parent.Tricks)
 local Twisters = require(script.Parent.Twisters)
 local Minimap = require(script.Parent.Minimap)
+local Danger = require(script.Parent.Danger)
+local TouchControls = require(script.Parent.TouchControls)
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
@@ -56,21 +58,30 @@ for _, def in ipairs(Config.LOOT) do
 end
 
 Hud.init(hoardPart)
+Danger.start() -- V12: whatever is chasing you, at the edge of the screen
 Twisters.init()
 Minimap.build(hoardPart.Position)
 
--- Storm warnings: name the heading so the player can steer around it.
+-- Storm warnings: name the heading so the player can steer around it. V12: not from its very edge (V11 said
+-- "1 STUDS. SAIL AROUND IT!" to a goblin standing on an island the storm was already over), and only a sailor
+-- is told to sail round it. News, not an alarm: it never replaces a bigger banner.
 local COMPASS_NAMES = { "NORTH", "NORTH-EAST", "EAST", "SOUTH-EAST", "SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST" }
 Weather.init(function(dx, dz, distance)
+	if distance < 80 then
+		return
+	end
 	local degrees = math.deg(math.atan2(dx, -dz)) % 360
 	local name = COMPASS_NAMES[math.floor((degrees + 22.5) / 45) % 8 + 1]
+	local sailing = Hud.mode() == "boat"
 	Hud.banner(
-		string.format("STORM TO THE %s - %d STUDS. SAIL AROUND IT!", name, distance),
+		string.format("STORM %d STUDS TO THE %s%s", distance, name, sailing and ": SAIL AROUND IT!" or ""),
 		Color3.fromRGB(170, 190, 255),
-		3.5
+		3.5,
+		1
 	)
 end)
-Hud.showHelp(14)
+-- V12: the controls card (H) no longer opens by itself at every join: it covered the first fourteen seconds of
+-- the launch window. The objective line and the skyship's banner teach the first raid as it happens.
 
 local function now()
 	return workspace:GetServerTimeNow()
@@ -105,6 +116,22 @@ end)
 -- stealing: "I pressed E and it did the wrong thing". V8: if no prompt is showing, E goes to the nearest
 -- enabled E-prompt the goblin is in reach of, held and released exactly as if it were on screen.
 local heldPrompt = nil
+-- V12: the world's prompts, kept as they stream in and out, so an E press does not walk every instance in the
+-- generated world (about 57,000) to find the one in reach.
+local worldPrompts = {}
+local function trackPrompt(instance)
+	if instance:IsA("ProximityPrompt") then
+		worldPrompts[instance] = true
+	end
+end
+for _, instance in ipairs(generated:GetDescendants()) do
+	trackPrompt(instance)
+end
+generated.DescendantAdded:Connect(trackPrompt)
+generated.DescendantRemoving:Connect(function(instance)
+	worldPrompts[instance] = nil
+end)
+
 local function reachPrompt()
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -130,10 +157,8 @@ local function reachPrompt()
 			end
 		end
 	end
-	for _, instance in ipairs(generated:GetDescendants()) do
-		if instance:IsA("ProximityPrompt") then
-			consider(instance)
-		end
+	for prompt in pairs(worldPrompts) do
+		consider(prompt)
 	end
 	-- The steal prompt on a goblin who is down lives on their body, not in the world folder.
 	for _, other in ipairs(Players:GetPlayers()) do
@@ -144,6 +169,28 @@ local function reachPrompt()
 		end
 	end
 	return best
+end
+
+-- V12: the nearest enabled E-prompt the goblin is ALMOST in reach of (within its range plus `slack` studs).
+-- Pressing E a step short of a boat or a cannon used to cast Poltergoblin (the spirit dash): a surprise for a
+-- new goblin, who then had to find E again to snap back. Now that press says "closer" instead.
+local function almostPrompt(slack)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return nil
+	end
+	for instance in pairs(worldPrompts) do
+		if instance.Enabled and instance.KeyboardKeyCode == Enum.KeyCode.E then
+			local parent = instance.Parent
+			local position = parent and parent:IsA("BasePart") and parent.Position
+				or (parent and parent:IsA("Attachment") and parent.WorldPosition)
+			if position and (position - root.Position).Magnitude <= instance.MaxActivationDistance + slack then
+				return instance
+			end
+		end
+	end
+	return nil
 end
 
 local function promptOwnsE()
@@ -327,6 +374,11 @@ aimParams.IgnoreWater = false
 local function aimPoint()
 	local camera = workspace.CurrentCamera
 	local mouseAt = UserInputService:GetMouseLocation()
+	-- V12: with a controller (or a finger) there is no mouse to aim with: aim where the camera looks.
+	local last = UserInputService:GetLastInputType()
+	if last == Enum.UserInputType.Gamepad1 or last == Enum.UserInputType.Touch then
+		mouseAt = camera.ViewportSize / 2
+	end
 	local ray = camera:ViewportPointToRay(mouseAt.X, mouseAt.Y)
 	-- Never aim at yourself or at the boat you are sitting in.
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
@@ -827,6 +879,12 @@ local function pressPoltergoblin()
 		Hud.toast("The Hoard's ward blocks Poltergoblin. Step outside the purple ring.")
 		return
 	end
+	local almost = almostPrompt(6)
+	if almost then
+		local what = almost.ActionText ~= "" and almost.ActionText or "use it"
+		Hud.toast(string.format("A step closer to %s (E).", string.lower(what)))
+		return
+	end
 	stopRide(false)
 	stopPull(false)
 	lastPolterCast = t
@@ -870,8 +928,52 @@ ContextActionService:BindActionAtPriority("LootGoblinsBoatHop", function(_, stat
 	return Enum.ContextActionResult.Sink
 end, false, Enum.ContextActionPriority.High.Value + 10, Enum.KeyCode.Space, Enum.KeyCode.ButtonA)
 
--- Input ------------------------------------------------------------------------------------
 local lastTrickHint = -math.huge
+local function pressTrick()
+	-- V9: a trick, in the air. On the water it only says how.
+	if not BoatDrive.trick() and os.clock() - lastTrickHint > 4 then
+		lastTrickHint = os.clock()
+		Hud.toast("Tricks are for the air: jump (SPACE), hit a ramp or ride a tornado, then R.")
+	end
+end
+
+local function pressThrow()
+	if player:GetAttribute("CarryingLoot") then
+		throwRemote:FireServer()
+	else
+		Hud.toast("Nothing to throw. Grab some loot first.")
+	end
+end
+
+-- V12: three controller buttons Roblox takes for itself before a script sees them (measured in Studio: they
+-- arrive already processed): L1 and R1 switch hotbar tools (with one sword, they only put it away) and R3 is
+-- the camera's zoom. So the R1 trick (V9) never worked on a controller. Bound above Roblox's own actions, they
+-- throw (L1), trick at the wheel (R1) and open the map (R3). The wardrobe binds L1 and R1 higher still for its
+-- tabs while it is open.
+ContextActionService:BindActionAtPriority(
+	"LootGoblinsPad",
+	function(_, state, input)
+		if state == Enum.UserInputState.Begin then
+			if input.KeyCode == Enum.KeyCode.ButtonL1 then
+				pressThrow()
+			elseif input.KeyCode == Enum.KeyCode.ButtonR1 then
+				if seatedInBoat() then
+					pressTrick()
+				end
+			elseif input.KeyCode == Enum.KeyCode.ButtonR3 then
+				Hud.toggleMap()
+			end
+		end
+		return Enum.ContextActionResult.Sink
+	end,
+	false,
+	Enum.ContextActionPriority.High.Value + 10,
+	Enum.KeyCode.ButtonL1,
+	Enum.KeyCode.ButtonR1,
+	Enum.KeyCode.ButtonR3
+)
+
+-- Input ------------------------------------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
@@ -917,19 +1019,17 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		end
 	elseif input.KeyCode == Enum.KeyCode.B or input.KeyCode == Enum.KeyCode.DPadDown then
 		recallRemote:FireServer()
-	elseif input.KeyCode == Enum.KeyCode.G then
+	elseif input.KeyCode == Enum.KeyCode.G or input.KeyCode == Enum.KeyCode.DPadLeft then
 		pressKeg()
 	elseif input.KeyCode == Enum.KeyCode.M then
+		-- (A controller clicks the right stick: LootGoblinsPad above. Not Select: Roblox keeps Select for its
+		-- own menu navigation.)
 		Hud.toggleMap()
 	elseif input.KeyCode == Enum.KeyCode.ButtonL3 then
 		setSprint(not sprintHeld)
 	elseif input.KeyCode == Enum.KeyCode.Q then
-		if player:GetAttribute("CarryingLoot") then
-			throwRemote:FireServer()
-		else
-			Hud.toast("Nothing to throw. Grab some loot first.")
-		end
-	elseif input.KeyCode == Enum.KeyCode.F then
+		pressThrow()
+	elseif input.KeyCode == Enum.KeyCode.F or input.KeyCode == Enum.KeyCode.ButtonL2 then
 		pressGrapple()
 	elseif input.KeyCode == Enum.KeyCode.E then
 		-- V8: E belongs to whatever is IN REACH, not only to what the camera happens to show (see reachPrompt).
@@ -940,18 +1040,72 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		else
 			pressPoltergoblin()
 		end
-	elseif (input.KeyCode == Enum.KeyCode.R or input.KeyCode == Enum.KeyCode.ButtonR1) and seatedInBoat() then
-		-- V9: a trick, in the air. On the water it only says how.
-		if not BoatDrive.trick() and os.clock() - lastTrickHint > 4 then
-			lastTrickHint = os.clock()
-			Hud.toast("Tricks are for the air: jump (SPACE), hit a ramp or ride a tornado, then R.")
-		end
+	elseif input.KeyCode == Enum.KeyCode.R and seatedInBoat() then
+		pressTrick()
 	elseif input.KeyCode == Enum.KeyCode.H then
 		Hud.toggleHelp()
 	elseif input.KeyCode == Enum.KeyCode.T then
 		Hud.toggleBoard()
 	end
 end)
+
+-- V12: touch buttons for the essential loop (only on a touch screen): the same functions the keys call.
+TouchControls.start({
+	fire = Skyship.fire,
+	call = function()
+		recallRemote:FireServer()
+	end,
+	grapple = pressGrapple,
+	throw = function()
+		if player:GetAttribute("CarryingLoot") then
+			throwRemote:FireServer()
+		end
+	end,
+	boost = BoatDrive.boost,
+	hop = BoatDrive.jump,
+	trick = function()
+		if not BoatDrive.trick() then
+			Hud.toast("Tricks are for the air: HOP, hit a ramp or ride a tornado, then TRICK.")
+		end
+	end,
+}, function()
+	if player:GetAttribute("DeployState") == "loaded" then
+		return "aim"
+	end
+	return Hud.mode()
+end)
+
+-- V12: the treasure you carry rides over your head, and from the camera behind you its glow (bloomed) sat exactly
+-- where you look: the way ahead was a white blur. For its own carrier it is dimmed; everyone else still sees a
+-- carrier glow (the server already turns its pillar off while it is carried).
+local dimmed = nil -- { id, parts = { part = true } }
+local function dimCarried()
+	local id = player:GetAttribute("CarryingLoot")
+	if dimmed and (not id or dimmed.id ~= id) then
+		for part in pairs(dimmed.parts) do
+			if part.Parent then
+				part.LocalTransparencyModifier = 0
+			end
+		end
+		dimmed = nil
+	end
+	if not id or dimmed then
+		return
+	end
+	local folder = generated:FindFirstChild("Loot")
+	local model = folder and folder:FindFirstChild(id)
+	if not model then
+		return
+	end
+	dimmed = { id = id, parts = {} }
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			d.LocalTransparencyModifier = d.Material == Enum.Material.Neon and 0.65 or 0.35
+			dimmed.parts[d] = true
+		end
+	end
+end
+player:GetAttributeChangedSignal("CarryingLoot"):Connect(dimCarried)
 
 -- Screen tint follows Heat, including for players who join mid-raid.
 local function applyHeatTint()
@@ -998,7 +1152,7 @@ end
 
 -- A trophy: a moment of celebration, short and out of the way.
 function handlers.Achievement(p)
-	Hud.banner("TROPHY: " .. string.upper(p.name or ""), Color3.fromRGB(196, 128, 255), 3.5)
+	Hud.banner("TROPHY: " .. string.upper(p.name or ""), Color3.fromRGB(196, 128, 255), 3.5, 2)
 	Hud.toast(
 		string.format("+%d Shinies", p.shinies or 0)
 			.. (p.rewardName and (" and the " .. p.rewardName .. " (in your locker)") or "")
@@ -1026,7 +1180,7 @@ function handlers.Celebrate(p)
 end
 
 function handlers.Message(p)
-	Hud.banner(p.text or "", p.color, p.duration)
+	Hud.banner(p.text or "", p.color, p.duration, p.priority)
 end
 
 function handlers.Feed(p)
@@ -1040,10 +1194,10 @@ end
 function handlers.Stolen(p)
 	local color = LOOT_COLORS[p.item] or GOLD
 	if isMe(p) then
-		Hud.banner("YOU STOLE THE " .. string.upper(p.itemName) .. "! RUN FOR THE HOARD!", color, 3)
+		Hud.banner("YOU STOLE THE " .. string.upper(p.itemName) .. "! RUN FOR THE HOARD!", color, 3, 3)
 		Hud.flash(color, 0.3)
 	else
-		Hud.banner(string.upper(p.name) .. " STOLE THE " .. string.upper(p.itemName) .. "!", color, 3)
+		Hud.banner(string.upper(p.name) .. " STOLE THE " .. string.upper(p.itemName) .. "!", color, 3, 1)
 	end
 	Effects.chime(Effects.CHIME_STEAL, 0.8)
 	Effects.burst(p.position, color, 40, 24)
@@ -1054,20 +1208,20 @@ end
 function handlers.Snatched(p)
 	Pets.react(p.userId, "cheer")
 	if isMe(p) then
-		Hud.banner("GOT IT! " .. string.upper(p.itemName) .. " IS YOURS", GOLD, 2)
+		Hud.banner("GOT IT! " .. string.upper(p.itemName) .. " IS YOURS", GOLD, 2, 3)
 		Effects.chime(Effects.CHIME_GOOD, 0.6)
 	elseif p.from == player.DisplayName then
-		Hud.banner(string.upper(p.name) .. " GRAPPLED YOUR " .. string.upper(p.itemName) .. "!", DANGER, 2.5)
+		Hud.banner(string.upper(p.name) .. " GRAPPLED YOUR " .. string.upper(p.itemName) .. "!", DANGER, 2.5, 3)
 		Hud.flash(DANGER, 0.35)
 		Effects.chime(Effects.CHIME_STEAL, 0.7)
 	else
-		Hud.banner(string.upper(p.name) .. " GRAPPLED THE " .. string.upper(p.itemName) .. "!", nil, 2)
+		Hud.banner(string.upper(p.name) .. " GRAPPLED THE " .. string.upper(p.itemName) .. "!", nil, 2, 1)
 	end
 end
 
 function handlers.Grabbed(p)
 	if isMe(p) then
-		Hud.banner("YOU GRABBED THE " .. string.upper(p.itemName) .. "!", GOLD, 1.6)
+		Hud.banner("YOU GRABBED THE " .. string.upper(p.itemName) .. "!", GOLD, 1.6, 3)
 		Effects.chime({ 1, 1.5 }, 0.5)
 	end
 end
@@ -1086,14 +1240,16 @@ function handlers.Banked(p)
 		Hud.banner(
 			string.format("BANKED THE %s! +%d GOLD (%d total)", string.upper(p.itemName), p.value, p.total),
 			GOLD,
-			3.5
+			3.5,
+			3
 		)
 		Hud.flash(GOLD, 0.35)
 	else
 		Hud.banner(
 			string.format("%s BANKED THE %s (+%d)", string.upper(p.name), string.upper(p.itemName), p.value),
 			color,
-			3
+			3,
+			1
 		)
 	end
 	Effects.chime(Effects.CHIME_GOOD, 0.9)
@@ -1140,7 +1296,7 @@ function handlers.GuardianWake(p)
 	Effects.sound("boom", { position = p.position, speed = 0.35, volume = 1, range = 800 })
 	Effects.shakeAt(p.position, 1.2, 1, 300)
 	if p.reason == "heat" then
-		Hud.banner("HEAT IS TOO HIGH: THE GUARDIAN AWAKENS!", DANGER, 3)
+		Hud.banner("HEAT IS TOO HIGH: THE GUARDIAN AWAKENS!", DANGER, 3, 2)
 	end
 end
 
@@ -1294,7 +1450,7 @@ function handlers.GuardianStomp(p)
 	Effects.shockwave(p.position, p.radius or 70, p.windup or 0.8, p.speed or 55)
 	local _, _, root = getCharacter()
 	if root and (root.Position - p.position).Magnitude < (p.radius or 70) + 15 then
-		Hud.banner("STOMP! BE IN THE AIR WHEN THE RING REACHES YOU", DANGER, 1.6)
+		Hud.banner("STOMP! BE IN THE AIR WHEN THE RING REACHES YOU", DANGER, 1.6, 4)
 	end
 end
 
@@ -1306,7 +1462,7 @@ function handlers.NavyRam(p)
 		end)
 	end
 	if isMe(p) then
-		Hud.banner("RAMMING SPEED! TURN HARD OR DRIFT OUT OF ITS WAY", DANGER, 2.2)
+		Hud.banner("RAMMING SPEED! TURN HARD OR DRIFT OUT OF ITS WAY", DANGER, 2.2, 4)
 		Hud.flash(DANGER, 0.2)
 	end
 end
@@ -1354,7 +1510,7 @@ end
 -- players' boats arrive from the server.
 local MINI_COLORS = { mini1 = Color3.fromRGB(120, 220, 255), mini2 = Color3.fromRGB(255, 170, 70) }
 
-local function boatFx(kind, position, mine)
+local function boatFx(kind, position, mine, airTime)
 	if kind == "mini1" or kind == "mini2" then
 		local strong = kind == "mini2"
 		Effects.burst(position, MINI_COLORS[kind], strong and 60 or 35, strong and 40 or 28)
@@ -1364,14 +1520,27 @@ local function boatFx(kind, position, mine)
 			Effects.punchFov(strong and 96 or 90)
 		end
 	elseif kind == "landing" then
-		Effects.spray(position, 0.5)
-		Effects.ring(position, Color3.fromRGB(190, 255, 220), 16, 0.4)
+		-- V12: the longer the flight, the bigger the landing (a super jump comes down like one).
+		local big = math.clamp((airTime or 1) / 2.5, 0.4, 1.3)
+		Effects.spray(position, 0.5 + big * 0.5)
+		Effects.ring(position, Color3.fromRGB(190, 255, 220), 14 + big * 12, 0.4)
 		if mine then
-			Effects.punchFov(88)
+			Effects.punchFov(86 + big * 8)
 			Hud.toast("Clean landing! Speed burst.")
 		end
 	elseif kind == "splash" then
-		Effects.spray(position, 0.35)
+		-- V12: a crooked or hard landing from a real flight is a belly flop: spray (with its slap and its shake,
+		-- Effects.spray) to match the fall, a ring, and for your own boat a thud. Through V11 every one was the same
+		-- small puff, so a boat thrown fifty studs up by a ramp or a tornado came down with a whisper.
+		local fall = airTime or 0
+		local power = math.clamp(fall / 2.2, 0.35, 1.5)
+		Effects.spray(position, power)
+		if fall >= 1.2 then
+			Effects.ring(position, Color3.fromRGB(220, 240, 255), 12 + power * 12, 0.45)
+			if mine then
+				Effects.sound("thud", { speed = 0.7, volume = 0.7 })
+			end
+		end
 	elseif kind == "super" then
 		-- The super jump: a wall of spray, a ring, the view thrown wide.
 		Effects.spray(position, 1.3)
@@ -1448,7 +1617,7 @@ BoatDrive.onEvent(function(kind, position, chain, extra)
 		Effects.sound("whoosh", { speed = 0.6, volume = 1 })
 		return
 	end
-	boatFx(kind, position, true)
+	boatFx(kind, position, true, (kind == "splash" or kind == "landing") and chain or nil)
 	if kind == "hoop" and (chain or 1) >= 2 then
 		-- A chain of hoops: say so (in the boat panel), and let the note climb with it.
 		Hud.chain(chain)
@@ -1810,7 +1979,7 @@ end
 
 function handlers.RaidStart()
 	Results.hide()
-	Hud.banner("RAID START! STEAL LOOT, BRING IT TO THE HOARD", GOLD, 4)
+	Hud.banner("RAID START! STEAL LOOT, BRING IT TO THE HOARD", GOLD, 4, 3)
 	Effects.chime(Effects.CHIME_GOOD, 0.9)
 end
 
@@ -1819,12 +1988,12 @@ function handlers.RaidEnd(p)
 	if p.winners and #p.winners > 0 then
 		Skyship.holdMap(5.5) -- everyone on the deck sees the winner's dance before the map opens
 	end
-	Hud.banner("RAID OVER!", GOLD, 3)
+	Hud.banner("RAID OVER!", GOLD, 3, 3)
 	Effects.chime({ 2, 1.5, 1.26, 1, 1.5, 2 }, 0.8)
 end
 
 function handlers.LastCall(p)
-	Hud.banner(string.format("LAST CALL! %d SECONDS - BANK IT OR LOSE IT", p.seconds or 60), DANGER, 3.5)
+	Hud.banner(string.format("LAST CALL! %d SECONDS - BANK IT OR LOSE IT", p.seconds or 60), DANGER, 3.5, 3)
 	Effects.chime(Effects.CHIME_ALARM, 0.9)
 end
 

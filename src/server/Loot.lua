@@ -715,8 +715,10 @@ local function placeAtSpot(item)
 	core.CFrame = item.spot
 	item.model.Parent = refs.folders.loot
 	item.pillarTop.Position = item.spot.Position + Vector3.new(0, 300, 0)
-	-- Each treasure's interest clock starts at a different point, so the +1s don't all land at once.
-	item.unclaimedSince = now() - (#item.id * 17 % 60)
+	-- V12: every treasure's interest clock starts now, so untouched treasure grows together and the feed says so
+	-- in one line (see Loot.tick). V11 staggered the clocks by up to 59 s to spread one line per treasure; with
+	-- 45 s steps that made some treasures grow the moment a raid began.
+	item.unclaimedSince = now()
 	setBonus(item, 0)
 end
 
@@ -961,6 +963,8 @@ function Loot.setRevealed(item, revealed)
 	end
 end
 
+local grown = {} -- V12: treasures whose interest went up this tick (one feed line for them all)
+
 function Loot.tick()
 	local t = now()
 	for _, item in ipairs(Loot.items) do
@@ -1001,11 +1005,36 @@ function Loot.tick()
 				math.min(Config.LOOT_INTEREST_MAX, math.floor((t - item.unclaimedSince) / Config.LOOT_INTEREST_EVERY))
 			local earned = steps * math.max(1, math.floor(item.def.value * Config.LOOT_INTEREST_SHARE + 0.5))
 			if earned ~= item.bonus then
+				local grew = earned > item.bonus
 				setBonus(item, earned)
-				Net.feed("The " .. item.def.name .. " is worth " .. Loot.valueOf(item) .. " gold now!", item.def.color)
+				if grew then
+					table.insert(grown, item)
+				end
 			end
 		end
 	end
+	-- V12: one line for every treasure that grew this moment. Through V11 each one had its own ("The Lost
+	-- Compass is worth 7 gold now!"), and untouched treasure all grows at once: bursts of up to nineteen lines,
+	-- about fifty a raid, pushing everything else out of the feed. The board and the map show each value.
+	if #grown == 1 then
+		local item = grown[1]
+		Net.feed("The " .. item.def.name .. " is worth " .. Loot.valueOf(item) .. " gold now!", item.def.color)
+	elseif #grown > 1 then
+		table.sort(grown, function(a, b)
+			return Loot.valueOf(a) > Loot.valueOf(b)
+		end)
+		local best = grown[1]
+		Net.feed(
+			string.format(
+				"%d untouched treasures grew. The %s is worth %d gold now (T: every value).",
+				#grown,
+				best.def.name,
+				Loot.valueOf(best)
+			),
+			Color3.fromRGB(255, 215, 90)
+		)
+	end
+	table.clear(grown)
 end
 
 function Loot.forget(player)

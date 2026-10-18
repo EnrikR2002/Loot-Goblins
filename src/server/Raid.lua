@@ -203,7 +203,7 @@ function Raid.onBanked(item, player)
 		userId = player.UserId,
 		item = item.id,
 		itemName = item.def.name,
-		value = item.def.value,
+		value = value, -- V12: what was paid (interest and the final rush included); V11 sent the base value
 		total = gold and gold.Value or item.def.value,
 		position = refs.hoard.position,
 	})

@@ -265,7 +265,7 @@ RunService.PreSimulation:Connect(function(dt)
 			if out.event == "sketchy" then
 				trickQueued = false
 			end
-			onEvent(out.event, hull.Position)
+			onEvent(out.event, hull.Position, out.airTime)
 			if out.event ~= "splash" then
 				fxRemote:FireServer(out.event)
 			end
