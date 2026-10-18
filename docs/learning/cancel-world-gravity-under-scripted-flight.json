@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "cancel-world-gravity-under-scripted-flight",
+  "title": "Roblox gravity still pulls a body whose velocity a script sets every frame",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-18",
+  "topics": [
+    "physics",
+    "movement",
+    "testing"
+  ],
+  "observation": "A client flew its own character by setting AssemblyLinearVelocity every frame from its own flight model (its own gravity). Workspace gravity still acted inside each physics step, so every throw sank below the arc the aim ring promised: 25 studs low after 7 s and about 40 at touchdown, enough to put throws aimed at beaches into the sea. A VectorForce equal to the body's weight, enabled only while flying, made the real flight match the model: throws at 16 islands then landed 2 to 22 studs from their aim points. The limbs hung on ball sockets while tumbling, so they were separate assemblies and their mass had to be counted too.",
+  "recommendation": "When a script drives a body's velocity with its own gravity model, cancel workspace gravity on it (a world-space VectorForce of total mass times workspace.Gravity, counting every assembly that hangs from it) for the duration, and measure where it lands against where the model says it will.",
+  "applies_when": [
+    "A script sets a part's or character's velocity every frame",
+    "A projectile or flight model has its own gravity and an aim preview"
+  ],
+  "limits": [
+    "Measured on one Studio client with a client-owned character",
+    "Server-owned bodies and other frame rates were not measured"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md",
+      "detail": "Section C1: the three causes of sea landings, the anti-gravity force and the 16-island landing table."
+    }
+  ]
+}

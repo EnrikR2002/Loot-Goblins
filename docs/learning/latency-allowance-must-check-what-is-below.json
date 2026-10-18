@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "latency-allowance-must-check-what-is-below",
+  "title": "A server latency allowance can turn a near miss into a miss",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-18",
+  "topics": [
+    "networking",
+    "physics",
+    "server-authority"
+  ],
+  "observation": "The server ended a flight with a water splash when the character was within an allowance above the water level (3.2 studs plus 6% of the fall speed, to cover latency). Over a beach this counted a splash up to 21 studs early, before the character reached dry land, so throws aimed at beaches were scored as sea landings about 20 studs short. Counting the early splash only when a downward ray from the point the character was heading for hit water removed the shortfall.",
+  "recommendation": "When a server forgives latency by deciding an outcome early, check that the outcome is true of where the object is actually going (a ray from its projected point), not only of the height it has reached.",
+  "applies_when": [
+    "The server resolves landings, hits or zone entries ahead of time to hide latency"
+  ],
+  "limits": [
+    "One game's splash rule, measured on one client in Studio without added latency"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md",
+      "detail": "Section C1, cause (3), and the landing table after the change."
+    }
+  ]
+}

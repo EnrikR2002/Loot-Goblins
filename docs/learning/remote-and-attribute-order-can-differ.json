@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "remote-and-attribute-order-can-differ",
+  "title": "A RemoteEvent and an attribute set together can arrive in either order",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-18",
+  "topics": [
+    "networking",
+    "reliability"
+  ],
+  "observation": "The server set a player attribute (Diving) and then fired a RemoteEvent (DiveStart) in the same frame. The client started the flight on the event and cancelled it on any frame where the attribute was missing. Once in about forty launches the character dropped straight down off the ship under ordinary gravity, consistent with the event arriving before the attribute. Giving the attribute one second to arrive after the event (the end of a flight is still the attribute clearing) closed the window; the fault was not reproducible on demand.",
+  "recommendation": "Do not let a client cancel state started by a remote because a related attribute is missing on the first frames; treat a change of the attribute (set, then cleared) as the signal, or carry the needed state in the remote itself.",
+  "applies_when": [
+    "A server sets attributes and fires remotes for the same event",
+    "A client cross-checks one against the other"
+  ],
+  "limits": [
+    "The ordering was inferred from one failure (the fall matched world gravity) and the code path, not captured in a network trace"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md",
+      "detail": "Section F, the dropped throw, with its screenshot in section E."
+    }
+  ]
+}
