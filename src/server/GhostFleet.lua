@@ -13,7 +13,13 @@
 --      treasure (a grip hit: Loot.knockLoose's two-strike rule, Impact's grace). Only one pirate leaps at a
 --      time, fleet-wide. A keg or a cannonball sinks a dinghy outright.
 -- Everything is kinematic, moved from here (Pursuit's tools: swim, air, place, hit), so tornadoes lift the
--- ships and dinghies and ramps throw dinghies; nothing is a physics boat. One fleet at a time; it ends at the
+-- ships and dinghies and ramps throw dinghies; nothing is a physics boat.
+-- V13.1 (the V13 playtest: "they just get stuck and don't really follow you, they should also follow alongside the
+-- pirates"): ships and dinghies are GHOSTS: they sail straight through rocks and islands (Pursuit.swim's `ghost`),
+-- so nothing can wedge them. The ships surge to catch up, rise again behind the thief out of the fog when they fall
+-- far back, and once the dinghies are out they ESCORT them, abreast of the thief's wake on either side, firing
+-- now and then, all the way to the sanctuary. A pirate who boards lays into you (a hit: Config.KNOCKOUT); nothing
+-- here takes the Chalice. One fleet at a time; it ends at the
 -- sanctuary, when the Chalice is banked or leaves the thief's hands (it follows a new holder at sea), when
 -- the thief dies or leaves, and at the raid's reset.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -379,6 +385,7 @@ local function mover(model, root, position, heading, draft)
 		vy = 0,
 		draft = draft,
 		keepOut = true,
+		ghost = true, -- V13.1: through land, never stuck
 	}
 end
 
@@ -550,35 +557,52 @@ local function tickShip(ship, dt, t, info)
 		return
 	end
 	ship.rise = math.min(1, ship.rise + dt / 2.5)
-	-- Their places: either side of the thief's wake and one further back, never a rigid line.
+	-- Their places: either side of the thief's wake and one further back, never a rigid line. V13.1: once the
+	-- dinghies are out the ships escort them, abreast of the thief on either side (the third behind).
 	local back = info.velocity.Magnitude > 10 and -info.velocity.Unit or flat(ship.position - info.at).Unit
 	local across = Vector3.new(-back.Z, 0, back.X)
-	local slot = info.at
-		+ back * (ship.side == 0 and 200 or 90)
-		+ across * ship.side * G.SPACING
-		+ across * math.sin(t * 0.5 + ship.index) * 25
-	local gap = flat(info.at - ship.position).Magnitude
-	local want
+	local slot
 	if fleet.deployed then
-		want = math.max(40, info.targetSpeed * 0.55) -- falling back into the fog
-	elseif gap > 450 then
+		slot = info.at
+			+ back * (ship.side == 0 and 170 or 40)
+			+ across * (ship.side == 0 and 0 or ship.side * G.ESCORT)
+			+ across * math.sin(t * 0.4 + ship.index) * 20
+	else
+		slot = info.at
+			+ back * (ship.side == 0 and 200 or 90)
+			+ across * ship.side * G.SPACING
+			+ across * math.sin(t * 0.5 + ship.index) * 25
+	end
+	local gap = flat(info.at - ship.position).Magnitude
+	local toSlot = flat(slot - ship.position).Magnitude
+	local want
+	if gap > 450 or toSlot > 300 then
 		want = G.SHIP_SURGE
 	else
-		want = math.clamp(info.targetSpeed + (flat(slot - ship.position).Magnitude - 30) * 0.8, 30, G.SHIP_SPEED)
+		-- Match the thief, closing on its place in the line.
+		want = math.clamp(info.targetSpeed + (toSlot - 30) * 0.8, 30, G.SHIP_SURGE)
+	end
+	-- Hopelessly far behind: a ghost ship sinks into the fog and rises again behind the thief, out of sight.
+	local behind = info.velocity.Magnitude < 10 or flat(ship.position - info.at):Dot(info.velocity) < 0
+	if gap > 900 and behind and t - (ship.resurfacedAt or -10) > 5 then
+		local spot = info.at + back * 420 + across * ship.side * G.ESCORT
+		local water = SeaNav.nearestWater(spot.X, spot.Z, 3.8)
+		if water and not Pursuit.inSanctuary(water) then
+			ship.resurfacedAt = t
+			ship.position = Vector3.new(water.X, 0, water.Z)
+			ship.heading = -back
+			ship.speed = info.targetSpeed
+			ship.rise = 0
+			Pursuit.fx("erupt", ship.position)
+		end
 	end
 	local rate = want > ship.speed and 80 or 60
 	ship.speed += math.clamp(want - ship.speed, -rate * dt, rate * dt)
 	Pursuit.air(ship, dt, t)
 	Pursuit.swim(ship, slot, ship.speed, dt, G.SHIP_TURN)
-	-- Volleys: marked shells where the thief will be.
-	if
-		not fleet.deployed
-		and t >= ship.nextVolley
-		and gap < G.VOLLEY_RANGE
-		and (ship.alt or 0) < 3
-		and ship.rise >= 1
-	then
-		ship.nextVolley = t + G.VOLLEY_GAP * random:NextNumber(0.85, 1.25)
+	-- Volleys: marked shells where the thief will be (V13.1: escorting, less often).
+	if t >= ship.nextVolley and gap < G.VOLLEY_RANGE and (ship.alt or 0) < 3 and ship.rise >= 1 then
+		ship.nextVolley = t + (fleet.deployed and G.ESCORT_VOLLEY_GAP or G.VOLLEY_GAP) * random:NextNumber(0.85, 1.25)
 		for shot = 1, G.VOLLEY_SHOTS do
 			local lead = info.at + info.velocity * (G.VOLLEY_DELAY * (0.6 + shot * 0.3))
 			local aim = lead + Vector3.new(random:NextNumber(-10, 10), 0, random:NextNumber(-10, 10))
@@ -690,9 +714,10 @@ local function tickDinghy(dinghy, dt, t, info)
 					lift = 12,
 					spin = 1,
 					hull = 3,
+					damage = G.BOARD_DAMAGE,
 					reason = "ghost",
 					cause = "a ghost pirate",
-					text = "A GHOST PIRATE LEAPT ABOARD! Shake them off!",
+					text = "A GHOST PIRATE LEAPT ABOARD AND LAID INTO YOU!",
 				})
 				Pursuit.fx("snatch", where)
 			end
@@ -732,8 +757,11 @@ function GhostFleet.tick(dt)
 			Net.toast(holder, "THE GHOST FLEET IS AFTER YOU NOW!")
 			f.lostAt = nil
 		else
+			-- (V13.1: a thief who was just knocked out may get up and take the Chalice back: the fleet waits.)
+			local knocked = target.Parent and target:GetAttribute("KnockedOutAt")
+			local downLately = knocked and t - knocked < Config.KNOCKOUT.WAIT
 			f.lostAt = f.lostAt or t
-			if t - f.lostAt > 3 then
+			if t - f.lostAt > (downLately and Config.KNOCKOUT.WAIT or 3) then
 				finishFleet("The Ghost Fleet sinks back into the fog.")
 				return
 			end
@@ -772,13 +800,7 @@ function GhostFleet.tick(dt)
 	if not f.deployed and Pursuit.atSea(target) and off > G.DEPLOY then
 		deploy(t, info.at)
 	end
-	if f.deployed and t - f.deployedAt > G.SHIP_FADE then
-		for _, ship in ipairs(f.ships) do
-			if ship.model and not ship.sinking then
-				sinkAndRemove(ship, 3)
-			end
-		end
-	end
+	-- (V9 to V13 the ships sank into the fog SHIP_FADE seconds after the dinghies went. V13.1: they escort them.)
 	for index = #f.ships, 1, -1 do
 		local ship = f.ships[index]
 		if ship.model then

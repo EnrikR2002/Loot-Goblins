@@ -40,6 +40,8 @@ local CHILLED = Color3.fromRGB(150, 220, 255)
 local gui, scale
 local helpGui, helpScale -- V12: the controls card's own layer, over the hoard arrow and the danger arrows
 local top, timer, heatFill, heatLabel, heatHint, banner, feedList, board, boardTitle, objective, toast, flash
+local shoreHint, knockoutFrame, knockoutTitle, knockoutSub -- V13.1
+local knockoutUntil, knockoutCause
 local help
 local slots = {}
 local boardRows = {}
@@ -517,6 +519,57 @@ local function buildBottom()
 		TextTransparency = 1,
 		TextStrokeTransparency = 1,
 	})
+	-- V13.1: "B · CALL A BOAT", big and gold, for a carrier at the edge of an island (the V13 playtest: make it easy
+	-- to read that B brings a boat).
+	shoreHint = text(gui, {
+		Name = "ShoreHint",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -142),
+		Size = UDim2.fromOffset(0, 44),
+		AutomaticSize = Enum.AutomaticSize.X,
+		TextScaled = false,
+		TextSize = 24,
+		BackgroundColor3 = DARK,
+		BackgroundTransparency = 0.15,
+		Font = Enum.Font.GothamBlack,
+		TextColor3 = GOLD,
+		TextStrokeTransparency = 0.4,
+		Visible = false,
+		ZIndex = 6,
+	})
+	corner(shoreHint, 12)
+	make("UIStroke", { Color = GOLD, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, shoreHint)
+	make("UIPadding", { PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18) }, shoreHint)
+	-- V13.1: the knockout (server/Knockout.lua).
+	knockoutFrame = make("Frame", {
+		Name = "Knockout",
+		BackgroundColor3 = Color3.fromRGB(10, 6, 14),
+		BackgroundTransparency = 0.45,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		Visible = false,
+		ZIndex = 20,
+	}, gui)
+	knockoutTitle = text(knockoutFrame, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.42),
+		Size = UDim2.fromOffset(700, 64),
+		Text = "KNOCKED OUT!",
+		Font = Enum.Font.GothamBlack,
+		TextColor3 = Color3.fromRGB(255, 120, 90),
+		TextStrokeTransparency = 0.2,
+		ZIndex = 21,
+	})
+	knockoutSub = text(knockoutFrame, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(700, 30),
+		Text = "",
+		Font = Enum.Font.GothamBold,
+		TextColor3 = WHITE,
+		TextStrokeTransparency = 0.3,
+		ZIndex = 21,
+	})
 	flash = make("Frame", {
 		Name = "Flash",
 		BackgroundColor3 = WHITE,
@@ -544,7 +597,7 @@ local HELP_COLUMNS = {
 			{ "Q", "throw what you carry" },
 			{ "CLICK", "sword: knocks treasure loose" },
 			{ "G", "throw a powder keg" },
-			{ "E", "(nothing near) Poltergoblin" },
+			{ "E", "in a boat: climb out" },
 		},
 	},
 	{
@@ -581,7 +634,8 @@ local HELP_RULES = {
 	"A ring on the ground or the sea means something lands there: move.",
 	"Whatever guards a treasure follows its thief home, until the gold buoys round Goblin Cove.",
 	"Keep your speed at sea: pursuers catch whoever slows down.",
-	"CONTROLLER: A jump / fire, X boost, B dash / drift, Y leave a boat (on foot: Poltergoblin), R1 ability / trick, L2 hook, L1 throw, R3 map.",
+	"Out of health? You're KNOCKED OUT for 5 s and drop what you carry. Creatures never steal it: they hurt you.",
+	"CONTROLLER: A jump / fire, X boost, B dash / drift, Y leave a boat, R1 ability / trick, L2 hook, L1 throw, R3 map.",
 	"D-pad: down calls a boat, left throws a keg, right the wardrobe, up the emotes.",
 }
 -- V13: the Port's own card (the same H key, a different card).
@@ -1049,12 +1103,18 @@ local function updateMoves(now, root, carrying)
 	local polterReady = player:GetAttribute("PolterReadyAt") or 0
 	if polterEnds then
 		local left = math.max(polterEnds - now, 0)
-		setSlot(slots.polter, left / Config.POLTER_DURATION, true, cooldownText(left), foot)
+		setSlot(slots.polter, left / Config.POLTER_DURATION, true, cooldownText(left), foot and Config.POLTER_ENABLED)
 	elseif now < polterReady then
 		local left = polterReady - now
-		setSlot(slots.polter, 1 - left / Config.POLTER_COOLDOWN, false, cooldownText(left), foot)
+		setSlot(
+			slots.polter,
+			1 - left / Config.POLTER_COOLDOWN,
+			false,
+			cooldownText(left),
+			foot and Config.POLTER_ENABLED
+		)
 	else
-		setSlot(slots.polter, 1, not (root and inWard(root.Position)), nil, foot)
+		setSlot(slots.polter, 1, not (root and inWard(root.Position)), nil, foot and Config.POLTER_ENABLED)
 	end
 
 	local grappleReady = player:GetAttribute("GrappleReadyAt") or 0
@@ -1312,6 +1372,9 @@ local function applyMode(mode)
 	local foot, boat, port = mode == "foot", mode == "boat", mode == "port"
 	for key, slot in pairs(slots) do
 		local want = (key == "keg" or key == "polter") and foot or (foot or boat)
+		if key == "polter" and not Config.POLTER_ENABLED then
+			want = false -- V13.1: switched off
+		end
 		slot.frame.Parent.Visible = foot or boat
 		if not want then
 			slot.shown = false
@@ -1338,6 +1401,92 @@ end
 
 function Hud.mode()
 	return hudMode
+end
+
+-- V13.1: knocked out for `seconds` (nil: up again). `cause` names who did it.
+function Hud.knockout(seconds, cause)
+	if seconds then
+		knockoutUntil = workspace:GetServerTimeNow() + seconds
+		knockoutCause = cause
+	else
+		knockoutUntil = nil
+	end
+end
+
+local function updateKnockout(now)
+	if not knockoutUntil or now >= knockoutUntil + 0.2 then
+		knockoutFrame.Visible = false
+		return
+	end
+	knockoutFrame.Visible = true
+	local left = math.max(0, math.ceil(knockoutUntil - now))
+	knockoutSub.Text = (knockoutCause and ("by " .. knockoutCause .. "  ·  ") or "")
+		.. "you dropped your treasure  ·  up in "
+		.. left
+	knockoutFrame.BackgroundTransparency = 0.4 + 0.1 * math.sin(now * 4)
+	knockoutTitle.Rotation = math.sin(now * 3) * 4 -- seeing stars
+end
+
+-- V13.1: is there sea at the edge of where this goblin stands (within Config.RECALL_HINT_EDGE)? Checked a few
+-- times a second, on terrain only (a dock over the water does not count).
+local edgeParams = RaycastParams.new()
+edgeParams.FilterType = Enum.RaycastFilterType.Include
+edgeParams.FilterDescendantsInstances = { workspace.Terrain }
+edgeParams.IgnoreWater = false
+local edgeCheckAt, atEdge = 0, false
+local function nearSea(root, now)
+	if now < edgeCheckAt then
+		return atEdge
+	end
+	edgeCheckAt = now + 0.4
+	atEdge = false
+	local reach = Config.RECALL_HINT_EDGE
+	for _, distance in ipairs({ reach * 0.45, reach }) do
+		for i = 0, 7 do
+			local a = i / 8 * math.pi * 2
+			local from = root.Position + Vector3.new(math.cos(a) * distance, 30, math.sin(a) * distance)
+			local hit = workspace:Raycast(from, Vector3.new(0, -90, 0), edgeParams)
+			if hit and hit.Material == Enum.Material.Water then
+				atEdge = true
+				return atEdge
+			end
+		end
+	end
+	return atEdge
+end
+
+-- The boat this goblin called with B, while it is on its way (client Main tells: Hud.calledBoat).
+local calledBoat
+function Hud.calledBoat(model)
+	calledBoat = model
+end
+
+local function myCalledBoat()
+	return calledBoat and calledBoat.Parent and calledBoat:GetAttribute("Recalled") == player.UserId
+end
+
+local function updateShoreHint(now, phase, root, carrying)
+	local show = false
+	if phase == "raid" and root and carrying and hudMode == "foot" then
+		local hoardFlat = Vector3.new(root.Position.X - hoardPart.Position.X, 0, root.Position.Z - hoardPart.Position.Z)
+		if hoardFlat.Magnitude > Objective.WALK_HOME and nearSea(root, now) then
+			show = true
+			local ready = player:GetAttribute("RecallReadyAt") or 0
+			if myCalledBoat() then
+				shoreHint.Text = calledBoat:GetAttribute("RecallParked") and "YOUR BOAT IS HERE  ·  E TO CLIMB IN"
+					or "YOUR BOAT IS COMING  ·  follow the green beam"
+				shoreHint.TextColor3 = Color3.fromRGB(110, 255, 190)
+			elseif now < ready then
+				shoreHint.Text = string.format("B  ·  A BOAT IN %ds", math.ceil(ready - now))
+				shoreHint.TextColor3 = WHITE
+			else
+				shoreHint.Text = (inputKind == "pad" and "D-PAD DOWN" or (inputKind == "touch" and "TAP BOAT" or "B"))
+					.. "  ·  CALL A BOAT"
+				shoreHint.TextColor3 = math.sin(now * 5) > 0 and GOLD or WHITE
+			end
+		end
+	end
+	shoreHint.Visible = show
 end
 
 local KIND_OF_INPUT = {
@@ -1374,7 +1523,11 @@ function Hud.update(now)
 		updateMoves(now, root, carrying)
 		updateBoatPanel(now)
 		updateObjective(now, phase, root, carrying)
+		updateShoreHint(now, phase, root, carrying)
+	else
+		shoreHint.Visible = false
 	end
+	updateKnockout(now)
 	Map.update(now)
 	updateWaypoint(root, carrying)
 	flushBanner()

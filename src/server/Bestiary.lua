@@ -1057,9 +1057,8 @@ local function eel()
 	})
 end
 
--- THE IMPS (Tangle Isle) -------------------------------------------------------------------
--- Pillar tops they use, as offsets from the island and a height (IslandsFar's pillars and
--- Outlands' new ones). The last is the nest.
+-- TANGLE ISLE's pillar tops, as offsets from the island and a height (IslandsFar's pillars and Outlands' new ones).
+-- V5 to V13 the imps leapt between them (the last was their nest); since V13.1 the jade frogs sit on them.
 local PERCHES = {
 	{ -70, 52, 40 },
 	{ -10, 62, -10 },
@@ -1071,226 +1070,240 @@ local PERCHES = {
 	{ -90, 50, -190 },
 	{ -250, 66, -10 },
 }
-local NEST = #PERCHES
 
-local function imp(index, perchIndex)
-	local k = K.Imp
+-- THE JADE FROGS (Tangle Isle, V13.1) -------------------------------------------------------
+-- The V13 playtest: "jade frogs need rework and they need to attack you on the island and hop in water in a reliable
+-- manner". They replace V5's imps (which snatched the treasure and ran off with it: no creature takes treasure since
+-- V13.1). Three big jade frogs, the Jade Frog's own kind, sit on the canopy's pillar tops. A goblin carrying treasure
+-- anywhere on the island is bounded after, hop by hop, and POUNCED on: a ring opens where they are (k.pounce
+-- seconds: the time to get off it), then a belly slam (a hit: Config.KNOCKOUT). When the thief takes to the water the
+-- frogs plop in after them: their sea form (Pursuit forms.Tangle) sets out from beside them and they are out of sight
+-- on the island until it comes home.
+local function jadeFrog(index, perchIndex)
+	local k = K.JadeFrog
 	local center = C.at("Tangle")
-	local FUR = Color3.fromRGB(96, 150, 84)
+	local JADE = Color3.fromRGB(52, 178, 116)
+	local JADE_DARK = Color3.fromRGB(30, 118, 80)
+	local BELLY = Color3.fromRGB(196, 232, 170)
+	local GOLDEN = Color3.fromRGB(255, 200, 60)
 	local function perch(i)
 		local p = PERCHES[i]
-		return C.at("Tangle", p[1], p[2] + 1.6, p[3])
+		return C.at("Tangle", p[1], p[2] + 2.4, p[3])
+	end
+	-- Ground a frog can land on near (x, z): solid ground above the waterline, or nil.
+	local function landing(x, z, fromY)
+		local y, material = C.floor(x, z, (fromY or 120) + 40)
+		if y < 1.5 or material == M.Water then
+			return nil
+		end
+		return v3(x, y + 2.4, z)
 	end
 	return C.add({
-		name = "Imp" .. index,
+		name = "JadeFrog" .. index,
 		home = perch(perchIndex),
-		wake = 420,
-		size = 4,
+		wake = 470,
+		size = 7,
 
 		build = function(self)
-			self.model, self.root = C.body("Imp", {
-				{ "Body", v3(2.2, 2.6, 1.8), nil, FUR, M.Fabric },
-				{ "Head", v3(2, 1.8, 1.8), CFrame.new(0, 2, -0.2), FUR, M.Fabric },
-				{ "EarL", v3(0.5, 1.6, 0.9), CFrame.new(-1.2, 2.6, 0) * CFrame.Angles(0, 0, rad(30)), FUR, M.Fabric },
-				{ "EarR", v3(0.5, 1.6, 0.9), CFrame.new(1.2, 2.6, 0) * CFrame.Angles(0, 0, rad(-30)), FUR, M.Fabric },
-				{ "EyeL", v3(0.4, 0.4, 0.2), CFrame.new(-0.45, 2.2, -1.1), Color3.fromRGB(255, 220, 90), M.Neon },
-				{ "EyeR", v3(0.4, 0.4, 0.2), CFrame.new(0.45, 2.2, -1.1), Color3.fromRGB(255, 220, 90), M.Neon },
-				{ "Tail", v3(0.5, 0.5, 3), CFrame.new(0, -0.6, 2.2) * CFrame.Angles(rad(35), 0, 0), FUR, M.Fabric },
-				-- V10: a wide toothy grin, a pale belly, little horns, hands, and a tuft on the tail.
+			self.model, self.root = C.body("JadeFrog", {
+				{ "Body", v3(4.4, 4.4, 4.4), nil, JADE, M.SmoothPlastic, Enum.PartType.Ball },
+				{ "Belly", v3(3.4, 3.4, 3.4), CFrame.new(0, -0.7, -1.2), BELLY, M.SmoothPlastic, Enum.PartType.Ball },
+				{ "Head", v3(3.4, 3.4, 3.4), CFrame.new(0, 1.2, -1.9), JADE, M.SmoothPlastic, Enum.PartType.Ball },
+				{ "EyeL", v3(1.5, 1.5, 1.5), CFrame.new(-1.05, 2.7, -2.1), GOLDEN, M.Neon, Enum.PartType.Ball },
+				{ "EyeR", v3(1.5, 1.5, 1.5), CFrame.new(1.05, 2.7, -2.1), GOLDEN, M.Neon, Enum.PartType.Ball },
 				{
-					"Grin",
-					v3(1.2, 0.3, 0.2),
-					CFrame.new(0, 1.55, -1.12),
-					Color3.fromRGB(250, 246, 230),
+					"PupilL",
+					v3(0.6, 0.6, 0.6),
+					CFrame.new(-1.1, 2.75, -2.75),
+					DARK,
 					M.SmoothPlastic,
-				},
-				{ "Belly", v3(1.5, 1.6, 0.2), CFrame.new(0, -0.1, -0.92), Color3.fromRGB(176, 214, 150), M.Fabric },
-				{
-					"ImpHornL",
-					v3(0.3, 0.8, 0.3),
-					CFrame.new(-0.5, 3.1, -0.2) * CFrame.Angles(0, 0, rad(20)),
-					Color3.fromRGB(60, 46, 40),
-					M.Slate,
-				},
-				{
-					"ImpHornR",
-					v3(0.3, 0.8, 0.3),
-					CFrame.new(0.5, 3.1, -0.2) * CFrame.Angles(0, 0, rad(-20)),
-					Color3.fromRGB(60, 46, 40),
-					M.Slate,
-				},
-				{ "HandL", v3(0.8, 0.8, 0.8), CFrame.new(-1.4, -0.3, -0.6), FUR, M.Fabric, Enum.PartType.Ball },
-				{ "HandR", v3(0.8, 0.8, 0.8), CFrame.new(1.4, -0.3, -0.6), FUR, M.Fabric, Enum.PartType.Ball },
-				{
-					"TailTip",
-					v3(0.9, 0.9, 0.9),
-					CFrame.new(0, -1.46, 3.43),
-					Color3.fromRGB(60, 46, 40),
-					M.Fabric,
 					Enum.PartType.Ball,
 				},
-			})
-		end,
-
-		drop = function(self, velocity)
-			if self.holding then
-				Loot.letGo(self.holding, velocity or v3(0, 16, 0))
-				self.holding = nil
-			end
+				{
+					"PupilR",
+					v3(0.6, 0.6, 0.6),
+					CFrame.new(1.1, 2.75, -2.75),
+					DARK,
+					M.SmoothPlastic,
+					Enum.PartType.Ball,
+				},
+				{ "Mouth", v3(2.6, 0.25, 0.3), CFrame.new(0, 0.9, -3.45), JADE_DARK, M.SmoothPlastic },
+				{
+					"LegL",
+					v3(1.2, 1.4, 3.6),
+					CFrame.new(-2.1, -1.3, 0.8) * CFrame.Angles(rad(-20), 0, rad(10)),
+					JADE_DARK,
+					M.SmoothPlastic,
+				},
+				{
+					"LegR",
+					v3(1.2, 1.4, 3.6),
+					CFrame.new(2.1, -1.3, 0.8) * CFrame.Angles(rad(-20), 0, rad(-10)),
+					JADE_DARK,
+					M.SmoothPlastic,
+				},
+				{ "ArmL", v3(0.8, 2, 0.8), CFrame.new(-1.4, -1.4, -2.2), JADE_DARK, M.SmoothPlastic },
+				{ "ArmR", v3(0.8, 2, 0.8), CFrame.new(1.4, -1.4, -2.2), JADE_DARK, M.SmoothPlastic },
+				-- A gold ring round its back, like the treasure's lily pad.
+				{
+					"Ring",
+					v3(0.4, 4.6, 4.6),
+					CFrame.new(0, 0.2, 0.4) * CFrame.Angles(0, 0, rad(90)),
+					GOLDEN,
+					M.Metal,
+					Enum.PartType.Cylinder,
+				},
+			}, nil, 1.6)
 		end,
 
 		reset = function(self)
-			self:drop()
 			self.position, self.yaw = self.home, 0
-			self.state, self.hop, self.nextTryAt, self.until_ = "idle", nil, 0, 0
-			self.goal = nil
+			self.hop, self.pounceAt, self.victim = nil, nil, nil
+			self.state, self.nextPounce, self.nextHop, self.hidden = "idle", 0, 0, false
 			C.pose(self)
 		end,
 
-		-- One jump from where it is to `to`, taking as long as the distance needs.
-		jump = function(self, to, seconds)
-			local from = self.position
-			local duration = seconds or math.max(0.45, (to - from).Magnitude / k.hop)
-			self.hop = { from = from, to = to, t0 = C.now(), t1 = C.now() + duration }
+		-- One leap from where it is to `to`, `seconds` long, `height` studs high at the top.
+		jump = function(self, to, seconds, height)
+			self.hop = { from = self.position, to = to, t0 = C.now(), t1 = C.now() + seconds, height = height }
 			C.face(self, to)
 		end,
 
-		-- Hops toward a far perch by way of the perches between. Returns true when it has arrived.
-		travel = function(self, goalIndex)
-			local goal = perch(goalIndex)
-			if (self.position - goal).Magnitude < 3 then
-				return true
-			end
-			local best, bestDistance = goal, (self.position - goal).Magnitude
-			for i = 1, #PERCHES do
-				local p = perch(i)
-				local hop, left = (p - self.position).Magnitude, (p - goal).Magnitude
-				if hop > 4 and hop < 170 and left < bestDistance - 20 then
-					best, bestDistance = p, left
-				end
-			end
-			self:jump(best)
-			return false
-		end,
-
 		onBlast = function(self)
-			self:drop(v3(0, 20, 0))
-			self.state, self.nextTryAt = "home", C.now() + k.rest * 2
-			C.fx("shriek", self.position)
-		end,
-
-		-- The Jade Frog has just been taken: they go for it at once, one after the other.
-		onTaken = function(self, item, _, fromSpot)
-			if fromSpot and item.def.island == "Tangle" then
-				self.nextTryAt = C.now() + (index - 1) * 2.5
-			end
+			-- Blown off its feet: it bounds back home and sulks.
+			self.state, self.nextPounce = "home", C.now() + 4
+			self.pounceAt = nil
+			C.fx("croak", self.position)
 		end,
 
 		tick = function(self, _, t)
+			-- Its sea form is out (Pursuit forms.Tangle): the frogs went into the water with it.
+			if C.seaOut.Tangle then
+				if not self.hidden then
+					self.hidden = true
+					self.hop, self.pounceAt = nil, nil
+					self.root.CFrame = CFrame.new(0, -200, 0)
+				end
+				self.busy = false
+				return
+			elseif self.hidden then
+				self.hidden = false
+				self.position, self.state = self.home, "idle"
+				C.fx("splash", self.position)
+			end
 			-- In the air.
 			local hop = self.hop
 			if hop then
 				local a = math.clamp((t - hop.t0) / (hop.t1 - hop.t0), 0, 1)
-				local arc = math.sin(a * math.pi) * math.max(8, (hop.to - hop.from).Magnitude * 0.18)
-				self.position = hop.from:Lerp(hop.to, a) + v3(0, arc, 0)
-				C.pose(self)
-				if self.holding then
-					if self.holding.state ~= "loose" or not self.holding.held then
-						self.holding = nil
-					else
-						Loot.hold(self.holding, self.root.CFrame * CFrame.new(0, 3.4, 0))
-					end
-				end
+				self.position = hop.from:Lerp(hop.to, a) + v3(0, math.sin(a * math.pi) * hop.height, 0)
+				-- Legs out in the air, tucked on the ground.
+				C.pose(self, CFrame.Angles(rad(-25 * math.sin(a * math.pi)), 0, 0))
 				if a < 1 then
 					self.busy = true
 					return
 				end
 				self.hop = nil
 				self.position = hop.to
-			end
-			local state = self.state
-			if state == "leap" then
-				-- Landed on the mark. Is the thief still on it?
-				local victim
-				for _, entry in ipairs(C.carriers(self.position, k.reach)) do
-					if math.abs(entry.root.Position.Y - self.position.Y) < 10 then
-						victim = entry
+				C.pose(self)
+				if self.pounceAt then
+					-- The belly slam: is the thief still on the ring?
+					self.pounceAt = nil
+					local spot = hop.to
+					C.fx("croak", spot)
+					for _, entry in ipairs(C.players(spot, k.reach + 2)) do
+						if math.abs(entry.root.Position.Y - spot.Y) < 12 then
+							local away = flatUnit(entry.root.Position - spot, C.heading(self))
+							C.strike(entry, spot, {
+								damage = k.damage,
+								push = away * k.push + v3(0, k.lift, 0),
+								reason = "frog",
+								cause = "the jade frogs",
+								text = entry.item and "A JADE FROG BELLY-SLAMMED YOU! Get off the rings!" or nil,
+							})
+						end
 					end
+					self.nextPounce = t + k.rest
 				end
-				if victim then
-					local item = victim.item
-					Loot.worldTake(victim.player, "imp")
-					if item.state == "loose" and Loot.hold(item, self.root.CFrame * CFrame.new(0, 3.4, 0)) then
-						self.holding = item
-						self.state = "flee"
-						Net.toast(victim.player, "AN IMP HAS IT! It is running for its nest in the west of the canopy.")
-						C.fx("shriek", self.position)
+				self.nextHop = t + 0.12
+			end
+			if t < self.nextHop then
+				self.busy = true
+				return
+			end
+			-- Who: the nearest goblin carrying treasure on the island, on dry land (or, failing that, in the water).
+			local target, wet
+			for _, entry in ipairs(C.carriers(center, k.island)) do
+				if entry.root.Position.Y > 2 then
+					if not target or entry.distance < target.distance then
+						target = entry
+					end
+				elseif not wet or entry.distance < wet.distance then
+					wet = entry
+				end
+			end
+			if not target and wet then
+				-- After them to the water's edge; their sea form takes it from there (Pursuit forms.Tangle, `from`).
+				local to = wet.root.Position
+				local gap = Util.flatDistance(to, self.position)
+				local direction = flatUnit(to - self.position, C.heading(self))
+				for _, step in ipairs({ math.min(k.hopLength, gap), k.hopLength * 0.5, k.hopLength * 0.25 }) do
+					local aim = self.position + direction * step
+					local spot = step > 2 and landing(aim.X, aim.Z, self.position.Y)
+					if spot then
+						self:jump(spot, math.max(0.3, step / k.hop), math.max(4, step * 0.3))
+						self.busy = true
 						return
 					end
 				end
-				self.state, self.until_ = "miss", t + 1.2
-				self.nextTryAt = t + k.rest
-				return
-			elseif state == "miss" then
-				if t >= self.until_ then
-					self.state = "home"
+				if t >= (self.nextCroak or 0) then
+					self.nextCroak = t + 1.5
+					C.fx("croak", self.position)
 				end
-				return
-			elseif state == "flee" then
-				if not self.holding then
-					self.state = "home"
-				elseif self:travel(NEST) then
-					self.state, self.until_ = "nest", t + k.hold
-				end
+				self.nextHop = t + 0.3
 				self.busy = true
 				return
-			elseif state == "nest" then
-				self.busy = true
-				local item = self.holding
-				if not item or item.state ~= "loose" or not item.held then
-					self.holding = nil
-					self.state = "home"
-				elseif #C.players(self.position, k.scare) > 0 then
-					-- Cornered: it drops the treasure and bolts.
-					self:drop(v3(0, 14, 0))
-					self.state, self.nextTryAt = "home", t + k.rest
-					C.fx("shriek", self.position)
-				elseif t >= self.until_ then
-					Loot.sendHome(item, "taken:The imps")
-					self.holding = nil
-					self.state = "home"
-				else
-					Loot.hold(item, self.root.CFrame * CFrame.new(0, 3.4, 0))
-				end
-				return
-			elseif state == "home" then
-				self.busy = not self:travel(perchIndex)
-				if not self.busy then
-					self.state = "idle"
-				end
-				return
 			end
-			-- Idle on a perch: watching for someone carrying treasure through the canopy.
-			self.busy = false
-			if t < self.nextTryAt then
-				return
-			end
-			for _, entry in ipairs(C.carriers(center, 330)) do
-				local to = entry.root.Position
-				if (to - self.position).Magnitude <= k.notice and to.Y > 18 then
-					-- Shriek, mark the spot, and jump for it.
-					self.state = "leap"
-					self.nextTryAt = t + k.rest
-					local y = C.floor(to.X, to.Z, to.Y + 4)
-					local mark = v3(to.X, y + 0.3, to.Z)
-					C.mark(mark, k.reach, k.leap, FUR)
-					C.fx("shriek", self.position)
-					Net.toast(entry.player, "AN IMP IS JUMPING FOR IT - get off the marked spot!")
-					self:jump(mark + v3(0, 1.6, 0), k.leap)
+			if target then
+				local to = target.root.Position
+				local gap = Util.flatDistance(to, self.position)
+				if gap <= k.range and t >= self.nextPounce then
+					-- POUNCE: a ring where they are going, then the frog comes down on it.
+					local lead = to + flat(target.root.AssemblyLinearVelocity) * (k.pounce * 0.5)
+					local spot = landing(lead.X, lead.Z, to.Y) or landing(to.X, to.Z, to.Y) or to
+					C.mark(spot - v3(0, 2.1, 0), k.reach, k.pounce, JADE)
+					C.fx("croak", self.position)
+					self.pounceAt = spot
+					self:jump(spot, k.pounce, math.max(10, gap * 0.45))
 					self.busy = true
 					return
 				end
+				-- Bound after them: one hop of up to hopLength, onto ground (never into the sea).
+				local step = math.min(k.hopLength, math.max(0, gap - k.range * 0.6))
+				local direction = flatUnit(to - self.position, C.heading(self))
+				local aim = self.position + direction * step
+				local spot = landing(aim.X, aim.Z, self.position.Y) or landing(to.X, to.Z, to.Y)
+				if spot and step > 2 then
+					self:jump(spot, math.max(0.3, step / k.hop), math.max(4, step * 0.3))
+				end
+				self.state = "chase"
+				self.busy = true
+				return
 			end
+			-- Nobody to chase: back to its pillar, in a few big hops.
+			local home = self.home
+			local gap = (home - self.position).Magnitude
+			if gap > 3 then
+				local step = math.min(gap, 60)
+				local aim = self.position + (home - self.position).Unit * step
+				local spot = gap <= 60 and home or landing(aim.X, aim.Z, self.position.Y) or home
+				self:jump(spot, math.max(0.4, step / k.hop), math.max(8, step * 0.35))
+				self.busy = true
+				return
+			end
+			self.state = "idle"
+			self.busy = false
+			-- A slow breath on its pillar.
+			C.pose(self, CFrame.new(0, math.sin(t * 2 + index) * 0.15, 0))
 		end,
 	})
 end
@@ -1495,8 +1508,9 @@ crab()
 ram()
 eel()
 -- They live on the two pillars nearest the shrine, where the treasure is taken from.
-imp(1, 3)
-imp(2, 4)
+jadeFrog(1, 2)
+jadeFrog(2, 4)
+jadeFrog(3, 3)
 -- Routes are offsets from the fort's center: one loop between the barracks, one beat along the south wall.
 marine(1, { { -12, -14 }, { 12, -14 }, { 12, 34 }, { -12, 34 } })
 marine(2, { { -46, 34 }, { 46, 34 } })

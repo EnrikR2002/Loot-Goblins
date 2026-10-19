@@ -643,7 +643,10 @@ end
 
 -- Pushes a hull: adds `velocity` to its motion (and `spin` to its rotation). A hull simulated
 -- by its driver's client cannot be pushed from here, so the push is sent to that client.
-function Boats.shove(boat, velocity, spin)
+-- `tumble` (V13.1, the Guardian's launch): { seconds, altitude, allow }: the boat is thrown end over end for
+-- `seconds` (BoatSim.tumble, on whichever machine simulates it), any class goes the whole way up, and Boats.police
+-- allows it `altitude` studs up for `allow` seconds.
+function Boats.shove(boat, velocity, spin, tumble)
 	if boat.state == "gone" then
 		return
 	end
@@ -658,6 +661,11 @@ function Boats.shove(boat, velocity, spin)
 	if t < (boat.plowUntil or 0) then
 		taken *= 0.2
 	end
+	if tumble then
+		taken = 1
+		boat.liftedUntil = t + tumble.allow
+		boat.liftAltitude = tumble.altitude
+	end
 	if taken ~= 1 then
 		velocity *= taken
 		spin = spin and spin * taken or nil
@@ -670,12 +678,19 @@ function Boats.shove(boat, velocity, spin)
 		boat.shovedUntil = t + 2.5
 	end
 	if boat.pilot then
-		Net.send(boat.pilot, "BoatPush", { hull = boat.hull, velocity = velocity, spin = spin })
+		Net.send(
+			boat.pilot,
+			"BoatPush",
+			{ hull = boat.hull, velocity = velocity, spin = spin, tumble = tumble and tumble.seconds or nil }
+		)
 	else
 		local hull = boat.hull
 		hull:ApplyImpulse(velocity * hull.AssemblyMass)
 		if spin then
 			hull:ApplyAngularImpulse(spin * hull.AssemblyMass * 20)
+		end
+		if tumble then
+			BoatSim.tumble(boat, tumble.seconds, 1, t)
 		end
 	end
 end
@@ -849,7 +864,11 @@ local function police(boat, dt, t)
 		boat.lastPosition, boat.lastMovedAt = position, t
 	end
 	local over = speed > allowed
-	local flying = position.Y - wave > (twisted and Config.TWISTER.ALTITUDE or Config.BOAT_MAX_ALTITUDE)
+	local ceiling = twisted and Config.TWISTER.ALTITUDE or Config.BOAT_MAX_ALTITUDE
+	if t < (boat.liftedUntil or 0) then
+		ceiling = math.max(ceiling, boat.liftAltitude or 0) -- V13.1: thrown sky-high by the Guardian
+	end
+	local flying = position.Y - wave > ceiling
 	if broken or jumped then
 		boat.strikes = Config.BOAT_STRIKE_TIME
 	elseif over or flying then

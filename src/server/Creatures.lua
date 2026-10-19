@@ -33,6 +33,9 @@ local Creatures = {}
 
 Creatures.list = {}
 Creatures.generation = 0 -- Bumped on reset, so a delayed action from an old raid never lands.
+-- V13.1: island id -> its sea form while one is out after a thief (server/Pursuit.lua sets it). An island creature
+-- that goes to sea itself (the jade frogs, the Chill) stays out of sight on its island meanwhile.
+Creatures.seaOut = {}
 
 local refs
 local solid = RaycastParams.new() -- Ground a creature can stand on: terrain and walkable parts.
@@ -134,7 +137,9 @@ end
 -- The one way a creature touches a player. opts:
 --   damage   health removed (0 for a creature that only shoves)
 --   push     a velocity (Vector3) to throw them with
---   reason   knocks their treasure loose with this cause ("crab", "ram", ...), unless nil
+--   reason   what hit them ("crab", "ram", ...). V13.1: on a carrier any strike hurts (Config.KNOCKOUT.HIT) and never
+--            takes the treasure; `harmless` = true for a strike that only moves them.
+--   cause    a name for the knockout feed ("the Guardian")
 --   text     a line for their screen
 -- Returns true if it landed. It does not land on a goblin the world hit a moment ago (Impact.lua), and
 -- `reason` loosens a carrier's grip before it ever drops their treasure (Loot.knockLoose).
@@ -150,8 +155,14 @@ function Creatures.strike(entry, from, opts)
 	if opts.push and not humanoid.SeatPart then
 		Util.knockback(root, opts.push, opts.pushTime or 0.22)
 	end
-	if opts.reason then
-		Loot.knockLoose(player, from, opts.reason, nil)
+	-- V13.1: a creature never takes treasure; every strike on a carrier HURTS them (Loot.knockLoose with no rival),
+	-- named for the knockout feed. `harmless` strikes (a shove from the Maw, a marine's throw) only move them.
+	if not opts.harmless then
+		Loot.knockLoose(player, from, opts.reason or "pursuit", nil)
+	end
+	if opts.cause then
+		player:SetAttribute("LastHitBy", opts.cause)
+		player:SetAttribute("LastHitAt", workspace:GetServerTimeNow())
 	end
 	if opts.text then
 		Net.toast(player, opts.text)
@@ -345,6 +356,7 @@ end
 
 function Creatures.reset()
 	Creatures.generation += 1
+	table.clear(Creatures.seaOut)
 	for _, creature in ipairs(Creatures.list) do
 		creature.busy = false
 		if creature.reset then

@@ -10,10 +10,13 @@
 --   * A hit moves you (knockback is unchanged): being thrown is the fun part.
 -- What it does NOT touch: anything a rival does (sword, a thrown keg, a fired cannon, the grapple
 -- catch). Those keep their own rules, so a creature brushing a carrier never shields them from a
--- thief. Treasure has its own rule, in Loot.knockLoose (the two-strike grip).
+-- thief. Treasure has its own rule, in Loot.knockLoose (V8 to V13 the two-strike grip; V13.1: the world never
+-- takes treasure, it hurts a carrier instead, and a knockout drops it: server/Knockout.lua).
 --
 -- Callers ask Impact.open(player) before a world hit and only apply it if that returns true.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 
@@ -41,14 +44,17 @@ function Impact.shielded(player)
 	return now() - (lastHit[player] or -math.huge) < Config.IMPACT.GRACE
 end
 
--- World damage: scaled, and never the whole of a healthy goblin. Returns what was dealt.
+-- World damage: scaled, and never the whole of a healthy goblin (V13.1: unless they carry treasure: for a carrier
+-- the danger is meant to be real, Config.KNOCKOUT). Returns what was dealt.
 function Impact.damage(humanoid, amount)
 	if amount <= 0 or humanoid.Health <= 0 then
 		return 0
 	end
 	amount *= Config.IMPACT.DAMAGE_SCALE
 	local before = humanoid.Health
-	if before > Config.IMPACT.LAST_STAND then
+	local player = Players:GetPlayerFromCharacter(humanoid.Parent)
+	local carrier = player ~= nil and player:GetAttribute("CarryingLoot") ~= nil
+	if before > Config.IMPACT.LAST_STAND and not carrier then
 		amount = math.min(amount, before - 1)
 	end
 	humanoid:TakeDamage(amount)

@@ -16,6 +16,10 @@
 --          Far behind, it surges (L.SURGE_SPEED, faster than anything). Boats beside its head are shoved aside
 --          by its bow wave. It still breaches now and then for the look of it, well away from any boat: a
 --          splash, never a hit.
+--   V13.1 (the V13 playtest: "the leviathan needs to be able to attack"): the lunge BITES. Every L.LUNGE_GAP seconds
+--          it roars with its jaws open for L.LUNGE_TELL (the tell), then surges L.LUNGE_SPEED faster than the boat for
+--          L.LUNGE_TIME: a boat that holds its course is caught and bitten (thrown, battered, the goblin hurt: a
+--          carrier can be knocked out, Config.KNOCKOUT). A boost, a hard turn (it turns wide) or a jump gets away.
 --   What ends a hunt: the boat reaching the sanctuary (it stops at the lights, roars, and sinks away); the boat
 --          staying in water too shallow for it (L.SHALLOW) for L.SHALLOW_GIVE_UP; three explosions on its head;
 --          nobody left to chase; L.HUNT_TIME as a backstop.
@@ -443,8 +447,9 @@ function Leviathan.huntThief(player)
 	pendingUntil = now() + L.THIEF_WINDOW
 end
 
--- A catch: it has run into the boat. How it throws the boat depends on how slow the boat was.
-local function contact(h, boat, player, t)
+-- A catch: it has run into the boat. How it throws the boat depends on how slow the boat was. V13.1: `bite` (the end
+-- of a lunge) is the jaws closing on the boat: up and over, end over end.
+local function contact(h, boat, player, t, bite)
 	h.contactReadyAt = t + L.CONTACT_REST
 	local hullV = flat(boat.hull.AssemblyLinearVelocity)
 	local speed = hullV.Magnitude
@@ -455,7 +460,17 @@ local function contact(h, boat, player, t)
 		cause = "the Leviathan",
 	}
 	local roll = random:NextNumber()
-	if speed < 60 then
+	if bite then
+		h.lungeUntil = nil
+		opts.hull = L.BITE_HULL
+		opts.damage = L.BITE_DAMAGE
+		opts.away = h.heading
+		opts.push = 70
+		opts.lift = 120
+		opts.spin = 3
+		opts.tumble = { seconds = 1.1, altitude = 160, allow = 4 }
+		opts.text = "THE LEVIATHAN BIT YOUR BOAT! Boost or turn when it roars!"
+	elseif speed < 60 then
 		-- Stopped dead in front of it: up goes the bow, and the boat is tossed over its head.
 		opts.away = h.heading
 		opts.push = 55
@@ -573,7 +588,7 @@ local function huntTick(dt, t)
 		want = boatSpeed * 0.8 -- just bit: dropping back
 	elseif gap > L.SURGE_GAP then
 		want = L.SURGE_SPEED
-	elseif h.lungeUntil and t < h.lungeUntil then
+	elseif h.lungeUntil and t < h.lungeUntil and t >= (h.lungeAt or 0) then
 		want = boatSpeed + L.LUNGE_SPEED
 	elseif gap > L.FOLLOW + 15 then
 		want = boatSpeed + L.CLOSE_RATE
@@ -586,18 +601,25 @@ local function huntTick(dt, t)
 	end
 	local rate = want > h.speed and L.ACCEL or L.DECEL
 	h.speed += math.clamp(want - h.speed, -rate * dt, rate * dt)
-	-- A boat that keeps its speed is never caught: however it got there, the snout does not close past
-	-- CONTACT + 8 on one. (A boat that slows gets no such mercy: the momentum carries it in.)
-	if not slowing and gap < L.CONTACT + 8 then
+	-- Between lunges a boat that keeps its speed is never caught: the snout does not close past CONTACT + 8 on one.
+	-- (A boat that slows gets no such mercy: the momentum carries it in.) V13.1: during a lunge, nothing holds it.
+	local biting = h.lungeUntil ~= nil and t < h.lungeUntil and t >= (h.lungeAt or 0)
+	if not slowing and not biting and gap < L.CONTACT + 8 then
 		h.speed = math.min(h.speed, boatSpeed)
 	end
-	-- The lunge: a roar and open jaws, a near miss on a boat that holds its speed.
-	if h.state == "swim" and t >= h.nextLunge and gap < L.FOLLOW + 30 and t >= h.contactReadyAt then
-		h.nextLunge = t + L.LUNGE_GAP * random:NextNumber(0.8, 1.25)
-		h.lungeUntil = t + L.LUNGE_TIME
-		h.openUntil = t + L.LUNGE_TIME + 0.3
+	-- The lunge (V13.1: a bite): a roar and open jaws for LUNGE_TELL, then it goes for the boat.
+	if h.state == "swim" and t >= h.nextLunge and gap < L.FOLLOW + 40 and t >= h.contactReadyAt then
+		h.nextLunge = t + L.LUNGE_TELL + L.LUNGE_GAP * random:NextNumber(0.8, 1.25)
+		h.lungeAt = t + L.LUNGE_TELL
+		h.lungeUntil = h.lungeAt + L.LUNGE_TIME
+		h.openUntil = h.lungeUntil + 0.3
 		Pursuit.fx("roar", h.position)
-		Net.send(h.target, "Toast", { text = "THE LEVIATHAN LUNGES! Don't slow down!" })
+		Net.send(h.target, "Message", {
+			text = "THE LEVIATHAN OPENS ITS JAWS! BOOST OR TURN!",
+			duration = 1.6,
+			color = PURPLE,
+			priority = 4,
+		})
 	end
 	-- Swim: wide turns, steering round land, never into the sanctuary or the shallows.
 	if h.speed > 1 then
@@ -633,7 +655,7 @@ local function huntTick(dt, t)
 	end
 	-- The catch.
 	if h.state == "swim" and t >= h.contactReadyAt and gap < L.CONTACT and not fooled then
-		contact(h, boat, h.target, t)
+		contact(h, boat, h.target, t, biting)
 	end
 	-- The wake: other boats beside the head are thrown aside.
 	if t >= h.nextWake then

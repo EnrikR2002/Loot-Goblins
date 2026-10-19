@@ -69,6 +69,7 @@ local GhostFleet = require(script.Parent.GhostFleet)
 local GoblinLook = require(script.Parent.GoblinLook)
 local Port = require(script.Parent.Port)
 local BoatAbilities = require(script.Parent.BoatAbilities)
+local Knockout = require(script.Parent.Knockout)
 require(script.Parent.Bestiary)
 require(script.Parent.BestiaryMinor)
 local Raid = require(script.Parent.Raid)
@@ -226,12 +227,14 @@ local LOOSE_TEXT = {
 	lava = "%s burned and dropped the %s!",
 	lightning = "%s was struck by lightning and dropped the %s!",
 	death = "%s died and dropped the %s",
+	knockout = "%s was KNOCKED OUT and dropped the %s!", -- V13.1: the only way the world takes treasure
+	reset = "%s reset and dropped the %s",
+	lost = "%s fell out of the world and dropped the %s",
 	watcher = "A Watcher caught %s: the %s is on the ground!",
 	echo = "%s ran into an Echo and dropped the %s!",
 	crab = "Old Clacker came up under %s: the %s went flying!",
 	ram = "Bramble tossed %s and the %s!",
 	eel = "The Warden eel shocked %s: the %s is in the water!",
-	imp = "An imp snatched the %s!",
 	marine = "The Garrison threw %s out: the %s stayed behind!",
 	shatter = "%s's spirit was shattered and dropped the %s",
 	leviathan = "The Leviathan caught %s: the %s went flying!",
@@ -249,8 +252,6 @@ Loot.Loosened:Connect(function(item, reason, byPlayer, fromPlayer)
 		text = string.format(LOOSE_TEXT.sword, byPlayer and byPlayer.DisplayName or "Someone", def.name, holder)
 	elseif reason == "guardian" or reason == "guardianleap" then
 		text = string.format(LOOSE_TEXT.guardian, def.name, holder)
-	elseif reason == "imp" then
-		text = string.format(LOOSE_TEXT.imp, def.name)
 	elseif reason == "ghost" then
 		text = string.format(LOOSE_TEXT.ghost, def.name, holder)
 	else
@@ -315,6 +316,9 @@ local function onCharacter(player, character)
 	-- (appearance loading can replace the head and colours just after spawning; dressing again is cheap and idempotent).
 	task.defer(GoblinLook.apply, player, character)
 	task.delay(2, GoblinLook.apply, player, character)
+	-- V13.1: health 0 is a knockout, not a death (server/Knockout.lua). Died only fires if Roblox kills the body
+	-- some other way; it is still covered.
+	Knockout.watch(player, character, humanoid)
 	humanoid.Died:Connect(function()
 		Loot.dropFor(player, "death")
 		Poltergoblin.finish(player, "death")
@@ -360,7 +364,15 @@ Players.PlayerRemoving:Connect(function(player)
 	Port.forget(player)
 	BoatAbilities.forget(player)
 	Boats.forgetRider(player)
+	Knockout.forget(player)
 	task.spawn(Progress.forget, player) -- saves and releases the profile (it yields)
+end)
+Knockout.KnockedOut:Connect(function(player)
+	Poltergoblin.finish(player, "death")
+	Combat.cancelDown(player) -- a grapple catch is overtaken by the knockout
+end)
+Net.Reset.OnServerEvent:Connect(function(player)
+	Knockout.respawn(player, "reset")
 end)
 
 -- V13: the Port. Its screen's buttons and its prompts (the Spyglass, the pier's "join the raid").
@@ -393,7 +405,10 @@ Net.Throw.OnServerEvent:Connect(function(player)
 	Loot.throw(player)
 end)
 Net.Poltergoblin.OnServerEvent:Connect(function(player)
-	Poltergoblin.request(player)
+	-- V13.1: switched off (Config.POLTER_ENABLED); the module stays for a later return.
+	if Config.POLTER_ENABLED then
+		Poltergoblin.request(player)
+	end
 end)
 Net.Sprint.OnServerEvent:Connect(function(player, held)
 	Movement.setSprintHeld(player, held == true)
@@ -517,7 +532,7 @@ end
 RunService.Heartbeat:Connect(function(dt)
 	local active = Raid.isActive()
 	Boats.tick(dt)
-	Recall.tick()
+	Recall.tick(dt)
 	Skyship.tick(dt)
 	Flight.tick(dt)
 	Pursuit.tick(dt)
@@ -527,6 +542,7 @@ RunService.Heartbeat:Connect(function(dt)
 	Progress.tick(dt, active)
 	if active then
 		Loot.tick()
+		Loot.sweepBoats(Boats.list) -- V13.1: drive over loose treasure to pick it up
 		Heat.tick(dt, carryHeatRate())
 		Threats.tick(dt)
 		Navy.tick()
@@ -541,6 +557,7 @@ RunService.Heartbeat:Connect(function(dt)
 	Creatures.tick(dt)
 	Leviathan.tick(dt) -- after the creatures: the Sleeper drives it when awake, this only fills in when it is not
 	Poltergoblin.tick()
+	Knockout.tick()
 	Movement.tick(dt)
 	Emotes.tick()
 	Raid.tick()
