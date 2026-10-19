@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "remote-forwarders-must-pass-every-argument",
+  "title": "A remote handler that forwards too few arguments can silently turn one action into another",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-18",
+  "topics": [
+    "networking",
+    "testing",
+    "economy"
+  ],
+  "observation": "Loot Goblins' server wired its shop RemoteEvent as OnServerEvent(player, action, id) -> handle(player, action, id), but the shop sends (action, slot, item) and handle accepts (player, action, a, b). For two versions every 'equip, slot, item' arrived as 'equip, slot' with a nil item, which the handler treats as taking the slot off, and replied ok. Unit tests of handle and of the ownership rules all passed; only purchases (which equip inside the handler) changed a look. A Studio playtest that equipped an already-owned pet through the real remote exposed it.",
+  "recommendation": "Forward every argument (or use varargs) when one handler routes a remote to another, give each action an end-to-end test through the real remote that checks the replicated result (not only the reply), and treat an ok reply with no visible change as a bug signal.",
+  "applies_when": [
+    "A RemoteEvent handler routes requests to another module",
+    "An action's absent argument has a meaning of its own (nil = remove, default, unequip)"
+  ],
+  "limits": [
+    "One code base; found by one AI in one Studio session"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/d32829e321627f163d522fbabe498b1bd3c55fe6/docs/reports/2026-10-18-v13-goblin-port.md",
+      "detail": "Section 31, bug 1: equip replied ok while Pet and BoatClass did not change; after forwarding both arguments, WEAR and SAIL changed them and an outfit kept its name."
+    }
+  ],
+  "rubric_checks": [
+    "CL-18",
+    "CL-32"
+  ]
+}

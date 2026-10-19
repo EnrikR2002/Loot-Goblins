@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "roblox-font-lacks-newer-emoji",
+  "title": "Some newer emoji render as empty boxes in Roblox's interface font",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-18",
+  "topics": [
+    "ui",
+    "art",
+    "readability"
+  ],
+  "observation": "In a Roblox Studio play session the HUD's icons drew the hook (U+1FA9D), the person playing handball (U+1F93E) and the coin (U+1FA99) as empty boxes, while older emoji in the same labels (crossed swords, fishing pole, ghost, bomb, American football, fire, collision, cyclone, tornado, boar) drew correctly.",
+  "recommendation": "Check every emoji used as an interface icon in a screenshot before relying on it, prefer long-established emoji, and keep a short word or a shape as the fallback for anything essential.",
+  "applies_when": [
+    "Interface icons or labels use emoji glyphs in Roblox TextLabels"
+  ],
+  "limits": [
+    "One Windows PC in October 2026; fonts on phones, consoles and Macs were not checked",
+    "Roblox may add glyphs later"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/d32829e321627f163d522fbabe498b1bd3c55fe6/docs/reports/2026-10-18-v13-goblin-port.md",
+      "detail": "Section 31, bug 7, and the art direction's V13 screen notes: the three glyphs showed as boxes in screenshots and were replaced."
+    }
+  ],
+  "rubric_checks": [
+    "CL-30"
+  ]
+}

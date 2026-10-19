@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "disabling-controls-may-not-stop-movement",
+  "title": "Turning the control module off may not stop a character moving; also catch the movement keys",
+  "status": "hypothesis",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-18",
+  "topics": [
+    "input",
+    "camera",
+    "testing"
+  ],
+  "observation": "For a spectator mode the client called PlayerModule:GetControls():Disable(), yet a held W (sent through Studio MCP's simulated keys) still walked the character 34 studs. Adding a ContextActionService binding above default priority that sinks W, A, S, D, Up, Down, Space, Thumbstick1 and ButtonA while spectating stopped it (0 studs), and unbinding it restored walking.",
+  "recommendation": "When a mode must freeze the player's own character (spectating, cutscenes, menus), sink the movement inputs with a high-priority ContextActionService binding as well as disabling the controls, and verify by holding a movement key and measuring the character's position.",
+  "applies_when": [
+    "A spectator, cutscene or menu mode must keep the player's character still",
+    "The game uses the default PlayerModule controls"
+  ],
+  "limits": [
+    "Seen only with Studio MCP's simulated keyboard input, which may reach the character differently from a real keyboard",
+    "Gamepad thumbsticks and touch were not tested"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/d32829e321627f163d522fbabe498b1bd3c55fe6/docs/reports/2026-10-18-v13-goblin-port.md",
+      "detail": "Section 7: 34 studs moved with controls disabled, 0 with the movement keys also sunk, 28 after leaving."
+    }
+  ],
+  "rubric_checks": [
+    "CL-33",
+    "CL-37"
+  ]
+}
