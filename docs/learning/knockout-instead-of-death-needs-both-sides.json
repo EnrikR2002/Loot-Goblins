@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "knockout-instead-of-death-needs-both-sides",
+  "title": "Turning health 0 into a knockout needs the Dead state off on the server and the owning client",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-18",
+  "topics": [
+    "humanoid",
+    "networking",
+    "combat"
+  ],
+  "observation": "To replace death and respawn with a 5 second knockout, the humanoid's Dead state was switched off (SetStateEnabled(Dead, false)) on the server and also on the player's own client, which runs its own humanoid's state machine; with both, health 0 no longer killed the character and a HealthChanged handler started the knockout. Roblox's default health regeneration then raised a downed character's health above 0, so the handler held it at 0 until the knockout ended. A body that fell out of the world or lost its root still needed a real respawn (LoadCharacter), checked a couple of times a second.",
+  "recommendation": "When death should become something else, disable the Dead state on both the server and the owning client before health can reach 0, hold health at 0 for the duration against regeneration, mark the state with an attribute other systems check, and keep a fallback respawn for bodies that leave the world.",
+  "applies_when": [
+    "Replacing Roblox death and respawn with a downed, knocked-out or revive state"
+  ],
+  "limits": [
+    "One Studio client; Roblox's Reset button was routed to a real respawn but not pressed in testing"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/reports/2026-10-18-v13-1-playtest-fixes.md",
+      "detail": "The knockout in detail: drained to 0, knocked out in place, treasure dropped, up after 5 s with full health, no respawn."
+    }
+  ]
+}

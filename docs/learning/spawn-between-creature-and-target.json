@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "spawn-between-creature-and-target",
+  "title": "The nearest water to a creature inland can be across the island from its target",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-18",
+  "topics": [
+    "ai",
+    "level-design"
+  ],
+  "observation": "Island creatures hand a chase over to a sea form when the target enters the water. Spawning the sea form at the water nearest the island creature put it on the far side of the island (the creature stood in the island's middle), hundreds of studs from the target. Taking the water nearest a point stepped from the target back toward the creature instead put it 59 studs from the target, on the same side, within 0.2 s of the target entering the water.",
+  "recommendation": "When a handover spawns something near a creature to chase a target, search for the spawn point from the target's side (a point between target and creature), not from the creature's position.",
+  "applies_when": [
+    "Handing an AI from one medium or zone to another (land to sea, inside to outside)"
+  ],
+  "limits": [
+    "Measured on one island with a boat starting just offshore"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/reports/2026-10-18-v13-1-playtest-fixes.md",
+      "detail": "Point 4 (jade frogs): entering 59 studs away on the thief's side after the fix."
+    }
+  ]
+}
