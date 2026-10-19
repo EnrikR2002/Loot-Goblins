@@ -9,7 +9,7 @@ This file is a self-contained game description, quality rubric, and dated develo
 **Game repository:** https://github.com/EnrikR2002/Loot-Goblins
 **Documented gameplay revision:** d32829e321627f163d522fbabe498b1bd3c55fe6
 **Shared rubric revision:** ce017e51cf2ad20e883d743ddc60909a5f255de5
-**Document freshness fingerprint:** 230f5aa4ddf0c21c947d981d49f536b3ec4d55d2ff569e544c764a7436cbed90
+**Document freshness fingerprint:** 0d3f49d33affd6b200ac5cd771a3361e77de20f5cf18f8cca2738a7359de7ffd
 
 Ask an outside AI: 'Read this complete guide, compare the current game with the included rubric, and suggest the highest-value improvements. Separate documented gaps, hypotheses, and ideas. Respect game-specific decisions and current prototype gates.'
 
@@ -4494,7 +4494,8 @@ V13 builds the half of Loot Goblins that happens between raids.
 ## 2. Git branch, base and PR
 
 - Branch `feature/v13-goblin-port`, from `origin/main` at `055953f` ("Merge pull request #23 from EnrikR2002/feature/v12-cohesion-pass"), which already contains V11 (PR #22) and V12 (PR #23). That is the verified correct base: V13 depends on both.
-- One PR against `main`. **Not merged** (the brief: "Do not merge any PR").
+- PR [#24](https://github.com/EnrikR2002/Loot-Goblins/pull/24) against `main`. **Not merged** (the brief: "Do not merge any PR").
+- Shared-notebook lessons from this work: [Roblox-Team-Knowledge PR #11](https://github.com/EnrikR2002/Roblox-Team-Knowledge/pull/11) (pending when this was written).
 
 ## 3. Lobby architecture
 

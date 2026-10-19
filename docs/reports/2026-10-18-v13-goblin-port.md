@@ -26,7 +26,8 @@ V13 builds the half of Loot Goblins that happens between raids.
 ## 2. Git branch, base and PR
 
 - Branch `feature/v13-goblin-port`, from `origin/main` at `055953f` ("Merge pull request #23 from EnrikR2002/feature/v12-cohesion-pass"), which already contains V11 (PR #22) and V12 (PR #23). That is the verified correct base: V13 depends on both.
-- One PR against `main`. **Not merged** (the brief: "Do not merge any PR").
+- PR [#24](https://github.com/EnrikR2002/Loot-Goblins/pull/24) against `main`. **Not merged** (the brief: "Do not merge any PR").
+- Shared-notebook lessons from this work: [Roblox-Team-Knowledge PR #11](https://github.com/EnrikR2002/Roblox-Team-Knowledge/pull/11) (pending when this was written).
 
 ## 3. Lobby architecture
 

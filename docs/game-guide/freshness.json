@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "fingerprint": "230f5aa4ddf0c21c947d981d49f536b3ec4d55d2ff569e544c764a7436cbed90",
+  "fingerprint": "0d3f49d33affd6b200ac5cd771a3361e77de20f5cf18f8cca2738a7359de7ffd",
   "source_baseline": {
     "src/client/BannerQueue.lua": "36ff59160d17f71dd6b3dc87a73e4ee35b3186b31b2232abea09580599dd460f",
     "src/client/BoatDrive.lua": "506bb0a0647c3886ace6f68fa8e878915905dc1b07cc3d49e71bc06f56a3a060",
@@ -110,7 +110,7 @@
     "src/shared/Config.lua": "e5e25f63c440ee11810af43e7aa76d9b1b7415517c61be86005352c66482b526",
     "src/shared/Archipelago.lua": "956910425a5272c52fa671e6c8d109c6423542682b43032c55fb06ed56e87944",
     "default.project.json": "9fb828dd6c23f4351950c7fae8134f3c58e32a1b40379ced561ace167170b94d",
-    "docs/reports/2026-10-18-v13-goblin-port.md": "249a72d6e1fa8c460012abdb57ba628db5dbc0eee225b85bb6d17634a392e7e1",
+    "docs/reports/2026-10-18-v13-goblin-port.md": "5d286a9df4293b3c6d0cd471b2ab3149ce1172e58e1d75c38f2bf6d17a79bfbc",
     "docs/reports/2026-10-18-v12-cohesion-pass.md": "b910c4431121cde2d1b7e59ff4e54a2c3052768c657dbd4f6c52b99b07d03fce",
     "docs/reports/2026-10-17-v11-goblin-life.md": "fe378ff56f594aa41c749308979b2b8730f91eef4c350b7a53fc6c68d9da13ea",
     "docs/reports/2026-10-17-v10-living-archipelago.md": "88f196b8ba7a17fa9f9eab9abae4dde4a3a0277543d726df8ea5024f61132d0c",
