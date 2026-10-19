@@ -16,6 +16,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+local Lobby = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Lobby"))
 local Twister = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Twister"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
@@ -73,7 +74,12 @@ local function pickAlley()
 		local sailors = {}
 		for _, player in ipairs(Players:GetPlayers()) do
 			local root = Util.aliveRoot(player)
-			if root and root.Position.Y < 30 and SeaNav.depthAt(root.Position.X, root.Position.Z) > 4 then
+			if
+				root
+				and root.Position.Y < 30
+				and not Lobby.inPort(root.Position) -- V13: the Port's harbour is not "at sea"
+				and SeaNav.depthAt(root.Position.X, root.Position.Z) > 4
+			then
 				table.insert(sailors, root.Position)
 			end
 		end
@@ -193,6 +199,17 @@ local function throwGoblins(t)
 	end
 end
 
+-- The wild ones (a Stormrunner's summoned tornadoes do not count toward TWISTER.MAX).
+local function natural()
+	local n = 0
+	for _, tw in ipairs(list) do
+		if not tw.summoned then
+			n += 1
+		end
+	end
+	return n
+end
+
 function Tornadoes.tick(dt, active)
 	local t = now()
 	if not refs then
@@ -203,14 +220,16 @@ function Tornadoes.tick(dt, active)
 		if t > tw.dies then
 			table.remove(list, index)
 			dirty = true
-			nextSpawnAt = math.min(nextSpawnAt, t + random:NextNumber(T.GAP[1], T.GAP[2]))
-		else
+			if not tw.summoned then
+				nextSpawnAt = math.min(nextSpawnAt, t + random:NextNumber(T.GAP[1], T.GAP[2]))
+			end
+		elseif not tw.summoned then
 			steer(tw, t)
 		end
 	end
-	if active and t >= nextSpawnAt and #list < T.MAX then
+	if active and t >= nextSpawnAt and natural() < T.MAX then
 		spawnOne(t)
-		nextSpawnAt = #list < T.MAX and t + random:NextNumber(T.GAP[1], T.GAP[2]) or math.huge
+		nextSpawnAt = natural() < T.MAX and t + random:NextNumber(T.GAP[1], T.GAP[2]) or math.huge
 	end
 	if t >= nextGoblinCheck then
 		nextGoblinCheck = t + 0.1
@@ -264,6 +283,52 @@ end
 
 function Tornadoes.list()
 	return list
+end
+
+-- V13: the Stormrunner's TWISTER (Config.BOAT_ABILITIES.twister): a real, short-lived tornado that spins up behind
+-- the boat and drifts after it, lifting whatever follows too close (a pursuer, a rival, the Stormrunner itself if it
+-- turns back for a ride). It rises quickly and dies after `life` seconds. One per owner; an older one is ended.
+-- Returns the tornado, or nil when there are already too many.
+function Tornadoes.summon(position, heading, ownerId, life, drift, max)
+	local t = now()
+	local count = 0
+	for _, tw in ipairs(list) do
+		if tw.summoned then
+			if tw.owner == ownerId then
+				tw.dies = math.min(tw.dies, t + 1) -- the old one blows itself out
+			else
+				count += 1
+			end
+		end
+	end
+	if count >= (max or 4) then
+		return nil
+	end
+	serial += 1
+	local flatHeading = Vector3.new(heading.X, 0, heading.Z)
+	flatHeading = flatHeading.Magnitude > 0.01 and flatHeading.Unit or Vector3.new(0, 0, -1)
+	local tw = {
+		id = serial,
+		alley = 0,
+		name = "a summoned twister",
+		x = position.X,
+		z = position.Z,
+		vx = flatHeading.X * drift,
+		vz = flatHeading.Z * drift,
+		t = t,
+		born = t - T.FADE * 0.7, -- nearly full strength at once
+		dies = t + life,
+		heading = math.atan2(flatHeading.Z, flatHeading.X),
+		speed = drift,
+		nextTurnAt = math.huge,
+		summoned = true,
+		owner = ownerId,
+	}
+	table.insert(list, tw)
+	dirty = true
+	publish(t)
+	Net.broadcastNear(position, 2600, "TwisterBorn", { position = position, summoned = true })
+	return tw
 end
 
 return Tornadoes

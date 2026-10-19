@@ -1,6 +1,6 @@
 # Loot Goblins
 
-Steal ridiculous treasure from dangerous islands and other players, then somehow get it home. This is **V12, the Cohesion Pass** (V11, Goblin Life, made to read and flow): six-minute raids that start on a flying pirate ship, guardians that **follow you home across the sea** (a stone Guardian in a tiny speedboat, the Leviathan, a ghost fleet), tornadoes, ramps and stylish boat tricks, in V10's sunlit storybook look. Between raids you spend the **Shinies** you earned in the Goblin Wardrobe: dress your goblin in ridiculous hats and coats, paint your boat, pick a trail and a trick style, learn emotes, and adopt a pet that follows you everywhere. Pick an island on the map and the cannon throws you onto dry ground beside its treasure; a line at the bottom of the screen always tells you the next step and its key. V11 and V12 were tested by one AI on one client: nobody has played them yet, they have never had a second player, phones and controllers are untried, and Robux purchases are switched off.
+Steal ridiculous treasure from dangerous islands and other players, then somehow get it home. This is **V13, the Goblin Port**: between raids you hang out in a harbour town (a shipyard of seven boats to earn, a menagerie of 42 pets, the wardrobe, a spyglass to watch the raid, a podium for the winners), then six-minute raids that start on a flying pirate ship, guardians that **follow you home across the sea** (a stone Guardian in a tiny speedboat, the Leviathan, a ghost fleet), tornadoes, ramps and stylish boat tricks, in V10's sunlit storybook look. Between raids you spend the **Shinies** you earned in the Goblin Wardrobe: dress your goblin in ridiculous hats and coats, paint your boat, pick a trail and a trick style, learn emotes, and adopt a pet that follows you everywhere. Every boat class has its own trick on `R` (a Nitro, a bow gun, a giant spring, a three-gun broadside, a summoned tornado, a ghost decoy, a battering ram). V11 to V13 were tested by one AI on one client: nobody has played them yet, they have never had a second player, phones and controllers are untried, and Robux purchases are switched off.
 
 ## Play it
 
@@ -8,7 +8,7 @@ Steal ridiculous treasure from dangerous islands and other players, then somehow
 2. Double-click **Play Loot Goblins** (the file ending in `.bat`).
 3. Wait. It gets the newest version, builds the game, and opens Roblox Studio. If Loot Goblins is already open in Studio, close that window first (other games can stay open).
 4. In Studio, press the blue **Play** button at the top. The sky stays blank until you press it.
-5. Read the line at the bottom of the screen: it always says what to do next. Press `H` for every control on one card.
+5. You arrive in the **Goblin Port**. Look around (the Shipyard, the pet pens, the wardrobe, the Spyglass), then walk up the gangplank onto the little airship to get ready. When the countdown ends everyone flies to the raid. Press `H` for help: in the Port it shows what is where, in a raid every control.
 
 To test with friends on one computer: **Test tab > Server & Clients > 3 players > blue Play**.
 
@@ -22,7 +22,7 @@ The world appears when Play starts. While editing, this game's Rojo connection u
 
 ## The raid
 
-Explore, take treasure, survive the chase, escape, and bank at the Hoard. A raid is six minutes of play and starts on the skyship (a 20-second launch window first; the clock starts after it): climb into a cannon with `E`, look at where you want to land (the gold ring), click or press `Space` to fire. In the air you tumble; hold `Space` to glide (a brake and a soft landing), hold `Shift` to dive, and the sea skips you up to three times. Gold wins the raid; **Shinies** are what you keep between raids: every raid pays some, banking and winning pay more, and trophies pay extra. Spend them in the **Goblin Wardrobe** (`P`, the 🧥 button, or the tailor's stall on the skyship). No treasure needs gear, and most are worth about the same (9 to 11 gold; the three nearest home 4 to 5), except the **Golden Idol** at the Sun Temple: 17 gold, and its Guardian comes after you in a boat. Whatever you steal, its guardian follows you across the sea until the gold lantern buoys round Goblin Cove: keep your speed up.
+Explore, take treasure, survive the chase, escape, and bank at the Hoard. Between raids you are in the Goblin Port (60 seconds, or 8 once everyone has walked aboard the little airship); if a raid is already running you can watch it or join it while at least two minutes are left. A raid is six minutes of play and starts on the skyship (a 20-second launch window first; the clock starts after it): climb into a cannon with `E`, look at where you want to land (the gold ring), click or press `Space` to fire. In the air you tumble; hold `Space` to glide (a brake and a soft landing), hold `Shift` to dive, and the sea skips you up to three times. Gold wins the raid; **Shinies** are what you keep between raids: every raid pays some, banking and winning pay more, and trophies pay extra. Spend them in the **Goblin Wardrobe** (`P`, the 🧥 button, or the Port's shops): boats, pets, cosmetics. The boat you call with `B` is the one you chose; it changes only in the Port or at the Hoard. No treasure needs gear, and most are worth about the same (9 to 11 gold; the three nearest home 4 to 5), except the **Golden Idol** at the Sun Temple: 17 gold, and its Guardian comes after you in a boat. Whatever you steal, its guardian follows you across the sea until the gold lantern buoys round Goblin Cove: keep your speed up.
 
 ## Controls
 
@@ -32,6 +32,7 @@ Explore, take treasure, survive the chase, escape, and bank at the Hoard. A raid
 | `E` on a boat | Board it. `W A S D` drives from the driver seat; `S` is a real brake |
 | `Shift` in the driver seat | Boost (2.4 s, 5 s cooldown) |
 | `Space` in the driver seat | Hop the boat. At boost speed it is a **super jump** (about 38 studs up). Inside a tornado it **bails out**. `X` leaves the boat |
+| `R` on the water, in the driver seat | **Your boat's ability** (each class has its own; the boat panel shows it and its cooldown) |
 | `R` in the air, in the driver seat | **A trick.** Press again for a combo; hold `A`/`D` to roll, `S` to backflip. Land clean for a speed burst |
 | `B` | Call a boat to the nearest shore if you are stranded (the bottom line reminds you) |
 | On the skyship: `E` at a cannon | Climb in. **Look** (mouse, or `W A S D`) at where you want to land, click or `Space` to fire, `X` climbs out. `M` then an island points the cannon at a dry spot beside its treasure (the beam marks it). Or walk out on a wing and step off |
@@ -52,12 +53,13 @@ Explore, take treasure, survive the chase, escape, and bank at the Hoard. A raid
 | `E` (no prompt showing) | **Poltergoblin**: leave your body and run as a faster spirit for 5 s, then snap back. A step short of a boat or a cannon it tells you to step closer instead |
 | `E` at a zipline post | Ride the zipline. Jump to let go |
 | `M` | World map (island difficulty, who is on guard, tornadoes). The **minimap** is always top right |
-| `P` (or the 🧥 button) | **The Goblin Wardrobe**: shop and locker for cosmetics, boat paint, trails, emotes, pets and starting gear. Buying takes two presses |
+| `P` (or the 🧥 button) | **The Goblin Wardrobe**: shop and locker for boats, cosmetics, boat paint, trails, emotes, pets and starting gear. Buying takes two presses |
+| In the Port | Walk up the gangplank to get ready. `E` at a boat in the Shipyard, at the pet pavilion or at the wardrobe opens that shop. WATCH (or `E` at the Spyglass) watches the raid: left/right change who, `Backspace` goes back. JOIN jumps into a running raid |
 | `V` (or the 😀 button) | **Emote wheel**. Moving stops an emote |
 | `T` | Show every treasure on the board |
-| `H` | Show or hide the controls card |
-| Controller | `A` jump / fire, `X` boost, `B` dash / drift, `Y` leave a boat, `R1` trick, `L2` hook, `L1` throw, click the right stick for the map (left stick: sprint); D-pad: down calls a boat, left throws a keg, right the wardrobe, up the emotes |
-| Touch | Buttons appear when they mean something: FIRE in a cannon; BOAT, HOOK, THROW on foot; BOOST, HOP, TRICK at the wheel (untried on a real phone) |
+| `H` | Show or hide the help card (the Port's, or the raid's controls) |
+| Controller | `A` jump / fire, `X` boost, `B` dash / drift, `Y` leave a boat (on foot: Poltergoblin), `R1` boat ability / trick, `L2` hook, `L1` throw, click the right stick for the map (left stick: sprint); D-pad: down calls a boat, left throws a keg, right the wardrobe, up the emotes |
+| Touch | Buttons appear when they mean something: FIRE in a cannon; BOAT, HOOK, THROW on foot; BOOST, HOP, STUNT (ability or trick) at the wheel (untried on a real phone) |
 
 Green pads and timed steam geysers launch you; catapults are aimed like the skyship's cannons. Ladders, ramps and ziplines take you up and across the islands; tall crags and sea stacks are for the grapple. Home has bounce pads, a practice cannon with floating targets, keg crates and a harbor jump. Out at sea: a ring on the water means something is about to land there; ramps beside the hoop lanes throw a fast boat high; **tornadoes** lift you into the sky (trick on the way down); puffer fish bounce your boat into the air (a free jump); a jump shakes off nibblers and the clam. Turn and face a Watcher and it freezes. When something chases you, a red arrow at the edge of the screen points at it.
 

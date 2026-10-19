@@ -148,6 +148,18 @@ A boat wears its driver's paint, flag and figurehead (`shared/BoatLook.lua`). Pa
 
 Pets are little characters, not floating icons (`shared/PetLook.lua`): a silhouette you can name (a crab with eye stalks and one big claw, a round gull with black wing tips, a fat frog with huge eyes, a domed tortoise, a wispy ghost), a face, two or three colours, and a way of moving that is their personality (the crab scuttles sideways, the frog hops, the tortoise plods, the gull flaps and glides, the ghost bobs and loops). About knee to waist height on a goblin. Alternative looks change the palette and add one prop (a striped shell, a pumpkin, a garden of flowers). The Shell Tortoise's ready glow is gameplay information and stays visible to everyone.
 
+### The fleet (V13)
+
+Seven boats, each a silhouette you can name across the water (`server/BoatModels.lua`), built from the same toy parts as V10's boats and dressed by a goblin's paint through the same part names (Hull, Prow, Strake, CapRail, Transom, Sail, SailStripe, Mast, Cabin). Anything not named that way keeps the class's own colour, which is what keeps a class recognisable under any paint: the Skiff's single mast, the Cutter's two masts and cabin and bow gun, the **Reefhopper**'s twin teal pontoons and gold spring (coral and teal), the **Broadside**'s two square-rigged masts, bulwarks, gun ports and iron bands (deep red and black), the **Stormrunner**'s one tall sail with a lightning bolt and a spinning vane (storm blue and electric yellow), the **Wraith**'s low black hull, scythe prow, translucent glowing sails and ghost lanterns, and the **Ironbelly**'s riveted grey plates, ram, tyres and smoking funnel (no sails at all). Each ability has a glyph and a colour on the HUD and an effect on the water (afterburner flame, a spring launch, cannon smoke, a summoned funnel, afterimages and a ghost, a ram's spray).
+
+### Pets, the bestiary (V13)
+
+Forty-two pets in four themes, each palette taken from the art direction: **ocean** (corals, teals, sea-glass, sand), **pirate** (red bandanas, brass, tarred wood, gold), **magic** (crystal violet and cyan, glows), **island** (each wears its island's colours, so a pet says where its owner has been: Sunny the temple's gold and sandstone, Zap the Tide Vault's cyan, Bones the Ghost Fleet's mint). Every pet keeps V11's rules: a silhouette you can name, googly eyes with a glint, two or three colours, knee to waist height, a way of moving that is its personality, and one idle moment of its own. Glow is used sparingly (a lure, a flame, a crystal core) with small lights. Rarity is a coloured edge, never a bigger or brighter pet: the legendary Dubloon is a coin, not a firework.
+
+### The Goblin Port (V13)
+
+A warm, sunlit harbour town in the same toy language as the archipelago: cobbles, planks, striped awnings, bunting in goblin colours, lanterns, crates and barrels, a golden goblin fountain. Each counter has a big painted sign and a shopkeeper (Madame Ragwort, Mother Mossback) and one colour of its own (the Shipyard pale blue, the Menagerie pink, the Wardrobe red-roofed). The airship *The Little Goblin* is the one thing to walk to and has a marker over its gangplank; its ready ring is painted, not neon (a 20-stud neon disc bloomed into a blinding floor). The menagerie pens are themed floors (sand and a pool, deck planks, violet with crystals, island sand) so a pen reads before its pets do.
+
 ### Effects (V11)
 
 Trails, wakes, trick effects and callouts (`shared/StyleFx.lua`) are expressive but never cover the game: thin, short-lived ribbons; one emitter per effect; capped bursts; the big burst only for a landing of three tricks or more; nothing drawn beyond 420 studs; half the particles on low graphics. Over the bright sea a glowing ribbon washes out to white, so trails keep a low light emission. Callout backings hug the words.
@@ -166,6 +178,10 @@ What is on screen during a raid has a fixed place and one voice each, so a gobli
 - **Red points at danger, gold points home.** Whatever chases you gets a Danger red arrow on a ring round the middle of the screen (never over the clock or the bottom panels); the Hoard gets the gold arrow. Neither shows while its target is on screen.
 - **Cards are modal and on top** (the controls card, the welcome card): they open when asked or at a calm moment, never over the first seconds of a raid, and nothing draws over them.
 - **What you hold must not blind you**: the carried treasure is drawn faint for its own carrier only.
+
+### The quiet screen and the Port's screen (V13)
+
+During a raid: icons, not sentences. Moves are square icon buttons with the key in a coloured corner chip (a controller's button on a controller, none on touch), a cooldown that darkens the icon from the top like a clock, and a dimmed icon when the move cannot be used; a word under each icon only for a goblin's first raids. One slim stamina bar; the coin purse as a chip; a small clock pill with a thin heat line whose name appears only above calm; the boat panel as one strip with the class ability last. Emoji glyphs must be ones Roblox's font draws (🪝, 🤾 and 🪙 showed as boxes; ⚔ 🎣 👻 💣 🏈 🔥 💥 🌀 🌪 🐗 work). In the Port the raid screen steps aside for a wooden sign (the countdown, who is aboard), a wallet at the top right, and nothing else unless asked; the spectator gets a single bar at the bottom.
 
 ## Treasure
 

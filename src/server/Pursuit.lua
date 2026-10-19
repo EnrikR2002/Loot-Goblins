@@ -52,8 +52,13 @@ local Creatures = require(script.Parent.Creatures)
 local Threats = require(script.Parent.Threats)
 
 local Pursuit = {}
+-- V13: (player, islandId): a pursuit of this goblin ended because they reached the sanctuary (an escape). The
+-- Leviathan ("Bone") and the Ghost Fleet ("Skull") fire it too.
+Pursuit.Escaped = Util.signal()
 
 local P = Config.PURSUIT
+-- V13: the Wraith's ghost. While one runs for a goblin, a pursuer within its `fool` range chases the ghost instead.
+local decoys = {} -- player -> { at = Vector3, velocity = Vector3, untilAt, fool }
 local GB = Config.GUARDIAN_BOAT
 local SEA_SCALE = Config.GUARDIAN_SCALE.SeaForm
 
@@ -299,6 +304,61 @@ function Pursuit.air(mover, dt, t)
 		mover.spin = nil
 	end
 	return mover.alt > 4
+end
+
+-- V13: a decoy for `player` (the Wraith's Phantom slip): pursuers within `fool` studs follow it until `untilAt`.
+-- server/BoatAbilities.lua moves it (Pursuit.moveDecoy) along the boat's old course.
+function Pursuit.decoy(player, at, velocity, untilAt, fool)
+	decoys[player] = { at = flat(at), velocity = flat(velocity), untilAt = untilAt, fool = fool }
+end
+
+function Pursuit.moveDecoy(player, at, velocity)
+	local d = decoys[player]
+	if d then
+		d.at, d.velocity = flat(at), flat(velocity)
+	end
+end
+
+-- The ghost a pursuer at `from` is fooled by, or nil.
+function Pursuit.decoyOf(player, from)
+	local d = decoys[player]
+	if not d then
+		return nil
+	end
+	if workspace:GetServerTimeNow() >= d.untilAt then
+		decoys[player] = nil
+		return nil
+	end
+	if from and flat(from - d.at).Magnitude > d.fool then
+		return nil
+	end
+	return d
+end
+
+-- V13: the Ironbelly's Ram Plow: pursuers it runs into are shoved aside and wallow for a moment (it does not count
+-- as an explosion: nothing is sent home by being plowed). Returns how many it moved.
+function Pursuit.shoveAt(position, radius, push, away)
+	local moved = 0
+	local t = workspace:GetServerTimeNow()
+	for _, p in ipairs(active) do
+		if
+			p.state ~= "quit"
+			and p.state ~= "board"
+			and flat(p.position - position).Magnitude <= radius + p.form.size
+		then
+			local dir = away or flat(p.position - position)
+			dir = dir.Magnitude > 0.1 and dir.Unit or Vector3.new(1, 0, 0)
+			p.push = (p.push or Vector3.zero) + dir * push
+			p.vy = math.max(p.vy or 0, 40)
+			if p.state ~= "flinch" then
+				p.state = "rest"
+				p.stateUntil = t + 1.6
+			end
+			Pursuit.fx("crash", p.position)
+			moved += 1
+		end
+	end
+	return moved
 end
 
 -- Where a goblin (or their boat) will be in `seconds`.
@@ -1597,6 +1657,7 @@ local function retire(p, text)
 	formFinish(p)
 	if p.target and p.target.Parent then
 		Net.toast(p.target, text or p.form.quit or p.form.gone)
+		Pursuit.Escaped:Fire(p.target, p.form.id) -- V13: got away to the sanctuary
 	end
 	Pursuit.fx("quit", p.position, { color = p.form.color })
 end
@@ -1727,6 +1788,15 @@ local function tickMover(p, dt, t)
 	end
 	local at = flat(part.Position)
 	local velocity = flat(part.AssemblyLinearVelocity)
+	-- V13: a Wraith's ghost: chase that instead, and no wind-up while fooled (it cannot strike a ghost).
+	local decoy = Pursuit.decoyOf(target, p.position)
+	local fooled = decoy ~= nil
+	if fooled then
+		at, velocity = decoy.at, decoy.velocity
+		if p.state == "tell" then
+			p.state = "chase"
+		end
+	end
 	local targetSpeed = velocity.Magnitude
 	local gap = flat(at - p.position).Magnitude - (boat and boat.spec.size.Z * 0.4 or 0)
 	-- Pacing (see the header): surge, close, hang behind, lunge.
@@ -1757,7 +1827,7 @@ local function tickMover(p, dt, t)
 	}
 	info.goal = form.goal and form.goal(p, info) or (at + velocity * 0.35)
 	local airborne = Pursuit.air(p, dt, t)
-	if form.always and p.state ~= "quit" then
+	if form.always and p.state ~= "quit" and not fooled then
 		form.always(p, target, dt, t, info)
 	end
 	if p.state == "board" then
@@ -1835,6 +1905,7 @@ local function tickMover(p, dt, t)
 			form.reach > 0
 			and gap <= form.reach
 			and not airborne
+			and not fooled
 			and t >= p.bornAt + form.startDelay
 			and not Pursuit.inSanctuary(at)
 		then
@@ -2020,6 +2091,7 @@ function Pursuit.reset()
 	end
 	table.clear(active)
 	table.clear(readyAt)
+	table.clear(decoys)
 	for _, zone in ipairs(zones) do
 		zone.part:Destroy()
 	end
@@ -2028,6 +2100,7 @@ end
 
 -- A goblin left: anything chasing them goes.
 function Pursuit.forget(player)
+	decoys[player] = nil
 	for index = #active, 1, -1 do
 		local p = active[index]
 		if p.target == player then

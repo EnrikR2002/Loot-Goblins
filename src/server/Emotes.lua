@@ -83,7 +83,7 @@ function Emotes.request(player, id)
 	start(player, id)
 end
 
--- The raid's winners dance (after Skyship.boardAll has put them on the deck).
+-- The raid's winners dance (V13: after Port.arriveWinners has put them on the podium).
 function Emotes.celebrate(player)
 	if not player.Parent then
 		return

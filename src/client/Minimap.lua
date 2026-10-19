@@ -231,7 +231,8 @@ function Minimap.update()
 	local camera = workspace.CurrentCamera
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not camera or not root then
+	-- V13: no minimap in the Port (it is a town, not the sea), watching a raid from it included.
+	if not camera or not root or player:GetAttribute("Zone") == "port" then
 		gui.Enabled = false
 		return
 	end

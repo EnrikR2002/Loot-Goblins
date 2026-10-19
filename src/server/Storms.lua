@@ -16,6 +16,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+local Lobby = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Lobby"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Sea = require(script.Parent.Sea)
@@ -223,6 +224,7 @@ local function spawnAmbient()
 			root
 			and root.Position.Y < Config.STORM_CEILING
 			and Util.flatDistance(root.Position, home) > Config.STORM_HOME_CLEAR
+			and not Lobby.inPort(root.Position) -- V13: weather is for the raid
 		then
 			table.insert(sailors, root.Position)
 		end

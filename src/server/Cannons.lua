@@ -89,8 +89,10 @@ local function exclusions(entry)
 	return list
 end
 
--- Fires a ball from the entry toward a world point. Returns true if it fired.
-function Cannons.launch(entry, aimPoint, owner)
+-- Fires a ball from the entry toward a world point. Returns true if it fired. V13: `profile` (optional) is a table of
+-- blast numbers (Config.BOAT_SHOT: the light, shoving shot of the Broadside and the Cutter's bow gun); an entry may
+-- carry its own (entry.profile). Without one it is a full cannonball (Config.CANNON_*).
+function Cannons.launch(entry, aimPoint, owner, profile)
 	local pivot = pivotOf(entry)
 	local direction = solve(pivot, aimPoint)
 	aimBarrel(entry, direction)
@@ -125,6 +127,7 @@ function Cannons.launch(entry, aimPoint, owner)
 		velocity = direction * Config.CANNON_SPEED + Vector3.new(inherit.X, 0, inherit.Z) * 0.5,
 		owner = owner,
 		entry = entry,
+		profile = profile or entry.profile,
 		expiresAt = now() + 6,
 		ignore = exclusions(entry),
 	})
@@ -134,15 +137,19 @@ end
 
 local function explodeShot(shot, position)
 	shot.part:Destroy()
+	local p = shot.profile
 	Blast.at(position, {
-		radius = Config.CANNON_RADIUS,
-		damage = Config.CANNON_DAMAGE,
-		knockback = Config.CANNON_KNOCKBACK,
-		hullDamage = Config.CANNON_HULL_DAMAGE,
-		boatPush = Config.CANNON_BOAT_PUSH,
-		breakPower = 2,
+		radius = p and p.radius or Config.CANNON_RADIUS,
+		damage = p and p.damage or Config.CANNON_DAMAGE,
+		knockback = p and p.knockback or Config.CANNON_KNOCKBACK,
+		hullDamage = p and p.hullDamage or Config.CANNON_HULL_DAMAGE,
+		boatPush = p and p.boatPush or Config.CANNON_BOAT_PUSH,
+		breakPower = p and 1 or 2,
 		lootReason = "cannon",
 		owner = shot.owner,
+		-- V13: another goblin's boat gun cannot reach someone standing at home or in the Port.
+		wardSafe = shot.owner ~= nil and shot.entry.boat ~= nil,
+		exceptBoat = shot.entry.boat,
 		cause = shot.owner and (shot.owner.DisplayName .. "'s cannon") or "a cannon",
 		color = Color3.fromRGB(255, 170, 70),
 	})
@@ -220,7 +227,17 @@ local function onFire(player, base, aimPoint)
 	if (aimPoint - base.Position).Magnitude > 3000 then
 		return
 	end
-	entry.readyAt = t + Config.CANNON_COOLDOWN
+	-- V13: a side gun (the Broadside's) only fires out over its own side.
+	if entry.side and entry.boat then
+		local hull = entry.boat.hull
+		local out = hull.CFrame.RightVector * entry.side
+		local toward = Vector3.new(aimPoint.X - base.Position.X, 0, aimPoint.Z - base.Position.Z)
+		if toward.Magnitude < 1 or toward.Unit:Dot(Vector3.new(out.X, 0, out.Z).Unit) < 0.15 then
+			Net.toast(player, "This gun fires over its own side.")
+			return
+		end
+	end
+	entry.readyAt = t + (entry.cooldown or Config.CANNON_COOLDOWN)
 	base:SetAttribute("ReadyAt", entry.readyAt)
 	Cannons.launch(entry, aimPoint, player)
 end
@@ -231,7 +248,13 @@ function Cannons.mountOnBoat(boat)
 	local size = boat.spec.size
 	local spots = boat.typeName == "navy" and { Vector3.new(-4.5, 0, -8), Vector3.new(4.5, 0, -8) }
 		or { Vector3.new(0, 0, -size.Z * 0.26) }
-	for _, spot in ipairs(spots) do
+	-- V13: the Broadside's two gunner cannons, one each side by a passenger seat, firing the light shot.
+	local sides = {}
+	if boat.spec.broadside then
+		spots = { Vector3.new(-(size.X / 2 - 2.2), 0, 2.5), Vector3.new(size.X / 2 - 2.2, 0, 2.5) }
+		sides = { -1, 1 }
+	end
+	for index, spot in ipairs(spots) do
 		local pivot = Vector3.new(spot.X, size.Y / 2 + 2.6, spot.Z)
 		local base = Instance.new("Part")
 		base.Name = "CannonBase"
@@ -267,13 +290,39 @@ function Cannons.mountOnBoat(boat)
 		prompt.RequiresLineOfSight = false
 		prompt.KeyboardKeyCode = Enum.KeyCode.E
 		prompt.Parent = base
-		table.insert(
-			Cannons.entries,
-			{ base = base, barrel = barrel, weld = weld, boat = boat, localPivot = pivot, name = prompt.ObjectText }
-		)
+		local side = sides[index]
+		if side then
+			prompt.ObjectText = (side < 0 and "Port" or "Starboard") .. " gun"
+			-- Its barrel points out over its side until someone aims it.
+			weld.C0 = base.CFrame:ToObjectSpace(
+				CFrame.lookAt(barrel.Position, barrel.Position + hull.CFrame.RightVector * side) * CFrame.new(0, 0, -1)
+			)
+		end
+		table.insert(Cannons.entries, {
+			base = base,
+			barrel = barrel,
+			weld = weld,
+			boat = boat,
+			localPivot = pivot,
+			name = prompt.ObjectText,
+			side = side,
+			profile = side and Config.BOAT_SHOT or nil,
+			cooldown = side and 3.4 or nil,
+		})
 		boat.cannons = boat.cannons or {}
 		table.insert(boat.cannons, Cannons.entries[#Cannons.entries])
 	end
+end
+
+-- V13: a boat's own gun fired by its driver (the Cutter's bow gun, the Broadside's volley): server/BoatAbilities.lua.
+-- `side` picks the Broadside's gun (-1 port, 1 starboard); nil picks the bow gun. Returns the entry used, or nil.
+function Cannons.boatGun(boat, side)
+	for _, entry in ipairs(boat.cannons or {}) do
+		if entry.side == side then
+			return entry
+		end
+	end
+	return nil
 end
 
 function Cannons.build(worldRefs)
@@ -282,7 +331,7 @@ function Cannons.build(worldRefs)
 		table.insert(Cannons.entries, entry)
 	end
 	for _, boat in ipairs(Boats.list) do
-		if boat.spec.cannons then
+		if boat.spec.cannons or boat.spec.broadside then
 			Cannons.mountOnBoat(boat)
 		end
 	end
@@ -303,7 +352,7 @@ end
 
 -- A boat built later (an AI ship) gets its guns when it spawns.
 function Cannons.mountIfArmed(boat)
-	if boat.spec.cannons and not boat.cannons then
+	if (boat.spec.cannons or boat.spec.broadside) and not boat.cannons then
 		Cannons.mountOnBoat(boat)
 	end
 end

@@ -26,6 +26,9 @@ local Twisters = require(script.Parent.Twisters)
 local Minimap = require(script.Parent.Minimap)
 local Danger = require(script.Parent.Danger)
 local TouchControls = require(script.Parent.TouchControls)
+local PortHud = require(script.Parent.PortHud)
+local Spectate = require(script.Parent.Spectate)
+local PortLife = require(script.Parent.PortLife)
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
@@ -930,12 +933,21 @@ end, false, Enum.ContextActionPriority.High.Value + 10, Enum.KeyCode.Space, Enum
 
 local lastTrickHint = -math.huge
 local function pressTrick()
-	-- V9: a trick, in the air. On the water it only says how.
-	if not BoatDrive.trick() and os.clock() - lastTrickHint > 4 then
+	-- V9: a trick, in the air. V13: on the water the same key is the boat's ability (BoatDrive.stunt).
+	if BoatDrive.stunt() then
+		return
+	end
+	if os.clock() - lastTrickHint > 1.5 then
 		lastTrickHint = os.clock()
-		Hud.toast("Tricks are for the air: jump (SPACE), hit a ramp or ride a tornado, then R.")
+		local info = BoatDrive.abilityInfo()
+		if info and not info.airborne and now() < info.readyAt then
+			Hud.toast(string.format("%s %ds", info.def.name, math.ceil(info.readyAt - now())))
+		end
 	end
 end
+BoatDrive.setAimProvider(function()
+	return (aimPoint())
+end)
 
 local function pressThrow()
 	if player:GetAttribute("CarryingLoot") then
@@ -1011,11 +1023,14 @@ UserInputService.InputBegan:Connect(function(input, processed)
 			tryAirJump()
 		end
 	elseif input.KeyCode == Enum.KeyCode.X or input.KeyCode == Enum.KeyCode.ButtonY then
-		-- Leave the boat. (Space is the boat's hop now, so it no longer climbs out.)
+		-- Leave the boat. (Space is the boat's hop now, so it no longer climbs out.) V13: Y on foot is the
+		-- controller's Poltergoblin (until now a controller had no way to it).
 		local _, humanoid = getCharacter()
 		if humanoid and humanoid.SeatPart then
 			humanoid.Sit = false
 			humanoid.Jump = true
+		elseif input.KeyCode == Enum.KeyCode.ButtonY then
+			pressPoltergoblin()
 		end
 	elseif input.KeyCode == Enum.KeyCode.B or input.KeyCode == Enum.KeyCode.DPadDown then
 		recallRemote:FireServer()
@@ -1063,11 +1078,7 @@ TouchControls.start({
 	end,
 	boost = BoatDrive.boost,
 	hop = BoatDrive.jump,
-	trick = function()
-		if not BoatDrive.trick() then
-			Hud.toast("Tricks are for the air: HOP, hit a ramp or ride a tornado, then TRICK.")
-		end
-	end,
+	trick = pressTrick, -- V13: in the air a trick, on the water the boat's ability
 }, function()
 	if player:GetAttribute("DeployState") == "loaded" then
 		return "aim"
@@ -1138,6 +1149,25 @@ Emotes.start(Shop.dock)
 Results.start(function()
 	Shop.open("shop")
 end)
+-- V13: the Goblin Port's own screen, watching the raid from it, and its menagerie.
+PortHud.start(function(focus)
+	Shop.open("shop", focus)
+end)
+Spectate.start(Hud.toast)
+PortLife.start()
+
+function handlers.SpectateEnd(p)
+	Spectate.ended(p)
+end
+
+function handlers.SpectateSwitch(p)
+	Spectate.switched(p)
+end
+
+function handlers.RaidJoined()
+	Hud.banner("YOU'RE IN! CLIMB INTO A CANNON", GOLD, 3.5, 3)
+	Effects.chime(Effects.CHIME_GOOD, 0.8)
+end
 
 function handlers.ShopResult(p)
 	Shop.result(p)
@@ -1578,8 +1608,45 @@ local function boatFx(kind, position, mine, airTime)
 	end
 end
 
+-- V13: a boat ability, drawn where it happened (yours from BoatDrive, everyone else's from the server's BoatFx).
+local ABILITY_FX = {
+	nitro = { Color3.fromRGB(255, 140, 40), "whoosh", 0.7, 108 },
+	chaser = { Color3.fromRGB(255, 200, 120), nil, 1, 92 },
+	spring = { Color3.fromRGB(90, 230, 210), "rise", 1.3, 104 },
+	volley = { Color3.fromRGB(255, 190, 90), nil, 1, 94 },
+	twister = { Color3.fromRGB(190, 210, 255), "whoosh", 0.5, 100 },
+	slip = { Color3.fromRGB(110, 255, 210), "whoosh", 2, 104 },
+	plow = { Color3.fromRGB(255, 200, 40), "thud", 0.6, 100 },
+}
+local function abilityFx(id, position, mine)
+	local fx = ABILITY_FX[id]
+	if not fx or typeof(position) ~= "Vector3" then
+		return
+	end
+	Effects.burst(position, fx[1], 50, 40)
+	Effects.ring(position, fx[1], 24, 0.5)
+	if id == "spring" or id == "plow" then
+		Effects.spray(position, 1.1)
+	end
+	if fx[2] then
+		Effects.sound(fx[2], { position = position, speed = fx[3], volume = 1, range = 400 })
+	end
+	if mine then
+		Effects.punchFov(fx[4])
+	end
+end
+
 local TRICK_SOUND = { 1.25, 1.45, 1.7, 1.95, 2.2 }
 BoatDrive.onEvent(function(kind, position, chain, extra)
+	if kind == "ability" then
+		abilityFx(chain, position, true)
+		return
+	elseif kind == "airhop" then
+		Effects.burst(position, Color3.fromRGB(90, 230, 210), 30, 30)
+		Effects.sound("rise", { position = position, speed = 1.6, volume = 0.8, range = 300 })
+		Effects.punchFov(96)
+		return
+	end
 	if kind == "trickstart" then
 		-- V9: the name lands with the motion, loud and tilted (client/Tricks.lua).
 		local name = BoatDrive.TRICK_NAMES[chain] or "TRICK"
@@ -1839,7 +1906,9 @@ function handlers.BoatFx(p)
 	if isMe(p) or typeof(p.position) ~= "Vector3" then
 		return
 	end
-	if p.kind == "trick" then
+	if p.kind == "ability" then
+		abilityFx(p.ability, p.position, false)
+	elseif p.kind == "trick" then
 		-- Someone else's trick, shown over their boat so it reads as deliberate.
 		Tricks.other(p.position, OTHER_TRICK_NAMES[p.trick] or "TRICK!", p.userId)
 		Looks.trick(Looks.boatOf(p.userId))
@@ -1886,6 +1955,13 @@ end
 
 function handlers.BoatPush(p)
 	BoatDrive.push(p)
+end
+
+function handlers.AbilityRefused(p)
+	BoatDrive.abilityRefused()
+	if p.text then
+		Hud.toast(p.text)
+	end
 end
 
 function handlers.BoatImpact(p)
@@ -1979,16 +2055,17 @@ end
 
 function handlers.RaidStart()
 	Results.hide()
-	Hud.banner("RAID START! STEAL LOOT, BRING IT TO THE HOARD", GOLD, 4, 3)
-	Effects.chime(Effects.CHIME_GOOD, 0.9)
+	if player:GetAttribute("InRaid") then
+		Hud.banner("RAID START! STEAL LOOT, BRING IT HOME", GOLD, 4, 3)
+		Effects.chime(Effects.CHIME_GOOD, 0.9)
+	end
 end
 
 function handlers.RaidEnd(p)
+	-- V13: everyone in the raid is home in the Port by now (the winners on the podium); the results card says how it
+	-- went to everyone, the Port's watchers too.
 	Results.show(p.results or {}, p.winners or {})
-	if p.winners and #p.winners > 0 then
-		Skyship.holdMap(5.5) -- everyone on the deck sees the winner's dance before the map opens
-	end
-	Hud.banner("RAID OVER!", GOLD, 3, 3)
+	Hud.banner("RAID OVER! HOME TO THE PORT", GOLD, 3, 3)
 	Effects.chime({ 2, 1.5, 1.26, 1, 1.5, 2 }, 0.8)
 end
 

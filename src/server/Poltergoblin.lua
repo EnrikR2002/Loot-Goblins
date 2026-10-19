@@ -19,6 +19,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+local Lobby = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Lobby"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Gear = require(script.Parent.Gear)
@@ -347,6 +348,11 @@ end
 function Poltergoblin.request(player)
 	local spirit = spirits[player]
 	if not spirit then
+		-- V13: not in the Port (it is the raid's trick).
+		local root = Util.aliveRoot(player)
+		if root and Lobby.inPort(root.Position) then
+			return
+		end
 		start(player)
 	elseif now() - spirit.startedAt >= Config.POLTER_RECAST_DELAY then
 		Poltergoblin.finish(player, "return")

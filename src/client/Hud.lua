@@ -2,9 +2,22 @@
 -- Heat, where each loot is, your cooldowns and stamina) plus one-off GameEvents
 -- (banner, feed, toasts). Placement keeps clear of Roblox's own chat (top left),
 -- player list (top right) and tool hotbar (bottom middle).
+--
+-- V13, THE QUIET HUD: icons, not sentences. The V12 HUD drew five 132-pixel ability slots each with a line of text,
+-- two stamina slots, a coin sentence and an objective sentence, all at once. Now:
+--   * moves are square icon buttons with their key in the corner (the controller's button on a controller, nothing on
+--     a touch screen, which has its own buttons) and a cooldown that fills like a clock; a move that cannot be used
+--     right now is dimmed, and THROW and KEG only appear when you have something to throw;
+--   * stamina is one slim bar; the coin purse is a chip that appears once you have coins;
+--   * the boat panel is one compact strip: speed, hull, boost, drift and the boat's own ability (Config.BOAT_ABILITIES);
+--   * the objective is a short chip that teaches during a goblin's first raids (Objective.TEACH_RAIDS) and after that
+--     only speaks when it matters (carrying, swimming, a treasure right here);
+--   * the feed keeps four lines, briefly;
+--   * in the Port none of this is shown: client/PortHud.lua draws the Port's own small screen.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Map = require(script.Parent.Map)
@@ -22,16 +35,19 @@ local SPIRIT = Color3.fromRGB(120, 255, 170)
 local WARD = Color3.fromRGB(190, 110, 255)
 local STAMINA = Color3.fromRGB(120, 220, 255)
 local WINDED = Color3.fromRGB(255, 90, 80)
+local CHILLED = Color3.fromRGB(150, 220, 255)
 
 local gui, scale
 local helpGui, helpScale -- V12: the controls card's own layer, over the hoard arrow and the danger arrows
-local timer, heatFill, heatLabel, heatHint, banner, feedList, board, boardTitle, objective, toast, flash
+local top, timer, heatFill, heatLabel, heatHint, banner, feedList, board, boardTitle, objective, toast, flash
 local help
 local slots = {}
 local boardRows = {}
 local boardOrder = {} -- ids, richest first
 local boardFull = false -- T: every treasure; by default only what is loose or carried
-local boatPanel, boatSpeed, boatHull, boatHullFill, boatBoost, boatBoostFill, boatDrift, boatDriftFill, boatNote
+local staminaBar, staminaFill, staminaIcon, dashChip
+local boatPanel, boatSpeed, boatNote
+local meters = {}
 local LOOT_WEIGHT = {}
 local LOOT_DEFS = {}
 for _, def in ipairs(Config.LOOT) do
@@ -48,13 +64,15 @@ local waypoint, waypointLabel
 local hoardPart
 local shownHeat = 0
 local shownStamina = Config.STAMINA_MAX
-local coinPanel, coinLabel
+local coinChip, coinLabel
 local chainCount, chainUntil = 0, 0 -- The run of hoops the boat is on (shown in the boat panel).
 local bannerToken, toastToken, hintToken = 0, 0, 0
 -- V12: the banner has priorities (client/BannerQueue.lua): a lesser banner waits for the one showing.
 local bannerQueue = BannerQueue.new()
--- V12: what the goblin is doing, which decides what the HUD shows ("ship", "flight", "boat" or "foot").
+-- V12: what the goblin is doing, which decides what the HUD shows ("ship", "flight", "boat" or "foot"; V13 "port").
 local hudMode = "foot"
+-- V13: which glyphs the key chips show: "keys", "pad" (a controller) or "touch" (none: the screen has buttons).
+local inputKind = "keys"
 
 -- Construction helpers ---------------------------------------------------------------
 local function make(className, props, parent)
@@ -105,24 +123,31 @@ end
 
 -- Build ------------------------------------------------------------------------------
 local function buildTop()
-	local top = make("Frame", {
+	top = make("Frame", {
 		Name = "Top",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 40),
-		Size = UDim2.fromOffset(380, 84),
+		Position = UDim2.new(0.5, 0, 0, 36),
+		Size = UDim2.fromOffset(240, 66),
 		BackgroundTransparency = 1,
 	}, gui)
-	local timerBack = panel(top, { Size = UDim2.fromOffset(380, 34) })
-	timer = text(timerBack, { Font = Enum.Font.GothamBlack, Text = "RAID" })
+	local timerBack = panel(top, { Size = UDim2.fromOffset(240, 34) })
+	corner(timerBack, 17)
+	timer = text(timerBack, {
+		Position = UDim2.fromOffset(10, 3),
+		Size = UDim2.new(1, -20, 1, -6),
+		Font = Enum.Font.GothamBlack,
+		Text = "RAID",
+	})
 
-	local heatBack = panel(top, { Position = UDim2.fromOffset(0, 40), Size = UDim2.fromOffset(380, 22) })
+	local heatBack = panel(top, { Position = UDim2.fromOffset(20, 38), Size = UDim2.fromOffset(200, 8) })
 	heatBack.ClipsDescendants = true
+	corner(heatBack, 4)
 	heatFill = make("Frame", {
 		BackgroundColor3 = Config.HEAT_TIERS[1].color,
 		BorderSizePixel = 0,
 		Size = UDim2.fromScale(0, 1),
 	}, heatBack)
-	corner(heatFill)
+	corner(heatFill, 4)
 	for i = 2, #Config.HEAT_TIERS do
 		make("Frame", {
 			BackgroundColor3 = WHITE,
@@ -133,10 +158,18 @@ local function buildTop()
 			ZIndex = 2,
 		}, heatBack)
 	end
-	heatLabel = text(heatBack, { Text = "HEAT  CALM", ZIndex = 3, TextStrokeTransparency = 0.2 })
-	heatHint = text(top, {
-		Position = UDim2.fromOffset(0, 64),
-		Size = UDim2.fromOffset(380, 18),
+	-- The heat's name only once it is above calm (calm is the normal state: nothing to read).
+	heatLabel = text(top, {
+		Position = UDim2.fromOffset(0, 47),
+		Size = UDim2.fromOffset(240, 14),
+		Font = Enum.Font.GothamBlack,
+		Text = "",
+		TextStrokeTransparency = 0.3,
+	})
+	heatHint = text(gui, {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 100),
+		Size = UDim2.fromOffset(460, 18),
 		Font = Enum.Font.GothamMedium,
 		TextTransparency = 1,
 		TextStrokeTransparency = 1,
@@ -147,23 +180,24 @@ local function buildBanner()
 	banner = text(gui, {
 		Name = "Banner",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 130),
-		Size = UDim2.fromOffset(780, 46),
+		Position = UDim2.new(0.5, 0, 0, 122),
+		Size = UDim2.fromOffset(640, 40),
 		Font = Enum.Font.GothamBlack,
 		BackgroundColor3 = DARK,
 		BackgroundTransparency = 1,
 		TextTransparency = 1,
 		TextStrokeTransparency = 1,
 	})
-	corner(banner)
+	corner(banner, 12)
+	make("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, banner)
 end
 
 local function buildFeed()
 	local feed = make("Frame", {
 		Name = "Feed",
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 12, 0.74, 0),
-		Size = UDim2.fromOffset(400, 190),
+		Position = UDim2.new(0, 12, 1, -96),
+		Size = UDim2.fromOffset(340, 104),
 		BackgroundTransparency = 1,
 	}, gui)
 	make("UIListLayout", {
@@ -174,7 +208,7 @@ local function buildFeed()
 	feedList = feed
 end
 
-local BOARD_ROW = 21
+local BOARD_ROW = 20
 
 local function buildBoard()
 	local rowsCount = #Config.LOOT
@@ -183,12 +217,12 @@ local function buildBoard()
 		-- V9: below the minimap (client/Minimap.lua), top right.
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -10, 0, 236),
-		Size = UDim2.fromOffset(300, 26 + rowsCount * BOARD_ROW),
+		Size = UDim2.fromOffset(260, 26 + rowsCount * BOARD_ROW),
 	})
 	boardTitle = text(board, {
 		Position = UDim2.fromOffset(10, 3),
-		Size = UDim2.new(1, -20, 0, 20),
-		Text = "TREASURE  (gold value)",
+		Size = UDim2.new(1, -20, 0, 18),
+		Text = "TREASURE",
 		Font = Enum.Font.GothamBlack,
 		TextColor3 = GOLD,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -213,7 +247,7 @@ local function buildBoard()
 		corner(dot, 5)
 		local name = text(row, {
 			Position = UDim2.fromOffset(16, 0),
-			Size = UDim2.new(0.52, -16, 1, 0),
+			Size = UDim2.new(0.55, -16, 1, 0),
 			Text = string.format("%s  %dg", def.name, def.value),
 			TextColor3 = def.color,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -221,8 +255,8 @@ local function buildBoard()
 			TextSize = 12,
 		})
 		local status = text(row, {
-			Position = UDim2.fromScale(0.52, 0),
-			Size = UDim2.fromScale(0.48, 1),
+			Position = UDim2.fromScale(0.55, 0),
+			Size = UDim2.fromScale(0.45, 1),
 			Font = Enum.Font.GothamMedium,
 			TextXAlignment = Enum.TextXAlignment.Right,
 			TextScaled = false,
@@ -233,89 +267,165 @@ local function buildBoard()
 	end
 end
 
-local function makeSlot(key, name, color)
-	local slot = panel(nil, { Size = UDim2.fromOffset(132, 52) })
-	slot.ClipsDescendants = true
+-- A move: a square icon with its key in the corner, a cooldown that fills it like a clock face, and (for a goblin's
+-- first raids) a word under it.
+local ICON = 54
+local function makeSlot(id, glyph, word, color, keys)
+	local slot = panel(nil, { Name = id, Size = UDim2.fromOffset(ICON, ICON) })
+	corner(slot, 12)
+	slot.ClipsDescendants = false
 	local stroke = make("UIStroke", { Color = color, Thickness = 2 }, slot)
-	local fill = make("Frame", {
-		BackgroundColor3 = color,
-		BackgroundTransparency = 0.6,
+	local cool = make("Frame", {
+		Name = "Cooldown",
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.45,
 		BorderSizePixel = 0,
-		Size = UDim2.fromScale(1, 1),
+		Size = UDim2.fromScale(1, 0),
+		ZIndex = 3,
 	}, slot)
-	local keyWidth = #key > 3 and 58 or 34
-	text(slot, {
-		Position = UDim2.fromOffset(6, 4),
-		Size = UDim2.fromOffset(keyWidth, 24),
-		Text = key,
+	corner(cool, 12)
+	local icon = text(slot, {
+		Name = "Icon",
+		Position = UDim2.fromOffset(8, 8),
+		Size = UDim2.new(1, -16, 1, -16),
+		Text = glyph,
+		TextStrokeTransparency = 1,
+		ZIndex = 2,
+	})
+	local count = text(slot, {
+		Name = "Count",
+		Size = UDim2.fromScale(1, 1),
+		Text = "",
+		Font = Enum.Font.GothamBlack,
+		TextScaled = false,
+		TextSize = 20,
+		TextStrokeTransparency = 0.2,
+		ZIndex = 4,
+	})
+	local keyChip = panel(slot, {
+		Name = "Key",
+		AnchorPoint = Vector2.new(0, 0),
+		Position = UDim2.fromOffset(-6, -6),
+		Size = UDim2.fromOffset(24, 18),
+		BackgroundColor3 = color,
+		BackgroundTransparency = 0,
+		ZIndex = 5,
+	})
+	corner(keyChip, 6)
+	local keyLabel = text(keyChip, {
+		Position = UDim2.fromOffset(2, 1),
+		Size = UDim2.new(1, -4, 1, -2),
+		Text = keys[1],
+		Font = Enum.Font.GothamBlack,
+		TextColor3 = DARK,
+		TextStrokeTransparency = 1,
+		ZIndex = 6,
+	})
+	local caption = text(slot, {
+		Name = "Word",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 1, 2),
+		Size = UDim2.fromOffset(ICON + 16, 12),
+		Text = word,
 		Font = Enum.Font.GothamBlack,
 		TextColor3 = color,
+		TextStrokeTransparency = 0.3,
 		ZIndex = 2,
 	})
-	text(slot, {
-		Position = UDim2.fromOffset(keyWidth + 8, 4),
-		Size = UDim2.new(1, -(keyWidth + 12), 0, 22),
-		Text = name,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 2,
-	})
-	local sub = text(slot, {
-		Position = UDim2.fromOffset(6, 30),
-		Size = UDim2.new(1, -12, 0, 18),
-		Font = Enum.Font.GothamMedium,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 2,
-	})
-	return { frame = slot, fill = fill, sub = sub, stroke = stroke, color = color }
+	return {
+		frame = slot,
+		stroke = stroke,
+		cool = cool,
+		icon = icon,
+		count = count,
+		key = keyChip,
+		keyLabel = keyLabel,
+		keys = keys,
+		caption = caption,
+		color = color,
+		shown = true,
+	}
 end
 
-local function buildAbilities()
+local function buildMoves()
 	local row = make("Frame", {
 		Name = "Abilities",
 		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -12, 1, -12),
-		Size = UDim2.fromOffset(5 * 132 + 4 * 6, 52),
+		Position = UDim2.new(1, -14, 1, -26),
+		Size = UDim2.fromOffset(5 * ICON + 4 * 10, ICON),
 		BackgroundTransparency = 1,
 	}, gui)
 	make("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		HorizontalAlignment = Enum.HorizontalAlignment.Right,
 		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 6),
+		Padding = UDim.new(0, 10),
 	}, row)
-	slots.sword = makeSlot("LMB", "SWORD", Color3.fromRGB(220, 220, 230))
-	slots.throw = makeSlot("Q", "THROW", GOLD)
-	slots.grapple = makeSlot("F", "GRAPPLE", Color3.fromRGB(255, 240, 120))
-	slots.polter = makeSlot("E", "POLTERGOBLIN", SPIRIT)
-	slots.keg = makeSlot("G", "KEG", Color3.fromRGB(255, 150, 90))
-	for i, key in ipairs({ "sword", "throw", "grapple", "keg", "polter" }) do
+	-- keys: { keyboard, controller }
+	slots.sword = makeSlot("Sword", "⚔", "SWORD", Color3.fromRGB(220, 220, 230), { "LMB", "R2" })
+	slots.grapple = makeSlot("Grapple", "🎣", "HOOK", Color3.fromRGB(255, 240, 120), { "F", "L2" })
+	slots.polter = makeSlot("Polter", "👻", "SPIRIT", SPIRIT, { "E", "Y" })
+	slots.keg = makeSlot("Keg", "💣", "KEG", Color3.fromRGB(255, 150, 90), { "G", "◀" })
+	slots.throw = makeSlot("Throw", "🏈", "THROW", GOLD, { "Q", "L1" })
+	for i, key in ipairs({ "throw", "keg", "polter", "grapple", "sword" }) do
 		slots[key].frame.LayoutOrder = i
 		slots[key].frame.Parent = row
 	end
 
-	-- Stamina sits bottom-left, clear of the hotbar and the objective line. It pays for
-	-- sprint, dash and air jump; running is free. The dash sits beside it.
-	slots.sprint = makeSlot("SHIFT", "SPRINT", STAMINA)
-	slots.sprint.frame.Name = "Sprint"
-	slots.sprint.frame.AnchorPoint = Vector2.new(0, 1)
-	slots.sprint.frame.Position = UDim2.new(0, 12, 1, -12)
-	slots.sprint.frame.Size = UDim2.fromOffset(220, 52)
-	slots.sprint.frame.Parent = gui
-	slots.dash = makeSlot("C", "DASH", STAMINA)
-	slots.dash.frame.Name = "Dash"
-	slots.dash.frame.AnchorPoint = Vector2.new(0, 1)
-	slots.dash.frame.Position = UDim2.new(0, 238, 1, -12)
-	slots.dash.frame.Size = UDim2.fromOffset(160, 52)
-	slots.dash.frame.Parent = gui
+	-- Stamina: one slim bar, bottom left. It pays for sprint, dash and air jump; running is free.
+	staminaBar = panel(gui, {
+		Name = "Stamina",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 40, 1, -30),
+		Size = UDim2.fromOffset(200, 12),
+		BackgroundColor3 = Color3.fromRGB(30, 34, 44),
+	})
+	staminaBar.ClipsDescendants = true
+	corner(staminaBar, 6)
+	staminaFill = make("Frame", {
+		BackgroundColor3 = STAMINA,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+	}, staminaBar)
+	corner(staminaFill, 6)
+	staminaIcon = text(gui, {
+		Name = "StaminaIcon",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 12, 1, -24),
+		Size = UDim2.fromOffset(24, 24),
+		Text = "⚡",
+		TextStrokeTransparency = 1,
+	})
+	-- The dash: a chip at the end of the bar, lit while there is stamina enough for one.
+	dashChip = panel(gui, {
+		Name = "Dash",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 246, 1, -26),
+		Size = UDim2.fromOffset(58, 20),
+		BackgroundColor3 = STAMINA,
+		BackgroundTransparency = 0,
+	})
+	corner(dashChip, 10)
+	text(dashChip, {
+		Name = "Text",
+		Position = UDim2.fromOffset(4, 2),
+		Size = UDim2.new(1, -8, 1, -4),
+		Text = "C DASH",
+		Font = Enum.Font.GothamBlack,
+		TextColor3 = DARK,
+		TextStrokeTransparency = 1,
+	})
 
-	-- The coin purse, just above: what you have picked up at sea and what it has paid this raid.
-	coinPanel = panel(gui, {
+	-- The coin purse: a chip above the bar, once there is something in it.
+	coinChip = panel(gui, {
 		Name = "Coins",
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 12, 1, -70),
-		Size = UDim2.fromOffset(386, 24),
+		Position = UDim2.new(0, 12, 1, -50),
+		Size = UDim2.fromOffset(150, 22),
+		Visible = false,
 	})
-	coinLabel = text(coinPanel, {
+	corner(coinChip, 11)
+	coinLabel = text(coinChip, {
 		Position = UDim2.fromOffset(8, 2),
 		Size = UDim2.new(1, -16, 1, -4),
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -324,67 +434,84 @@ local function buildAbilities()
 	})
 end
 
--- Shown only while you sit in a boat: speed, hull health, boost, anchor and what the cargo costs you.
+-- Shown only while you sit in a boat: one strip. Speed and notes on top; hull, boost, drift and the ability below.
 local function buildBoatPanel()
 	boatPanel = panel(gui, {
 		Name = "BoatPanel",
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -118),
-		Size = UDim2.fromOffset(420, 58),
+		Position = UDim2.new(0.5, 0, 1, -100),
+		Size = UDim2.fromOffset(452, 56),
 		Visible = false,
 	})
+	corner(boatPanel, 12)
 	boatSpeed = text(boatPanel, {
-		Position = UDim2.fromOffset(10, 4),
-		Size = UDim2.fromOffset(150, 24),
+		Position = UDim2.fromOffset(12, 4),
+		Size = UDim2.fromOffset(170, 20),
 		Font = Enum.Font.GothamBlack,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = "SKIFF  0",
 	})
 	boatNote = text(boatPanel, {
-		Position = UDim2.fromOffset(160, 4),
-		Size = UDim2.new(1, -170, 0, 24),
+		Position = UDim2.fromOffset(182, 4),
+		Size = UDim2.new(1, -194, 0, 20),
 		Font = Enum.Font.GothamMedium,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Text = "",
 	})
-	-- Three meters in a row: hull, boost, drift charge.
-	local function meter(x, color, label)
+	local function meter(id, x, width, color, label)
 		local back = panel(boatPanel, {
-			Position = UDim2.fromOffset(x, 32),
-			Size = UDim2.fromOffset(128, 18),
+			Name = id,
+			Position = UDim2.fromOffset(x, 28),
+			Size = UDim2.fromOffset(width, 20),
 			BackgroundColor3 = Color3.fromRGB(40, 40, 52),
 		})
 		back.ClipsDescendants = true
+		corner(back, 6)
 		local fill = make("Frame", {
 			BackgroundColor3 = color,
 			BorderSizePixel = 0,
 			Size = UDim2.fromScale(1, 1),
 		}, back)
-		return fill, text(back, { Text = label, ZIndex = 3, TextStrokeTransparency = 0.2 })
+		corner(fill, 6)
+		meters[id] = {
+			back = back,
+			fill = fill,
+			label = text(back, {
+				Position = UDim2.fromOffset(4, 2),
+				Size = UDim2.new(1, -8, 1, -4),
+				Text = label,
+				ZIndex = 3,
+				TextStrokeTransparency = 0.2,
+			}),
+		}
 	end
-	boatHullFill, boatHull = meter(10, Color3.fromRGB(120, 230, 120), "HULL")
-	boatBoostFill, boatBoost = meter(146, Color3.fromRGB(255, 190, 70), "SHIFT BOOST")
-	boatDriftFill, boatDrift = meter(282, DRIFT_COLORS[0], "C DRIFT")
+	meter("hull", 10, 100, Color3.fromRGB(120, 230, 120), "HULL")
+	meter("boost", 116, 100, Color3.fromRGB(255, 190, 70), "BOOST")
+	meter("drift", 222, 100, DRIFT_COLORS[0], "DRIFT")
+	meter("ability", 328, 114, Color3.fromRGB(196, 140, 255), "ABILITY")
 end
 
 local function buildBottom()
 	objective = text(gui, {
 		Name = "Objective",
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -76),
-		Size = UDim2.fromOffset(760, 30),
+		Position = UDim2.new(0.5, 0, 1, -64),
+		Size = UDim2.fromOffset(0, 28),
+		AutomaticSize = Enum.AutomaticSize.X,
+		TextScaled = false,
+		TextSize = 15,
 		BackgroundColor3 = DARK,
 		BackgroundTransparency = 0.3,
 		Font = Enum.Font.GothamBold,
 		TextStrokeTransparency = 0.3,
 	})
-	corner(objective)
-	make("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, objective)
+	corner(objective, 14)
+	make("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14) }, objective)
 	toast = text(gui, {
 		Name = "Toast",
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -112),
-		Size = UDim2.fromOffset(560, 24),
+		Position = UDim2.new(0.5, 0, 1, -100),
+		Size = UDim2.fromOffset(560, 22),
 		Font = Enum.Font.GothamBold,
 		TextColor3 = Color3.fromRGB(255, 230, 160),
 		TextTransparency = 1,
@@ -428,7 +555,8 @@ local HELP_COLUMNS = {
 			{ "SHIFT", "boost" },
 			{ "hold C", "drift a turn, let go: burst" },
 			{ "SPACE", "jump (SUPER JUMP when fast)" },
-			{ "R", "trick in the air (again: combo)" },
+			{ "R", "on the water: your boat's ability" },
+			{ "R", "in the air: a trick (again: combo)" },
 			{ "X", "leave the boat" },
 		},
 	},
@@ -453,10 +581,60 @@ local HELP_RULES = {
 	"A ring on the ground or the sea means something lands there: move.",
 	"Whatever guards a treasure follows its thief home, until the gold buoys round Goblin Cove.",
 	"Keep your speed at sea: pursuers catch whoever slows down.",
-	"CONTROLLER: A jump / fire, X boost, B dash / drift, Y leave a boat, R1 trick, L2 hook, L1 throw, R3 (click) map.",
+	"CONTROLLER: A jump / fire, X boost, B dash / drift, Y leave a boat (on foot: Poltergoblin), R1 ability / trick, L2 hook, L1 throw, R3 map.",
 	"D-pad: down calls a boat, left throws a keg, right the wardrobe, up the emotes.",
 }
+-- V13: the Port's own card (the same H key, a different card).
+local PORT_HELP = {
+	"THE GOBLIN PORT",
+	"Between raids. Nothing here can hurt you, and nothing you do here counts in a raid.",
+	{
+		{ "WALK", "aboard the airship: you're READY" },
+		{ "", "everyone aboard: the raid leaves early" },
+		{ "E", "Shipyard: look at a boat, sail it" },
+		{ "E", "Menagerie: adopt a pet" },
+		{ "E", "Madame Ragwort's: dress up" },
+		{ "E", "Spyglass: watch the raid" },
+		{ "P", "the wardrobe, from anywhere" },
+		{ "V", "emotes" },
+	},
+}
 
+local function helpTitle(parent, y, words, color)
+	text(parent, {
+		Position = UDim2.fromOffset(16, y),
+		Size = UDim2.new(1, -32, 0, 28),
+		Text = words,
+		Font = Enum.Font.GothamBlack,
+		TextColor3 = color or GOLD,
+		ZIndex = 9,
+	})
+end
+
+local function helpRow(parent, x, y, key, words, fixed)
+	if key ~= "" then
+		local chip = panel(parent, {
+			Position = UDim2.fromOffset(x, y),
+			Size = UDim2.fromOffset(96, 19),
+			BackgroundColor3 = Color3.fromRGB(60, 60, 76),
+			BackgroundTransparency = 0,
+			ZIndex = 9,
+		})
+		text(chip, { Text = key, Font = Enum.Font.GothamBlack, TextColor3 = WHITE, ZIndex = 10 })
+	end
+	text(parent, {
+		Position = UDim2.fromOffset(x + 104, y),
+		Size = UDim2.fromOffset(fixed and 280 or 236, 19),
+		Text = words,
+		Font = Enum.Font.GothamMedium,
+		TextScaled = not fixed,
+		TextSize = 14,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 9,
+	})
+end
+
+local portHelp
 local function buildHelp()
 	helpGui = make("ScreenGui", { Name = "LootGoblinsHelp", ResetOnSpawn = false, DisplayOrder = 12 }, nil)
 	helpScale = make("UIScale", {}, helpGui)
@@ -470,14 +648,7 @@ local function buildHelp()
 		ZIndex = 8,
 	})
 	make("UIStroke", { Color = GOLD, Thickness = 2 }, help)
-	text(help, {
-		Position = UDim2.fromOffset(16, 10),
-		Size = UDim2.new(1, -32, 0, 30),
-		Text = "LOOT GOBLINS",
-		Font = Enum.Font.GothamBlack,
-		TextColor3 = GOLD,
-		ZIndex = 9,
-	})
+	helpTitle(help, 10, "LOOT GOBLINS")
 	text(help, {
 		Position = UDim2.fromOffset(16, 40),
 		Size = UDim2.new(1, -32, 0, 20),
@@ -501,22 +672,7 @@ local function buildHelp()
 		})
 		y[side] += 22
 		for _, row in ipairs(section[2]) do
-			local chip = panel(help, {
-				Position = UDim2.fromOffset(columnX[side], y[side]),
-				Size = UDim2.fromOffset(96, 19),
-				BackgroundColor3 = Color3.fromRGB(60, 60, 76),
-				BackgroundTransparency = 0,
-				ZIndex = 9,
-			})
-			text(chip, { Text = row[1], Font = Enum.Font.GothamBlack, TextColor3 = WHITE, ZIndex = 10 })
-			text(help, {
-				Position = UDim2.fromOffset(columnX[side] + 104, y[side]),
-				Size = UDim2.fromOffset(236, 19),
-				Text = row[2],
-				Font = Enum.Font.GothamMedium,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				ZIndex = 9,
-			})
+			helpRow(help, columnX[side], y[side], row[1], row[2])
 			y[side] += 22
 		end
 		y[side] += 8
@@ -539,6 +695,40 @@ local function buildHelp()
 		Position = UDim2.new(0, 16, 1, -8),
 		Size = UDim2.new(1, -32, 0, 16),
 		Text = "H closes this",
+		Font = Enum.Font.GothamMedium,
+		TextColor3 = Color3.fromRGB(180, 180, 190),
+		ZIndex = 9,
+	})
+	-- The Port's card.
+	portHelp = panel(helpGui, {
+		Name = "PortHelp",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(430, 96 + #PORT_HELP[3] * 22 + 30),
+		BackgroundTransparency = 0.08,
+		Visible = false,
+		ZIndex = 8,
+	})
+	make("UIStroke", { Color = GOLD, Thickness = 2 }, portHelp)
+	helpTitle(portHelp, 10, PORT_HELP[1])
+	text(portHelp, {
+		Position = UDim2.fromOffset(16, 42),
+		Size = UDim2.new(1, -32, 0, 36),
+		Text = PORT_HELP[2],
+		Font = Enum.Font.GothamMedium,
+		TextScaled = false,
+		TextSize = 14,
+		TextWrapped = true,
+		ZIndex = 9,
+	})
+	for i, row in ipairs(PORT_HELP[3]) do
+		helpRow(portHelp, 20, 86 + (i - 1) * 22, row[1], row[2], true)
+	end
+	text(portHelp, {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 16, 1, -8),
+		Size = UDim2.new(1, -32, 0, 16),
+		Text = "H closes this   ·   during a raid, H shows the raid's controls",
 		Font = Enum.Font.GothamMedium,
 		TextColor3 = Color3.fromRGB(180, 180, 190),
 		ZIndex = 9,
@@ -572,7 +762,7 @@ function Hud.init(hoard)
 	buildBanner()
 	buildFeed()
 	buildBoard()
-	buildAbilities()
+	buildMoves()
 	buildBoatPanel()
 	buildBottom()
 	buildHelp()
@@ -594,9 +784,9 @@ local function showBanner(shown)
 	banner.TextColor3 = shown.color or WHITE
 	banner.TextTransparency = 0
 	banner.TextStrokeTransparency = 0.2
-	banner.BackgroundTransparency = 0.15
-	banner.Size = UDim2.fromOffset(820, 52)
-	TweenService:Create(banner, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Size = UDim2.fromOffset(780, 46) }):Play()
+	banner.BackgroundTransparency = 0.2
+	banner.Size = UDim2.fromOffset(680, 46)
+	TweenService:Create(banner, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Size = UDim2.fromOffset(640, 40) }):Play()
 	task.delay(duration, function()
 		if token == bannerToken then
 			TweenService:Create(banner, TweenInfo.new(0.4), {
@@ -622,31 +812,38 @@ local function flushBanner()
 	showBanner(BannerQueue.flush(bannerQueue, os.clock()))
 end
 
+local FEED_LINES, FEED_TIME = 4, 6
 function Hud.feed(message, color)
 	local line = text(feedList, {
-		Size = UDim2.fromOffset(400, 22),
+		Size = UDim2.fromOffset(0, 20),
+		AutomaticSize = Enum.AutomaticSize.XY,
+		TextScaled = false,
+		TextWrapped = true,
+		TextSize = 13,
 		Text = message,
 		TextColor3 = color or WHITE,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextStrokeTransparency = 0.2,
 		BackgroundColor3 = DARK,
-		BackgroundTransparency = 0.45,
+		BackgroundTransparency = 0.5,
 		LayoutOrder = os.clock() * 1000 // 1,
 	})
-	make("UIPadding", { PaddingLeft = UDim.new(0, 6) }, line)
+	corner(line, 6)
+	make("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, line)
+	make("UISizeConstraint", { MaxSize = Vector2.new(340, 60) }, line) -- long lines wrap instead of being cut off
 	local lines = {}
 	for _, child in ipairs(feedList:GetChildren()) do
 		if child:IsA("TextLabel") then
 			table.insert(lines, child)
 		end
 	end
-	if #lines > 7 then
+	if #lines > FEED_LINES then
 		table.sort(lines, function(a, b)
 			return a.LayoutOrder < b.LayoutOrder
 		end)
 		lines[1]:Destroy()
 	end
-	task.delay(8, function()
+	task.delay(FEED_TIME, function()
 		if line.Parent then
 			local fade = TweenService:Create(line, TweenInfo.new(0.6), {
 				TextTransparency = 1,
@@ -699,11 +896,16 @@ function Hud.heatHint(message, color)
 	end)
 end
 
+local function helpCard()
+	return hudMode == "port" and portHelp or help
+end
+
 function Hud.showHelp(seconds)
-	help.Visible = true
+	local card = helpCard()
+	card.Visible = true
 	if seconds then
 		task.delay(seconds, function()
-			help.Visible = false
+			card.Visible = false
 		end)
 	end
 end
@@ -713,7 +915,10 @@ function Hud.toggleMap()
 end
 
 function Hud.toggleHelp()
-	help.Visible = not help.Visible
+	local card = helpCard()
+	local other = card == help and portHelp or help
+	other.Visible = false
+	card.Visible = not card.Visible
 end
 
 -- Per frame ---------------------------------------------------------------------------
@@ -731,22 +936,18 @@ local function updateTop(now, phase, phaseEndsAt)
 	local left = phaseEndsAt - now
 	local clockAt = workspace:GetAttribute("RaidClockAt")
 	if phase == "raid" and clockAt and now < clockAt then
-		-- V9: the launch window. The six-minute clock waits for it. (V12: shorter; at two digits it wrapped.)
-		timer.Text = string.format(
-			"LAUNCH  %ds   |   THEN RAID %s",
-			math.max(0, math.ceil(clockAt - now)),
-			clock(phaseEndsAt - clockAt)
-		)
+		-- V9: the launch window. The six-minute clock waits for it.
+		timer.Text = string.format("🚀 LAUNCH %d", math.max(0, math.ceil(clockAt - now)))
 		timer.TextColor3 = Color3.fromRGB(150, 230, 255)
 	elseif phase == "raid" then
 		local lastCall = left <= Config.LAST_CALL
 		local rush = left <= Config.FINAL_RUSH
-		timer.Text = (lastCall and "LAST CALL  " or (rush and "FINAL RUSH  " or "RAID  ")) .. clock(left)
+		timer.Text = (lastCall and "⏰ LAST CALL " or (rush and "🔥 RUSH " or "⏱ ")) .. clock(left)
 		local pulse = lastCall and (math.sin(now * 8) > 0) or false
 		timer.TextColor3 = lastCall and (pulse and Color3.fromRGB(255, 90, 90) or WHITE)
 			or (rush and Color3.fromRGB(255, 170, 90) or WHITE)
 	else
-		timer.Text = "NEXT RAID IN " .. math.max(0, math.ceil(left))
+		timer.Text = "NEXT RAID " .. math.max(0, math.ceil(left))
 		timer.TextColor3 = Color3.fromRGB(190, 190, 200)
 	end
 
@@ -756,7 +957,8 @@ local function updateTop(now, phase, phaseEndsAt)
 	shownHeat += (heat - shownHeat) * 0.15
 	heatFill.Size = UDim2.fromScale(math.clamp(shownHeat / Config.HEAT_MAX, 0, 1), 1)
 	heatFill.BackgroundColor3 = info.color
-	heatLabel.Text = "HEAT  " .. info.name
+	heatLabel.Text = tier > 1 and ("HEAT: " .. info.name) or ""
+	heatLabel.TextColor3 = info.color
 end
 
 local function updateBoard(now, folder)
@@ -776,7 +978,7 @@ local function updateBoard(now, folder)
 		if state == "carried" then
 			local carrierId = folder:GetAttribute(id .. "CarrierId")
 			if carrierId == player.UserId then
-				status, color = "YOU - GET HOME!", GOLD
+				status, color = "YOU!", GOLD
 			else
 				status = (folder:GetAttribute(id .. "Carrier") or "?")
 				color = Color3.fromRGB(255, 170, 120)
@@ -785,7 +987,7 @@ local function updateBoard(now, folder)
 			status, color = "LOOSE!", Color3.fromRGB(255, 110, 110)
 		elseif state == "away" then
 			local returnAt = folder:GetAttribute(id .. "ReturnAt") or now
-			status = string.format("banked %ds", math.max(0, math.ceil(returnAt - now)))
+			status = string.format("back in %ds", math.max(0, math.ceil(returnAt - now)))
 			color = Color3.fromRGB(130, 130, 140)
 		else
 			status = row.def.place
@@ -796,102 +998,110 @@ local function updateBoard(now, folder)
 			string.format("%s  %dg%s", row.def.name, row.def.value + bonus, bonus > 0 and ("+" .. bonus) or "")
 		row.dot.BackgroundTransparency = state == "away" and 0.7 or 0
 	end
-	board.Size = UDim2.fromOffset(300, 28 + math.max(shown, 0) * BOARD_ROW)
-	boardTitle.Text = boardFull and "TREASURE  (gold value)  T: fewer"
-		or (shown > 0 and "LOOSE OR CARRIED  T: all treasure" or "T: all treasure")
+	-- Nothing loose or carried and the full list not asked for: no board at all (T shows it).
+	board.Visible = shown > 0
+	board.Size = UDim2.fromOffset(260, 28 + math.max(shown, 0) * BOARD_ROW)
+	boardTitle.Text = boardFull and "TREASURE   T: fewer" or "ON THE MOVE   T: all"
 end
 
 function Hud.toggleBoard()
 	boardFull = not boardFull
 end
 
-local function setSlot(slot, fill, sub, active)
-	slot.fill.Size = UDim2.fromScale(math.clamp(fill, 0, 1), 1)
-	slot.sub.Text = sub
-	slot.stroke.Transparency = active and 0 or 0.65
-	slot.fill.BackgroundTransparency = active and 0.55 or 0.85
+-- One move's icon: `ready` 0..1 (1: ready), `usable` (dimmed if not), `count` (the number on it: a cooldown's
+-- seconds, how many kegs), `shown`.
+local function setSlot(slot, ready, usable, count, shown)
+	if slot.shown ~= shown then
+		slot.shown = shown
+		slot.frame.Visible = shown
+	end
+	if not shown then
+		return
+	end
+	slot.cool.Size = UDim2.fromScale(1, math.clamp(1 - ready, 0, 1))
+	slot.count.Text = count or ""
+	slot.icon.TextTransparency = usable and 0 or 0.55
+	slot.stroke.Transparency = usable and 0 or 0.6
+	slot.frame.BackgroundTransparency = usable and 0.2 or 0.5
 end
 
-local function updateAbilities(now, root, carrying)
+local function updateKeys(teaching)
+	local kind = inputKind
+	for _, slot in pairs(slots) do
+		slot.key.Visible = kind ~= "touch"
+		slot.keyLabel.Text = kind == "pad" and slot.keys[2] or slot.keys[1]
+		slot.caption.Visible = teaching
+	end
+	local dashText = dashChip:FindFirstChild("Text")
+	if dashText then
+		dashText.Text = kind == "pad" and "B DASH" or (kind == "touch" and "DASH" or "C DASH")
+	end
+end
+
+local function cooldownText(left)
+	return left > 0.05 and tostring(math.ceil(left)) or nil
+end
+
+local function updateMoves(now, root, carrying)
+	local foot = hudMode == "foot"
+	-- Poltergoblin: active (a countdown), recharging, blocked by the ward, or ready. (Not at the wheel.)
 	local polterEnds = player:GetAttribute("PolterEndsAt")
 	local polterReady = player:GetAttribute("PolterReadyAt") or 0
 	if polterEnds then
 		local left = math.max(polterEnds - now, 0)
-		local body = player:GetAttribute("PolterBody")
-		local tether = (root and body)
-				and string.format("  tether %d/%d", math.floor((root.Position - body).Magnitude), Config.POLTER_TETHER)
-			or ""
-		setSlot(slots.polter, left / Config.POLTER_DURATION, string.format("E RETURN %.1f%s", left, tether), true)
+		setSlot(slots.polter, left / Config.POLTER_DURATION, true, cooldownText(left), foot)
 	elseif now < polterReady then
 		local left = polterReady - now
-		setSlot(slots.polter, 1 - left / Config.POLTER_COOLDOWN, string.format("recharging %.1fs", left), false)
-	elseif root and inWard(root.Position) then
-		setSlot(slots.polter, 1, "blocked by the ward", false)
+		setSlot(slots.polter, 1 - left / Config.POLTER_COOLDOWN, false, cooldownText(left), foot)
 	else
-		setSlot(slots.polter, 1, "READY: leave your body", true)
+		setSlot(slots.polter, 1, not (root and inWard(root.Position)), nil, foot)
 	end
 
 	local grappleReady = player:GetAttribute("GrappleReadyAt") or 0
 	if now < grappleReady then
 		local left = grappleReady - now
 		local length = player:GetAttribute("GrappleCooldown") or Config.GRAPPLE_COOLDOWN
-		setSlot(slots.grapple, 1 - left / length, string.format("%.1fs", left), false)
+		setSlot(slots.grapple, 1 - left / length, false, cooldownText(left), true)
 	else
-		setSlot(slots.grapple, 1, carrying and "pull only (hands full)" or "hook / steal", true)
+		setSlot(slots.grapple, 1, true, nil, true)
 	end
+
+	setSlot(slots.throw, 1, true, nil, carrying ~= nil)
+	setSlot(slots.sword, 1, true, nil, true)
+	local kegs = player:GetAttribute("Kegs") or 0
+	setSlot(slots.keg, 1, kegs > 0, kegs > 1 and ("x" .. kegs) or nil, kegs > 0 and foot)
 
 	local purse = player:GetAttribute("Coins") or 0
 	local coinGold = player:GetAttribute("CoinGold") or 0
-	if coinGold >= Config.COIN_GOLD_CAP then
-		coinLabel.Text = string.format("COINS %d   (the Hoard has paid all %d gold it will this raid)", purse, coinGold)
-	else
-		coinLabel.Text = string.format(
-			"COINS %d   %d = 1 gold at the Hoard  (%d of %d paid)",
-			purse,
-			Config.COINS_PER_GOLD,
-			coinGold,
-			Config.COIN_GOLD_CAP
-		)
+	coinChip.Visible = purse > 0 or coinGold > 0
+	if coinChip.Visible then
+		coinLabel.Text = coinGold >= Config.COIN_GOLD_CAP and string.format("COINS %d  (all %dg paid)", purse, coinGold)
+			or string.format("COINS %d  ·  %d = 1g", purse, Config.COINS_PER_GOLD)
 	end
 
 	local winded = player:GetAttribute("Winded") == true
 	local chilled = player:GetAttribute("Chilled") == true
-	local sprinting = player:GetAttribute("Sprinting") == true
 	local stamina = player:GetAttribute("Stamina") or Config.STAMINA_MAX
 	shownStamina += (stamina - shownStamina) * 0.3
-	setSlot(
-		slots.sprint,
-		shownStamina / Config.STAMINA_MAX,
-		winded and "OUT OF BREATH"
-			or (
-				chilled and "CHILLED: stamina draining"
-				or (sprinting and "sprinting!" or "stamina: sprint, dash, air jump")
-			),
-		not winded
-	)
-	local staminaColor = winded and WINDED or (chilled and Color3.fromRGB(150, 220, 255) or STAMINA)
-	slots.sprint.fill.BackgroundColor3 = staminaColor
-	slots.sprint.stroke.Color = staminaColor
-
-	-- Loot makes every stamina cost bigger, by its weight: the dash slot shows the real price.
+	staminaFill.Size = UDim2.fromScale(math.clamp(shownStamina / Config.STAMINA_MAX, 0, 1), 1)
+	local color = winded and WINDED or (chilled and CHILLED or STAMINA)
+	staminaFill.BackgroundColor3 = color
+	staminaIcon.TextColor3 = color
+	staminaIcon.Text = chilled and "❄" or "⚡"
+	-- Loot makes every stamina cost bigger, by its weight: the dash chip lights only when one is affordable.
 	local dashCost = Config.DASH_COST * (1 + (LOOT_WEIGHT[carrying] or 0) * Config.CARRY_STAMINA_PER_WEIGHT)
-	local seated = BoatDrive.info().driving
-	setSlot(
-		slots.dash,
-		math.clamp(stamina / dashCost, 0, 1),
-		seated and "at the wheel: DRIFT" or string.format("dodge, any time (%d)", math.floor(dashCost + 0.5)),
-		stamina >= dashCost or seated
-	)
+	local canDash = stamina >= dashCost and not winded
+	dashChip.BackgroundColor3 = canDash and STAMINA or Color3.fromRGB(70, 74, 86)
+	dashChip.BackgroundTransparency = canDash and 0 or 0.3
+end
 
-	setSlot(slots.throw, carrying and 1 or 0, carrying and "throw your loot" or "nothing held", carrying)
-	setSlot(slots.sword, 1, carrying and "heavy bash (tiring)" or "knocks loot loose", true)
-	local kegs = player:GetAttribute("Kegs") or 0
-	setSlot(
-		slots.keg,
-		kegs / Config.KEG_MAX,
-		kegs > 0 and string.format("%d kegs: throw", kegs) or "find a keg crate",
-		kegs > 0
-	)
+local function setMeter(id, fraction, label, color)
+	local m = meters[id]
+	m.fill.Size = UDim2.fromScale(math.clamp(fraction, 0, 1), 1)
+	m.label.Text = label
+	if color then
+		m.fill.BackgroundColor3 = color
+	end
 end
 
 local function updateBoatPanel(now)
@@ -910,53 +1120,83 @@ local function updateBoatPanel(now)
 	local maxHealth = model:GetAttribute("MaxHealth") or spec.health
 	local fraction = math.clamp(health / maxHealth, 0, 1)
 	local drive = BoatDrive.info()
+	local pad = inputKind == "pad"
 	-- Speed straight from the hull, so passengers see it too.
 	local hull = model:FindFirstChild("Hull")
 	local velocity = hull and hull.AssemblyLinearVelocity or Vector3.zero
 	local speed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
 	boatSpeed.Text = string.format("%s  %d", string.upper(spec.name), math.floor(speed + 0.5))
+	setMeter(
+		"hull",
+		fraction,
+		"HULL " .. math.floor(health),
+		fraction > 0.5 and Color3.fromRGB(120, 230, 120)
+			or (fraction > 0.25 and Color3.fromRGB(255, 200, 70) or Color3.fromRGB(255, 80, 70))
+	)
 	-- Drift: the meter fills while you slide; its colour is the burst you get for letting go.
 	local full = Config.BOAT_DRIFT_CHARGE[2]
-	boatDriftFill.Size = UDim2.fromScale(math.clamp(drive.charge / full, 0, 1), 1)
-	boatDriftFill.BackgroundColor3 = DRIFT_COLORS[drive.level] or DRIFT_COLORS[0]
-	boatDrift.Text = drive.level == 2 and "LET GO: BIG BURST"
-		or (drive.level == 1 and "LET GO: BURST" or (drive.drifting and "DRIFTING..." or "C: DRIFT"))
-	boatHullFill.Size = UDim2.fromScale(fraction, 1)
-	boatHullFill.BackgroundColor3 = fraction > 0.5 and Color3.fromRGB(120, 230, 120)
-		or (fraction > 0.25 and Color3.fromRGB(255, 200, 70) or Color3.fromRGB(255, 80, 70))
-	boatHull.Text = string.format("HULL %d", math.floor(health))
+	setMeter(
+		"drift",
+		drive.charge / full,
+		drive.level == 2 and "BIG BURST!" or (drive.level == 1 and "BURST" or (pad and "B DRIFT" or "C DRIFT")),
+		DRIFT_COLORS[drive.level] or DRIFT_COLORS[0]
+	)
 	local boostEnds = model:GetAttribute("BoostEndsAt") or 0
 	local boostReady = model:GetAttribute("BoostReadyAt") or 0
+	local boostCooldown = spec.boostCooldown or Config.BOAT_BOOST_COOLDOWN
 	if now < boostEnds then
-		boatBoostFill.Size = UDim2.fromScale(1, 1)
-		boatBoost.Text = "BOOSTING!"
+		setMeter("boost", 1, "BOOSTING!")
 	elseif now < boostReady then
-		boatBoostFill.Size = UDim2.fromScale(1 - (boostReady - now) / Config.BOAT_BOOST_COOLDOWN, 1)
-		boatBoost.Text = string.format("boost %.0fs", boostReady - now)
+		setMeter(
+			"boost",
+			1 - (boostReady - now) / boostCooldown,
+			string.format("BOOST %d", math.ceil(boostReady - now))
+		)
 	else
-		boatBoostFill.Size = UDim2.fromScale(1, 1)
-		boatBoost.Text = "SHIFT: BOOST"
+		setMeter("boost", 1, pad and "X BOOST" or "SHIFT BOOST")
+	end
+	-- V13: the boat's own ability (only its driver can use it; passengers see it too).
+	local ability = spec.ability and Config.BOAT_ABILITIES[spec.ability]
+	meters.ability.back.Visible = ability ~= nil
+	if ability then
+		local readyAt = model:GetAttribute("AbilityReadyAt") or 0
+		local info = BoatDrive.abilityInfo()
+		if info then
+			readyAt = info.readyAt
+		end
+		local key = pad and "R1" or (inputKind == "touch" and "" or "R")
+		if now < readyAt then
+			setMeter(
+				"ability",
+				1 - (readyAt - now) / ability.cooldown,
+				string.format("%s %s %d", ability.glyph, ability.name, math.ceil(readyAt - now)),
+				Color3.fromRGB(110, 90, 150)
+			)
+		else
+			setMeter(
+				"ability",
+				1,
+				string.format("%s %s %s", key, ability.glyph, ability.name),
+				Color3.fromRGB(196, 140, 255)
+			)
+		end
 	end
 	local notes = {}
 	if os.clock() < chainUntil then
-		table.insert(notes, "HOOP CHAIN x" .. chainCount)
+		table.insert(notes, "HOOPS x" .. chainCount)
 	end
 	if model:GetAttribute("Moored") then
-		table.insert(notes, "ANCHORED (R)")
+		table.insert(notes, "⚓ ANCHORED")
 	end
 	local payload = model:GetAttribute("Payload") or 0
 	if payload > 0 then
-		table.insert(
-			notes,
-			string.format("cargo -%d%% speed", math.floor(payload * Config.BOAT_PAYLOAD_DRAG * 100 + 0.5))
-		)
+		table.insert(notes, string.format("cargo -%d%%", math.floor(payload * Config.BOAT_PAYLOAD_DRAG * 100 + 0.5)))
 	end
 	boatNote.Text = table.concat(notes, "   ")
 end
 
--- One line that always says what to do next, with the key for it (V12: the main way a first raid is taught;
--- V11 said "find a boat!" even to a goblin walking into the Hoard and never said how). On the ship and in the
--- air the skyship's own banner speaks instead, so this line is hidden there (see applyMode).
+-- One short chip that says what to do next (shared teaching: client/Objective.lua). On the ship and in the air the
+-- skyship's own banner speaks instead, so this chip is hidden there (see applyMode).
 local function nearestWaitingTreasure(position, folder)
 	local best, bestDistance
 	if not folder then
@@ -981,6 +1221,7 @@ local OBJECTIVE_TONES = {
 	plain = WHITE,
 }
 
+local objectiveWanted = true
 local function updateObjective(now, phase, root, carrying)
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -1002,6 +1243,7 @@ local function updateObjective(now, phase, root, carrying)
 	end
 	local line, tone = Objective.line({
 		phase = phase,
+		raids = player:GetAttribute("Raids") or 0,
 		carrying = def,
 		bonus = def and folder and folder:GetAttribute(def.id .. "Bonus") or 0,
 		hoardDistance = hoardDistance,
@@ -1014,6 +1256,7 @@ local function updateObjective(now, phase, root, carrying)
 		nearest = nearest,
 	})
 	objective.Text = line
+	objective.Visible = objectiveWanted and line ~= ""
 	if tone == "carry" then
 		objective.TextColor3 = math.sin(now * 6) > 0 and GOLD or WHITE
 	elseif tone == "treasure" then
@@ -1026,29 +1269,25 @@ end
 -- V9: the label over the Hoard shows only while you carry treasure (it is where you are going); the rest
 -- of the time the compass and the minimap say where home is, and the horizon stays clear.
 local function updateWaypoint(root, carrying)
-	if not root or not carrying then
+	if not root or not carrying or hudMode == "port" then
 		waypoint.Enabled = false
 		return
 	end
 	waypoint.Enabled = true
 	local distance = math.floor((root.Position - hoardPart.Position).Magnitude)
-	if carrying then
-		waypointLabel.Text = "THE HOARD  " .. distance
-		waypointLabel.TextColor3 = GOLD
-		waypoint.Size = UDim2.fromOffset(210, 52)
-	else
-		waypointLabel.Text = "HOARD " .. distance
-		waypointLabel.TextColor3 = Color3.fromRGB(230, 210, 150)
-		waypoint.Size = UDim2.fromOffset(130, 30)
-	end
+	waypointLabel.Text = "THE HOARD  " .. distance
+	waypointLabel.TextColor3 = GOLD
+	waypoint.Size = UDim2.fromOffset(210, 52)
 end
 
 -- V12: the HUD follows what the goblin is doing. On the ship and in the air the skyship's banner (client
--- Skyship.lua) is the instruction, so the on-foot slots, the coin purse and the objective line step aside (V11
--- kept all seven ability slots up while aiming a cannon and tumbling). At the wheel the boat panel takes over
--- the stamina slots and the moves a driver cannot make. Toasts move so they never sit on the boat panel or
--- the skyship's banner (they printed over the hull meter and the deck hint in V11).
+-- Skyship.lua) is the instruction, so the moves, the coin purse and the objective step aside. At the wheel the boat
+-- panel takes over from the stamina bar and the moves a driver cannot make. Toasts move so they never sit on the boat
+-- panel or the skyship's banner. V13: in the Port the whole raid HUD steps aside (client/PortHud.lua).
 local function modeOf()
+	if player:GetAttribute("Zone") == "port" then
+		return "port"
+	end
 	local state = player:GetAttribute("DeployState")
 	if player:GetAttribute("Diving") then
 		return "flight"
@@ -1064,28 +1303,50 @@ local function modeOf()
 	return "foot"
 end
 
-local TOAST_Y = { foot = -112, boat = -184, ship = -84, flight = -84 }
+local TOAST_Y = { foot = -100, boat = -164, ship = -84, flight = -84, port = -130 }
 local function applyMode(mode)
 	if mode == hudMode then
 		return
 	end
 	hudMode = mode
-	local foot, boat = mode == "foot", mode == "boat"
+	local foot, boat, port = mode == "foot", mode == "boat", mode == "port"
 	for key, slot in pairs(slots) do
-		if key == "sprint" or key == "dash" or key == "keg" or key == "polter" then
-			slot.frame.Visible = foot
-		else
-			slot.frame.Visible = foot or boat
+		local want = (key == "keg" or key == "polter") and foot or (foot or boat)
+		slot.frame.Parent.Visible = foot or boat
+		if not want then
+			slot.shown = false
+			slot.frame.Visible = false
 		end
 	end
-	coinPanel.Visible = foot or boat
-	objective.Visible = foot or boat
-	toast.Position = UDim2.new(0.5, 0, 1, TOAST_Y[mode] or -112)
+	staminaBar.Visible = foot
+	staminaIcon.Visible = foot
+	dashChip.Visible = foot
+	objectiveWanted = foot or boat
+	objective.Visible = objectiveWanted and objective.Text ~= ""
+	top.Visible = not port
+	feedList.Visible = true
+	if port then
+		board.Visible = false
+		coinChip.Visible = false
+		boatPanel.Visible = false
+		help.Visible = false
+	else
+		portHelp.Visible = false
+	end
+	toast.Position = UDim2.new(0.5, 0, 1, TOAST_Y[mode] or -100)
 end
 
 function Hud.mode()
 	return hudMode
 end
+
+local KIND_OF_INPUT = {
+	[Enum.UserInputType.Touch] = "touch",
+	[Enum.UserInputType.Keyboard] = "keys",
+	[Enum.UserInputType.MouseButton1] = "keys",
+	[Enum.UserInputType.MouseMovement] = "keys",
+}
+local lastKeys, lastTeaching
 
 function Hud.update(now)
 	local camera = workspace.CurrentCamera
@@ -1094,19 +1355,28 @@ function Hud.update(now)
 		scale.Scale = math.clamp(math.min(viewport.X / 1280, viewport.Y / 760), 0.6, 1.15)
 		helpScale.Scale = scale.Scale
 	end
-	local phase = workspace:GetAttribute("RaidPhase") or "intermission"
+	local last = UserInputService:GetLastInputType()
+	inputKind = KIND_OF_INPUT[last] or (string.find(last.Name, "Gamepad") and "pad") or inputKind
+	local teaching = (player:GetAttribute("Raids") or 0) < Objective.TEACH_RAIDS
+	if inputKind ~= lastKeys or teaching ~= lastTeaching then
+		lastKeys, lastTeaching = inputKind, teaching
+		updateKeys(teaching)
+	end
+	local phase = workspace:GetAttribute("RaidPhase") or "port"
 	local phaseEndsAt = workspace:GetAttribute("PhaseEndsAt") or now
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	local carrying = player:GetAttribute("CarryingLoot")
-	updateTop(now, phase, phaseEndsAt)
-	updateBoard(now, lootFolder())
-	updateAbilities(now, root, carrying)
-	updateBoatPanel(now)
-	Map.update(now)
-	updateObjective(now, phase, root, carrying)
-	updateWaypoint(root, carrying)
 	applyMode(modeOf())
+	if hudMode ~= "port" then
+		updateTop(now, phase, phaseEndsAt)
+		updateBoard(now, lootFolder())
+		updateMoves(now, root, carrying)
+		updateBoatPanel(now)
+		updateObjective(now, phase, root, carrying)
+	end
+	Map.update(now)
+	updateWaypoint(root, carrying)
 	flushBanner()
 end
 

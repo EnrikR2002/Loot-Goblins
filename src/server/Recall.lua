@@ -13,18 +13,35 @@
 --     oldest empty one is retired first), so the call always works;
 --   * the player must be within RECALL_SHORE_MAX studs of water a skiff can use; otherwise they
 --     are told which way the coast is.
+-- V13: B brings the CLASS the goblin chose in the Port's shipyard (player attribute BoatClass, set by the server
+-- from what they own: server/Progress.lua). A Skiff or a Cutter comes from the nearest free boat of that class (or is
+-- built); a specialty class is the goblin's own boat (one each, built the first time and brought again after that).
+-- The class changes only in the Port or at the Hoard, so it is never swapped mid-chase, and the cooldown is the same.
 -- Nothing here trusts the client: it only says "B".
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+local Lobby = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Lobby"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local SeaNav = require(script.Parent.SeaNav)
 local Boats = require(script.Parent.Boats)
 local Gear = require(script.Parent.Gear)
+local Cannons = require(script.Parent.Cannons)
+
+local own = {} -- player -> their specialty-class boat (V13)
+
+-- The class a goblin calls (a player class they own; the server sets the attribute).
+local function classOf(player)
+	local id = player:GetAttribute("BoatClass")
+	local spec = type(id) == "string" and Config.BOAT_TYPES[id]
+	return (spec and spec.class) and id or "skiff"
+end
+local FREE = { skiff = true, cutter = true }
 
 local Recall = {}
+Recall.classOf = classOf
 
 -- Pets and other modifiers set this: function(player) -> cooldown seconds.
 Recall.cooldownFor = function(player)
@@ -52,10 +69,11 @@ local function compass(from, to)
 end
 
 -- A boat a goblin at `position` could climb into right now, if there is one within `range`.
-local function boardableNear(position, range)
+local function boardableNear(position, range, class)
 	for _, boat in ipairs(Boats.list) do
 		if
 			not boat.ai
+			and (class == nil or boat.typeName == class)
 			and boat.state == "float"
 			and not Boats.occupied(boat)
 			and (boat.hull.Position - position).Magnitude < range
@@ -78,12 +96,13 @@ local function someoneNear(position, except, range)
 	return false
 end
 
-local function pickBoat(goal, player)
+local function pickBoat(goal, player, class)
 	local best, bestDistance = nil, math.huge
 	for _, boat in ipairs(Boats.list) do
 		if
 			not boat.ai
-			and boat.typeName ~= "navy"
+			and boat.typeName == class
+			and not boat.owner -- someone's own specialty boat is theirs to call
 			and boat.state == "float"
 			and not active[boat]
 			and not Boats.occupied(boat)
@@ -176,12 +195,18 @@ function Recall.request(player)
 		Net.toast(player, "You are already aboard.")
 		return
 	end
+	-- V13: boats are called in the raid. In the Port, the shipyard shows them.
+	if Lobby.inPort(root.Position) then
+		Net.toast(player, "Boats come when you call in a raid. Visit the shipyard to choose yours.")
+		return
+	end
 	local ready = readyAt[player] or 0
 	if t < ready then
 		Net.toast(player, string.format("No boat can come yet: %d s.", math.ceil(ready - t)))
 		return
 	end
-	local near = boardableNear(root.Position, Config.RECALL_BOAT_CLEAR)
+	-- (V13: only a boat of the class they sail counts: a goblin who chose a Wraith can still call it beside a skiff.)
+	local near = boardableNear(root.Position, Config.RECALL_BOAT_CLEAR, classOf(player))
 	if near then
 		Net.toast(player, "There is a boat right here. Hold E at it.")
 		return
@@ -205,24 +230,52 @@ function Recall.request(player)
 		return
 	end
 	local goal = water
-	local boat = pickBoat(goal, player)
+	-- V13: the class this goblin sails.
+	local class = classOf(player)
+	local spec = Config.BOAT_TYPES[class]
+	local boat
+	if FREE[class] then
+		boat = pickBoat(goal, player, class)
+	else
+		local mine = own[player]
+		if mine and (mine.state ~= "float" or not mine.model.Parent) then
+			own[player] = nil -- sunk or gone: a new one is built
+		elseif mine and not Boats.occupied(mine) and not active[mine] then
+			boat = mine
+		end
+	end
 	local origin = boat and boat.hull.Position or (goal + Vector3.new(0, 0, Config.RECALL_OFFSHORE))
-	local spec = (boat and boat.spec) or Config.BOAT_TYPES.skiff
 	local start, path = startPoint(goal, origin, spec.draft)
+	if not start then
+		start, path = startPoint(goal, origin, draft) -- a deep hull may still be brought nearly in
+	end
 	if not start then
 		Net.toast(player, "No boat can reach this shore.")
 		return
 	end
 	if not boat then
-		if #extras >= Config.RECALL_EXTRA_MAX then
-			retireExtra()
+		if FREE[class] then
+			if #extras >= Config.RECALL_EXTRA_MAX then
+				retireExtra()
+			end
+			if #extras >= Config.RECALL_EXTRA_MAX then
+				Net.toast(player, "Every spare boat is out. Try again in a moment.")
+				return
+			end
+			boat = Boats.spawnPlayerBoat(class, CFrame.lookAt(start, goal))
+			table.insert(extras, boat)
+		else
+			-- Their own was taken by someone else (it is theirs to sail now, and a spare after that): a new one.
+			local old = own[player]
+			if old then
+				old.owner = nil
+				table.insert(extras, old)
+			end
+			boat = Boats.spawnPlayerBoat(class, CFrame.lookAt(start, goal))
+			boat.owner = player
+			own[player] = boat
 		end
-		if #extras >= Config.RECALL_EXTRA_MAX then
-			Net.toast(player, "Every spare boat is out. Try again in a moment.")
-			return
-		end
-		boat = Boats.spawnPlayerBoat("skiff", CFrame.lookAt(start, goal))
-		table.insert(extras, boat)
+		Cannons.mountIfArmed(boat)
 	end
 	Boats.place(
 		boat,
@@ -320,6 +373,18 @@ function Recall.forget(player)
 			finish(boat, true)
 		end
 	end
+	-- Their own boat becomes a spare (anyone can still sail it; the raid's end removes it).
+	local mine = own[player]
+	if mine then
+		mine.owner = nil
+		table.insert(extras, mine)
+		own[player] = nil
+	end
+end
+
+-- The boat this goblin's B brought them, if it is their own specialty boat (for tests and the HUD).
+function Recall.ownBoat(player)
+	return own[player]
 end
 
 function Recall.reset()
@@ -328,6 +393,7 @@ function Recall.reset()
 	end
 	table.clear(extras)
 	table.clear(readyAt)
+	table.clear(own)
 	for _, player in ipairs(Players:GetPlayers()) do
 		player:SetAttribute("RecallReadyAt", nil)
 	end

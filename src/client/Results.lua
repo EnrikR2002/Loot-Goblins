@@ -1,7 +1,7 @@
 -- The end of a raid (V11): who won, the gold table, and what YOU take away: the Shinies the raid paid and why, the
--- balance, and any trophy earned. Shown at the side of the screen during the short intermission on the skyship (so
--- the deck, the cannons and the winner's dance stay visible), gone when the next raid starts. A button opens the
--- wardrobe for anyone who wants to spend; nothing forces it.
+-- balance, and any trophy earned. Shown at the side of the screen (V13: as everyone arrives home in the Goblin Port, so
+-- the podium and the winner's dance stay visible), and gone after Results.SHOW_FOR seconds or when the next raid
+-- starts. A button opens the wardrobe for anyone who wants to spend; nothing forces it.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -12,6 +12,8 @@ local Config = require(Shared:WaitForChild("Config"))
 local Ui = require(script.Parent.Ui)
 
 local Results = {}
+Results.SHOW_FOR = 22 -- V13: seconds the card stays (the Port's countdown is 60): brief, then the town is yours
+local shownToken = 0
 
 local player = Players.LocalPlayer
 local C = Ui.C
@@ -157,7 +159,7 @@ local function render(results, winners)
 			return
 		end
 		local left = (workspace:GetAttribute("PhaseEndsAt") or 0) - workspace:GetServerTimeNow()
-		countdown.Text = left > 0 and string.format("Next raid in %d (the cannons open on the bell)", math.ceil(left))
+		countdown.Text = left > 0 and string.format("Next raid in %d · walk aboard the Little Goblin", math.ceil(left))
 			or ""
 	end)
 end
@@ -212,6 +214,9 @@ function Results.fillReward(box)
 	if (b.underdog or 0) > 0 then
 		chip(chips, "Underdog  +" .. b.underdog, C.parchmentDark, 4)
 	end
+	if (b.deeds or 0) > 0 then
+		chip(chips, "Deeds  +" .. b.deeds, C.goldPale, 4) -- V13: a steal, an escape, a snatch, clean tricks
+	end
 	if (b.capped or 0) > 0 then
 		chip(chips, string.format("Raid cap %d", Config.PROGRESS.RAID_CAP), C.parchmentDark, 5)
 	end
@@ -253,6 +258,19 @@ end
 
 function Results.show(results, winners)
 	render(results or {}, winners or {})
+	shownToken += 1
+	local token = shownToken
+	task.delay(Results.SHOW_FOR, function()
+		if token == shownToken and card then
+			TweenService:Create(card, TweenInfo.new(0.4), { Position = card.Position + UDim2.fromOffset(420, 0) })
+				:Play()
+			task.delay(0.45, function()
+				if token == shownToken then
+					clear()
+				end
+			end)
+		end
+	end)
 end
 
 function Results.hide()

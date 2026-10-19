@@ -15,9 +15,26 @@ Config.LAST_CALL = 30 -- The HUD turns red for the final stretch.
 -- run; it is a multiplier on what is banked, never on what is held, so a rival still has to be robbed to profit.
 Config.FINAL_RUSH = 50 -- V9: one run's worth of a six-minute raid (V7/V8: 90 of twelve minutes).
 Config.FINAL_RUSH_MULT = 1.25
-Config.INTERMISSION = 10 -- V9 (V8: 12). Spent on the deck: results, then pick where to land.
-Config.FIRST_INTERMISSION = 6 -- Gives the first players time to load in.
+-- V13: the old 10 s intermission on the skyship's deck is gone. Between raids goblins are in THE GOBLIN PORT
+-- (Config.PORT, server/Port.lua) for PORT.DURATION, then everyone in the Port goes aboard the skyship together.
 Config.RESPAWN_TIME = 3
+
+-- V13, THE GOBLIN PORT (server/Port.lua, shared/Lobby.lua, client/PortHud.lua, client/Spectate.lua). A harbour town
+-- far south of the archipelago where goblins gather between raids: the plaza, Madame Ragwort's wardrobe, the pet
+-- menagerie, the shipyard with every boat class on its slipway, a spyglass tower for watching the raid, the boarding
+-- plank to the skyship and the winners' podium. Nothing of a raid reaches it: inside RADIUS there is no damage, no
+-- keg, no Poltergoblin, no boat call, no treasure, and no storm or tornado is ever seeded on a goblin standing in it.
+-- The round:  PORT (DURATION) -> skyship launch window (SKYSHIP.WINDOW) -> raid (RAID_DURATION) -> back to the PORT.
+Config.PORT = {
+	CENTER = Vector3.new(0, 0, 4600), -- 2,250 studs south of the sea's wall, 2,900 from Goblin Cove: out of streaming range.
+	RADIUS = 820, -- The Port's zone.
+	DURATION = 60, -- Seconds between raids (results, shopping, spectating and getting ready all happen here).
+	READY_SECONDS = 8, -- When every goblin in the Port stands on the boarding plank, the raid starts this soon.
+	EMPTY_HOLD = true, -- With nobody in the server the countdown waits instead of starting raids for no one.
+	LATE_JOIN_MIN = 120, -- A goblin in the Port may join the raid that is running while at least this much is left.
+	ARRIVE_GRACE = 1.2, -- Seconds a goblin is held still on arrival while the Port streams in around them.
+	PODIUM_DANCE = 1.5, -- Seconds after arriving that the raid's winners dance on the podium.
+}
 
 -- Movement -------------------------------------------------------------------
 -- Running is fast and free. Stamina never slows a normal run: it pays for the exceptional
@@ -520,9 +537,28 @@ Config.SEA_WIND_DRIFT = 1.4 -- Studs/s of drift in calm weather (storms push har
 -- turn: rad/s when slow; turnFade: speed at which the turn rate has halved. grip: how hard the
 -- keel resists sliding sideways; driftGrip/driftTurn multiply grip and turn while drifting.
 -- crashTaken/ramPower scale the hull damage it takes and deals in a collision.
+-- V13: SEVEN PLAYER CLASSES. The Skiff and the Cutter are free and always yours; the other five are permanent unlocks
+-- (Shinies, or Robux once a human sets products up). Different is not better: every class is the best at one thing
+-- and worse at others, and the free Skiff is still the fastest boat in a straight line. Each class has one ABILITY on
+-- the stunt key (R / R1 / the touch STUNT button) while on the water; in the air that key still does tricks.
+-- Extra fields BoatSim and Boats read (absent means "as a Skiff"):
+--   ability        a key into Config.BOAT_ABILITIES
+--   boostCooldown  seconds (Config.BOAT_BOOST_COOLDOWN if absent)
+--   jumpMult       the hop and super jump, as a multiple
+--   airControl     share of the steering kept in the air (Config.BOAT_AIR_CONTROL if absent)
+--   trickSpeed     tricks play this much faster (more of them fit in one jump)
+--   landKick       the clean-landing burst, as a multiple
+--   airHop         one extra hop in the air per flight (SPACE)
+--   stormSails     top speed and thrust multiple inside a storm cell or near a tornado (and the swell rocks it less)
+--   twisterBail    the tornado bail-out throw, as a multiple
+--   shoveTaken     how much of a shove (a monster, a blast, a cannon) reaches the hull
+--   righting       the upright assist, as a multiple
+--   class          true: a player class the showroom and the catalogue list (the Navy is not one)
 Config.BOAT_TYPES = {
 	skiff = {
 		name = "Skiff",
+		class = true,
+		ability = "nitro",
 		size = Vector3.new(9, 3, 20),
 		draft = 1.3,
 		density = 0.75,
@@ -541,14 +577,16 @@ Config.BOAT_TYPES = {
 	},
 	cutter = {
 		name = "Cutter",
+		class = true,
+		ability = "chaser",
 		size = Vector3.new(14, 4, 34),
 		draft = 2.1,
 		density = 0.8,
-		accel = 68, -- (V6: 56, V2: 28)
-		maxSpeed = 104, -- (V6: 86, V2: 56)
-		turn = 1.7, -- (V6: 1.45)
-		turnFade = 190, -- (V6: 130)
-		grip = 2.7,
+		accel = 72, -- V13 (V7-V12: 68): a dependable all-rounder should not feel like a barge off the line.
+		maxSpeed = 110, -- V13 (V7-V12: 104): just faster than a patrol ship (106), so it can leave one behind.
+		turn = 1.8, -- V13 (V7-V12: 1.7)
+		turnFade = 200, -- V13 (V7-V12: 190)
+		grip = 2.8,
 		driftGrip = 0.45,
 		driftTurn = 1.4,
 		lean = 24,
@@ -557,6 +595,124 @@ Config.BOAT_TYPES = {
 		ramPower = 1.8,
 		passengers = 3,
 		cannons = true,
+		righting = 1.25, -- stable: it rights itself sooner
+	},
+	-- V13 specialty classes ------------------------------------------------------------------------------------------
+	reefhopper = {
+		name = "Reefhopper",
+		class = true,
+		ability = "spring",
+		size = Vector3.new(10, 3, 18),
+		draft = 1.2,
+		density = 0.72,
+		accel = 92,
+		maxSpeed = 124, -- slower than a Skiff on a straight
+		turn = 2.4,
+		turnFade = 220,
+		grip = 3.0,
+		driftGrip = 0.4,
+		driftTurn = 1.5,
+		lean = 34,
+		health = 150,
+		crashTaken = 1.1,
+		ramPower = 0.8,
+		passengers = 1,
+		jumpMult = 1.25,
+		airControl = 0.75,
+		trickSpeed = 1.35,
+		landKick = 1.5,
+		airHop = true,
+	},
+	broadside = {
+		name = "Broadside",
+		class = true,
+		ability = "volley",
+		size = Vector3.new(16, 5, 38),
+		draft = 2.4,
+		density = 0.85,
+		accel = 58,
+		maxSpeed = 98, -- a patrol ship (106) outruns it
+		turn = 1.45,
+		turnFade = 170,
+		grip = 2.6,
+		driftGrip = 0.5,
+		driftTurn = 1.3,
+		lean = 16,
+		health = 520,
+		crashTaken = 0.5,
+		ramPower = 2.0,
+		passengers = 3,
+		boostCooldown = 6,
+		broadside = true, -- two gunner cannons, one each side (Cannons.mountOnBoat)
+		righting = 1.3,
+		shoveTaken = 0.8,
+	},
+	stormrunner = {
+		name = "Stormrunner",
+		class = true,
+		ability = "twister",
+		size = Vector3.new(11, 3.5, 26),
+		draft = 1.6,
+		density = 0.78,
+		accel = 84,
+		maxSpeed = 122, -- 144 in a storm or beside a tornado (stormSails)
+		turn = 2.1,
+		turnFade = 210,
+		grip = 3.0,
+		driftGrip = 0.4,
+		driftTurn = 1.5,
+		lean = 30,
+		health = 260,
+		crashTaken = 0.85,
+		ramPower = 1.1,
+		passengers = 2,
+		stormSails = 1.18,
+		twisterBail = 1.45,
+		airControl = 0.55,
+	},
+	wraith = {
+		name = "Wraith",
+		class = true,
+		ability = "slip",
+		size = Vector3.new(8, 2.6, 22),
+		draft = 1.1,
+		density = 0.7,
+		accel = 96,
+		maxSpeed = 128,
+		turn = 3.1, -- the sharpest steering in the fleet
+		turnFade = 260,
+		grip = 3.8,
+		driftGrip = 0.3,
+		driftTurn = 1.8,
+		lean = 42,
+		health = 120, -- the most fragile
+		crashTaken = 1.25,
+		ramPower = 0.7,
+		passengers = 1,
+	},
+	ironbelly = {
+		name = "Ironbelly",
+		class = true,
+		ability = "plow",
+		size = Vector3.new(18, 6, 36),
+		draft = 2.6,
+		density = 0.9,
+		accel = 54,
+		maxSpeed = 96, -- the slowest
+		turn = 1.35,
+		turnFade = 160,
+		grip = 2.4,
+		driftGrip = 0.55,
+		driftTurn = 1.25,
+		lean = 12,
+		health = 640,
+		crashTaken = 0.3,
+		ramPower = 2.6,
+		passengers = 4,
+		boostCooldown = 6,
+		shoveTaken = 0.5, -- monsters, blasts and cannons move it half as far
+		righting = 1.6,
+		boardReach = 40, -- swimmers can climb aboard from far off (a rescue boat)
 	},
 	navy = {
 		name = "Patrol Ship",
@@ -618,6 +774,140 @@ Config.BOAT_LANDING_AIR = 0.7 -- Seconds in the air before a clean landing also 
 Config.BOAT_FLIP_TIME = 1 -- Seconds a hull lies capsized before it pops back upright.
 Config.BOAT_LANDING_KICK = 16 -- Speed added by a clean landing (V6: 12).
 Config.BOAT_PAYLOAD_DRAG = 0.03 -- Each unit of loot weight aboard cuts thrust and top speed by this much.
+
+-- V13: BOAT ABILITIES, one per class, on the stunt key while the hull is on the water (shared/BoatSim.lua plays the
+-- physical part on whichever machine simulates the hull; server/BoatAbilities.lua checks the cooldown, fires what the
+-- server owns and tells Boats.police what speed to allow). `glyph` and `verb` are what the HUD and the showroom show.
+Config.BOAT_ABILITIES = {
+	nitro = { -- Skiff: the escape artist's afterburner.
+		name = "NITRO",
+		glyph = "🔥",
+		verb = "Afterburner: a huge straight-line burst",
+		cooldown = 14,
+		time = 1.3,
+		mult = 1.75, -- top speed while it burns (a boost is BOAT_BOOST_MULT, 1.5)
+		thrust = 3.2,
+		kick = 30,
+	},
+	chaser = { -- Cutter: the bow gun, fired by the driver at whatever they look at.
+		name = "BOW GUN",
+		glyph = "💥",
+		verb = "Fire the bow cannon where you look",
+		cooldown = 6,
+	},
+	spring = { -- Reefhopper: leap off flat water like a ramp; SPACE in the air hops once more.
+		name = "SPRING",
+		glyph = "🌀",
+		verb = "Leap off flat water; SPACE again in the air",
+		cooldown = 9,
+		up = 104,
+		keep = 1.06,
+		airHop = 72, -- the second hop, in the air
+	},
+	volley = { -- Broadside: three shots from the side the driver looks to.
+		name = "BROADSIDE",
+		glyph = "💣",
+		verb = "A three-gun volley from the side you look at",
+		cooldown = 10,
+		shots = 3,
+		spread = 9, -- studs between the shots' landing points
+		range = 300,
+	},
+	twister = { -- Stormrunner: a tornado spins up in its wake.
+		name = "TWISTER",
+		glyph = "🌪",
+		verb = "Spin up a tornado in your wake",
+		cooldown = 28,
+		life = 12,
+		behind = 85, -- studs behind the stern
+		drift = 12, -- studs/s it follows your heading
+		homeClear = 760, -- never this close to the Hoard
+		max = 4, -- summoned tornadoes on the whole sea at once
+		grace = 5, -- seconds its summoner's own boat is ignored by funnels (time to get clear of its own twister)
+	},
+	slip = { -- Wraith: a sideways dash, leaving a ghost of the boat running straight on.
+		name = "PHANTOM",
+		glyph = "👻",
+		verb = "Slip aside and leave a ghost that fools pursuers",
+		cooldown = 11,
+		side = 92, -- studs/s sideways
+		decoy = 2.6, -- seconds the ghost runs on (and fools whatever chases you)
+		fool = 700, -- pursuers this close are fooled
+	},
+	plow = { -- Ironbelly: a battering charge.
+		name = "RAM PLOW",
+		glyph = "🐗",
+		verb = "A charge that shoves boats and monsters aside",
+		cooldown = 14,
+		time = 2.6,
+		thrust = 1.7,
+		top = 1.18,
+		shove = 95, -- studs/s given to a boat it plows into
+		reach = 10, -- studs beyond the bow that count as a hit
+	},
+}
+-- The showroom's order and what it says (1 to 5 pips each). Stats here are DESCRIPTIONS of the numbers above, kept
+-- beside them so a retune is one file; the tests check every class has a row and an ability.
+Config.BOAT_CLASSES = {
+	{
+		id = "skiff",
+		role = "ESCAPE ARTIST",
+		best = "Fastest in a straight line; Nitro outruns anything",
+		worst = "Fragile: two hard crashes sink it",
+		pips = { speed = 5, handling = 4, toughness = 1, air = 3, firepower = 1 },
+	},
+	{
+		id = "cutter",
+		role = "ALL-ROUNDER",
+		best = "Steady, tough, three friends aboard, a bow gun",
+		worst = "Slower to get going than a Skiff",
+		pips = { speed = 3, handling = 3, toughness = 4, air = 2, firepower = 3 },
+	},
+	{
+		id = "reefhopper",
+		role = "STUNT BOAT",
+		best = "Leaps off flat water, hops again in the air, quick tricks",
+		worst = "Fragile and a little slow on the straight",
+		pips = { speed = 4, handling = 4, toughness = 1, air = 5, firepower = 1 },
+	},
+	{
+		id = "broadside",
+		role = "GUNBOAT",
+		best = "A three-gun volley and two cannon seats for friends",
+		worst = "Slow, wide-turning, a big target",
+		pips = { speed = 2, handling = 2, toughness = 4, air = 1, firepower = 5 },
+	},
+	{
+		id = "stormrunner",
+		role = "STORM CHASER",
+		best = "Faster in storms and near tornadoes; summons its own",
+		worst = "Ordinary in calm water",
+		pips = { speed = 3, handling = 3, toughness = 3, air = 4, firepower = 2 },
+	},
+	{
+		id = "wraith",
+		role = "PHANTOM",
+		best = "The sharpest steering; slips aside and leaves a ghost",
+		worst = "The most fragile hull in the fleet",
+		pips = { speed = 4, handling = 5, toughness = 1, air = 3, firepower = 1 },
+	},
+	{
+		id = "ironbelly",
+		role = "BRUISER",
+		best = "Shrugs off hits, rams anything aside, rescues swimmers",
+		worst = "The slowest, widest turner",
+		pips = { speed = 1, handling = 1, toughness = 5, air = 1, firepower = 3 },
+	},
+}
+-- The Broadside's (and the Cutter's bow gun's) shot: built to shove and splash, not to sink. A ship's cannon at a
+-- fort or on a patrol ship keeps CANNON_* below.
+Config.BOAT_SHOT = {
+	radius = 13,
+	damage = 6,
+	knockback = 70,
+	hullDamage = 22,
+	boatPush = 82,
+}
 
 -- Drift (hold C in a turn, at speed): the keel lets go and the boat swings round. Holding the
 -- slide charges a burst that fires when you let go, in two levels.
@@ -1076,14 +1366,22 @@ Config.ALERT = {
 -- about 40; roughly 9 raids an hour. Prices follow from that (shared/Catalog.lua): commons 25 to 80 (one to three
 -- raids, sooner with the welcome Shinies), uncommons 80 to 150, rares 180 to 280, legendaries 600 to 700 (a few
 -- hours), pets 100 to 220. Achievements pay 25 to 150 once each.
+-- V13 economy (the report's economy model, docs/reports/2026-10-18-v13-goblin-port.md): a raid cycle is now about 7.4
+-- minutes (60 s in the Port, 20 s launching, 360 s raiding), so about 8 raids an hour, not 9; and there is much more to
+-- work toward (five boats, 37 more pets). PARTICIPATION rose from 6 to 8 and the cap from 42 to 50, and a raid pays for
+-- a few DEEDS a goblin does anyway: taking a treasure from its spot, getting away from a pursuer to the sanctuary,
+-- clean trick landings, snatching from a rival. Shinies per hour: about 70 for a goblin who never banks, 180 for one
+-- treasure a raid, 260 for two, 340 for a regular winner. The first specialty boat (350) is one to two hours of play.
 Config.PROGRESS = {
 	STORE = "LootGoblinsProfile_v1", -- The same DataStore V7 wrote: V7 profiles are migrated in place (never reset).
-	PARTICIPATION = 6,
+	PARTICIPATION = 8, -- V13 (V9-V12: 6)
 	PER_GOLD = 1,
 	GOLD_CAP = 22,
 	WIN = 15,
 	UNDERDOG = 3,
-	RAID_CAP = 42,
+	RAID_CAP = 50, -- V13 (V9-V12: 42)
+	-- V13: each pays once a raid (tricks: per clean landing, up to tricksMax).
+	DEEDS = { steal = 2, escape = 4, snatch = 3, trick = 1, tricksMax = 3 },
 	MIN_PRESENT = 60,
 	WELCOME = 60, -- Shinies on a goblin's first visit (new and migrated profiles): enough for a first cosmetic at once.
 	AUTOSAVE = 60, -- Seconds between saves of a changed profile (each save also refreshes the session lock).
@@ -1103,38 +1401,78 @@ Config.KIT_PRICE = 90 -- Starting a raid already carrying one piece of gear (Cat
 -- 120 to 200 for V7's longer raids, reordered by how much each helps), and the Shell Tortoise rests 45 s (V7: 30)
 -- with its shell glowing when ready, so the one pet that touches player-versus-player is visible and rarer.
 -- Pets can be changed only where nothing is chasing you: on the skyship, at the Hoard, or between raids.
-Config.PETS = {
-	Crab = {
-		name = "Tug Crab",
-		price = 100,
-		color = Color3.fromRGB(235, 110, 90),
-		effect = "Boat calls arrive on a 40% shorter wait.",
-	},
-	Gull = {
-		name = "Scout Gull",
-		price = 150,
-		color = Color3.fromRGB(240, 240, 245),
-		effect = "Flies toward the nearest waiting treasure and tells you how far it is.",
-	},
-	Frog = {
-		name = "Spring Frog",
-		price = 130,
-		color = Color3.fromRGB(110, 220, 110),
-		effect = "Your dash recharges 35% faster.",
-	},
+-- V13: the bestiary grew to forty-two species, but there are still only a few ABILITIES (archetypes), and each pet
+-- has one of them, so a rare or premium pet is never stronger, only different to look at. One pet out at a time.
+-- The five V11 abilities keep their keys (the code asks Gear.petIs(player, "Crab") and so on, meaning "a pet with the
+-- Crab's ability"); V13 adds the Mender (boat recovery). The Gilded Whelp (Robux only) has no ability at all.
+Config.PET_ABILITIES = {
+	Crab = { name = "TUG", glyph = "⚓", effect = "Boat calls (B) arrive on a 40% shorter wait." },
+	Gull = { name = "SCOUT", glyph = "🔭", effect = "Spots the nearest waiting treasure and says how far it is." },
+	Frog = { name = "SPRING", glyph = "💨", effect = "Your dash recharges 35% faster." },
 	Tortoise = {
-		name = "Shell Tortoise",
-		price = 220,
-		color = Color3.fromRGB(110, 150, 90),
-		effect = "Bounces off one grapple catch, then rests 45 s. Its shell glows while it is ready, for everyone to see.",
+		name = "SHELL",
+		glyph = "🛡",
+		effect = "Bounces off one grapple catch, then rests 45 s. It glows while ready, for everyone to see.",
 	},
-	Ghost = {
-		name = "Pocket Ghost",
-		price = 180,
-		color = Color3.fromRGB(190, 220, 255),
-		effect = "Poltergoblin recharges 25% faster.",
+	Ghost = { name = "SPIRIT", glyph = "👻", effect = "Poltergoblin recharges 25% faster." },
+	Mender = {
+		name = "MENDER",
+		glyph = "🔧",
+		effect = "Your boat starts patching its hull after 4 s instead of 9, twice as fast.",
 	},
 }
+local rgb = Color3.fromRGB
+Config.PETS = {
+	-- V11
+	Crab = { name = "Tug Crab", ability = "Crab", color = rgb(235, 110, 90) },
+	Gull = { name = "Scout Gull", ability = "Gull", color = rgb(240, 240, 245) },
+	Frog = { name = "Spring Frog", ability = "Frog", color = rgb(110, 220, 110) },
+	Tortoise = { name = "Shell Tortoise", ability = "Tortoise", color = rgb(110, 150, 90) },
+	Ghost = { name = "Pocket Ghost", ability = "Ghost", color = rgb(190, 220, 255) },
+	-- V13: ocean
+	Inky = { name = "Inky", ability = "Mender", color = rgb(204, 92, 176) },
+	Puffle = { name = "Puffle", ability = "Tortoise", color = rgb(250, 214, 120) },
+	Nibs = { name = "Nibs the Shark", ability = "Frog", color = rgb(110, 132, 164) },
+	Bubbles = { name = "Bubbles", ability = "Gull", color = rgb(255, 150, 112) },
+	Wobble = { name = "Wobble", ability = "Ghost", color = rgb(244, 160, 236) },
+	Twinkle = { name = "Twinkle", ability = "Frog", color = rgb(255, 140, 70) },
+	Nudi = { name = "Nudi", ability = "Crab", color = rgb(140, 90, 220) },
+	Tusk = { name = "Tusk the Narwhal", ability = "Mender", color = rgb(150, 170, 196) },
+	Lumo = { name = "Lumo", ability = "Gull", color = rgb(110, 230, 210) },
+	Otter = { name = "Kelp the Otter", ability = "Crab", color = rgb(132, 92, 62) },
+	-- pirate
+	Parrot = { name = "Captain Squawk", ability = "Gull", color = rgb(232, 50, 46) },
+	Rat = { name = "Scuttlebutt", ability = "Crab", color = rgb(150, 146, 150) },
+	Bat = { name = "Flittermouse", ability = "Gull", color = rgb(86, 64, 96) },
+	Monkey = { name = "Rascal", ability = "Crab", color = rgb(150, 96, 56) },
+	Ferret = { name = "Noodle", ability = "Frog", color = rgb(176, 130, 90) },
+	Fuse = { name = "Fuse", ability = "Mender", color = rgb(255, 196, 70) },
+	Chompers = { name = "Chompers", ability = "Tortoise", color = rgb(150, 96, 54) },
+	-- magic
+	Shard = { name = "Shard", ability = "Ghost", color = rgb(186, 120, 255) },
+	Flurry = { name = "Flurry", ability = "Ghost", color = rgb(170, 228, 255) },
+	Glimmer = { name = "Glimmer", ability = "Ghost", color = rgb(255, 236, 150) },
+	Dubloon = { name = "Dubloon", ability = "Tortoise", color = rgb(255, 200, 64) },
+	Rubble = { name = "Rubble", ability = "Tortoise", color = rgb(140, 132, 124) },
+	Spore = { name = "Spore", ability = "Frog", color = rgb(226, 54, 52) },
+	Moth = { name = "Lantern Moth", ability = "Gull", color = rgb(255, 180, 80) },
+	Whelp = { name = "Gilded Whelp", ability = nil, color = rgb(255, 200, 60) }, -- Robux only: no ability
+	-- island (the seven escape pets are earned by getting away from that island's creature; the rest are sold)
+	Levi = { name = "Little Leviathan", ability = "Mender", color = rgb(36, 96, 110) },
+	Sunny = { name = "Sunny", ability = "Tortoise", color = rgb(255, 196, 46) },
+	Echo = { name = "Little Echo", ability = "Ghost", color = rgb(196, 120, 255) },
+	Lamb = { name = "Lambkin", ability = "Frog", color = rgb(244, 238, 222) },
+	Bones = { name = "Bones", ability = "Ghost", color = rgb(170, 255, 220) },
+	Zap = { name = "Zap", ability = "Mender", color = rgb(110, 240, 255) },
+	Peek = { name = "Peek", ability = "Gull", color = rgb(176, 170, 164) },
+	Waddles = { name = "Waddles", ability = "Frog", color = rgb(36, 40, 52) },
+	Cinderling = { name = "Cinderling", ability = "Mender", color = rgb(255, 120, 30) },
+	Bonefish = { name = "Bonefish", ability = "Mender", color = rgb(236, 228, 206) },
+	Clammy = { name = "Clammy", ability = "Crab", color = rgb(255, 176, 196) },
+	Twig = { name = "Twig", ability = "Crab", color = rgb(96, 190, 84) },
+}
+Config.PET_MENDER_DELAY = 4 -- seconds without damage before a Mender's boat starts patching (Config.BOAT_REPAIR_DELAY is 9)
+Config.PET_MENDER_RATE = 2 -- times BOAT_REPAIR_RATE
 Config.PET_CRAB_RECALL = 0.6 -- Recall cooldown multiple.
 Config.PET_FROG_DASH = 0.65 -- Dash cooldown multiple.
 Config.PET_GHOST_COOLDOWN = 0.75 -- Poltergoblin cooldown multiple.
@@ -1168,6 +1506,22 @@ Config.MONETIZATION = {
 		livery_starlit = { kind = "pass", id = nil, grants = { "livery_starlit" } },
 		trail_aurora = { kind = "pass", id = nil, grants = { "trail_aurora" } },
 		petskin_crab_gold = { kind = "pass", id = nil, grants = { "petskin_crab_gold" } },
+		-- V13. Every boat is also earnable with Shinies (Catalog); a pass is only a shortcut. The Whelp and the Moon
+		-- Jelly are show-only (no ability), so buying them buys no power.
+		boat_reefhopper = { kind = "pass", id = nil, grants = { "boat_reefhopper" } },
+		boat_wraith = { kind = "pass", id = nil, grants = { "boat_wraith" } },
+		boat_stormrunner = { kind = "pass", id = nil, grants = { "boat_stormrunner" } },
+		boat_ironbelly = { kind = "pass", id = nil, grants = { "boat_ironbelly" } },
+		boat_broadside = { kind = "pass", id = nil, grants = { "boat_broadside" } },
+		pet_Whelp = { kind = "pass", id = nil, grants = { "Whelp" } },
+		petskin_wobble_moon = { kind = "pass", id = nil, grants = { "petskin_wobble_moon" } },
+		-- A possible bundle (all five unlockable boats). No catalog item points at it, so the shop does not show
+		-- it; it is here so a human who makes the pass has its grants ready.
+		bundle_fleet = {
+			kind = "pass",
+			id = nil,
+			grants = { "boat_reefhopper", "boat_wraith", "boat_stormrunner", "boat_ironbelly", "boat_broadside" },
+		},
 	},
 }
 
@@ -1377,7 +1731,8 @@ Config.RECALL_SHORE_MAX = 420 -- The goblin must be this near water a skiff can 
 Config.RECALL_BOAT_CLEAR = 70 -- No call while a free boat is this close.
 Config.RECALL_ARRIVE = 45 -- The boat stops this far from the shore point.
 Config.RECALL_TIMEOUT = 32 -- Seconds before a boat that is stuck is put beside the shore.
-Config.RECALL_EXTRA_MAX = 6 -- Skiffs Recall may build when every boat is busy.
+Config.RECALL_EXTRA_MAX = 10 -- Skiffs and Cutters Recall may build when every one is busy (V13: 10, was 6; a goblin's
+-- own specialty boat does not count: there is at most one each).
 
 -- Carrying and fighting ---------------------------------------------------------
 -- A carrier can swing, but it is a slow, short, tiring bash: the sword stays a way to contest loot

@@ -280,29 +280,48 @@ end
 --   gold            one Shiny per gold banked, up to P.GOLD_CAP
 --   win             the winner (a tie shares it)
 --   underdog        banked something and finished at or below the middle: a small lift for trying
+--   deeds           V13: small, server-checked things done in the raid (P.DEEDS): taking a treasure from its spot,
+--                   getting away from a pursuer to the sanctuary, clean trick landings, snatching from a rival
 -- The total is capped at P.RAID_CAP.
-function Economy.payout(gold, won, median, P)
+function Economy.deedsValue(deeds, P)
+	local D = P.DEEDS or {}
+	deeds = deeds or {}
+	local total = 0
+	total += deeds.steal and (D.steal or 0) or 0
+	total += deeds.escape and (D.escape or 0) or 0
+	total += deeds.snatch and (D.snatch or 0) or 0
+	total += math.min(math.max(0, math.floor(deeds.tricks or 0)), D.tricksMax or 0) * (D.trick or 0)
+	return total
+end
+
+function Economy.payout(gold, won, median, P, deeds)
 	gold = math.max(0, math.floor(gold or 0))
 	local out = {
 		participation = P.PARTICIPATION,
 		gold = math.min(gold * P.PER_GOLD, P.GOLD_CAP),
 		win = won and P.WIN or 0,
 		underdog = (not won and gold >= 1 and gold <= (median or 0)) and P.UNDERDOG or 0,
+		deeds = Economy.deedsValue(deeds, P),
 	}
-	local sum = out.participation + out.gold + out.win + out.underdog
+	local sum = out.participation + out.gold + out.win + out.underdog + out.deeds
 	out.total = math.min(sum, P.RAID_CAP)
 	out.capped = sum - out.total
 	return out
 end
 
 -- Lasting stats --------------------------------------------------------------------------------------------------------
-function Economy.record(profile, kind, a, b)
+-- kind: "bank" (a = treasure id, b = gold, c = the boat class they came home in, or nil), "raid" (a = won),
+-- "snatch", "combo" (a = tricks), V13 "steal" (from its spot), "escape" (a = the island whose pursuer gave up).
+function Economy.record(profile, kind, a, b, c)
 	local stats = profile.stats
 	if kind == "bank" then
 		stats.treasures += 1
 		stats.banked += math.max(0, math.floor(b or 0))
 		if type(a) == "string" then
 			stats.bankedFrom[a] = (stats.bankedFrom[a] or 0) + 1
+		end
+		if type(c) == "string" then
+			stats.classBanks[c] = (stats.classBanks[c] or 0) + 1
 		end
 	elseif kind == "raid" then
 		stats.raids += 1
@@ -313,19 +332,34 @@ function Economy.record(profile, kind, a, b)
 		stats.snatches += 1
 	elseif kind == "combo" then
 		stats.bestCombo = math.max(stats.bestCombo, math.floor(a or 0))
+	elseif kind == "steal" then
+		stats.steals += 1
+	elseif kind == "escape" then
+		stats.escapes += 1
+		if type(a) == "string" then
+			stats.escapedFrom[a] = (stats.escapedFrom[a] or 0) + 1
+		end
 	end
+end
+
+local function countKeys(map)
+	local count = 0
+	for _ in pairs(map or {}) do
+		count += 1
+	end
+	return count
 end
 
 function Economy.statValue(profile, name)
 	local stats = profile.stats
 	if string.sub(name, 1, 5) == "bank_" then
 		return stats.bankedFrom[string.sub(name, 6)] or 0
+	elseif string.sub(name, 1, 7) == "escape_" then
+		return (stats.escapedFrom or {})[string.sub(name, 8)] or 0
 	elseif name == "islands" then
-		local count = 0
-		for _ in pairs(stats.bankedFrom) do
-			count += 1
-		end
-		return count
+		return countKeys(stats.bankedFrom)
+	elseif name == "classes" then
+		return countKeys(stats.classBanks)
 	end
 	return stats[name] or 0
 end
@@ -357,12 +391,15 @@ end
 function Economy.mergeEarnings(profile, standIn)
 	Economy.addShinies(profile, standIn.shinies)
 	local from, to = standIn.stats, profile.stats
-	for _, key in ipairs({ "raids", "wins", "banked", "treasures", "snatches" }) do
-		to[key] += from[key] or 0
+	for _, key in ipairs({ "raids", "wins", "banked", "treasures", "snatches", "steals", "escapes" }) do
+		to[key] = (to[key] or 0) + (from[key] or 0)
 	end
 	to.bestCombo = math.max(to.bestCombo, from.bestCombo or 0)
-	for lootId, count in pairs(from.bankedFrom or {}) do
-		to.bankedFrom[lootId] = (to.bankedFrom[lootId] or 0) + count
+	for _, map in ipairs({ "bankedFrom", "escapedFrom", "classBanks" }) do
+		to[map] = to[map] or {}
+		for id, count in pairs(from[map] or {}) do
+			to[map][id] = (to[map][id] or 0) + count
+		end
 	end
 end
 

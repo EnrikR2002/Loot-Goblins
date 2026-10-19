@@ -18,7 +18,8 @@ local BoatStyle = {}
 local EFFECTS = { trail = "Trail", wake = "Wake", trickfx = "TrickFx", callout = "Callout" }
 
 function BoatStyle.paintable(boat)
-	return not boat.ai and (boat.typeName == "skiff" or boat.typeName == "cutter")
+	-- V13: every player class (Config.BOAT_TYPES[...].class); never the Navy or any other AI ship.
+	return not boat.ai and boat.spec ~= nil and boat.spec.class == true
 end
 
 -- Dresses a boat for a player (nil: back to class colours and no effects).

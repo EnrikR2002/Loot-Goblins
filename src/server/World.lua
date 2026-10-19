@@ -259,7 +259,13 @@ local function buildEnvironment()
 	strip(min.X - reach, min.X, min.Z - reach, max.Z + reach)
 	strip(max.X, max.X + reach, min.Z - reach, max.Z + reach)
 	strip(min.X, max.X, min.Z - reach, min.Z)
-	strip(min.X, max.X, max.Z, max.Z + reach)
+	-- V13: the south strip leaves a hole for the Goblin Port's own harbour (real Terrain water, built by Port.lua).
+	local port, half = Config.PORT.CENTER, 900
+	local hx0, hx1, hz0, hz1 = port.X - half, port.X + half, port.Z - half, port.Z + half
+	strip(min.X, hx0, max.Z, max.Z + reach)
+	strip(hx1, max.X, max.Z, max.Z + reach)
+	strip(hx0, hx1, max.Z, hz0)
+	strip(hx0, hx1, hz1, max.Z + reach)
 end
 
 local function pourSea()

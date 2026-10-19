@@ -126,10 +126,22 @@ function BoatSim.startTrick(boat, kind, side, t)
 		kind = kind,
 		side = side or 1,
 		startedAt = t,
-		duration = Config.TRICK.TIME[TRICK_FAMILY[kind]] or 0.6,
+		-- V13: a Reefhopper's tricks are quicker (trickSpeed), so more of them fit in one jump.
+		duration = (Config.TRICK.TIME[TRICK_FAMILY[kind]] or 0.6) / (boat.spec.trickSpeed or 1),
 		base = CFrame.lookAt(Vector3.zero, flat),
 	}
 	return true
+end
+
+-- V13: can the class ability be used right now (the stunt key on the water)? The same test runs inside step().
+function BoatSim.abilityReady(boat, t)
+	local spec = boat.spec
+	local A = spec.ability and Config.BOAT_ABILITIES[spec.ability]
+	return A ~= nil
+		and t >= (boat.abilityReadyAt or 0)
+		and not boat.moored
+		and not boat.sinking
+		and ((boat.out.wet or 0) > 0.3 or boat.grounded == true)
 end
 
 -- V7: on land the hull drives slowly instead of being shoved (Config.BOAT_LAND_*), and a jump needs
@@ -162,6 +174,8 @@ function BoatSim.step(boat, input, dt, t)
 	local up = cf.UpVector
 	local out = boat.out
 	out.event = nil
+	out.ability = nil
+	out.airhop = nil
 
 	-- Buoyancy: spring + damper at each point under the surface.
 	local count = #boat.points
@@ -205,6 +219,7 @@ function BoatSim.step(boat, input, dt, t)
 		if input.jump == true and t >= boat.jumpReadyAt then
 			local bail = Twister.bail(position, cf.LookVector, t)
 			if bail then
+				bail *= spec.twisterBail or 1 -- V13: the Stormrunner is thrown much farther
 				boat.jumpReadyAt = t + Config.BOAT_JUMP_COOLDOWN
 				boat.twisterIgnoreUntil = t + Config.TWISTER.IGNORE
 				hull.AssemblyLinearVelocity = bail + Vector3.new(velocity.X, 0, velocity.Z) * 0.25
@@ -227,6 +242,60 @@ function BoatSim.step(boat, input, dt, t)
 		out.punched = true
 	end
 	boat.wasBoosting = boosting
+
+	-- V13: THE CLASS ABILITY (the stunt key on the water, Config.BOAT_ABILITIES). This is only the physical part, played
+	-- on whichever machine simulates the hull; server/BoatAbilities.lua owns the cooldown, fires anything the server
+	-- owns (a cannon volley, a tornado, a ghost decoy) and tells the anti-cheat what to allow.
+	local A = spec.ability and Config.BOAT_ABILITIES[spec.ability]
+	if
+		input.ability == true
+		and A
+		and t >= (boat.abilityReadyAt or 0)
+		and not boat.moored
+		and not sinking
+		and (wet > 0.3 or grounded)
+	then
+		local kind = spec.ability
+		local ahead = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+		ahead = ahead.Magnitude > 0.05 and ahead.Unit or Vector3.new(0, 0, -1)
+		if kind == "nitro" then
+			boat.nitroUntil = t + A.time
+			hull:ApplyImpulse(ahead * A.kick * mass)
+		elseif kind == "spring" then
+			local v = hull.AssemblyLinearVelocity
+			if grounded then
+				hull:ApplyImpulse(Vector3.new(0, A.up * 0.45 * mass, 0)) -- on a beach it is only a bounce
+			else
+				hull.AssemblyLinearVelocity = Vector3.new(v.X * A.keep, A.up, v.Z * A.keep)
+			end
+			boat.hopOnly = false -- a real flight: a clean landing from it pays the burst
+			boat.airHopped = false
+			boat.jumpReadyAt = t + 0.35
+		elseif kind == "slip" then
+			local right = Vector3.new(-ahead.Z, 0, ahead.X)
+			local side = steer < -0.2 and -1 or (steer > 0.2 and 1 or (boat.slipSide or 1))
+			boat.slipSide = -side -- going straight, the slips alternate sides
+			hull:ApplyImpulse(right * side * A.side * mass)
+			boat.slipUntil = t + 0.45
+		elseif kind == "plow" then
+			boat.plowUntil = t + A.time
+			hull:ApplyImpulse(ahead * 16 * mass)
+		elseif kind == "twister" then
+			-- Its own new tornado lets the Stormrunner go for a moment: it was summoned to catch what follows, and
+			-- a Stormrunner that had slowed down was swallowed by it in the first playtest.
+			boat.twisterIgnoreUntil = math.max(boat.twisterIgnoreUntil, t + (A.grace or 5))
+		end
+		boat.abilityReadyAt = t + A.cooldown
+		out.ability = kind
+	end
+	local nitro = t < (boat.nitroUntil or 0)
+	local plowing = t < (boat.plowUntil or 0)
+	-- V13, the Stormrunner's sails: faster in a storm cell or near a tornado.
+	local stormy = false
+	if spec.stormSails then
+		stormy = Sea.stormAt(position.X, position.Z) > 0.2 or Twister.find(position, t, 9) ~= nil
+	end
+	boat.stormy = stormy
 
 	-- Horizontal motion relative to the water's own flow.
 	local flowX, flowZ = Sea.currentAt(position.X, position.Z)
@@ -285,6 +354,20 @@ function BoatSim.step(boat, input, dt, t)
 		* payloadFactor
 		* (boosting and Config.BOAT_BOOST_MULT or 1)
 		* (mini and Config.BOAT_MINI_MULT or 1)
+	if nitro then
+		local N = Config.BOAT_ABILITIES.nitro
+		accel = spec.accel * payloadFactor * N.thrust
+		topSpeed = spec.maxSpeed * payloadFactor * N.mult * (mini and Config.BOAT_MINI_MULT or 1)
+	end
+	if plowing then
+		local R = Config.BOAT_ABILITIES.plow
+		accel *= R.thrust
+		topSpeed *= R.top
+	end
+	if stormy then
+		accel *= spec.stormSails
+		topSpeed *= spec.stormSails
+	end
 	if grounded then
 		-- On land: a slow, heavy drive. A boost or a burst does not raise it.
 		accel = spec.accel * payloadFactor * Config.BOAT_LAND_THRUST
@@ -338,7 +421,8 @@ function BoatSim.step(boat, input, dt, t)
 	-- The keel turns the boat's motion toward where it points instead of braking it
 	-- (arcade drift): the faster you slide sideways, the more speed you shed. A drift, and the
 	-- burst that follows one, shed far less: sliding on purpose is not a mistake.
-	local grip = spec.grip * (loose and spec.driftGrip or 1)
+	-- V13: during a Wraith's slip the keel lets go for a moment, so the sideways dash is not straightened out at once.
+	local grip = spec.grip * (loose and spec.driftGrip or 1) * (t < (boat.slipUntil or 0) and 0.12 or 1)
 	local redirected = relative
 	local traction = math.max(wet, grounded and 0.55 or 0)
 	if speedMag > 1 and traction > 0 then
@@ -366,7 +450,8 @@ function BoatSim.step(boat, input, dt, t)
 	if loose then
 		authority *= spec.driftTurn
 	end
-	local control = wet > 0 and math.max(wet, 0.3) or (grounded and Config.BOAT_LAND_TURN or Config.BOAT_AIR_CONTROL)
+	local control = wet > 0 and math.max(wet, 0.3)
+		or (grounded and Config.BOAT_LAND_TURN or (spec.airControl or Config.BOAT_AIR_CONTROL))
 	local yawRate = spec.turn * authority * control
 	if loose and speedMag > 1 and lateralSpeed * steer < 0 then
 		-- In a drift the hull swings quickly out to a slide angle and then holds it (turning
@@ -385,8 +470,8 @@ function BoatSim.step(boat, input, dt, t)
 		-- Full lock while the drift key is held, even on an analogue stick.
 		yawTarget = -math.sign(steer) * yawRate
 	end
-	if twistState == "inside" then
-		yawTarget += 2.4 -- Round and round with the funnel.
+	if twistState == "inside" and not spec.twisterBail then
+		yawTarget += 2.4 -- Round and round with the funnel. (V13: a Stormrunner holds its heading: aim the bail-out.)
 	end
 	local trick = boat.trick
 	if trick then
@@ -423,7 +508,7 @@ function BoatSim.step(boat, input, dt, t)
 		local lean = steer * spec.lean * math.clamp(speedAbs / (spec.maxSpeed * 0.6), 0, 1) * wet * (loose and 1.5 or 1)
 		local tilt = up:Cross(Vector3.yAxis)
 		local flatSpin = spin - up * yawNow
-		local righting = 14 * (0.55 + 0.45 * wet)
+		local righting = 14 * (0.55 + 0.45 * wet) * (spec.righting or 1)
 		hull:ApplyAngularImpulse(
 			(cf.LookVector * lean + tilt * righting - flatSpin * 2.2 * (0.4 + wet)) * rollInertia * dt
 		)
@@ -443,7 +528,8 @@ function BoatSim.step(boat, input, dt, t)
 				1
 			)
 		end
-		local jumpSpeed = Config.BOAT_JUMP_SPEED + super * (Config.BOAT_SUPER_SPEED - Config.BOAT_JUMP_SPEED)
+		local jumpSpeed = (Config.BOAT_JUMP_SPEED + super * (Config.BOAT_SUPER_SPEED - Config.BOAT_JUMP_SPEED))
+			* (spec.jumpMult or 1)
 		hull:ApplyImpulse(Vector3.new(0, jumpSpeed * mass, 0))
 		if super > 0 then
 			-- Bow up, for the look of it (and so the stern meets the water first).
@@ -453,6 +539,24 @@ function BoatSim.step(boat, input, dt, t)
 		end
 		boat.hopOnly = super == 0 -- a plain hop earns no landing burst
 		out.jumped = true
+	elseif
+		-- V13: the Reefhopper hops once more in the air (SPACE), once per flight.
+		input.jump == true
+		and spec.airHop
+		and wet <= 0
+		and not grounded
+		and not boat.airHopped
+		and boat.airTime > 0.12
+		and t >= boat.jumpReadyAt
+		and not sinking
+	then
+		local v = hull.AssemblyLinearVelocity
+		hull.AssemblyLinearVelocity = Vector3.new(v.X, math.max(v.Y, Config.BOAT_ABILITIES.spring.airHop), v.Z)
+		boat.airHopped = true
+		boat.hopOnly = false
+		boat.jumpReadyAt = t + 0.3
+		out.jumped = true
+		out.airhop = true
 	end
 
 	-- Air time, and a burst for landing clean (upright, pointing the way you travel).
@@ -468,7 +572,9 @@ function BoatSim.step(boat, input, dt, t)
 		boat.hopOnly = false
 		boat.tricksDone = 0
 		boat.sketchy = false
+		boat.airHopped = false
 	elseif wet >= 0.3 then
+		boat.airHopped = false
 		if boat.airTime >= Config.BOAT_AIR_MIN then
 			out.airTime = boat.airTime -- V12: for effects only (a long fall lands harder)
 			-- A burst needs a real flight (a ramp, a boosted hop), not a plain hop from rest. A hop with a
@@ -478,12 +584,14 @@ function BoatSim.step(boat, input, dt, t)
 			if clean and tricks > 0 and not boat.sketchy then
 				local paid = math.min(tricks, Config.TRICK.MAX_PAID)
 				boat.miniUntil = math.max(boat.miniUntil, t + Config.BOAT_MINI_TIME[2])
-				hull:ApplyImpulse(forward * (Config.BOAT_LANDING_KICK + Config.TRICK.KICK * paid) * mass)
+				hull:ApplyImpulse(
+					forward * (Config.BOAT_LANDING_KICK + Config.TRICK.KICK * paid) * (spec.landKick or 1) * mass
+				)
 				out.event = "trickland"
 				out.tricks = tricks
 			elseif clean and boat.airTime >= Config.BOAT_LANDING_AIR and not boat.hopOnly and not boat.sketchy then
 				boat.miniUntil = math.max(boat.miniUntil, t + Config.BOAT_MINI_TIME[1])
-				hull:ApplyImpulse(forward * Config.BOAT_LANDING_KICK * mass)
+				hull:ApplyImpulse(forward * Config.BOAT_LANDING_KICK * (spec.landKick or 1) * mass)
 				out.event = "landing"
 			else
 				out.event = out.event or "splash"

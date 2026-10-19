@@ -442,6 +442,8 @@ local function place(label, heading, x, z, from)
 end
 
 function Map.update(now)
+	-- V13: the compass is for the sea; the Port has its own screen.
+	compass.Visible = player:GetAttribute("Zone") ~= "port"
 	local chosen = player:GetAttribute("DeployDest")
 	for id, view in pairs(islandViews) do
 		local stroke = view:FindFirstChild("Chosen")

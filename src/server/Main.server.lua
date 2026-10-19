@@ -19,7 +19,9 @@
 --   Combat       sword and grapple
 --   Poltergoblin the spirit ability (was Soul Unbound / Yone's E)
 --   Movement     WalkSpeed from carrying, sprint + stamina, water and spirit form
---   Raid         timer, scoring, intermission, world reset
+--   Raid         timer, scoring, who is in the raid, world reset
+--   Port         the Goblin Port between raids: arrivals, readiness, the champion, spectating (V13)
+--   BoatAbilities  each boat class's own ability, validated (V13)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
@@ -65,9 +67,12 @@ local SeaMobs = require(script.Parent.SeaMobs)
 local Tornadoes = require(script.Parent.Tornadoes)
 local GhostFleet = require(script.Parent.GhostFleet)
 local GoblinLook = require(script.Parent.GoblinLook)
+local Port = require(script.Parent.Port)
+local BoatAbilities = require(script.Parent.BoatAbilities)
 require(script.Parent.Bestiary)
 require(script.Parent.BestiaryMinor)
 local Raid = require(script.Parent.Raid)
+local ProximityPromptService = game:GetService("ProximityPromptService")
 
 Players.RespawnTime = Config.RESPAWN_TIME
 StarterPlayer.CharacterWalkSpeed = Config.WALK_SPEED
@@ -93,6 +98,9 @@ print(
 	)
 )
 Boats.build(refs)
+-- V13: the Goblin Port, where every goblin arrives and waits between raids (its slipways show every boat class).
+Port.build(refs, Boats.displayModel)
+refs.spawn.Enabled = false -- Goblin Cove's pad is no longer where goblins appear: the Port's is (Raid.placeCharacter)
 Skyship.build(refs)
 Flight.build(refs, Skyship.model())
 Gear.build(refs)
@@ -115,6 +123,8 @@ SeaMobs.build(refs)
 Tornadoes.build(refs)
 Combat.init(refs)
 Raid.init(refs)
+BoatAbilities.init(refs)
+Progress.participating = Raid.isParticipant
 Progress.init()
 Monetization.init()
 Storms.reset()
@@ -157,6 +167,13 @@ for _, warning in ipairs(refs.buildWarnings or {}) do
 	warn("[LootGoblins] world: " .. warning)
 end
 
+-- V13: a goblin at home (the Hoard's ward) or in the Port is out of reach of other goblins' boat guns.
+local Lobby = require(ReplicatedStorage.LootGoblins.Lobby)
+local Blast = require(script.Parent.Blast)
+Blast.safe = function(position)
+	return Lobby.inPort(position) or Util.flatDistance(position, refs.hoard.position) <= Config.WARD_RADIUS
+end
+
 -- Spirits can't bank; the Hoard's ward also pulls them back before they reach it.
 Loot.canBank = function(player)
 	return not Poltergoblin.isSpirit(player)
@@ -170,6 +187,7 @@ Loot.Taken:Connect(function(item, player, fromSpot, fromPlayer)
 		Progress.onSnatch(player) -- V11: the Sticky Fingers trophy
 	end
 	if fromSpot then
+		Progress.onSteal(player) -- V13: a deed, and the Light Fingers trophy
 		Alerts.stolen(def.island, player)
 		Heat.add(def.heat)
 		Net.broadcast("Stolen", {
@@ -254,9 +272,17 @@ Loot.Returned:Connect(function(item, reason)
 	end
 end)
 
+-- V13: getting away from a pursuer to the sanctuary pays a deed and counts toward that island's pet.
+Pursuit.Escaped:Connect(function(player, islandId)
+	if player.Parent then
+		Progress.onEscape(player, islandId)
+	end
+end)
+
 Loot.Banked:Connect(function(item, player)
 	Raid.onBanked(item, player)
-	Progress.onBanked(player, item.def.id, item.bankedValue or item.def.value) -- V11: lasting stats and trophies
+	-- V11: lasting stats and trophies; V13: and which class of boat brought it home.
+	Progress.onBanked(player, item.def.id, item.bankedValue or item.def.value, Boats.lastRide(player, 25))
 	Net.feed(
 		player.DisplayName
 			.. " banked the "
@@ -278,6 +304,12 @@ local function onCharacter(player, character)
 	Kegs.refill(player)
 	Combat.standUp(player, 0) -- a new body starts on its feet
 	Skyship.onCharacter(player)
+	-- V13: the skyship (in the raid, during its launch window), Goblin Cove (in the raid, later) or the Port.
+	task.defer(function()
+		if player.Parent and player.Character == character then
+			Raid.placeCharacter(player)
+		end
+	end)
 	Combat.giveSword(player, character)
 	-- V11: dressed at once, again when the avatar's appearance has loaded (GoblinLook.watch) and once more 2 s later
 	-- (appearance loading can replace the head and colours just after spawning; dressing again is cheap and idempotent).
@@ -324,7 +356,37 @@ Players.PlayerRemoving:Connect(function(player)
 	Pursuit.forget(player)
 	GhostFleet.forget(player)
 	Tornadoes.forget(player)
+	Raid.forget(player)
+	Port.forget(player)
+	BoatAbilities.forget(player)
+	Boats.forgetRider(player)
 	task.spawn(Progress.forget, player) -- saves and releases the profile (it yields)
+end)
+
+-- V13: the Port. Its screen's buttons and its prompts (the Spyglass, the pier's "join the raid").
+local portAsks = setmetatable({}, { __mode = "k" }) -- player -> when they last asked (a few a second at most)
+Net.Port.OnServerEvent:Connect(function(player, action, a, b)
+	local t = os.clock()
+	if t - (portAsks[player] or 0) < 0.2 then
+		return
+	end
+	portAsks[player] = t
+	if action == "join" then
+		Raid.joinLate(player)
+	elseif action == "spectate" and (a == "start" or a == "next" or a == "back" or a == "stop") then
+		Port.spectate(player, a, type(b) == "number" and b or nil)
+	end
+end)
+ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
+	local action = prompt:GetAttribute("PortAction")
+	if action == "join" then
+		Raid.joinLate(player)
+	elseif action == "spectate" then
+		Port.spectate(player, "start")
+	end
+end)
+Net.BoatAbility.OnServerEvent:Connect(function(player, aimPoint)
+	BoatAbilities.request(player, aimPoint)
 end)
 
 Net.Throw.OnServerEvent:Connect(function(player)
@@ -388,11 +450,14 @@ Net.Deploy.OnServerEvent:Connect(function(player, action, a)
 		Flight.setMode(player, a)
 	end
 end)
-Net.Shop.OnServerEvent:Connect(function(player, action, id)
+-- V13 fix: the shop's requests carry two arguments ("equip", slot, item; "presetsave", index, name). Since V11 only
+-- the first was passed on, so WEAR IT on anything already owned arrived as "equip, slot" and took the slot off (only
+-- a purchase, which wears the item itself, ever changed a look), and saved outfits lost their names.
+Net.Shop.OnServerEvent:Connect(function(player, action, a, b)
 	if action == "robux" then
-		Monetization.prompt(player, id)
+		Monetization.prompt(player, a)
 	else
-		Progress.handle(player, action, id)
+		Progress.handle(player, action, a, b)
 	end
 end)
 Net.Emote.OnServerEvent:Connect(function(player, id)
@@ -404,14 +469,16 @@ end)
 Boats.TrickLanded:Connect(function(player, count)
 	Progress.onTrickLanded(player, count)
 end)
--- V11: pets (whose abilities matter in a raid) change only where nothing is chasing you.
+-- V11: pets (whose abilities matter in a raid) change only where nothing is chasing you. V13: in the Port (and at the
+-- Hoard, for anyone in the raid); the boat you sail is chosen there too.
 Progress.petSafe = function(player)
-	if not Raid.isActive() or Skyship.isAboard(player) then
+	if not Raid.isActive() or not Raid.isParticipant(player) then
 		return true
 	end
 	local root = Util.aliveRoot(player)
 	return root ~= nil and Util.flatDistance(root.Position, refs.hoard.position) <= Config.WARD_RADIUS + 25
 end
+Progress.boatSafe = Progress.petSafe
 Net.Steal.OnServerEvent:Connect(function(player, target)
 	Combat.stealFrom(player, target)
 end)
