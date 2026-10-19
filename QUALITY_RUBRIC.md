@@ -138,6 +138,36 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### Studio MCP's simulated keys do not trigger ProximityPrompts
+
+**ID:** studio-simulated-keys-skip-proximity-prompts | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** CL-13
+
+**Observed / proposed:** In a Studio play session driven through Studio MCP, holding E with user_keyboard_input beside an enabled, in-range treasure prompt (9 studs of a 10-stud reach, no line-of-sight requirement) never triggered it, and calling InputHoldBegin/InputHoldEnd on the prompt from execute_luau in the client did not either: a server listener on Triggered and on ProximityPromptService saw nothing. The same session's simulated keys did reach the game's own UserInputService and ContextActionService handlers (H opened a card, R fired a boat ability, Backspace left spectating). Calling the server function the prompt calls, from a Studio-only test script, worked.
+
+**Recommendation:** Do not count a prompt as untestable or broken because simulated keys cannot hold it. Test a prompt's effect through a Studio-only server test command that calls the same function, test the key path only where the game binds the key itself, and say in the report which prompts were not held by a key.
+
+**Applies when:** Playtesting a Roblox game through Studio MCP input tools; A feature is reached by holding a ProximityPrompt
+
+**Limits:** One Windows PC, Studio in October 2026, keyboard input only; Real players' prompt input is unaffected; earlier Loot Goblins sessions reached prompts through the game's own reach-prompt fallback, which was not exercised here
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/d32829e321627f163d522fbabe498b1bd3c55fe6/docs/reports/2026-10-18-v13-goblin-port.md): Sections 30 and 32: held E and InputHoldBegin never reached the server; the steal worked through a test command calling Loot.tryGrab.
+
+### Some newer emoji render as empty boxes in Roblox's interface font
+
+**ID:** roblox-font-lacks-newer-emoji | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** CL-30
+
+**Observed / proposed:** In a Roblox Studio play session the HUD's icons drew the hook (U+1FA9D), the person playing handball (U+1F93E) and the coin (U+1FA99) as empty boxes, while older emoji in the same labels (crossed swords, fishing pole, ghost, bomb, American football, fire, collision, cyclone, tornado, boar) drew correctly.
+
+**Recommendation:** Check every emoji used as an interface icon in a screenshot before relying on it, prefer long-established emoji, and keep a short word or a shape as the fallback for anything essential.
+
+**Applies when:** Interface icons or labels use emoji glyphs in Roblox TextLabels
+
+**Limits:** One Windows PC in October 2026; fonts on phones, consoles and Macs were not checked; Roblox may add glyphs later
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/d32829e321627f163d522fbabe498b1bd3c55fe6/docs/reports/2026-10-18-v13-goblin-port.md): Section 31, bug 7, and the art direction's V13 screen notes: the three glyphs showed as boxes in screenshots and were replaced.
+
 ### Roblox takes L1, R1, R3 and Select from a controller before a script sees them
 
 **ID:** roblox-claims-some-gamepad-buttons | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
@@ -152,6 +182,21 @@ These are attributed observations and hypotheses, not automatic changes to the c
 **Limits:** Key codes were sent through Studio MCP as keyboard input, not from a real controller; Observed with Roblox's default PlayerModule and backpack in October 2026
 
 - [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md): Section C, H9: the processed-input log and the behaviour after the ContextActionService binding.
+
+### A remote handler that forwards too few arguments can silently turn one action into another
+
+**ID:** remote-forwarders-must-pass-every-argument | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** CL-18, CL-32
+
+**Observed / proposed:** Loot Goblins' server wired its shop RemoteEvent as OnServerEvent(player, action, id) -> handle(player, action, id), but the shop sends (action, slot, item) and handle accepts (player, action, a, b). For two versions every 'equip, slot, item' arrived as 'equip, slot' with a nil item, which the handler treats as taking the slot off, and replied ok. Unit tests of handle and of the ownership rules all passed; only purchases (which equip inside the handler) changed a look. A Studio playtest that equipped an already-owned pet through the real remote exposed it.
+
+**Recommendation:** Forward every argument (or use varargs) when one handler routes a remote to another, give each action an end-to-end test through the real remote that checks the replicated result (not only the reply), and treat an ok reply with no visible change as a bug signal.
+
+**Applies when:** A RemoteEvent handler routes requests to another module; An action's absent argument has a meaning of its own (nil = remove, default, unequip)
+
+**Limits:** One code base; found by one AI in one Studio session
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/d32829e321627f163d522fbabe498b1bd3c55fe6/docs/reports/2026-10-18-v13-goblin-port.md): Section 31, bug 1: equip replied ok while Pet and BoatClass did not change; after forwarding both arguments, WEAR and SAIL changed them and an outfit kept its name.
 
 ### A RemoteEvent and an attribute set together can arrive in either order
 
@@ -198,6 +243,21 @@ These are attributed observations and hypotheses, not automatic changes to the c
 **Limits:** One game's splash rule, measured on one client in Studio without added latency
 
 - [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md): Section C1, cause (3), and the landing table after the change.
+
+### Turning the control module off may not stop a character moving; also catch the movement keys
+
+**ID:** disabling-controls-may-not-stop-movement | **Status:** hypothesis | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** CL-33, CL-37
+
+**Observed / proposed:** For a spectator mode the client called PlayerModule:GetControls():Disable(), yet a held W (sent through Studio MCP's simulated keys) still walked the character 34 studs. Adding a ContextActionService binding above default priority that sinks W, A, S, D, Up, Down, Space, Thumbstick1 and ButtonA while spectating stopped it (0 studs), and unbinding it restored walking.
+
+**Recommendation:** When a mode must freeze the player's own character (spectating, cutscenes, menus), sink the movement inputs with a high-priority ContextActionService binding as well as disabling the controls, and verify by holding a movement key and measuring the character's position.
+
+**Applies when:** A spectator, cutscene or menu mode must keep the player's character still; The game uses the default PlayerModule controls
+
+**Limits:** Seen only with Studio MCP's simulated keyboard input, which may reach the character differently from a real keyboard; Gamepad thumbsticks and touch were not tested
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/d32829e321627f163d522fbabe498b1bd3c55fe6/docs/reports/2026-10-18-v13-goblin-port.md): Section 7: 34 studs moved with controls disabled, 0 with the movement keys also sunk, 28 after leaving.
 
 ### Roblox gravity still pulls a body whose velocity a script sets every frame
 
