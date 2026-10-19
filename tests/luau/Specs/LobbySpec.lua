@@ -39,19 +39,26 @@ return function(t)
 	end)
 
 	t.test(
-		"the countdown: held while the server is empty, brought forward when everyone is aboard, never pushed back",
+		"V13.2: the countdown waits for somebody to sign up, is brought forward when all who did are aboard, never pushed back",
 		function()
 			local now = 500
 			local endsAt = now + 40
+			-- (now, endsAt, signed up, signed up and aboard, in the server)
 			t.eq(Lobby.portEndsAt(now, endsAt, 0, 0, 0), now + P.DURATION, "nobody in the server: held")
-			t.eq(Lobby.portEndsAt(now, endsAt, 3, 1, 3), endsAt, "some ready: unchanged")
-			t.eq(Lobby.portEndsAt(now, endsAt, 3, 3, 3), now + P.READY_SECONDS, "all aboard: soon")
+			t.eq(Lobby.portEndsAt(now, endsAt, 0, 0, 5), now + P.DURATION, "five goblins, nobody signed up: held")
+			t.eq(Lobby.portEndsAt(now, endsAt, 3, 1, 5), endsAt, "some of those signed up aboard: unchanged")
+			t.eq(Lobby.portEndsAt(now, endsAt, 3, 3, 5), now + P.READY_SECONDS, "all signed up aboard: soon")
 			local soon = now + 2
-			t.eq(Lobby.portEndsAt(now, soon, 3, 3, 3), soon, "never later than it already was")
-			t.eq(Lobby.portEndsAt(now, endsAt, 0, 0, 2), endsAt, "everyone raiding (none in the Port): unchanged")
+			t.eq(Lobby.portEndsAt(now, soon, 3, 3, 5), soon, "never later than it already was")
 			t.ok(P.READY_SECONDS < P.DURATION and P.DURATION <= 90, "a short Port, a shorter ready countdown")
 		end
 	)
+
+	t.test("V13.2: a raid only leaves with somebody signed up, and only when the countdown is over", function()
+		t.ok(not Lobby.shouldDepart(100, 120, 2), "still counting down")
+		t.ok(not Lobby.shouldDepart(130, 120, 0), "over, but nobody signed up: no empty raid")
+		t.ok(Lobby.shouldDepart(130, 120, 1), "over, one goblin signed up: it leaves")
+	end)
 
 	t.test("a raid with nobody left in it ends", function()
 		t.ok(Lobby.raidAbandoned(0), "empty")
@@ -87,5 +94,7 @@ return function(t)
 		local port = Lobby.status("port", now, now + 42, false)
 		t.eq(port.state, "countdown", "counting down")
 		t.eq(Lobby.status("port", now, now, false).state, "boarding", "time's up")
+		t.eq(Lobby.status("port", now, now + 42, false, 0).state, "waiting", "V13.2: nobody signed up: waiting")
+		t.eq(Lobby.status("port", now, now + 42, false, 2).state, "countdown", "two signed up: counting down")
 	end)
 end

@@ -13,6 +13,12 @@
 -- Carriers can't steal with it (hands full) but can still pull themselves about,
 -- on a longer cooldown: an escape tool, not a free ride home.
 -- A miss (nothing in range) costs no cooldown.
+-- V13.2: the grapple is how goblins travel on foot. A hook on anything that does not move (rock, ground, a wall, a
+-- mast) starts on the goblin's own client the moment F is pressed (a SWING under the hook, or a pull to it:
+-- shared/Swing.lua) and the client tells us (mode "swing"); we check its reach, set the cooldown and show the rope to
+-- everyone else. Loot, carriers and boats still go through the server's choice below, as before. The catch on a
+-- carrier is now a THROWN hook (Config.CATCH_HOOK_SPEED): it takes a moment to arrive, so a carrier who sees it can
+-- dash out of its line.
 --
 -- The server picks every target and anchor. The client only sends its aim.
 local Players = game:GetService("Players")
@@ -50,6 +56,10 @@ local HOOK_MIN_Y = -1 -- Hooks below this hit the sea floor, which is no use to 
 local function swing(player, tool)
 	local _, humanoid, root = Util.getCharacterParts(player)
 	if not root or humanoid.Health <= 0 then
+		return
+	end
+	-- V13.2: at the wheel a click is the boat's bow gun, not a swing.
+	if humanoid.SeatPart and humanoid.SeatPart:IsA("VehicleSeat") then
 		return
 	end
 	local t = os.clock()
@@ -404,8 +414,55 @@ function Combat.reset()
 	table.clear(stealReadyAt)
 end
 
-local function grapple(player, hitPosition, target)
+-- V13.2: a swing or pull the client already started on something that does not move. The server checks the hook is
+-- within reach and in sight of the goblin, sets the cooldown, and draws the rope for everyone else. Returns nothing:
+-- the server cannot stop a client moving its own character, so this keeps the cooldown and what others see honest.
+local function swingRope(player, root, hitPosition, t)
+	local origin = root.Position + Vector3.new(0, 1.5, 0)
+	local reach = (hitPosition - origin).Magnitude
+	if reach > Config.SWING.RANGE + 30 or hitPosition.Y < HOOK_MIN_Y then
+		return
+	end
+	if t < (player:GetAttribute("GrappleReadyAt") or 0) - 0.15 then
+		return
+	end
+	local ignore = ignoreList()
+	losParams.FilterDescendantsInstances = ignore
+	local hit = workspace:Raycast(origin, (hitPosition - origin) * 1.05, losParams)
+	if hit and (hit.Position - hitPosition).Magnitude > 8 and (hit.Position - origin).Magnitude < reach - 8 then
+		return -- something solid in the way (the client's own check would have seen it)
+	end
+	local carrying = Loot.itemOf(player) ~= nil
+	setCooldown(player, carrying and Config.GRAPPLE_CARRY_COOLDOWN or Config.SWING.COOLDOWN)
+	for _, other in ipairs(Players:GetPlayers()) do
+		if other ~= player then
+			Net.send(other, "GrappleFX", {
+				kind = "rope",
+				from = origin,
+				to = hitPosition,
+				userId = player.UserId,
+				duration = Config.SWING.MAX_TIME,
+			})
+		end
+	end
+end
+
+local function grapple(player, hitPosition, target, mode)
+	if mode == "release" then
+		-- The client let go of its rope: everyone else's drawing of it ends.
+		for _, other in ipairs(Players:GetPlayers()) do
+			if other ~= player then
+				Net.send(other, "GrappleFX", { kind = "cut", userId = player.UserId })
+			end
+		end
+		local carrying = Loot.itemOf(player) ~= nil
+		setCooldown(player, carrying and Config.GRAPPLE_CARRY_COOLDOWN or Config.SWING.COOLDOWN)
+		return
+	end
 	if typeof(hitPosition) ~= "Vector3" or (target ~= nil and typeof(target) ~= "Instance") then
+		return
+	end
+	if hitPosition.X ~= hitPosition.X or hitPosition.Magnitude > 1e5 then
 		return
 	end
 	local _, humanoid, root = Util.getCharacterParts(player)
@@ -413,6 +470,13 @@ local function grapple(player, hitPosition, target)
 		return
 	end
 	local t = workspace:GetServerTimeNow()
+	if mode == "swing" then
+		if t - (lastGrapple[player] or -math.huge) >= GRAPPLE_SPAM_GAP then
+			lastGrapple[player] = t
+			swingRope(player, root, hitPosition, t)
+		end
+		return
+	end
 	if t - (lastGrapple[player] or -math.huge) < GRAPPLE_SPAM_GAP then
 		return
 	end
@@ -430,13 +494,40 @@ local function grapple(player, hitPosition, target)
 	-- caught (and only when close). Full hands can do neither.
 	local item = not carrying and stealTarget(player, origin, aim, target) or nil
 	if item and item.state == "carried" and item.carrier then
-		local victimRoot = Util.aliveRoot(item.carrier)
+		local victim = item.carrier
+		local victimRoot, victimHumanoid = Util.aliveRoot(victim)
 		if
 			victimRoot
+			and not victimHumanoid.SeatPart
 			and (victimRoot.Position - origin).Magnitude <= Config.GRAPPLE_PVP_RANGE
 			and clearLine(origin, victimRoot.Position, ignore)
-			and Combat.catch(player, item.carrier, origin)
 		then
+			-- V13.2: a thrown hook. It flies to where the carrier is now; if they are still near that spot when it
+			-- gets there (they did not dash out of its line), they are caught.
+			local aimedAt = victimRoot.Position
+			local flight = (aimedAt - origin).Magnitude / Config.CATCH_HOOK_SPEED
+			setCooldown(player, Config.GRAPPLE_FAIL_COOLDOWN + flight)
+			Net.broadcast("GrappleFX", {
+				kind = "throw",
+				from = origin,
+				to = aimedAt,
+				userId = player.UserId,
+				victim = victim.UserId,
+				duration = flight,
+			})
+			task.delay(flight, function()
+				local nowRoot = Util.aliveRoot(victim)
+				local fromRoot = Util.aliveRoot(player)
+				if not nowRoot or not fromRoot then
+					return
+				end
+				if (nowRoot.Position - aimedAt).Magnitude <= Config.CATCH_HOOK_WIDTH then
+					Combat.catch(player, victim, fromRoot.Position + Vector3.new(0, 1.5, 0))
+				else
+					Net.toast(player, "They dodged the hook!")
+					Net.toast(victim, "You dodged " .. player.DisplayName .. "'s hook!")
+				end
+			end)
 			return
 		end
 		item = nil -- too far, or behind cover: the hook flies on to whatever is in the way

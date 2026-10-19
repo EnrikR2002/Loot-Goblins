@@ -574,6 +574,18 @@ function Threats.guardianAtSea()
 	return guardian.state == "sail" or guardian.state == "board"
 end
 
+-- V13.2: the world's chaos landed near the Guardian (on its island): it reels for `seconds`. Returns true if it did.
+function Threats.stagger(position, radius, seconds)
+	if guardian.state ~= "awake" or not guardian.model then
+		return false
+	end
+	if Util.flatDistance(guardian.position, position) > radius + 12 then
+		return false
+	end
+	guardian.recoverUntil = math.max(guardian.recoverUntil, now() + seconds)
+	return true
+end
+
 local function resetGuardian()
 	local g = guardian
 	g.boarding = nil

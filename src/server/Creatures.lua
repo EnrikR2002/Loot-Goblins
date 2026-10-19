@@ -348,10 +348,27 @@ function Creatures.tick(dt)
 	-- A long frame must not fling anything: creatures step as if it were a short one.
 	dt = math.min(dt, 0.1)
 	for _, creature in ipairs(Creatures.list) do
-		if creature.awake or creature.busy then
+		-- V13.2: a creature knocked silly by the world's chaos (Creatures.disturb) stands dazed for a moment.
+		if (creature.awake or creature.busy) and t >= (creature.dazedUntil or 0) then
 			creature:tick(dt, t)
 		end
 	end
+end
+
+-- V13.2: the world's chaos (a meteor, a tentacle, a lightning strike) landed here: every island creature within
+-- `radius` is dazed for `seconds` (it stops where it is; it does not lose track of its thief). Returns how many.
+function Creatures.disturb(position, radius, seconds)
+	local t = Creatures.now()
+	local count = 0
+	for _, creature in ipairs(Creatures.list) do
+		local at = creature.position
+		if at and Util.flatDistance(at, position) <= radius + (creature.size or 4) then
+			creature.dazedUntil = math.max(creature.dazedUntil or 0, t + seconds)
+			Creatures.fx("daze", at + Vector3.new(0, (creature.size or 4) + 2, 0))
+			count += 1
+		end
+	end
+	return count
 end
 
 function Creatures.reset()
@@ -359,6 +376,7 @@ function Creatures.reset()
 	table.clear(Creatures.seaOut)
 	for _, creature in ipairs(Creatures.list) do
 		creature.busy = false
+		creature.dazedUntil = nil
 		if creature.reset then
 			creature:reset()
 		end

@@ -18,10 +18,12 @@
 --   Destructibles, Cannons, Kegs, Mechanisms   the interactive island pieces
 --   Combat       sword and grapple
 --   Poltergoblin the spirit ability (was Soul Unbound / Yone's E)
---   Movement     WalkSpeed from carrying, sprint + stamina, water and spirit form
+--   Movement     WalkSpeed from carrying, water and spirit form (V13.2: the base momentum multiplies), stamina
 --   Raid         timer, scoring, who is in the raid, world reset
 --   Port         the Goblin Port between raids: arrivals, readiness, the champion, spectating (V13)
 --   BoatAbilities  each boat class's own ability, validated (V13)
+--   WorldChaos   one physical chaos event per raid, played in episodes (V13.2)
+--   Raid sign-up the Port's JOIN / STAY IN PORT / AUTO-JOIN and the raid's LEAVE (V13.2: RaidRequest)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
@@ -70,6 +72,7 @@ local GoblinLook = require(script.Parent.GoblinLook)
 local Port = require(script.Parent.Port)
 local BoatAbilities = require(script.Parent.BoatAbilities)
 local Knockout = require(script.Parent.Knockout)
+local WorldChaos = require(script.Parent.WorldChaos)
 require(script.Parent.Bestiary)
 require(script.Parent.BestiaryMinor)
 local Raid = require(script.Parent.Raid)
@@ -79,7 +82,7 @@ Players.RespawnTime = Config.RESPAWN_TIME
 StarterPlayer.CharacterWalkSpeed = Config.WALK_SPEED
 StarterPlayer.CharacterUseJumpPower = true
 StarterPlayer.CharacterJumpPower = Config.JUMP_POWER
--- Shift sprints, so it can't also toggle Roblox's shift lock.
+-- Shift boosts a boat and dashes on foot (V13.2; it sprinted until then), so it can't also toggle Roblox's shift lock.
 StarterPlayer.EnableMouseLockOption = false
 
 -- The world is big: say how long it took, so a slow start-up is noticed when it creeps in.
@@ -123,6 +126,7 @@ GhostFleet.build()
 SeaMobs.build(refs)
 Tornadoes.build(refs)
 Combat.init(refs)
+WorldChaos.init(refs) -- V13.2 (before Raid: the Port shows the next raid's chaos the moment it opens)
 Raid.init(refs)
 BoatAbilities.init(refs)
 Progress.participating = Raid.isParticipant
@@ -174,6 +178,11 @@ local Blast = require(script.Parent.Blast)
 Blast.safe = function(position)
 	return Lobby.inPort(position) or Util.flatDistance(position, refs.hoard.position) <= Config.WARD_RADIUS
 end
+-- V13.2: no bow gun fires from there, and no boat ability acts there (a little wider: the docks are busy).
+Cannons.inSafeZone = Blast.safe
+BoatAbilities.safe = function(position)
+	return Lobby.inPort(position) or Util.flatDistance(position, refs.hoard.position) <= Config.WARD_RADIUS + 60
+end
 
 -- Spirits can't bank; the Hoard's ward also pulls them back before they reach it.
 Loot.canBank = function(player)
@@ -218,6 +227,7 @@ end)
 
 local LOOSE_TEXT = {
 	throw = "%s threw the %s",
+	boarded = "%s was BOARDED and the %s went over the side!", -- V13.2: a Corsair's boarding hook
 	sword = "%s smacked the %s out of %s's hands!",
 	guardian = "The Guardian smashed the %s out of %s's hands!",
 	guardianleap = "The Guardian LANDED on the %s: %s dropped it!",
@@ -397,8 +407,44 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
 		Port.spectate(player, "start")
 	end
 end)
-Net.BoatAbility.OnServerEvent:Connect(function(player, aimPoint)
-	BoatAbilities.request(player, aimPoint)
+-- V13.2: signing up for the next raid, and leaving a running one.
+local raidAsks = setmetatable({}, { __mode = "k" })
+Net.Raid.OnServerEvent:Connect(function(player, action, value)
+	local t = os.clock()
+	if t - (raidAsks[player] or 0) < 0.25 then
+		return
+	end
+	raidAsks[player] = t
+	if action == "in" then
+		Raid.signUp(player, true)
+	elseif action == "out" then
+		Raid.signUp(player, false)
+	elseif action == "auto" then
+		Raid.setAutoJoin(player, value == true)
+	elseif action == "leave" then
+		Raid.leave(player)
+	end
+end)
+Net.BoatAbility.OnServerEvent:Connect(function(player, aimPoint, info)
+	BoatAbilities.request(player, aimPoint, info)
+end)
+-- V13.2: every boat's bow gun (a click at the wheel), and the driver's own chain letting go.
+local gunAsks = setmetatable({}, { __mode = "k" })
+Net.BoatGun.OnServerEvent:Connect(function(player, aimPoint)
+	local t = os.clock()
+	if t - (gunAsks[player] or 0) < 0.15 then
+		return
+	end
+	gunAsks[player] = t
+	local ok, why = Cannons.driverFire(player, Boats.drivenBy(player), aimPoint)
+	if not ok and why then
+		Net.toast(player, why)
+	end
+end)
+Net.BoatChain.OnServerEvent:Connect(function(player, kind)
+	if kind == "sling" or kind == "arrived" or kind == "unchain" or kind == "snag" or kind == "swing" then
+		BoatAbilities.released(player, kind)
+	end
 end)
 
 Net.Throw.OnServerEvent:Connect(function(player)
@@ -409,9 +455,6 @@ Net.Poltergoblin.OnServerEvent:Connect(function(player)
 	if Config.POLTER_ENABLED then
 		Poltergoblin.request(player)
 	end
-end)
-Net.Sprint.OnServerEvent:Connect(function(player, held)
-	Movement.setSprintHeld(player, held == true)
 end)
 Net.Move.OnServerEvent:Connect(function(player, kind)
 	if kind == "dash" or kind == "airjump" then

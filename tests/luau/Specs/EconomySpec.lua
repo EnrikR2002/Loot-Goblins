@@ -169,7 +169,8 @@ return function(t)
 	end)
 
 	t.test("V13: the economy model: a typical goblin earns a boat in a few hours, and nothing takes weeks", function()
-		-- The model in docs/economy (and Config.PROGRESS): about 8 raids an hour (60 s Port + 20 s launch + 360 s raid).
+		-- The model in docs/economy (and Config.PROGRESS): about 8 raids an hour (60 s Port + 42 s skyship (V13.2; V13:
+		-- 20) + 360 s raid).
 		local raidsPerHour = 3600 / (Config.PORT.DURATION + Config.SKYSHIP.WINDOW + Config.RAID_DURATION)
 		t.ok(raidsPerHour > 7 and raidsPerHour < 9, "about eight raids an hour: " .. raidsPerHour)
 		-- A typical raid: banks one middling treasure (10 gold), one steal, one clean trick; below the median.
@@ -184,7 +185,8 @@ return function(t)
 			end
 		end
 		t.ok(dearest / perHour <= 6, "the dearest boat in at most six hours of typical play")
-		t.ok(fleet / perHour <= 20, "every boat in at most twenty hours of typical play")
+		-- V13.2: eight boats to earn (V13: five, at most twenty hours).
+		t.ok(fleet / perHour <= 26, "every boat in at most twenty-six hours of typical play: " .. fleet / perHour)
 		for _, item in ipairs(Catalog.bySlot.pet) do
 			if item.price then
 				t.ok(item.price / perHour <= 5, item.id .. ": a pet in at most five hours")

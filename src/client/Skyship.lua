@@ -7,6 +7,11 @@
 -- Past its reach the ring turns red and shows the farthest it can throw that way. The ship is seen
 -- through while you aim, so the whole sea beneath is in view, and every island wears its name.
 --
+-- V13.2: the ship FLIES ITS ROUTE (shared/SkyRoute.lua). This client moves its own copy of the ship along the route every
+-- frame (smooth, whatever the network does; the server moves its own the same way), carries its goblin along while they
+-- stand on the deck, and aims a cannon from where that cannon is now. The banner says when the cannons unlock and which
+-- islands are in reach.
+--
 -- Keys, all shown on the banner for the moment they matter:
 --   aboard     E at a cannon: climb in.   M: map (click an island to point a cannon at it).   or walk off a wing.
 --   aiming     MOUSE (or WASD) look at where to land.   CLICK or SPACE fire.   X climb out.
@@ -21,6 +26,7 @@ local Shared = ReplicatedStorage:WaitForChild("LootGoblins")
 local Config = require(Shared:WaitForChild("Config"))
 local Archipelago = require(Shared:WaitForChild("Archipelago"))
 local Dive = require(Shared:WaitForChild("Dive"))
+local SkyRoute = require(Shared:WaitForChild("SkyRoute"))
 local Effects = require(script.Parent.Effects)
 local Map = require(script.Parent.Map)
 
@@ -73,6 +79,17 @@ local landing -- where the flight is heading: { position, water, island }
 
 local function now()
 	return workspace:GetServerTimeNow()
+end
+
+-- V13.2: the ship's frame as this client last placed it (SkyRoute), and where a cannon throws from now.
+local shipFrame = nil
+local REACH = SkyRoute.reach()
+local function launchFrom()
+	local localFrom = player:GetAttribute("LaunchLocal")
+	if typeof(localFrom) == "Vector3" and shipFrame then
+		return shipFrame * localFrom
+	end
+	return player:GetAttribute("LaunchFrom")
 end
 
 local function make(className, props, parent)
@@ -479,7 +496,7 @@ end)
 
 local nextPreview = 0
 local function aimStep(dt, firing)
-	local from = player:GetAttribute("LaunchFrom")
+	local from = launchFrom()
 	local speed = player:GetAttribute("LaunchSpeed")
 	local elevation = player:GetAttribute("LaunchElevation")
 	if typeof(from) ~= "Vector3" or not speed or not elevation then
@@ -590,14 +607,17 @@ local function aimStep(dt, firing)
 			firing and "FIRING..."
 				or (
 					waiting
-						and string.format("AIM NOW: THE CANNONS FIRE IN %d   -   X: CLIMB OUT", math.ceil(bellAt - t))
+						and string.format(
+							"LOCKED: AIM NOW, THE SHIP SETS OFF AND THE CANNONS FIRE IN %d   -   X: CLIMB OUT",
+							math.ceil(bellAt - t)
+						)
 					or (
 						aimReach and "LOOK WHERE YOU WANT TO LAND   -   CLICK or SPACE: FIRE   -   X: CLIMB OUT"
-						or "OUT OF REACH: THE RED RING IS AS FAR AS IT THROWS"
+						or "OUT OF REACH: THE RED RING IS AS FAR AS IT THROWS. WAIT FOR THE SHIP TO GET CLOSER!"
 					)
 				),
 			text,
-			aimReach and GOLD or RED
+			(aimReach and not waiting) and GOLD or (waiting and Color3.fromRGB(255, 230, 140) or RED)
 		)
 	end
 end
@@ -845,6 +865,32 @@ RunService.PreSimulation:Connect(function()
 	end
 end)
 
+-- V13.2: the major islands whose landing is in the cannons' reach right now (for the banner).
+local reachText, nextReachAt = "", 0
+local function inReachNow()
+	if os.clock() < nextReachAt then
+		return reachText
+	end
+	nextReachAt = os.clock() + 0.4
+	if not shipFrame then
+		return reachText
+	end
+	local names = {}
+	local p = shipFrame.Position
+	for _, island in ipairs(Archipelago.islands) do
+		local info = Config.ISLAND_INFO[island.id]
+		if info and info.major then
+			local spot = landingFor(island.id)
+			if Vector3.new(spot.X - p.X, 0, spot.Z - p.Z).Magnitude <= REACH then
+				table.insert(names, island.name)
+			end
+		end
+	end
+	reachText = #names > 0 and table.concat(names, ", ", 1, math.min(#names, 4)) .. (#names > 4 and "..." or "")
+		or "nothing yet: wait for land"
+	return reachText
+end
+
 -- Each frame: the banner, the aim, the landing ring -------------------------------------------------
 local nextLanding = 0
 local function update(dt)
@@ -859,28 +905,36 @@ local function update(dt)
 	showLabels(((phase == "loaded" or phase == "fuse" or flying) and high) or false)
 	if phase == "aboard" then
 		releaseView()
-		-- V12: once an island is picked, the banner names it (the cannon you climb into is already aimed there).
+		-- V12: once an island is picked, the banner names it. V13.2: the ship fires you there as it passes it.
 		local dest = player:GetAttribute("DeployDest")
 		local destIsland = dest and Archipelago.byId[dest]
-		local climb = destIsland and ("CLIMB INTO A CANNON (E): IT IS AIMED AT " .. destIsland.name)
-			or "CLIMB INTO A CANNON (E) AND LOOK WHERE YOU WANT TO LAND"
+		local routeName = workspace:GetAttribute("SkyRouteName") or "THE SKYSHIP"
 		if Map.isOpen() then
-			Map.setTitle("CLICK AN ISLAND: your cannon starts pointed at it  -  M closes")
+			Map.setTitle(
+				"CLICK A LIT ISLAND: the ship fires you there as it passes  -  ring: the cannons' reach  -  M closes"
+			)
 			setBanner(nil)
 		elseif opensAt and t < opensAt then
 			Map.setTitle()
 			setBanner(
-				string.format("%s  -  FIRES IN %d", climb, math.ceil(opensAt - t)),
-				"Walk about. The wings are deck too.   |   M: the map   |   H: all controls"
+				string.format(
+					"%s SETS OFF IN %d   -   CANNONS LOCKED: CLIMB IN (E) AND AIM",
+					routeName,
+					math.ceil(opensAt - t)
+				),
+				destIsland
+						and ("Picked: " .. destIsland.name .. " (the ship fires you there as it passes)   |   M: the map")
+					or "M: the map shows the route: pick an island in reach, and the ship fires you there as it passes"
 			)
 		else
 			Map.setTitle()
 			local by = player:GetAttribute("LaunchBy") or endsAt -- V12: a late arrival's own deadline
 			local left = by and math.max(0, math.ceil(by - t)) or 0
 			setBanner(
-				string.format("%s  -  %d s", climb, left),
-				destIsland and "M: pick another island   |   or walk out on a wing and step off   |   H: all controls"
-					or "or walk out on a wing and step off   |   M: the map   |   H: all controls"
+				string.format("IN REACH NOW: %s   -   %d s", inReachNow(), left),
+				destIsland
+						and ("Picked: " .. destIsland.name .. "   |   CLIMB IN (E) to aim yourself   |   or step off a wing")
+					or "CLIMB INTO A CANNON (E) and fire when your island is in reach   |   M: the map"
 			)
 		end
 		hidePreview()
@@ -958,10 +1012,16 @@ end)
 -- Choosing an island on the map (Map.lua calls this): the ship remembers it, and a loaded launcher
 -- turns to look at it.
 function Skyship.choose(id)
+	-- V13.2: only an island the ship comes in reach of on this route (the map dims the others).
+	if Map.reachable and not Map.reachable(id) then
+		Effects.chime(Effects.CHIME_BAD or { 1, 0.8 }, 0.4)
+		setBanner("OUT OF REACH ON THIS ROUTE: pick a lit island", nil, RED)
+		return
+	end
 	deployRemote:FireServer("choose", id)
 	player:SetAttribute("DeployDest", id) -- shown at once; the server's copy follows
 	local island = Archipelago.byId[id]
-	local from = player:GetAttribute("LaunchFrom")
+	local from = launchFrom()
 	if island and typeof(from) == "Vector3" and player:GetAttribute("DeployState") == "loaded" then
 		lookAtPoint(from, landingFor(id))
 		-- V12: aimed at exactly that spot until the goblin turns the view themselves (a ray along the look
@@ -1055,46 +1115,92 @@ end
 
 -- For the playtest hook and the map: look at a place.
 function Skyship.lookAt(point)
-	local from = player:GetAttribute("LaunchFrom")
+	local from = launchFrom()
 	if typeof(from) == "Vector3" then
 		lookAtPoint(from, point)
 	end
 end
 
 -- The map's island buttons call Skyship.choose; Main starts this once the HUD exists.
--- V10: the skyship's propellers turn (on every client, for itself: no replication, two small sets of parts).
-local propellers
+-- V10: the skyship's propellers turn (on every client, for itself). V13.2: the ship is one welded assembly, so each
+-- hub hangs on a Motor6D ("Spin") and turning it is setting that joint's Transform (only on this client).
+local spinners, spinAngle = nil, 0
 local function spinPropellers(dt)
-	if not propellers then
+	if not spinners then
 		local model = ship()
 		if not model then
 			return
 		end
-		propellers = {}
+		spinners = {}
 		for _, p in ipairs(model:GetChildren()) do
-			local side = p:GetAttribute("Spin")
-			if side then
-				local hub = nil
-				for _, other in ipairs(model:GetChildren()) do
-					if other.Name == "PropellerHub" and other:GetAttribute("Spin") == side then
-						hub = other
-					end
-				end
-				if hub then
-					table.insert(propellers, { part = p, axis = hub.Position, side = side })
-				end
+			local motor = p.Name == "PropellerHub" and p:FindFirstChild("Spin")
+			if motor and motor:IsA("Motor6D") then
+				table.insert(spinners, { motor = motor, side = p:GetAttribute("Spin") or 1 })
 			end
 		end
 	end
-	for _, entry in ipairs(propellers) do
-		local p = entry.part
-		local pivot = CFrame.new(entry.axis)
-		p.CFrame = pivot * CFrame.Angles(0, 0, dt * 7 * entry.side) * pivot:Inverse() * p.CFrame
+	spinAngle += dt * 7
+	for _, entry in ipairs(spinners) do
+		entry.motor.Transform = CFrame.Angles(spinAngle * entry.side, 0, 0)
 	end
+end
+
+-- V13.2: fly this client's copy of the ship along the raid's route, and carry this client's goblin with it while
+-- they stand on it (or jump about over its deck): the ship moves by setting its Deck, which does not drag what stands on
+-- it. A goblin in a cannon is welded into the ship and rides along anyway.
+local function flyShip()
+	local model = ship()
+	local deck = model and model.PrimaryPart
+	if not deck then
+		return
+	end
+	local points, opensAt = SkyRoute.current()
+	if not points then
+		return
+	end
+	local cf = SkyRoute.cframeAt(points, opensAt, now())
+	local before = shipFrame
+	shipFrame = cf
+	deck.CFrame = cf
+	if not before or before == cf then
+		return
+	end
+	local _, humanoid, root = character()
+	if not root or root.Anchored or humanoid.SeatPart or diving or player:GetAttribute("Diving") then
+		return
+	end
+	local state = player:GetAttribute("DeployState")
+	if state == "loaded" or state == "fuse" then
+		return
+	end
+	local onShip = before:PointToObjectSpace(root.Position)
+	if math.abs(onShip.X) < 92 and onShip.Y > -7 and onShip.Y < 48 and math.abs(onShip.Z) < 112 then
+		root.CFrame = cf * before:ToObjectSpace(root.CFrame)
+	end
+end
+
+-- For the playtest hook: where this client has the ship.
+function Skyship.shipFrame()
+	return shipFrame
 end
 
 function Skyship.start()
 	RunService.RenderStepped:Connect(spinPropellers)
+	RunService.PreSimulation:Connect(flyShip)
+	RunService.RenderStepped:Connect(flyShip)
+	-- V13.2: the bell when the ship sets off and the cannons unlock.
+	local rungFor = nil
+	RunService.Heartbeat:Connect(function()
+		local opensAt = workspace:GetAttribute("DeployOpensAt")
+		if type(opensAt) == "number" and rungFor ~= opensAt and now() >= opensAt and now() < opensAt + 2 then
+			rungFor = opensAt
+			local state = player:GetAttribute("DeployState")
+			if state == "aboard" or state == "loaded" then
+				Effects.chime({ 1, 1.26, 1.5, 2 }, 0.8)
+				Effects.sound("rise", { speed = 1.2, volume = 1 })
+			end
+		end
+	end)
 	build()
 	Map.setSelector(Skyship.choose)
 	RunService.RenderStepped:Connect(update)

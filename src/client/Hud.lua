@@ -374,7 +374,7 @@ local function buildMoves()
 		slots[key].frame.Parent = row
 	end
 
-	-- Stamina: one slim bar, bottom left. It pays for sprint, dash and air jump; running is free.
+	-- Stamina: one slim bar, bottom left. It pays for the dash and the air jump; running is free (V13.2: no sprint).
 	staminaBar = panel(gui, {
 		Name = "Stamina",
 		AnchorPoint = Vector2.new(0, 1),
@@ -436,13 +436,14 @@ local function buildMoves()
 	})
 end
 
--- Shown only while you sit in a boat: one strip. Speed and notes on top; hull, boost, drift and the ability below.
+-- Shown only while you sit in a boat: one strip. Speed and notes on top; hull, boost, drift, the ability and (V13.2)
+-- the bow gun below.
 local function buildBoatPanel()
 	boatPanel = panel(gui, {
 		Name = "BoatPanel",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -100),
-		Size = UDim2.fromOffset(452, 56),
+		Size = UDim2.fromOffset(542, 56),
 		Visible = false,
 	})
 	corner(boatPanel, 12)
@@ -491,6 +492,7 @@ local function buildBoatPanel()
 	meter("boost", 116, 100, Color3.fromRGB(255, 190, 70), "BOOST")
 	meter("drift", 222, 100, DRIFT_COLORS[0], "DRIFT")
 	meter("ability", 328, 114, Color3.fromRGB(196, 140, 255), "ABILITY")
+	meter("gun", 448, 84, Color3.fromRGB(255, 150, 90), "GUN")
 end
 
 local function buildBottom()
@@ -590,10 +592,11 @@ local HELP_COLUMNS = {
 		{
 			{ "hold E", "steal a glowing treasure" },
 			{ "E", "use: boats, cannons, levers" },
-			{ "SHIFT", "sprint" },
-			{ "C", "dash (also in the air)" },
+			{ "RUN", "keep running: you build speed" },
+			{ "SHIFT / C", "dash (also in the air)" },
 			{ "SPACE x2", "jump again in the air" },
-			{ "F", "grapple: a cliff or a carrier" },
+			{ "F", "grapple: swing from what's above" },
+			{ "hold F", "reel in   F again: let go" },
 			{ "Q", "throw what you carry" },
 			{ "CLICK", "sword: knocks treasure loose" },
 			{ "G", "throw a powder keg" },
@@ -606,6 +609,7 @@ local HELP_COLUMNS = {
 			{ "B", "call a boat to you" },
 			{ "W A S D", "drive  (S brakes)" },
 			{ "SHIFT", "boost" },
+			{ "CLICK", "fire the bow gun" },
 			{ "hold C", "drift a turn, let go: burst" },
 			{ "SPACE", "jump (SUPER JUMP when fast)" },
 			{ "R", "on the water: your boat's ability" },
@@ -635,7 +639,7 @@ local HELP_RULES = {
 	"Whatever guards a treasure follows its thief home, until the gold buoys round Goblin Cove.",
 	"Keep your speed at sea: pursuers catch whoever slows down.",
 	"Out of health? You're KNOCKED OUT for 5 s and drop what you carry. Creatures never steal it: they hurt you.",
-	"CONTROLLER: A jump / fire, X boost, B dash / drift, Y leave a boat, R1 ability / trick, L2 hook, L1 throw, R3 map.",
+	"CONTROLLER: A jump / fire, X boost, B dash / drift, Y leave a boat, R1 ability / trick, R2 bow gun, L2 hook, L1 throw, R3 map.",
 	"D-pad: down calls a boat, left throws a keg, right the wardrobe, up the emotes.",
 }
 -- V13: the Port's own card (the same H key, a different card).
@@ -643,8 +647,9 @@ local PORT_HELP = {
 	"THE GOBLIN PORT",
 	"Between raids. Nothing here can hurt you, and nothing you do here counts in a raid.",
 	{
-		{ "WALK", "aboard the airship: you're READY" },
-		{ "", "everyone aboard: the raid leaves early" },
+		{ "JOIN", "sign up for the next raid (or not!)" },
+		{ "WALK", "aboard the airship: signed up, ready" },
+		{ "", "all signed up aboard: it leaves early" },
 		{ "E", "Shipyard: look at a boat, sail it" },
 		{ "E", "Menagerie: adopt a pet" },
 		{ "E", "Madame Ragwort's: dress up" },
@@ -744,6 +749,36 @@ local function buildHelp()
 		})
 	end
 	help.Size = UDim2.fromOffset(760, rulesY + #HELP_RULES * 20 + 34)
+	-- V13.2: going home early. Two presses (the first asks), and it says what it costs.
+	local leaveArmedUntil = 0
+	local leave = make("TextButton", {
+		Name = "LeaveRaid",
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -14, 1, -6),
+		Size = UDim2.fromOffset(330, 24),
+		BackgroundColor3 = Color3.fromRGB(110, 40, 40),
+		BorderSizePixel = 0,
+		Font = Enum.Font.GothamBlack,
+		Text = "⚓ LEAVE THIS RAID (home to the Port)",
+		TextColor3 = WHITE,
+		TextSize = 13,
+		AutoButtonColor = true,
+		ZIndex = 10,
+	}, help)
+	corner(leave, 8)
+	leave.Activated:Connect(function()
+		if os.clock() < leaveArmedUntil then
+			leaveArmedUntil = 0
+			ReplicatedStorage:WaitForChild("LootGoblinsRemotes"):WaitForChild("RaidRequest"):FireServer("leave")
+			Hud.toggleHelp()
+		else
+			leaveArmedUntil = os.clock() + 4
+			leave.Text = "SURE? You lose this raid's gold. Press again"
+			task.delay(4, function()
+				leave.Text = "⚓ LEAVE THIS RAID (home to the Port)"
+			end)
+		end
+	end)
 	text(help, {
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 16, 1, -8),
@@ -989,8 +1024,13 @@ end
 local function updateTop(now, phase, phaseEndsAt)
 	local left = phaseEndsAt - now
 	local clockAt = workspace:GetAttribute("RaidClockAt")
-	if phase == "raid" and clockAt and now < clockAt then
-		-- V9: the launch window. The six-minute clock waits for it.
+	local opensAt = workspace:GetAttribute("DeployOpensAt")
+	if phase == "raid" and clockAt and now < clockAt and opensAt and now < opensAt then
+		-- V13.2: the skyship's prep: the cannons are locked until it sets off.
+		timer.Text = string.format("🔒 SETS OFF %d", math.max(0, math.ceil(opensAt - now)))
+		timer.TextColor3 = Color3.fromRGB(255, 230, 140)
+	elseif phase == "raid" and clockAt and now < clockAt then
+		-- V9: the launch window. The six-minute clock waits for it. (V13.2: the skyship's pass.)
 		timer.Text = string.format("🚀 LAUNCH %d", math.max(0, math.ceil(clockAt - now)))
 		timer.TextColor3 = Color3.fromRGB(150, 230, 255)
 	elseif phase == "raid" then
@@ -1241,12 +1281,31 @@ local function updateBoatPanel(now)
 			)
 		end
 	end
+	-- V13.2: the bow gun (a click; the controller's R2; the touch GUN button). Only the driver fires it.
+	local gun = BoatDrive.gunInfo()
+	meters.gun.back.Visible = gun ~= nil
+	if gun then
+		local gunKey = pad and "R2" or (inputKind == "touch" and "" or "CLICK")
+		if now < gun.readyAt then
+			setMeter("gun", 1 - (gun.readyAt - now) / gun.cooldown, "GUN", Color3.fromRGB(120, 80, 60))
+		else
+			setMeter("gun", 1, gunKey .. " GUN", Color3.fromRGB(255, 150, 90))
+		end
+	end
 	local notes = {}
 	if os.clock() < chainUntil then
 		table.insert(notes, "HOOPS x" .. chainCount)
 	end
-	if model:GetAttribute("Moored") then
-		table.insert(notes, "⚓ ANCHORED")
+	-- V13.2: a chain on this boat (an Anchorjack's anchor, a Corsair's hook).
+	local chained = BoatDrive.tethered() or model:GetAttribute("Chained")
+	if chained == "towed" then
+		table.insert(notes, "⚓ CHAINED! (Nitro or Phantom breaks it)")
+	elseif chained == "swing" then
+		table.insert(notes, "⚓ SWINGING: R lets go")
+	elseif chained == "snag" then
+		table.insert(notes, "⚓ CAUGHT ONE: R lets go")
+	elseif chained == "reel" or chained == "zip" then
+		table.insert(notes, "⚔ REELING IN")
 	end
 	local payload = model:GetAttribute("Payload") or 0
 	if payload > 0 then

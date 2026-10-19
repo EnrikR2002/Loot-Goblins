@@ -33,6 +33,8 @@ local driftRemote = remotes:WaitForChild("BoatDriftRequest")
 local fxRemote = remotes:WaitForChild("BoatFxRequest")
 local jumpRemote = remotes:WaitForChild("BoatJumpRequest")
 local abilityRemote = remotes:WaitForChild("BoatAbilityRequest")
+local gunRemote = remotes:WaitForChild("BoatGunRequest") -- V13.2
+local chainRemote = remotes:WaitForChild("BoatChainRequest") -- V13.2
 
 local gates = {}
 local sim, simHull = nil, nil
@@ -43,13 +45,14 @@ local input = { throttle = 0, steer = 0, drift = false, jump = false }
 local jumpQueued = false
 local info = { driving = false, speed = 0, charge = 0, level = 0, drifting = false }
 local onEvent = function(_kind, _position, _a, _b) end
-local hiddenPrompt = nil -- the anchor prompt of the boat we drive: hidden for its driver (R is the trick key)
 local spinSide = 1
 local trickQueued = false -- R pressed during a trick: the next one starts when it ends
 -- V13: the class ability (the stunt key on the water). Queued for the next physics step, sent to the server only once
 -- it has actually played; our own guess at its cooldown until the server's attribute arrives.
 local abilityQueued = false
+local abilityTarget = nil -- V13.2: where the anchor or the hook goes ({ point } or { part }), chosen at the key press
 local predictedAbilityAt = 0
+local predictedGunAt = 0 -- V13.2: our own guess at the bow gun's reload
 local aimProvider = function()
 	return nil
 end
@@ -110,12 +113,83 @@ function BoatDrive.setAimProvider(fn)
 	aimProvider = fn
 end
 
+-- V13.2: where a thrown anchor or boarding hook goes: a rival hull near the aim line (in range, ahead of the bow), or
+-- for the anchor the first rock along the aim, or the sea bed at the end of the throw; for the hook a rock within its
+-- zip range. The server makes the same choice (BoatAbilities) and corrects us if it disagrees. nil: nothing to hook.
+local biteParams = RaycastParams.new()
+biteParams.FilterType = Enum.RaycastFilterType.Exclude
+biteParams.IgnoreWater = true
+local function flat(v)
+	return Vector3.new(v.X, 0, v.Z)
+end
+local function chooseTarget(kind)
+	local A = Config.BOAT_ABILITIES[kind]
+	local hull = simHull
+	local here = flat(hull.Position)
+	local look = flat(hull.CFrame.LookVector)
+	look = look.Magnitude > 0.05 and look.Unit or Vector3.new(0, 0, -1)
+	local aim = aimProvider()
+	local aimDir = aim and flat(aim - hull.Position) or look
+	aimDir = aimDir.Magnitude > 1 and aimDir.Unit or look
+	local range = A.range
+	local cone = kind == "anchor" and A.arc or A.cone
+	local assist = kind == "anchor" and A.assist or 30
+	local best, bestScore = nil, math.huge
+	local generated = workspace:FindFirstChild("LootGoblinsGenerated")
+	local structures = generated and generated:FindFirstChild("Structures")
+	if structures then
+		for _, model in ipairs(structures:GetChildren()) do
+			local other = model:GetAttribute("BoatType") and model:FindFirstChild("Hull")
+			if other and other ~= hull and model:GetAttribute("BoatType") ~= "navy" then
+				local offset = flat(other.Position) - here
+				local distance = offset.Magnitude
+				if distance > 4 and distance <= range + other.Size.Z * 0.5 then
+					local along = offset:Dot(aimDir)
+					local off = (offset - aimDir * along).Magnitude
+					if offset.Unit:Dot(look) >= cone and along > 0 and off <= assist + other.Size.X then
+						local score = off + distance * 0.15
+						if score < bestScore then
+							best, bestScore = other, score
+						end
+					end
+				end
+			end
+		end
+	end
+	if best then
+		return { part = best }
+	end
+	if aimDir:Dot(look) < -0.2 then
+		aimDir = look
+	end
+	biteParams.FilterDescendantsInstances = { hull.Parent }
+	local reach = kind == "anchor" and range or A.zip
+	local from = hull.Position + Vector3.new(0, 3, 0)
+	local hit = workspace:Raycast(from, aimDir * reach, biteParams)
+	if hit then
+		local model = hit.Instance:FindFirstAncestorOfClass("Model")
+		if not (model and model:GetAttribute("BoatType")) then
+			return { point = hit.Position }
+		end
+	end
+	if kind == "anchor" then
+		local toward = aim and flat(aim - hull.Position).Magnitude or range * 0.6
+		return { point = here + aimDir * math.clamp(toward, 40, range) }
+	end
+	return nil
+end
+
 -- The class ability. Returns true if it was queued (it plays on the next physics step, on the water).
 function BoatDrive.ability()
 	if not sim then
 		return false
 	end
 	local t = now()
+	-- V13.2: R while your own anchor holds lets it go (BoatSim turns it into a sling).
+	if sim.tether and (sim.tether.kind == "swing" or sim.tether.kind == "snag") then
+		abilityQueued = true
+		return true
+	end
 	if t < predictedAbilityAt then
 		return false
 	end
@@ -123,9 +197,50 @@ function BoatDrive.ability()
 	if not BoatSim.abilityReady(sim, t) then
 		return false
 	end
+	local id = sim.spec.ability
+	abilityTarget = nil
+	if id == "anchor" or id == "hook" then
+		abilityTarget = chooseTarget(id)
+		if not abilityTarget then
+			BoatDrive.toast("Nothing to hook: aim at a boat (or a rock) ahead.")
+			return false
+		end
+	end
 	abilityQueued = true
 	return true
 end
+
+-- V13.2: the bow gun (a click, R2, the touch GUN button). Fires where the driver looks; the server judges it.
+-- Returns true if a shot was asked for.
+function BoatDrive.fireGun()
+	local _, model = seatAndModel()
+	if not model then
+		return false
+	end
+	local t = now()
+	local readyAt = math.max(model:GetAttribute("GunReadyAt") or 0, predictedGunAt)
+	if t < readyAt then
+		return false
+	end
+	predictedGunAt = t + Config.BOAT_GUN.cooldown
+	gunRemote:FireServer(aimProvider())
+	return true
+end
+
+-- For the HUD: { readyAt, cooldown } of the bow gun on the boat being driven, or nil.
+function BoatDrive.gunInfo()
+	local _, model = seatAndModel()
+	if not model then
+		return nil
+	end
+	return {
+		readyAt = math.max(model:GetAttribute("GunReadyAt") or 0, predictedGunAt),
+		cooldown = Config.BOAT_GUN.cooldown,
+	}
+end
+
+-- Main sets this: a short note on the screen.
+BoatDrive.toast = function(_text) end
 
 -- V13: the stunt key (R, R1, the touch STUNT button). In the air: a trick. On the water: the boat's ability.
 -- Returns "trick", "ability" or nil (nothing happened).
@@ -140,9 +255,39 @@ function BoatDrive.stunt()
 	return BoatDrive.ability() and "ability" or nil
 end
 
--- The server refused an ability (its cooldown, a rule like "no tornado near home"): forget our own guess.
+-- The server refused an ability (its cooldown, a rule like "no tornado near home"): forget our own guess, and any
+-- chain our own physics started for it (V13.2).
 function BoatDrive.abilityRefused()
 	predictedAbilityAt = 0
+	if sim then
+		sim.tether = nil
+	end
+end
+
+-- V13.2: the server put a chain on our hull, or took one off (a rival's anchor caught us; our own was corrected or
+-- snapped). payload: { hull, tether = { kind, part, point, length, untilAt } | nil }.
+function BoatDrive.tether(payload)
+	if not sim or payload.hull ~= simHull then
+		return
+	end
+	local tether = payload.tether
+	if type(tether) ~= "table" then
+		sim.tether = nil
+		return
+	end
+	sim.tether = {
+		kind = tether.kind,
+		part = typeof(tether.part) == "Instance" and tether.part or nil,
+		point = typeof(tether.point) == "Vector3" and tether.point or nil,
+		length = tonumber(tether.length) or 40,
+		untilAt = tonumber(tether.untilAt) or now(),
+		startGap = 0,
+	}
+end
+
+-- V13.2: which chain holds our hull now ("swing", "snag", "towed", "reel", "zip"), for the HUD.
+function BoatDrive.tethered()
+	return sim and sim.tether and sim.tether.kind or nil
 end
 
 -- For the HUD: { id, readyAt, cooldown } of the boat being driven, or nil.
@@ -249,26 +394,10 @@ function BoatDrive.info()
 	return info
 end
 
--- The driver does not get the anchor's R prompt while driving (R is the trick key); passengers still do.
-local function hideAnchorPrompt(model)
-	local winch = model and model:FindFirstChild("Anchor")
-	local prompt = winch and winch:FindFirstChild("AnchorPrompt")
-	if prompt ~= hiddenPrompt then
-		if hiddenPrompt and hiddenPrompt.Parent then
-			hiddenPrompt.Enabled = true
-		end
-		hiddenPrompt = prompt
-		if prompt then
-			prompt.Enabled = false
-		end
-	end
-end
-
 RunService.PreSimulation:Connect(function(dt)
 	local seat, model = seatAndModel()
 	local hull = model and model:FindFirstChild("Hull")
 	info.driving = hull ~= nil
-	hideAnchorPrompt(hull and model or nil)
 	if not hull then
 		sim, simHull = nil, nil
 		if driftHeld then
@@ -309,6 +438,10 @@ RunService.PreSimulation:Connect(function(dt)
 	jumpQueued = false
 	input.ability = abilityQueued
 	abilityQueued = false
+	input.target = input.ability and abilityTarget or nil
+	if input.ability then
+		abilityTarget = nil
+	end
 	if input.ability then
 		sim.abilityReadyAt = math.max(model:GetAttribute("AbilityReadyAt") or 0, predictedAbilityAt)
 	end
@@ -319,8 +452,14 @@ RunService.PreSimulation:Connect(function(dt)
 		-- It played: now tell the server (with where we are looking) and show it.
 		local a = Config.BOAT_ABILITIES[out.ability]
 		predictedAbilityAt = t + (a and a.cooldown or 1)
-		abilityRemote:FireServer(aimProvider())
-		onEvent("ability", hull.Position, out.ability)
+		local target = input.target
+		abilityRemote:FireServer(aimProvider(), target and { target = target.part } or nil)
+		onEvent("ability", hull.Position, out.ability, target)
+	end
+	if out.released then
+		-- V13.2: our own anchor or hook let go (R again: a sling; it reached the boat; it ran out).
+		chainRemote:FireServer(out.released)
+		onEvent("released", hull.Position, out.released)
 	end
 	if out.airhop then
 		onEvent("airhop", hull.Position)
@@ -445,11 +584,11 @@ RunService.Heartbeat:Connect(function()
 	local camera = workspace.CurrentCamera
 	for hull, wake in pairs(wakes) do
 		local velocity = hull.AssemblyLinearVelocity
-		local flat = Vector3.new(velocity.X, 0, velocity.Z)
-		local speed = flat.Magnitude
+		local level = Vector3.new(velocity.X, 0, velocity.Z)
+		local speed = level.Magnitude
 		local afloat = hull.Position.Y < 6
 		local look = hull.CFrame.LookVector
-		local slip = speed > 8 and (1 - math.abs(flat.Unit:Dot(Vector3.new(look.X, 0, look.Z)))) or 0
+		local slip = speed > 8 and (1 - math.abs(level.Unit:Dot(Vector3.new(look.X, 0, look.Z)))) or 0
 		wake.foam.Rate = (afloat and speed > 10) and math.min(90, speed * 0.7) or 0
 		wake.spray.Rate = (afloat and speed > 45) and math.min(120, (speed - 45) * 1.1 + slip * 220) or 0
 		-- V13: a Wraith at speed leaves fading afterimages of itself (only near the camera; one every 0.09 s).

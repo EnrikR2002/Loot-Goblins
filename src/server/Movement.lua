@@ -2,15 +2,16 @@
 -- sprinting, water and spirit form stack instead of overwriting each other.
 --
 -- Running is fast and never costs anything. Stamina pays for the exceptional moves:
---   sprint    the client only says "Shift is held"; the server decides whether you are
---             really sprinting (moving, on foot, stamina left) and drains the meter
---   dash      C: a short burst the client plays on its own character at once; the server
+--   dash      C (V13.2: or Shift on foot): a short burst the client plays on its own character at once; the server
 --             takes the stamina and enforces the cooldown
 --   air jump  one extra jump per flight, same split
 --   swings    a carrier's heavy sword swing (Combat calls Movement.spend)
--- Run the meter dry by sprinting and you're winded: no sprinting until it refills to
--- STAMINA_RECOVER. Carrying loot makes every cost bigger, by the treasure's weight, so a
--- carrier is not slow, but cannot do everything at once.
+-- Carrying loot makes every cost bigger, by the treasure's weight, so a carrier is not slow, but cannot do everything
+-- at once.
+-- V13.2: there is no sprint. The speed here is the BASE a goblin's own client multiplies by its MOMENTUM
+-- (shared/Momentum.lua: from 0.75 of it at the first step to 1.36 after a couple of seconds of running on). The base is
+-- published as the MoveCap attribute; WalkSpeed is set to it too, so a client that does not play momentum runs at the
+-- ordinary run.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -21,14 +22,12 @@ local Net = require(script.Parent.Net)
 
 local Movement = {}
 
-local MOVING_SPEED = 4 -- Slower than this counts as standing still (no stamina used).
 local REQUEST_SLACK = 0.75 -- Requests arrive with latency: allow them a little early.
 
 local carrySpeed = {} -- player -> speed while holding loot
 local carryWeight = {} -- player -> weight of the loot held
 local boost = {} -- player -> multiplier (Poltergoblin)
-local sprintHeld = {} -- player -> true while the sprint key is held
-local stamina = {} -- player -> { value, winded, sprinting, lastSpendAt, dashAt, airAt }
+local stamina = {} -- player -> { value, lastSpendAt, dashAt, airAt }
 
 -- speed and weight of the loot the player holds, or nil for empty hands.
 function Movement.setCarry(player, speed, weight)
@@ -40,9 +39,8 @@ function Movement.setBoost(player, multiplier)
 	boost[player] = multiplier
 end
 
-function Movement.setSprintHeld(player, held)
-	sprintHeld[player] = held or nil
-end
+-- V13.2: there is no sprint any more; kept so the callers that stop it (a catch, a knockout) need not change.
+function Movement.setSprintHeld(_player, _held) end
 
 function Movement.inWater(root)
 	return root.Position.Y < Config.WATER_ROOT_Y
@@ -53,8 +51,6 @@ local function staminaOf(player)
 	if not s then
 		s = {
 			value = Config.STAMINA_MAX,
-			winded = false,
-			sprinting = false,
 			lastSpendAt = -math.huge,
 			dashAt = -math.huge,
 			airAt = -math.huge,
@@ -69,17 +65,10 @@ local function costMult(player)
 	return 1 + (carryWeight[player] or 0) * Config.CARRY_STAMINA_PER_WEIGHT
 end
 
-function Movement.isSprinting(player)
-	local s = stamina[player]
-	return s ~= nil and s.sprinting
-end
-
+-- The base run (momentum multiplies it on the goblin's own client).
 function Movement.speedFor(player, root)
 	local carry = carrySpeed[player]
 	local speed = carry or Config.WALK_SPEED
-	if Movement.isSprinting(player) then
-		speed *= carry and Config.CARRY_SPRINT_MULT or Config.SPRINT_MULT
-	end
 	if root and Movement.inWater(root) then
 		speed *= Config.WATER_SPEED_MULT * (Gear.has(player, "Rebreather") and Config.REBREATHER_SWIM or 1)
 	end
@@ -94,12 +83,6 @@ local function publish(player, s)
 	if player:GetAttribute("Stamina") ~= shown then
 		player:SetAttribute("Stamina", shown)
 	end
-	if player:GetAttribute("Sprinting") ~= s.sprinting then
-		player:SetAttribute("Sprinting", s.sprinting)
-	end
-	if player:GetAttribute("Winded") ~= s.winded then
-		player:SetAttribute("Winded", s.winded)
-	end
 end
 
 -- The Chill (Frost Spire's inhabitant): for `seconds`, stamina comes back at a crawl and
@@ -110,22 +93,13 @@ function Movement.chill(player, seconds)
 	chillUntil[player] = math.max(chillUntil[player] or 0, os.clock() + seconds)
 end
 
-local function tickStamina(player, root, humanoid, dt, t)
+local function tickStamina(player, dt, t)
 	local s = staminaOf(player)
 	local chilled = (chillUntil[player] or 0) > t
 	if (player:GetAttribute("Chilled") == true) ~= chilled then
 		player:SetAttribute("Chilled", chilled or nil)
 	end
-	local velocity = root.AssemblyLinearVelocity
-	local moving = Vector3.new(velocity.X, 0, velocity.Z).Magnitude > MOVING_SPEED
-	s.sprinting = sprintHeld[player] == true and moving and not s.winded and s.value > 0 and humanoid.SeatPart == nil
-	if s.sprinting then
-		s.value = math.max(s.value - Config.STAMINA_DRAIN * costMult(player) * dt, 0)
-		s.lastSpendAt = t
-		if s.value <= 0 then
-			s.winded = true
-		end
-	elseif t - s.lastSpendAt >= Config.STAMINA_REGEN_DELAY then
+	if t - s.lastSpendAt >= Config.STAMINA_REGEN_DELAY then
 		s.value =
 			math.min(s.value + Config.STAMINA_REGEN * (chilled and Config.CHILL_REGEN or 1) * dt, Config.STAMINA_MAX)
 	end
@@ -135,9 +109,6 @@ local function tickStamina(player, root, humanoid, dt, t)
 			0
 		)
 	end
-	if s.winded and s.value >= Config.STAMINA_RECOVER then
-		s.winded = false
-	end
 	publish(player, s)
 end
 
@@ -146,10 +117,13 @@ function Movement.tick(dt)
 	for _, player in ipairs(Players:GetPlayers()) do
 		local root, humanoid = Util.aliveRoot(player)
 		if root then
-			tickStamina(player, root, humanoid, dt, t)
+			tickStamina(player, dt, t)
 			local speed = Movement.speedFor(player, root)
 			if humanoid.WalkSpeed ~= speed then
 				humanoid.WalkSpeed = speed
+			end
+			if player:GetAttribute("MoveCap") ~= speed then
+				player:SetAttribute("MoveCap", speed)
 			end
 		end
 	end
@@ -199,8 +173,6 @@ end
 function Movement.refill(player)
 	local s = staminaOf(player)
 	s.value = Config.STAMINA_MAX
-	s.winded = false
-	s.sprinting = false
 	publish(player, s)
 end
 
@@ -208,7 +180,6 @@ function Movement.forget(player)
 	carrySpeed[player] = nil
 	carryWeight[player] = nil
 	boost[player] = nil
-	sprintHeld[player] = nil
 	stamina[player] = nil
 end
 

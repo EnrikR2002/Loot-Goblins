@@ -693,7 +693,7 @@ local function buildShipyard(displayModel)
 	shopkeeper("Rivet", at(-100, 6.2, -14) * CFrame.Angles(0, math.rad(-90), 0), rgb(70, 110, 160), "goggles")
 	local slots = {}
 	for i, entry in ipairs(Config.BOAT_CLASSES) do
-		local z = -78 + (i - 1) * 30
+		local z = -78 + (i - 1) * 22 -- V13.2: ten classes (V13: seven, 30 apart)
 		-- The slipway: a ramp down into the lagoon, rails, and a cradle the boat rests on.
 		local foot, top = Vector3.new(C.X - 206, -6, C.Z + z), Vector3.new(C.X - 138, 5.4, C.Z + z)
 		local mid = (foot + top) / 2

@@ -58,9 +58,10 @@ return function(t)
 	end)
 
 	t.test("a throw flown on Dive's own gravity lands where Dive.solve aimed it", function()
-		local from = Config.SKYSHIP.POSITION + Vector3.new(22, 4, 0)
 		local D = Config.DIVE
 		for _, target in ipairs({ Vector3.new(-538, 7, 1955), Vector3.new(1593, 40, 1344), Vector3.new(29, 100, 296) }) do
+			-- V13.2: the ship's cannons reach about 1,200 studs, so it throws from a ship passing 920 studs off.
+			local from = Vector3.new(target.X - 650, Config.SKYSHIP.POSITION.Y + 4.6, target.Z - 650)
 			local velocity, reach = Dive.solve(from, target, D.CANNON_ELEVATION, D.CANNON_SPEED)
 			t.ok(reach, "in reach")
 			local position, dt = from, 1 / 60

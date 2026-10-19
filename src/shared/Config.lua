@@ -44,20 +44,37 @@ Config.JUMP_POWER = 56 -- Roblox's default is 50: a little higher and longer.
 Config.WATER_SPEED_MULT = 0.85 -- Wading or swimming. Carry and spirit speed stack with it.
 Config.WATER_ROOT_Y = 3 -- A root lower than this is standing or swimming in the sea.
 
--- Sprint (hold Shift): a burst on top of the run, on land or in the water. Not in a seat.
-Config.SPRINT_MULT = 1.36 -- 28 -> 38 empty-handed.
-Config.CARRY_SPRINT_MULT = 1.25 -- Carriers run at 21-27 and sprint at 27-34.
+-- V13.2: MOMENTUM instead of sprint. A goblin starts moving at once at a jog and builds to a full run by keeping on
+-- running (shared/Momentum.lua, played by the goblin's own client on its own WalkSpeed; the server's WalkSpeed is the
+-- base the momentum multiplies). A turn sharper than about 70 degrees, or stopping on the ground, spends it; a jump, a
+-- fall, a grapple swing and a landing keep it. There is no sprint key any more (Shift on foot is the dash), and so no
+-- stamina drain from running: stamina pays for the dash, the air jump and a carrier's swing.
+-- (V13: Shift held to sprint, x1.36, 11 stamina a second.)
+Config.MOMENTUM = {
+	START = 0.75, -- Share of the run speed the first step is at (28 -> 21): moving at once, not crawling.
+	RUN_AT = 0.3, -- Momentum at which the ordinary run (x1) is reached...
+	RUN_TIME = 0.3, -- ...this many seconds after setting off.
+	TOP = 1.36, -- Full momentum (28 -> 38, carriers 21.5-27 -> 29-37: what V13's sprint was).
+	TOP_TIME = 2.0, -- Seconds of running on from RUN_AT to the top.
+	TURN_DOT = 0.35, -- A change of heading whose cosine is below this (about 70 degrees) spends momentum...
+	TURN_LOSS = 0.65, -- ...this much of it at a full reverse (less for a gentler turn).
+	STOP_DECAY = 2.6, -- Momentum lost per second standing still on the ground.
+	WATER_MAX = 0.4, -- Swimming builds no further than this.
+	-- Speed carried from a swing, a dash or a fall: the goblin may keep moving faster than its run for a moment.
+	CARRY_MAX = 92, -- Studs/s at most.
+	CARRY_AIR_DECAY = 0.12, -- Share lost per second while still in the air.
+	CARRY_GROUND_TIME = 0.75, -- Seconds after touching down that it slides back to the run (a slide-out, not a stop).
+}
 Config.STAMINA_MAX = 100
-Config.STAMINA_DRAIN = 11 -- Per second of sprinting: a full bar lasts 9 s.
 Config.STAMINA_REGEN = 32 -- Per second, once you stop spending.
 Config.STAMINA_REGEN_DELAY = 0.6 -- Pause after spending before stamina comes back.
-Config.STAMINA_RECOVER = 25 -- Run it dry and you're winded (no sprint) until it refills this far.
 -- Loot makes every stamina cost bigger instead of making you slow: each unit of the treasure's
 -- weight adds this much to sprint drain and to the cost of a dash, an air jump or a swing.
 Config.CARRY_STAMINA_PER_WEIGHT = 0.12 -- Leviathan Tooth (weight 6): everything costs 1.72x.
 
--- Dash (C): a short burst the way you are moving, on the ground or in the air. It is the dodge:
--- out of a marked circle, across a gap, away from a sword.
+-- Dash (C, V13.2: also Shift on foot): a short burst the way you are moving, on the ground or in the air. It is the
+-- dodge: out of a marked circle, across a gap, away from a sword or a grapple's hook. V13.2: it ends at full momentum,
+-- so it is also the quick start.
 Config.DASH_COST = 18
 Config.DASH_COOLDOWN = 0.9
 Config.DASH_SPEED = 85
@@ -479,6 +496,10 @@ Config.SWORD_KNOCKBACK = 34
 -- clear line of sight. Aimed at ground, walls, cliffs or a boat it pulls you there (a boat
 -- keeps moving: the rope follows it). Carriers can't steal with it, but they can still pull
 -- themselves around, on a longer cooldown. A miss costs no cooldown.
+-- V13.2: THE GRAPPLE IS HOW GOBLINS GET ABOUT ON FOOT (Config.SWING, shared/Swing.lua). Hooked to something above
+-- you, you SWING on the rope under your own momentum (W A S D pump the swing; hold F to reel in; F again or Space lets
+-- go and you keep every bit of the speed). Hooked to something level or below, it reels you to it (the old pull).
+-- It starts on your own client the moment you press (the server is told and checks the rope's reach).
 Config.GRAPPLE_RANGE = 70 -- Range for grabbing LOOSE loot (a carrier is caught at GRAPPLE_PVP_RANGE, below).
 Config.GRAPPLE_AIM_ASSIST = 8 -- Loot or a carrier this far off your aim line still counts.
 -- V7: the hook CATCHES a carrier, it does not rob them. A caught goblin is yanked toward you and falls
@@ -498,10 +519,29 @@ Config.GRAPPLE_FAIL_COOLDOWN = 1 -- After a steal that slipped off (steal immuni
 Config.GRAPPLE_PULL_RANGE = 170
 Config.GRAPPLE_PULL_SPEED = 135
 Config.GRAPPLE_PULL_COOLDOWN = 1.4
-Config.GRAPPLE_CARRY_COOLDOWN = 5 -- A carrier's pull: usable, but not spammable.
+Config.GRAPPLE_CARRY_COOLDOWN = 2.4 -- A carrier's pull or swing: usable, but not spammable. (V13.2; V13: 5.)
 Config.GRAPPLE_POP_SPEED = 42 -- Upward hop at the end of a pull, to climb onto ledges.
 Config.GRAPPLE_KEEP_SPEED = 0.6 -- How much of the pull's sideways speed you keep when it ends.
 Config.GRAPPLE_BOAT_ASSIST = 18 -- Aim passing this close to a boat hooks the boat (a fast boat is ahead of where you see it).
+-- V13.2: the catch is a thrown hook, not a hitscan: it flies at CATCH_HOOK_SPEED, so a carrier who sees it coming can
+-- dash out of its line (it must still be within CATCH_HOOK_WIDTH of where it was thrown when it gets there).
+Config.CATCH_HOOK_SPEED = 170
+Config.CATCH_HOOK_WIDTH = 7
+Config.SWING = {
+	RANGE = 170, -- Studs to a hook point (GRAPPLE_PULL_RANGE).
+	ASSIST = math.rad(7), -- Aim this far off a hookable surface still finds it (a cone of rays: forgiving).
+	ABOVE = 6, -- A hook this far above you is a swing; lower, it reels you in (the pull).
+	GRAVITY = 150, -- Studs/s/s while swinging (the world's is 196: a slower, readable arc).
+	PUMP = 46, -- Studs/s/s the move keys add along the swing.
+	START_SHORTEN = 0.9, -- The rope starts this share of the distance, so the swing begins at once.
+	REEL = 70, -- Studs/s the rope shortens while F is held.
+	MIN_LENGTH = 8,
+	MAX_SPEED = 125, -- Studs/s at most on a rope.
+	MAX_TIME = 7, -- A swing lets go by itself after this long.
+	RELEASE_POP = 18, -- Upward studs/s added when you let go moving up (a little lift off the top of an arc).
+	COOLDOWN = 0.35, -- After a swing or a pull ends, before the next hook. (Carriers: GRAPPLE_CARRY_COOLDOWN.)
+	GROUND_LET_GO = 0.3, -- Seconds on the ground with a slack rope before it lets go by itself.
+}
 
 -- Poltergoblin (was Soul Unbound, Yone's E) ----------------------------------------
 -- E leaves your body behind and sends your spirit out. Whatever loot the spirit
@@ -556,7 +596,15 @@ Config.SEA_WIND_DRIFT = 1.4 -- Studs/s of drift in calm weather (storms push har
 --   twisterBail    the tornado bail-out throw, as a multiple
 --   shoveTaken     how much of a shove (a monster, a blast, a cannon) reaches the hull
 --   righting       the upright assist, as a multiple
+--   surfer         (V13.2) how hard the water's own flow (a rogue wave, a whirlpool) carries it, as a multiple
 --   class          true: a player class the showroom and the catalogue list (the Navy is not one)
+-- V13.2 (Sea of Chaos): TEN PLAYER CLASSES ON ONE SPEED BAND. The V13 playtest found the free Skiff simply best: the
+-- fastest top speed, the quickest 0-to-top and Nitro on top. Now every class cruises between 106 and 118 studs/s and
+-- reaches it in about the same time (accel is about 0.6 of top speed for every class: 90% of top in 3.5 to 3.9 s),
+-- and the classes differ in HOW they play: handling, toughness, crew, air, and an ability that escapes or disrupts.
+-- (V13: 96 to 135, the Skiff 0-to-top in about 3 s and the Ironbelly in over 4.) Measured island-to-Hoard times are in
+-- docs/reports/2026-10-19-v13-2-sea-of-chaos.md. Every class also has a bow gun its driver fires with a click
+-- (Config.BOAT_GUN), separate from its ability.
 Config.BOAT_TYPES = {
 	skiff = {
 		name = "Skiff",
@@ -565,15 +613,15 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(9, 3, 20),
 		draft = 1.3,
 		density = 0.75,
-		accel = 100, -- (V6: 84, V2: 44)
-		maxSpeed = 135, -- (V6: 108, V2: 72)
-		turn = 2.5, -- (V6: 2.1)
-		turnFade = 230, -- (V6: 150) Slower to lose its bite: a V7 skiff at chain speed turns about as tightly as V6's did.
+		accel = 72, -- V13.2 (V13: 100, the extreme 0-to-top the playtest named)
+		maxSpeed = 118, -- V13.2 (V13: 135): still the top of the band, by 2 studs/s
+		turn = 2.6, -- V13.2 (V13: 2.5): agile is its job now, not speed
+		turnFade = 240,
 		grip = 3.4,
-		driftGrip = 0.35,
-		driftTurn = 1.65,
+		driftGrip = 0.32, -- the best drifter
+		driftTurn = 1.7,
 		lean = 40,
-		health = 160,
+		health = 170,
 		crashTaken = 1,
 		ramPower = 1,
 		passengers = 1,
@@ -581,14 +629,14 @@ Config.BOAT_TYPES = {
 	cutter = {
 		name = "Cutter",
 		class = true,
-		ability = "chaser",
+		ability = "rally",
 		size = Vector3.new(14, 4, 34),
 		draft = 2.1,
 		density = 0.8,
-		accel = 72, -- V13 (V7-V12: 68): a dependable all-rounder should not feel like a barge off the line.
-		maxSpeed = 110, -- V13 (V7-V12: 104): just faster than a patrol ship (106), so it can leave one behind.
-		turn = 1.8, -- V13 (V7-V12: 1.7)
-		turnFade = 200, -- V13 (V7-V12: 190)
+		accel = 69,
+		maxSpeed = 114,
+		turn = 1.9,
+		turnFade = 210,
 		grip = 2.8,
 		driftGrip = 0.45,
 		driftTurn = 1.4,
@@ -597,10 +645,9 @@ Config.BOAT_TYPES = {
 		crashTaken = 0.6,
 		ramPower = 1.8,
 		passengers = 3,
-		cannons = true,
+		cannons = true, -- the passenger's deck cannon (a prompt), as since V7
 		righting = 1.25, -- stable: it rights itself sooner
 	},
-	-- V13 specialty classes ------------------------------------------------------------------------------------------
 	reefhopper = {
 		name = "Reefhopper",
 		class = true,
@@ -608,15 +655,15 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(10, 3, 18),
 		draft = 1.2,
 		density = 0.72,
-		accel = 92,
-		maxSpeed = 124, -- slower than a Skiff on a straight
-		turn = 2.4,
-		turnFade = 220,
+		accel = 70,
+		maxSpeed = 113,
+		turn = 2.45,
+		turnFade = 225,
 		grip = 3.0,
 		driftGrip = 0.4,
 		driftTurn = 1.5,
 		lean = 34,
-		health = 150,
+		health = 160,
 		crashTaken = 1.1,
 		ramPower = 0.8,
 		passengers = 1,
@@ -633,10 +680,10 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(16, 5, 38),
 		draft = 2.4,
 		density = 0.85,
-		accel = 58,
-		maxSpeed = 98, -- a patrol ship (106) outruns it
-		turn = 1.45,
-		turnFade = 170,
+		accel = 63,
+		maxSpeed = 108,
+		turn = 1.5,
+		turnFade = 180,
 		grip = 2.6,
 		driftGrip = 0.5,
 		driftTurn = 1.3,
@@ -657,15 +704,15 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(11, 3.5, 26),
 		draft = 1.6,
 		density = 0.78,
-		accel = 84,
-		maxSpeed = 122, -- 144 in a storm or beside a tornado (stormSails)
-		turn = 2.1,
-		turnFade = 210,
+		accel = 67,
+		maxSpeed = 112, -- 132 in a storm or beside a tornado (stormSails)
+		turn = 2.15,
+		turnFade = 215,
 		grip = 3.0,
 		driftGrip = 0.4,
 		driftTurn = 1.5,
 		lean = 30,
-		health = 260,
+		health = 270,
 		crashTaken = 0.85,
 		ramPower = 1.1,
 		passengers = 2,
@@ -680,15 +727,15 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(8, 2.6, 22),
 		draft = 1.1,
 		density = 0.7,
-		accel = 96,
-		maxSpeed = 128,
+		accel = 71,
+		maxSpeed = 115,
 		turn = 3.1, -- the sharpest steering in the fleet
 		turnFade = 260,
 		grip = 3.8,
 		driftGrip = 0.3,
 		driftTurn = 1.8,
 		lean = 42,
-		health = 120, -- the most fragile
+		health = 130, -- the most fragile
 		crashTaken = 1.25,
 		ramPower = 0.7,
 		passengers = 1,
@@ -700,10 +747,10 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(18, 6, 36),
 		draft = 2.6,
 		density = 0.9,
-		accel = 54,
-		maxSpeed = 96, -- the slowest
-		turn = 1.35,
-		turnFade = 160,
+		accel = 61,
+		maxSpeed = 106, -- the bottom of the band (V13: 96, ten seconds behind a Skiff on a long crossing)
+		turn = 1.4,
+		turnFade = 170,
 		grip = 2.4,
 		driftGrip = 0.55,
 		driftTurn = 1.25,
@@ -717,13 +764,79 @@ Config.BOAT_TYPES = {
 		righting = 1.6,
 		boardReach = 40, -- swimmers can climb aboard from far off (a rescue boat)
 	},
+	-- V13.2 classes ---------------------------------------------------------------------------------------------------
+	anchorjack = {
+		name = "Anchorjack",
+		class = true,
+		ability = "anchor",
+		size = Vector3.new(13, 4, 28),
+		draft = 1.9,
+		density = 0.82,
+		accel = 65,
+		maxSpeed = 110,
+		turn = 2.2,
+		turnFade = 220,
+		grip = 3.1,
+		driftGrip = 0.42,
+		driftTurn = 1.5,
+		lean = 26,
+		health = 360,
+		crashTaken = 0.7,
+		ramPower = 1.6,
+		passengers = 2,
+		righting = 1.2,
+	},
+	wavebreaker = {
+		name = "Wavebreaker",
+		class = true,
+		ability = "breaker",
+		size = Vector3.new(14, 4, 26),
+		draft = 1.8,
+		density = 0.8,
+		accel = 66,
+		maxSpeed = 111,
+		turn = 2.0,
+		turnFade = 210,
+		grip = 2.9,
+		driftGrip = 0.45,
+		driftTurn = 1.45,
+		lean = 22,
+		health = 320,
+		crashTaken = 0.75,
+		ramPower = 1.3,
+		passengers = 2,
+		jumpMult = 1.1,
+		surfer = 1.6, -- rides a rogue wave's push farther (BoatSim: the water's own flow pulls it harder)
+		shoveTaken = 0.75,
+		righting = 1.3,
+	},
+	corsair = {
+		name = "Corsair",
+		class = true,
+		ability = "hook",
+		size = Vector3.new(11, 3.6, 27),
+		draft = 1.5,
+		density = 0.78,
+		accel = 68,
+		maxSpeed = 116,
+		turn = 2.3,
+		turnFade = 230,
+		grip = 3.2,
+		driftGrip = 0.38,
+		driftTurn = 1.6,
+		lean = 34,
+		health = 250,
+		crashTaken = 0.9,
+		ramPower = 1.4,
+		passengers = 2,
+	},
 	navy = {
 		name = "Patrol Ship",
 		size = Vector3.new(16, 6, 42),
 		draft = 3.8,
 		density = 0.85,
-		accel = 68, -- (V6: 58, V2: 27)
-		maxSpeed = 106, -- (V6: 88, V2: 54) Slower than an empty skiff, a touch faster than a cutter.
+		accel = 64,
+		maxSpeed = 104, -- V13.2 (V13: 106): just under the slowest player class, so any boat can leave one behind
 		turn = 1.3, -- (V6: 1.15)
 		turnFade = 160, -- (V6: 120)
 		grip = 2.4,
@@ -736,12 +849,13 @@ Config.BOAT_TYPES = {
 		passengers = 0,
 	},
 }
-Config.BOAT_BOOST_MULT = 1.5 -- Top speed while boosting (a skiff: 202; V6: 1.4).
-Config.BOAT_BOOST_THRUST = 2.4 -- (V6: 2.1)
+Config.BOAT_BOOST_MULT = 1.42 -- Top speed while boosting (V13.2: a Skiff 168, an Ironbelly 150; V13: 1.5, a skiff 202).
+Config.BOAT_BOOST_THRUST = 2.2 -- V13.2 (V13: 2.4, V6: 2.1)
 Config.BOAT_BOOST_TIME = 2.4 -- (V6: 2.2)
 Config.BOAT_BOOST_COOLDOWN = 5 -- (V6: 5.5, V2: 7)
 Config.BOAT_BOOST_PUNCH = 14 -- Speed added the moment a boost starts: the kick in the back.
-Config.BOAT_LAUNCH_PUNCH = 0.9 -- Extra thrust from a standstill, fading out by half speed.
+Config.BOAT_LAUNCH_PUNCH = 0.6 -- Extra thrust from a standstill, fading out by half speed. (V13.2; V13: 0.9, which made
+-- the Skiff's start a jump-cut. Every class still answers the throttle at once.)
 Config.BOAT_BRAKE = 1.7 -- Thrust against the way you are moving: S is a brake, not a slow reverse.
 Config.BOAT_REVERSE = 0.5 -- Reverse thrust relative to forward.
 Config.BOAT_BEACH_SHOVE = 1.6 -- Thrust (as a share of accel) for shoving a hull along that is in the air or on a ledge the ground check cannot see...
@@ -762,8 +876,8 @@ Config.BOAT_JUMP_COOLDOWN = 1.1 -- (V7: 1.3)
 -- hop's to BOAT_SUPER_SPEED as the hull's speed goes from BOAT_SUPER_MIN to BOAT_SUPER_FULL. At full it is 57
 -- studs up and a second and a half in the air: 330 studs of flight at chain speed, over a rock, a patrol ship
 -- or a sea monster's back. Not on land. A clean landing from one pays the landing burst; a plain hop does not.
-Config.BOAT_SUPER_MIN = 150
-Config.BOAT_SUPER_FULL = 215
+Config.BOAT_SUPER_MIN = 132 -- V13.2 (V13: 150): above every class's cruise (118 at most), below every boost (150+)
+Config.BOAT_SUPER_FULL = 188 -- V13.2 (V13: 215)
 Config.BOAT_SUPER_SPEED = 150
 Config.BOAT_SUPER_PITCH = 0.5 -- How hard a super jump throws the bow up (the upright assist levels it again).
 Config.BOAT_YAW_SNAP = 8 -- How quickly the hull reaches the turn rate you ask for (V2: 5).
@@ -781,22 +895,31 @@ Config.BOAT_PAYLOAD_DRAG = 0.03 -- Each unit of loot weight aboard cuts thrust a
 -- V13: BOAT ABILITIES, one per class, on the stunt key while the hull is on the water (shared/BoatSim.lua plays the
 -- physical part on whichever machine simulates the hull; server/BoatAbilities.lua checks the cooldown, fires what the
 -- server owns and tells Boats.police what speed to allow). `glyph` and `verb` are what the HUD and the showroom show.
+-- V13.2: every ability helps its driver ESCAPE, DISRUPTS someone, or both; the universal bow gun (Config.BOAT_GUN, a
+-- click) is separate from all of them. Three new ones (anchor, breaker, hook), the Cutter's became RALLY (its bow gun is
+-- every boat's now), and Nitro is a short escape burst that breaks free of grabs instead of a straight-line win.
 Config.BOAT_ABILITIES = {
 	nitro = { -- Skiff: the escape artist's afterburner.
 		name = "NITRO",
 		glyph = "🔥",
-		verb = "Afterburner: a huge straight-line burst",
-		cooldown = 14,
-		time = 1.3,
-		mult = 1.75, -- top speed while it burns (a boost is BOAT_BOOST_MULT, 1.5)
-		thrust = 3.2,
-		kick = 30,
+		verb = "A short afterburner that breaks free of anchors, hooks and whirlpools",
+		cooldown = 15, -- V13.2 (V13: 14)
+		time = 1.1, -- V13.2 (V13: 1.3)
+		mult = 1.45, -- V13.2 (V13: 1.75): only a touch above a boost (1.42); its worth is getting loose
+		thrust = 2.6,
+		kick = 18, -- V13.2 (V13: 30)
+		shrug = 0.3, -- share of a shove that reaches the hull while it burns
 	},
-	chaser = { -- Cutter: the bow gun, fired by the driver at whatever they look at.
-		name = "BOW GUN",
-		glyph = "💥",
-		verb = "Fire the bow cannon where you look",
-		cooldown = 6,
+	rally = { -- Cutter (V13.2): a foghorn for a convoy.
+		name = "RALLY HORN",
+		glyph = "📯",
+		verb = "Boats near you surge forward; chasing monsters flinch back",
+		cooldown = 16,
+		radius = 150, -- every boat this close surges with you (friends, and rivals who happen to be there)
+		boost = 2.2, -- seconds of boost it gives each boat
+		patch = 40, -- hull the Cutter patches
+		flinch = 190, -- pursuers this close are knocked back
+		push = 120,
 	},
 	spring = { -- Reefhopper: leap off flat water like a ramp; SPACE in the air hops once more.
 		name = "SPRING",
@@ -820,7 +943,7 @@ Config.BOAT_ABILITIES = {
 		name = "TWISTER",
 		glyph = "🌪",
 		verb = "Spin up a tornado in your wake",
-		cooldown = 28,
+		cooldown = 24, -- V13.2 (V13: 28)
 		life = 12,
 		behind = 85, -- studs behind the stern
 		drift = 12, -- studs/s it follows your heading
@@ -848,22 +971,73 @@ Config.BOAT_ABILITIES = {
 		shove = 95, -- studs/s given to a boat it plows into
 		reach = 10, -- studs beyond the bow that count as a hit
 	},
+	-- V13.2 -------------------------------------------------------------------------------------------------------------
+	anchor = { -- Anchorjack: the anchor, which no other boat has any more.
+		name = "ANCHOR",
+		glyph = "⚓",
+		verb = "Throw the anchor where you look: snag a rival's boat, or a rock to swing round it",
+		cooldown = 9,
+		range = 150, -- studs the anchor flies
+		arc = 0.2, -- the aim must be at least this far forward (a dot product with the bow): no throwing it backwards
+		assist = 22, -- a rival hull this close to the aim line is snagged
+		snag = 3.5, -- seconds a snagged rival is chained to you
+		snagSlack = 1.0, -- the chain's length is the gap when it caught, times this (it never pulls you together)
+		snagMin = 34,
+		swing = 2.6, -- seconds you swing round a rock or the sea bed before it lets go (R lets go sooner)
+		swingMin = 26, -- the shortest chain to swing on
+		sling = 34, -- studs/s added along your swing when you let go: the slingshot
+		strength = 9, -- how hard a taut chain corrects motion (per second)
+	},
+	breaker = { -- Wavebreaker: the hull slams down and the sea itself shoves outward.
+		name = "BREAKER",
+		glyph = "🌊",
+		verb = "Slam a ring of water out: boats and swimmers thrown away, you ride the crest",
+		cooldown = 11,
+		radius = 115, -- boats inside are thrown outward
+		push = 96, -- at the middle; falls to edgePush at the edge
+		edgePush = 34,
+		lift = 46,
+		swimRadius = 75, -- goblins in the water this close are washed away
+		swimPush = 70,
+		flinch = 130, -- pursuers this close are knocked back
+		ride = 62, -- your own hop onto the crest
+		surge = 30, -- and a surge forward (or the way you steer)
+		boost = 1.4, -- seconds of boost after it
+	},
+	hook = { -- Corsair: a boarding hook that reels you in.
+		name = "BOARDING HOOK",
+		glyph = "⚔",
+		verb = "Harpoon the boat ahead and reel in; reach it to BOARD (a carrier drops their treasure)",
+		cooldown = 14,
+		range = 170, -- studs to a rival hull
+		cone = 0.72, -- it must be ahead of the bow (a dot product)
+		reel = 70, -- studs/s faster than the target the Corsair closes
+		reelTime = 2.4, -- seconds the line holds before it slips
+		board = 24, -- studs between the hulls' middles (plus half their widths) that count as BOARDED
+		snap = 1.7, -- the line snaps if the gap grows past its starting length times this
+		hitShove = 70, -- the boarded boat is shoved aside this hard...
+		slow = 0.5, -- ...and keeps this share of its speed
+		hullDamage = 24, -- to the boarded boat
+		selfDamage = 12, -- the Corsair's own hull, for slamming alongside
+		zip = 130, -- no boat in reach: the hook bites a rock this close and zips you toward it
+	},
 }
 -- The showroom's order and what it says (1 to 5 pips each). Stats here are DESCRIPTIONS of the numbers above, kept
 -- beside them so a retune is one file; the tests check every class has a row and an ability.
+-- V13.2: speed pips are close together now (the band is 106 to 118); the difference is the rest of the row.
 Config.BOAT_CLASSES = {
 	{
 		id = "skiff",
 		role = "ESCAPE ARTIST",
-		best = "Fastest in a straight line; Nitro outruns anything",
+		best = "Nimble and the best drifter; Nitro breaks free of anchors, hooks and whirlpools",
 		worst = "Fragile: two hard crashes sink it",
-		pips = { speed = 5, handling = 4, toughness = 1, air = 3, firepower = 1 },
+		pips = { speed = 4, handling = 4, toughness = 1, air = 3, firepower = 1 },
 	},
 	{
 		id = "cutter",
 		role = "ALL-ROUNDER",
-		best = "Steady, tough, three friends aboard, a bow gun",
-		worst = "Slower to get going than a Skiff",
+		best = "Steady, tough, three friends aboard, a deck cannon; RALLY HORN surges the whole convoy",
+		worst = "A wide turner next to the small boats",
 		pips = { speed = 3, handling = 3, toughness = 4, air = 2, firepower = 3 },
 	},
 	{
@@ -871,13 +1045,13 @@ Config.BOAT_CLASSES = {
 		role = "STUNT BOAT",
 		best = "Leaps off flat water, hops again in the air, quick tricks",
 		worst = "Fragile and a little slow on the straight",
-		pips = { speed = 4, handling = 4, toughness = 1, air = 5, firepower = 1 },
+		pips = { speed = 3, handling = 4, toughness = 1, air = 5, firepower = 1 },
 	},
 	{
 		id = "broadside",
 		role = "GUNBOAT",
 		best = "A three-gun volley and two cannon seats for friends",
-		worst = "Slow, wide-turning, a big target",
+		worst = "Wide-turning, a big target",
 		pips = { speed = 2, handling = 2, toughness = 4, air = 1, firepower = 5 },
 	},
 	{
@@ -898,9 +1072,44 @@ Config.BOAT_CLASSES = {
 		id = "ironbelly",
 		role = "BRUISER",
 		best = "Shrugs off hits, rams anything aside, rescues swimmers",
-		worst = "The slowest, widest turner",
-		pips = { speed = 1, handling = 1, toughness = 5, air = 1, firepower = 3 },
+		worst = "The heaviest, widest turner",
+		pips = { speed = 2, handling = 1, toughness = 5, air = 1, firepower = 3 },
 	},
+	{
+		id = "anchorjack",
+		role = "ANCHOR",
+		best = "Chains a rival boat to you, or swings round a rock and slingshots out",
+		worst = "A plain sailer without its anchor",
+		pips = { speed = 3, handling = 3, toughness = 3, air = 2, firepower = 3 },
+	},
+	{
+		id = "wavebreaker",
+		role = "WAVE MAKER",
+		best = "A ring of water throws everything near it away; rides big waves farther",
+		worst = "Must be in the thick of it to matter",
+		pips = { speed = 3, handling = 3, toughness = 3, air = 3, firepower = 2 },
+	},
+	{
+		id = "corsair",
+		role = "BOARDER",
+		best = "Hooks the boat ahead and reels in to board it: a carrier drops their treasure",
+		worst = "Lightly built; boarding puts you right beside your target's guns",
+		pips = { speed = 4, handling = 3, toughness = 2, air = 2, firepower = 4 },
+	},
+}
+-- V13.2: EVERY BOAT'S BOW GUN, fired by its driver with a click (gamepad R2, the touch GUN button). A light shot built to
+-- shove and splash: it never sinks a boat on its own, never knocks treasure loose (Corsair boarding, Broadside volleys,
+-- swords, kegs and grapples still do), and never reaches anyone in the Port or at home.
+Config.BOAT_GUN = {
+	cooldown = 2.2,
+	range = 240, -- studs: farther aims land at the most it can reach that way
+	arc = 0.34, -- the aim must be in front of the bow (a dot product: about 70 degrees either side)
+	radius = 12,
+	damage = 5,
+	knockback = 64,
+	hullDamage = 12,
+	boatPush = 74,
+	sameBoatGrace = 1.0, -- a hull hit by a bow gun within this many seconds takes the next one at half strength
 }
 -- The Broadside's (and the Cutter's bow gun's) shot: built to shove and splash, not to sink. A ship's cannon at a
 -- fort or on a patrol ship keeps CANNON_* below.
@@ -1014,7 +1223,7 @@ Config.SEA_MOBS = {
 	SHORE_CLEAR = 150, -- None this close to any island's shore.
 	LEASH = 420, -- A nibbler school gives up this far from where it lives.
 	NIBBLER_SIGHT = 150,
-	NIBBLER_SPEED = 150, -- A little faster than a cruising skiff (135), slower than a boost.
+	NIBBLER_SPEED = 128, -- A little faster than any class cruises (118 at most), slower than a boost. (V13.2; V13: 150.)
 	NIBBLER_CHASE = 9,
 	NIBBLER_HOLD = 5, -- Seconds they stay on a hull that does not jump.
 	NIBBLER_BITE = 1.5, -- Hull lost each half second (never below IMPACT.HULL_FLOOR).
@@ -1031,16 +1240,35 @@ Config.SEA_MOBS = {
 	LANCER_REST = 12,
 }
 Config.STORM_CEILING = 200 -- Lightning and storm-seeding ignore goblins above this height (the skyship, a flight).
+-- V13.2: THE SKYSHIP FLIES A ROUTE (shared/SkyRoute.lua, server/Skyship.lua). Through V13 it hung still over the middle
+-- of the sea and its cannons reached every island, so the drop was a menu. Now it waits at one end of a route while
+-- goblins board and aim (PREP: the cannons are LOCKED, by the server), then crosses the archipelago in PASS seconds; a
+-- cannon throws about 1,200 studs across (DIVE.CANNON_SPEED), so what you can reach changes as it flies: fire when an
+-- island you want is in reach, or pick one on the map and the ship fires you as it passes. Anyone still aboard when the
+-- pass ends is fired at the nearest landing in reach. Each raid flies one of ROUTES (forwards or backwards), never the
+-- same as the raid before, chosen and shown in the Port. The six-minute clock starts when the pass ends.
 Config.SKYSHIP = {
-	POSITION = Vector3.new(0, 540, -80), -- Centre of the deck. The sea's walls are 700 high.
+	POSITION = Vector3.new(0, 540, -80), -- The deck's height (and where it is built). The sea's walls are 700 high.
 	BEAM = 44,
-	-- V9: the deployment window is 20 s (V8: 40, V7: 28) and the six-minute clock starts when it closes (Raid.lua).
-	-- A goblin can climb into a cannon and aim during the intermission; the cannons fire from COUNTDOWN on.
-	WINDOW = 20,
-	COUNTDOWN = 2, -- The cannons unlock this long after the raid starts (so a crowd goes together). (V8: 3)
+	PREP = 10, -- Seconds aboard before the cannons unlock and the ship sets off (V13: 2, which a goblin never noticed).
+	PASS = 32, -- Seconds the ship takes to fly its route, whatever its length (152 to 222 studs/s).
+	WINDOW = 42, -- PREP + PASS: from boarding to the raid clock starting. (V13: 20 standing still.)
 	-- V12: a goblin who comes aboard late in the window (a join, a respawn) is never fired off before this many
 	-- seconds on the deck: a first-timer gets time to find a cannon. The raid's clock is not changed.
 	MIN_DECK = 12,
+	LATE_DECK = 24, -- A goblin who joins once the pass is over rides the ship's next lap this long before it fires them.
+	TURN = 3, -- Seconds the ship takes to swing round at either end of its route (it flies back for late arrivals).
+	-- Each route: a name for the Port's board and the map, and its points { x, z } (north is -Z). Every route reaches 6
+	-- to 10 of the 16 major islands, and every island is in reach on at least two routes (tests/luau/Specs/SkyRouteSpec).
+	ROUTES = {
+		{ name = "THE WESTWIND", points = { { -2700, 2150 }, { 2700, -2450 } } },
+		{ name = "THE EASTWIND", points = { { 2750, 2150 }, { -2650, -2450 } } },
+		{ name = "THE NORTHERN ARC", points = { { -2750, 250 }, { 0, -1650 }, { 2750, 250 } } },
+		{ name = "THE SOUTHERN SWEEP", points = { { -2750, -500 }, { -500, 1050 }, { 2750, -250 } } },
+		{ name = "THE SPINE", points = { { 450, 2250 }, { -250, -2550 } } },
+		{ name = "THE CINDER RUN", points = { { 1150, 2250 }, { 1750, 250 }, { 1550, -2550 } } },
+		{ name = "THE NAVY RUN", points = { { -1450, 2250 }, { -1950, 250 }, { -1350, -2550 } } },
+	},
 }
 Config.DIVE = {
 	-- V8: the THROW gives the reach (a plain arc under GRAVITY, aimed where you look); the air gives
@@ -1063,7 +1291,8 @@ Config.DIVE = {
 	PENCIL_STEER = 28,
 	PENCIL_FLOOR = 30,
 	-- What throws.
-	CANNON_SPEED = 440, -- The skyship's cannons: 3,560 studs of reach from 540 up (the farthest island is 3,130 away).
+	CANNON_SPEED = 215, -- The skyship's cannons: about 1,200 studs of reach from 540 up (SkyRoute.reach). V13.2; V13: 440,
+	-- 3,560 studs, the whole sea from one spot.
 	CANNON_ELEVATION = math.rad(32),
 	CATAPULT_SPEED = 200, -- An island catapult: about 575 studs over level ground, more off a hill.
 	CATAPULT_ELEVATION = math.rad(60), -- A high lob: it has walls and cliffs to clear (at 44 degrees all three fell short).
@@ -1082,6 +1311,186 @@ Config.DIVE = {
 	OSTRICH_SPEED = 95, -- Hitting ground this fast goes in head first; braking with a glide lands on your feet.
 	EMBED_TIME = 1.1, -- Seconds stuck in the ground.
 	POP_SPEED = 62, -- The hop out.
+}
+
+-- V13.2: WORLD CHAOS (server/WorldChaos.lua, client/ChaosFx.lua). Every raid gets ONE of these, chosen when the Port
+-- opens and shown there (name, icon, one line) before anyone picks a boat. During the raid it plays EPISODES: a big
+-- physical event somewhere near goblins (never in the Port, never inside the sanctuary round home), telegraphed, then a
+-- calm. Each episode is drawn differently (its size, count, shape and place), so no two raids play the same. Events hit
+-- through the game's own rules: explosions are Blasts (every creature, sea mob, ship and mine already reacts to those),
+-- boats are shoved through Boats.shove (with the world's hull floor: chaos batters, it never sinks), goblins through
+-- Impact's grace (no juggling) and small damage, waves and whirlpools are part of the sea itself (shared/Sea.lua).
+Config.CHAOS = {
+	-- The order the Port's board lists them in, and what it says.
+	EVENTS = {
+		{
+			id = "meteors",
+			name = "METEOR MAYHEM",
+			icon = "☄",
+			line = "Meteor showers crash into the sea and the islands. Watch the sky for burning rings.",
+		},
+		{
+			id = "kraken",
+			name = "KRAKEN'S TANTRUM",
+			icon = "🐙",
+			line = "Giant tentacles burst up and swat boats sky-high. Bubbles mean MOVE.",
+		},
+		{
+			id = "waves",
+			name = "ROGUE WAVE RAMPAGE",
+			icon = "🌊",
+			line = "Walls of water roll across the sea: surf them, jump them, or get thrown.",
+		},
+		{
+			id = "crossfire",
+			name = "CANNONBALL CROSSFIRE",
+			icon = "💣",
+			line = "A rogue armada shells the sea. Dodge the rings, or lead your pursuers in.",
+		},
+		{
+			id = "barrels",
+			name = "BARREL APOCALYPSE",
+			icon = "💥",
+			line = "Fields of powder kegs drift in. One spark and the whole lot goes up.",
+		},
+		{
+			id = "whirls",
+			name = "WHIRLPOOL OUTBREAK",
+			icon = "🌀",
+			line = "Wandering whirlpools suck boats in, spin them round and fling them out.",
+		},
+		{
+			id = "haunted",
+			name = "HAUNTED SEAS",
+			icon = "👻",
+			line = "Ghost portals open: sail through one and come out of its twin. Phantom ships ram.",
+		},
+		{
+			id = "thunder",
+			name = "THUNDERSTRUCK",
+			icon = "⚡",
+			line = "Giant lightning strikes the busiest water: a shockwave throws boats, and SUPERCHARGES them.",
+		},
+	},
+	FIRST = { 22, 34 }, -- Seconds into the six-minute clock before the first episode (time to land and steal).
+	CALM = { 18, 30 }, -- Seconds of calm after an episode ends before the next one starts.
+	LAST = 18, -- No new episode in the last this-many seconds.
+	HOME_CLEAR = 650, -- Never centred this close to the Hoard (the sanctuary is 450).
+	FOCUS_JITTER = { 80, 260 }, -- An episode is centred this far off the goblins it is aimed near (not on their heads).
+	ALERT_RANGE = 900, -- Goblins this close to an episode get its warning banner.
+	-- Each event's numbers. Ranges { a, b } are drawn afresh for each episode.
+	meteors = {
+		count = { 5, 9 },
+		spread = { 180, 300 }, -- studs round the centre the meteors fall in
+		gap = { 0.45, 0.85 }, -- seconds between them
+		warn = 2.4, -- the burning ring before a meteor lands
+		radius = 40, -- its blast
+		launch = 76, -- boats this close are thrown...
+		up = { 120, 170 }, -- ...this hard upward (studs/s) at the middle
+		out = 85, -- ...and outward
+		damage = 10,
+		hull = 26,
+		bigChance = 0.3, -- an episode may bring THE BIG ONE first: one meteor, all of it bigger
+		bigScale = 1.8,
+		bigWarn = 3.8,
+	},
+	kraken = {
+		strikes = { 4, 6 },
+		gap = { 1.6, 2.4 },
+		warn = 1.5, -- bubbles before a tentacle rises
+		area = { 160, 240 },
+		sweepLength = 72, -- a sweeping tentacle's reach
+		sweepArc = math.rad(120),
+		sweepTime = 1.3,
+		width = 14,
+		swat = 115, -- sideways
+		lift = 70,
+		slamRadius = 42,
+		slamUp = 125,
+		tossUp = 190, -- a tentacle coming up under a boat
+	},
+	waves = {
+		count = { 1, 2 },
+		speed = { 58, 74 },
+		height = { 20, 30 },
+		width = { 30, 40 }, -- how thick the ridge is (studs either side of the crest)
+		half = { 320, 480 }, -- half its length along the front
+		start = 760, -- how far off the focus it starts (it rolls through it)
+		push = 55, -- goblins swimming in the crest are carried this fast...
+		lift = 26,
+	},
+	crossfire = {
+		time = { 14, 18 },
+		every = { 0.32, 0.5 }, -- seconds between shells
+		zone = { 180, 250 }, -- the bombarded water's radius
+		standoff = { 520, 650 }, -- how far off the armada lies
+		roll = 0.45, -- chance the barrage rolls across the sea instead of holding still
+		rollSpeed = 22,
+		warn = 1.4,
+		radius = 24,
+		damage = 7,
+		knockback = 78,
+		hull = 16,
+		push = 82,
+		aimAtBoats = 0.6, -- share of shells aimed at a boat's path
+	},
+	barrels = {
+		count = { 26, 40 },
+		spread = { 120, 180 },
+		powder = 0.7, -- share that explode
+		life = 55, -- seconds before the field sinks
+		max = 60, -- barrels on the whole sea at once
+		touch = 5, -- studs beyond a hull's half-length that count as touching
+		radius = 26,
+		damage = 8,
+		knockback = 85,
+		hull = 18,
+		push = 86,
+		chain = 32, -- powder barrels this close to an explosion go up too...
+		chainDelay = 0.16, -- ...this long after
+		snapshot = 0.12, -- seconds between the positions sent to clients
+	},
+	whirls = {
+		count = { 2, 4 },
+		radius = { 70, 110 },
+		spin = { 42, 58 },
+		pull = { 16, 24 },
+		dip = { 7, 12 },
+		wander = { 6, 14 },
+		life = { 22, 28 },
+		spread = { 140, 380 },
+		eye = 0.24, -- share of the radius that is the eye: a boat there is FLUNG
+		fling = 120,
+		flingUp = 95,
+		flingRest = 2.5, -- a flung boat is left alone this long
+	},
+	haunted = {
+		time = { 24, 30 },
+		pairDistance = { 600, 900 },
+		portalRadius = 22,
+		shipEvery = { 5, 7.5 },
+		shipSpeed = 115,
+		shipLife = 9,
+		ram = 18, -- studs: a ghost ship this close to a hull rams it
+		ramPush = 110,
+		volleyRange = 160,
+		volleyEvery = 3.2,
+	},
+	thunder = {
+		strikes = { 4, 7 },
+		gap = { 1.4, 2.4 },
+		warn = 2.0,
+		area = { 220, 320 },
+		ring = 170, -- the shockwave's reach
+		ringTime = 1.1,
+		push = 72,
+		lift = 46,
+		damage = 6,
+		hull = 12,
+		chain = 90, -- the bolt jumps between boats this close together...
+		chainMax = 3, -- ...this many times
+		charge = 1.6, -- seconds of free boost a struck boat gets: SUPERCHARGED
+	},
 }
 
 -- The sixteen major islands and what is around them (V7) -------------------------------------------
@@ -1519,14 +1928,27 @@ Config.MONETIZATION = {
 		boat_stormrunner = { kind = "pass", id = nil, grants = { "boat_stormrunner" } },
 		boat_ironbelly = { kind = "pass", id = nil, grants = { "boat_ironbelly" } },
 		boat_broadside = { kind = "pass", id = nil, grants = { "boat_broadside" } },
+		-- V13.2: the three new classes, also earnable with Shinies. No id: a human creates them in the Creator Dashboard.
+		boat_anchorjack = { kind = "pass", id = nil, grants = { "boat_anchorjack" } },
+		boat_wavebreaker = { kind = "pass", id = nil, grants = { "boat_wavebreaker" } },
+		boat_corsair = { kind = "pass", id = nil, grants = { "boat_corsair" } },
 		pet_Whelp = { kind = "pass", id = nil, grants = { "Whelp" } },
 		petskin_wobble_moon = { kind = "pass", id = nil, grants = { "petskin_wobble_moon" } },
-		-- A possible bundle (all five unlockable boats). No catalog item points at it, so the shop does not show
+		-- A possible bundle (all eight unlockable boats, V13.2). No catalog item points at it, so the shop does not show
 		-- it; it is here so a human who makes the pass has its grants ready.
 		bundle_fleet = {
 			kind = "pass",
 			id = nil,
-			grants = { "boat_reefhopper", "boat_wraith", "boat_stormrunner", "boat_ironbelly", "boat_broadside" },
+			grants = {
+				"boat_reefhopper",
+				"boat_wraith",
+				"boat_stormrunner",
+				"boat_ironbelly",
+				"boat_broadside",
+				"boat_anchorjack",
+				"boat_wavebreaker",
+				"boat_corsair",
+			},
 		},
 	},
 }
