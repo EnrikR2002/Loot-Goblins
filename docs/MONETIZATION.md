@@ -15,14 +15,14 @@ Everything sold for Robux is either **something also earnable with Shinies** (a 
 | `livery_starlit` | Starlit Galleon (boat paint) | no, premium cosmetic |
 | `trail_aurora` | Aurora Ribbon (boost trail) | no, premium cosmetic |
 | `petskin_crab_gold` | Golden Crab (pet look) | no, premium cosmetic |
-| `boat_reefhopper`, `boat_wraith`, `boat_stormrunner`, `boat_ironbelly`, `boat_broadside` (V13) | that boat class | yes, for Shinies (350 to 700) |
+| `boat_reefhopper`, `boat_wraith`, `boat_stormrunner`, `boat_ironbelly`, `boat_broadside` (V13); `boat_anchorjack`, `boat_wavebreaker`, `boat_corsair` (V13.2) | that boat class | yes, for Shinies (350 to 700; the V13.2 three 500, 550 and 650). Since V13.2 every class has the same speed band, so a boat pass sells a play style, not speed |
 | `pet_Whelp` (V13) | the Gilded Whelp, a show pet | no, premium cosmetic: **it has no ability** |
 | `petskin_wobble_moon` (V13) | Moon Jelly (pet look for Wobble) | no, premium cosmetic |
-| `bundle_fleet` (V13) | all five unlockable boats | yes, each for Shinies. **No catalogue item points at it, so the shop does not show it**; it is ready for a team that wants a bundle pass |
+| `bundle_fleet` (V13; eight boats since V13.2) | all eight unlockable boats | yes, each for Shinies. **No catalogue item points at it, so the shop does not show it**; it is ready for a team that wants a bundle pass |
 
 ### What the team should decide (V13)
 
-Commercially sensible, and fair: everything that changes how you play is earnable in a few hours of ordinary raids (see the V13 report's economy model), so a boat pass sells time, not power. If the team wants to sell boats at all, a price that is a convenience next to about two to four hours of play, and a bundle cheaper than the five passes together, would fit. A show pet or a look is pure expression. The AI does not set prices; Roblox gives the real price to the shop once a product exists.
+Commercially sensible, and fair: everything that changes how you play is earnable in a few hours of ordinary raids (see the V13 report's economy model), so a boat pass sells time, not power. If the team wants to sell boats at all, a price that is a convenience next to about two to four hours of play, and a bundle cheaper than the eight passes together (five in V13), would fit. A show pet or a look is pure expression. The AI does not set prices; Roblox gives the real price to the shop once a product exists.
 
 ## Turning one on
 
