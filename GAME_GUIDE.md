@@ -9,7 +9,7 @@ This file is a self-contained game description, quality rubric, and dated develo
 **Game repository:** https://github.com/EnrikR2002/Loot-Goblins
 **Documented gameplay revision:** 9d6d2c5c0e1dde8424d6b3816e4ff1c8c1b57ecb
 **Shared rubric revision:** ed8aa6f54025d0bb1b120717c7c61050a9970a28
-**Document freshness fingerprint:** 9aca357d20ac0f203e48c7f23731cb561ef92768b816ad92739ebac9812552ea
+**Document freshness fingerprint:** f36ee8920b5f241d94e881519196ff009fa7a58cca8954fb09820541f3961496
 
 Ask an outside AI: 'Read this complete guide, compare the current game with the included rubric, and suggest the highest-value improvements. Separate documented gaps, hypotheses, and ideas. Respect game-specific decisions and current prototype gates.'
 
@@ -5180,7 +5180,7 @@ Reports below are preserved in full, newest first. A historical test pass applie
 
 # V13.2: Sea of Chaos (2026-10-19)
 
-Ninety's brief: make encounters more frequent, movement more expressive, boats more balanced and every raid more unpredictable, without making the game simply harder. Built by Claude Opus 5.5 on branch `feature/v13-2-sea-of-chaos`, stacked on V13.1 (`fix/v13-playtest-feedback`, PR #25), which is stacked on V13 (`feature/v13-goblin-port`, PR #24). Neither is merged into `main` yet, so V13.2 starts from the newest complete code (V13 + V13.1) and its PR targets the V13.1 branch. **Not merged.**
+Ninety's brief: make encounters more frequent, movement more expressive, boats more balanced and every raid more unpredictable, without making the game simply harder. Built by Claude Opus 5.5 on branch `feature/v13-2-sea-of-chaos`, stacked on V13.1 (`fix/v13-playtest-feedback`, PR #25), which is stacked on V13 (`feature/v13-goblin-port`, PR #24). Neither is merged into `main` yet, so V13.2 starts from the newest complete code (V13 + V13.1) and its PR, [#26](https://github.com/EnrikR2002/Loot-Goblins/pull/26), targets the V13.1 branch. **Not merged.**
 
 **Read this first.** Everything below was built and tested by one AI on **one** Roblox Studio client, through a Studio-only test hook (a Workspace script obeying a `DebugCmd` attribute; never committed) and real key presses and clicks where it says so. Nobody has played V13.2. It has never had a second player, a phone or a real controller. Travel times come from server-driven test boats following the sea's own pathfinder, not from people. **Passing tests and smooth numbers do not prove the boats are balanced or the chaos is fun**: that needs Ninety, Ethan and Enrik playing it together.
 

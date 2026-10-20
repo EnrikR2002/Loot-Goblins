@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "before-after-balance-on-one-harness",
+  "title": "Measure a rebalance's before and after on one harness, in one session",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-19",
+  "topics": [
+    "balance",
+    "testing",
+    "boats"
+  ],
+  "observation": "Loot Goblins V13.2 compressed ten boat classes' speeds. Paper numbers (top speed 96-135 to 106-118) did not say what a player would feel, so a server-side autopilot drove every class from three islands to the home harbour along the game's own pathfinder (full throttle, boost whenever its own cooldown allowed, test boats unable to collide). The same harness, in the same play session, was then run with the old numbers patched into the live config for a true before. Result: the fleet's spread home from the farthest island went from 11.2 s to 3.5 s; the slow classes barely changed and the fast ones lost 3 to 6 s; and a winding route still favoured good turners (3.6 s spread), which the top-speed table did not show. One harness bug cost a run: aiming each boat at the path's first waypoint, which was its own start point, gave CFrame.lookAt a zero direction and dropped every hull out of the world.",
+  "recommendation": "For a speed or balance change, build one autopilot over real routes, run it with the old and the new numbers in the same session (patch the live config, restore it after), and report spreads per route, not only per-class stats. Skip waypoints closer than a few studs before calling CFrame.lookAt, and sanity-check one run (distance sailed, top speed) before trusting a batch.",
+  "applies_when": [
+    "Rebalancing vehicle or movement speeds across classes",
+    "A balance claim would otherwise rest on a table of tuning values"
+  ],
+  "limits": [
+    "An autopilot is not a player: no abilities, drifting, tricks, hazards or rivals; it measures travel, not fun",
+    "Three routes, one Studio session"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/4827c4b387f9c4d90409577da84384b33efb5db5/docs/reports/2026-10-19-v13-2-sea-of-chaos.md",
+      "detail": "Section 3, 'Travel times (measured)': 10 classes x 3 routes after, 7 classes x 3 routes before."
+    }
+  ],
+  "rubric_checks": [
+    "CL-23",
+    "CL-25"
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "fingerprint": "9aca357d20ac0f203e48c7f23731cb561ef92768b816ad92739ebac9812552ea",
+  "fingerprint": "f36ee8920b5f241d94e881519196ff009fa7a58cca8954fb09820541f3961496",
   "source_baseline": {
     "src/client/BannerQueue.lua": "36ff59160d17f71dd6b3dc87a73e4ee35b3186b31b2232abea09580599dd460f",
     "src/client/BoatDrive.lua": "95050f3b4f2f5a88c64c78d7e83e6dddf3f0f032897d43601bfaec3d89d05f4c",
@@ -116,7 +116,7 @@
     "src/shared/Config.lua": "344b07d3b6809d23c89529dea594d50929d9763b67dc12f78c70969576f0bf29",
     "src/shared/Archipelago.lua": "956910425a5272c52fa671e6c8d109c6423542682b43032c55fb06ed56e87944",
     "default.project.json": "9fb828dd6c23f4351950c7fae8134f3c58e32a1b40379ced561ace167170b94d",
-    "docs/reports/2026-10-19-v13-2-sea-of-chaos.md": "4d8500723429f64e872035320d7a74d552e820ea4f30860817be57bedb1fc45b",
+    "docs/reports/2026-10-19-v13-2-sea-of-chaos.md": "814fc4237b37470e23e7a53b9e53632e5ee17fec567fd012db529c6001957d80",
     "docs/reports/2026-10-18-v13-goblin-port.md": "5d286a9df4293b3c6d0cd471b2ab3149ce1172e58e1d75c38f2bf6d17a79bfbc",
     "docs/reports/2026-10-18-v13-1-playtest-fixes.md": "9e17f94d84b0dbc732f19b594bba03c849e5c57e77d4317acb2a580b3d386455",
     "docs/reports/2026-10-18-v12-cohesion-pass.md": "b910c4431121cde2d1b7e59ff4e54a2c3052768c657dbd4f6c52b99b07d03fce",

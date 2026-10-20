@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "ballistic-angle-floor-overshoots-close-shots",
+  "title": "A ballistic solver's elevation floor makes close shots land long",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-19",
+  "topics": [
+    "combat",
+    "aiming",
+    "testing"
+  ],
+  "observation": "Loot Goblins' cannons solve a launch angle for a fixed muzzle speed and clamp it to at least 6 degrees below horizontal. A new driver's bow gun sits a few studs above the water; a target 17 studs off the bow needed about 14 degrees down, so the clamp sent the shot over it: the blast landed about 16 studs past the aim point, outside the 12-stud blast plus hull reach, and a rival boat sitting there took nothing. Logging the aim point and the blast point side by side found it in one shot; allowing the bow gun down to 40 degrees put the blast within 0.1 studs of the aim. The old floor had never shown on cannons that fire from high decks at far targets.",
+  "recommendation": "When adding a new launcher to an existing ballistic solver, test close targets below the muzzle, and log the aim point next to the impact point. Make angle limits a per-launcher property instead of a global clamp, so changing one does not change the others' difficulty.",
+  "applies_when": [
+    "Adding a weapon, throw or launcher that reuses an existing projectile solver",
+    "Targets can be close and below the launcher"
+  ],
+  "limits": [
+    "One solver (low-angle solution, fixed speed, custom gravity) in one game"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/4827c4b387f9c4d90409577da84384b33efb5db5/docs/reports/2026-10-19-v13-2-sea-of-chaos.md",
+      "detail": "Section 11, third row; section 3's ability table, bow gun row."
+    }
+  ],
+  "rubric_checks": [
+    "CL-13",
+    "CL-14"
+  ]
+}

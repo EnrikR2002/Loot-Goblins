@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "client-reported-contact-needs-both-lags",
+  "title": "A contact one client reports must be judged with both views' lag",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-19",
+  "topics": [
+    "networking",
+    "authority",
+    "boats"
+  ],
+  "observation": "Loot Goblins' Corsair boarding: the Corsair's own client simulates its hull and reports 'arrived' when it is alongside the rival boat (server-simulated). The server then re-checked the gap and refused every boarding. In Studio (no added latency) the server measured 44 to 53 studs at the moment the client measured under 20, with the pair at 94 and 68 studs/s: the server sees the client-owned hull late, and the client sees the server-owned hull late, so the gaps differ by both boats' speeds along the line times the lag (about 0.17 s here). Allowing reach + (both speeds along the line) x 0.35 s made the boarding land; a check with only the closing speed still failed.",
+  "recommendation": "When a client reports a contact with something another machine simulates, judge it with an allowance of both bodies' velocity components along the line between them times a lag budget (with a cap), not the server's raw gap and not just the closing speed. Log both views' distances once in Studio before choosing the budget, and leave the server's own contact check (no allowance) for contacts it sees itself.",
+  "applies_when": [
+    "A client-simulated body (vehicle, character) touching or reaching a server-simulated or another client's body",
+    "The server re-validates a contact the owning client reports"
+  ],
+  "limits": [
+    "Measured in Studio on one machine, with no real network latency; a live game's lag is larger, so the 0.35 s budget is a first guess",
+    "The allowance trusts the reporting client a little: bounded here by a cap and by the ability's own range and cooldown checks"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/4827c4b387f9c4d90409577da84384b33efb5db5/docs/reports/2026-10-19-v13-2-sea-of-chaos.md",
+      "detail": "Section 11, first row: boarding refused at server gaps of 44-53 studs; with the both-speeds allowance 'FrikiEnriki BOARDED a Skiff!' (section 3's ability table)."
+    }
+  ],
+  "rubric_checks": [
+    "CL-13",
+    "CL-35"
+  ]
+}
