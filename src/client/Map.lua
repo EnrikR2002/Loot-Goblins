@@ -545,11 +545,11 @@ local function drawRoute(points, key)
 		if info and info.major then
 			local generated = workspace:FindFirstChild("LootGoblinsGenerated")
 			local spot = generated and generated:GetAttribute("Land_" .. island.id)
-			local x, z = island.x, island.z
+			local x, z, y = island.x, island.z, 0
 			if typeof(spot) == "Vector3" then
-				x, z = spot.X, spot.Z
+				x, z, y = spot.X, spot.Z, spot.Y
 			end
-			reachable[island.id] = SkyRoute.passBy(points, x, z, REACH).from ~= nil
+			reachable[island.id] = SkyRoute.passBy(points, x, z, SkyRoute.reach(y)).from ~= nil
 		end
 	end
 end

@@ -495,12 +495,22 @@ EPISODE.crossfire = function(center)
 	local C = X.crossfire
 	local time = rand(C.time)
 	local zoneRadius = rand(C.zone)
-	local dir = randomDirection()
-	local off = center + dir * rand(C.standoff)
-	local across = Vector3.new(-dir.Z, 0, dir.X)
-	local ships = {}
-	for i = -1, 1 do
-		table.insert(ships, off + across * i * 46)
+	-- The armada lies off on open water (a few headings are tried: never on an island's beach).
+	local dir, off, across, ships
+	for _ = 1, 16 do
+		dir = randomDirection()
+		off = center + dir * rand(C.standoff)
+		across = Vector3.new(-dir.Z, 0, dir.X)
+		ships = {}
+		local afloat = true
+		for i = -1, 1 do
+			local at = off + across * i * 46
+			afloat = afloat and deepAt(at.X, at.Z, 7) and not safe(at)
+			table.insert(ships, at)
+		end
+		if afloat then
+			break
+		end
 	end
 	local roll = math.random() < C.roll and across * C.rollSpeed * (math.random() < 0.5 and -1 or 1) or Vector3.zero
 	local t = now()

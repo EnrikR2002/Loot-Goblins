@@ -53,7 +53,9 @@ end
 
 -- The low arc that lands on the target with the cannon's muzzle speed, or 45 degrees if it is
 -- out of range. Returns a unit direction.
-local function solve(origin, target)
+-- steep (V13.2, the bow gun): it may aim well down at something close (the old floor of -6 degrees sent a shot at a
+-- boat 20-35 studs off the bow 15-20 studs long, measured in Studio). Other cannons keep their floor.
+local function solve(origin, target, steep)
 	local g, speed = Config.CANNON_GRAVITY, Config.CANNON_SPEED
 	local delta = target - origin
 	local flat = Vector3.new(delta.X, 0, delta.Z)
@@ -64,7 +66,7 @@ local function solve(origin, target)
 	local v2 = speed * speed
 	local disc = v2 * v2 - g * (g * distance * distance + 2 * delta.Y * v2)
 	local angle = disc < 0 and math.rad(45) or math.atan2(v2 - math.sqrt(disc), g * distance)
-	angle = math.clamp(angle, math.rad(-6), math.rad(62))
+	angle = math.clamp(angle, math.rad(steep and -40 or -6), math.rad(62))
 	return flat.Unit * math.cos(angle) + Vector3.yAxis * math.sin(angle)
 end
 
@@ -99,7 +101,7 @@ end
 -- carry its own (entry.profile). Without one it is a full cannonball (Config.CANNON_*).
 function Cannons.launch(entry, aimPoint, owner, profile)
 	local pivot = pivotOf(entry)
-	local direction = solve(pivot, aimPoint)
+	local direction = solve(pivot, aimPoint, (profile or entry.profile or {}).bowGun)
 	aimBarrel(entry, direction)
 	local muzzle = pivot + direction * 6
 	local ball = Instance.new("Part")

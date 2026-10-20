@@ -390,8 +390,12 @@ local function board(chain)
 	local spec = A.hook
 	local boat, target = chain.boat, chain.target
 	local here, there = boat.hull.Position, target.hull.Position
-	local side = flat(there - here)
-	side = side.Magnitude > 0.5 and side.Unit or lookOf(boat)
+	-- Aside: across the Corsair's heading (along the line between the hulls was straight ahead when it boarded from
+	-- behind, which sped the rival up: seen in Studio).
+	local look = lookOf(boat)
+	local across = flat(there - here)
+	across -= look * across:Dot(look)
+	local side = across.Magnitude > 2 and across.Unit or Vector3.new(-look.Z, 0, look.X)
 	local v = flat(target.hull.AssemblyLinearVelocity)
 	-- Shoved aside, and most of its way lost.
 	Boats.shove(target, side * spec.hitShove - v * (1 - spec.slow) + Vector3.new(0, 18, 0), Vector3.new(0, 1.4, 0))
@@ -417,6 +421,23 @@ local function board(chain)
 	endChain(chain, "boarded")
 end
 
+-- Is the Corsair alongside the boat it hooked? `lag`: seconds the two views of the chase are apart (0: the server's
+-- own check). When the Corsair's client says it arrived, the server sees that hull a moment late and that client saw
+-- the rival a moment late, so the server's gap is longer by both boats' speeds along the line times A.hook.lag
+-- (measured in Studio: 27 studs with the pair at 94 and 68 studs/s).
+local function alongside(chain, lag)
+	local boat, target = chain.boat, chain.target
+	local offset = flat(target.hull.Position - boat.hull.Position)
+	local gap = offset.Magnitude
+	local reach = A.hook.board + (boat.spec.size.X + target.spec.size.X) * 0.5
+	if lag == 0 or gap < 0.5 then
+		return gap <= reach
+	end
+	local along =
+		math.max(0, flat(boat.hull.AssemblyLinearVelocity + target.hull.AssemblyLinearVelocity):Dot(offset.Unit))
+	return gap <= reach + math.min(along, 260) * (lag or A.hook.lag)
+end
+
 local function tickChains(t)
 	for _, chain in pairs(chains) do
 		local boat, target = chain.boat, chain.target
@@ -430,8 +451,7 @@ local function tickChains(t)
 			endChain(chain, "slipped")
 		elseif chain.kind == "reel" then
 			local gap = flat(target.hull.Position - boat.hull.Position).Magnitude
-			local reach = A.hook.board + (boat.spec.size.X + target.spec.size.X) * 0.5
-			if gap <= reach then
+			if alongside(chain, 0) then
 				board(chain)
 			elseif gap > math.max(chain.startGap, 40) * A.hook.snap then
 				endChain(chain, "snapped")
@@ -667,7 +687,11 @@ function BoatAbilities.released(player, kind)
 	end
 	for _, chain in ipairs(chainsOn(boat)) do
 		if chain.boat == boat then
-			endChain(chain, kind == "arrived" and "arrived" or "released")
+			if kind == "arrived" and chain.kind == "reel" and alongside(chain) then
+				board(chain)
+			else
+				endChain(chain, kind == "arrived" and "arrived" or "released")
+			end
 		end
 	end
 	if kind == "sling" then

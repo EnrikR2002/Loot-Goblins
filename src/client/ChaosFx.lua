@@ -274,6 +274,12 @@ local function tentacle(base, life, pose)
 			segments[#segments].sucker = sucker
 		end
 	end
+	for _, s in ipairs(segments) do
+		Debris:AddItem(s, life + 1)
+		if s.sucker then
+			Debris:AddItem(s.sucker, life + 1)
+		end
+	end
 	local started = os.clock()
 	local connection
 	connection = RunService.RenderStepped:Connect(function()
@@ -464,14 +470,14 @@ local function whirlView(wh)
 		Material = Enum.Material.SmoothPlastic,
 		Transparency = 0.15,
 	})
-	for arm = 1, 5 do
-		for k = 1, 9 do
+	for arm = 1, 6 do
+		for k = 1, 12 do
 			table.insert(view.arms, {
 				arm = arm,
 				k = k,
 				part = part({
 					Name = "WhirlFoam",
-					Size = Vector3.new(2.4, 0.8, 9),
+					Size = Vector3.new(3.2, 0.9, 13),
 					Color = FOAM,
 					Material = Enum.Material.SmoothPlastic,
 					Transparency = 0.2,
@@ -496,10 +502,10 @@ local function drawWhirls(t)
 		view.eye.CFrame = CFrame.new(center + Vector3.new(0, 0.8 - wh.dip * k * 0.3, 0))
 			* CFrame.Angles(0, 0, math.rad(90))
 		for _, a in ipairs(view.arms) do
-			local f = a.k / 9
+			local f = a.k / 12
 			local radius = wh.r * (0.15 + f * 0.85)
 			-- Inner foam goes round faster (a vortex).
-			local angle = a.arm * (math.pi * 2 / 5) + f * 2.4 - t * (wh.spin / math.max(radius, 10)) * 1.2
+			local angle = a.arm * (math.pi * 2 / 6) + f * 2.4 - t * (wh.spin / math.max(radius, 10)) * 1.2
 			local at = center
 				+ Vector3.new(math.cos(angle) * radius, 0.9 - (1 - f) * wh.dip * 0.35 * k, math.sin(angle) * radius)
 			local tangent = Vector3.new(-math.sin(angle), 0, math.cos(angle))

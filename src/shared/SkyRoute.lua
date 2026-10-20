@@ -102,10 +102,11 @@ end
 
 -- How far a ship's cannon throws a goblin across, landing at sea level (Dive.solve's ballistics at the cannon's speed
 -- and angle from the ship's height): the reach shown on the map. (Steering in the air adds a little more.)
-function SkyRoute.reach()
+-- targetY (optional): the height of where it lands (a high landing on a spire is reached from a little closer).
+function SkyRoute.reach(targetY)
 	local D = Config.DIVE
 	local g, speed, elevation = D.GRAVITY, D.CANNON_SPEED, D.CANNON_ELEVATION
-	local h = S.POSITION.Y + 4.6
+	local h = S.POSITION.Y + 4.6 - (targetY or 0)
 	local cos, tan = math.cos(elevation), math.tan(elevation)
 	local a = 2 * speed * speed * cos * cos * tan
 	local b = 8 * g * speed * speed * cos * cos * h
@@ -113,7 +114,8 @@ function SkyRoute.reach()
 end
 
 -- When the ship passes closest to a point on this route during the pass, how close, and how long the point is in reach
--- (seconds from opensAt). Returns { at, distance, from, to } (from/to nil if it is never in reach).
+-- (seconds from opensAt). Returns { at, distance, from, to } (from/to nil if it is never in reach). reach: the reach
+-- for that point (SkyRoute.reach(its height)); sea level's when not given.
 function SkyRoute.passBy(points, x, z, reach)
 	reach = reach or SkyRoute.reach()
 	local length = SkyRoute.length(points)

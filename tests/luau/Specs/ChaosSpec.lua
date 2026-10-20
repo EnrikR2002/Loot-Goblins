@@ -126,7 +126,12 @@ return function(t)
 		Sea.shelterFn = function()
 			return 1 -- right by a shore
 		end
-		t.ok(Sea.chaosAt(300, 0, t0) < 0.5, "it breaks to nothing against land")
+		t.ok(Sea.chaosAt(300, 0, t0) < 3, "right beside land it breaks to a ripple")
+		Sea.shelterFn = function()
+			return 0.5 -- a sheltered channel
+		end
+		local channel = Sea.chaosAt(300, 0, t0)
+		t.ok(channel > 8 and channel < 16, "in a sheltered channel it is still a wave: " .. channel)
 		Sea.shelterFn = savedShelter
 		Sea.setChaos(saved)
 	end)

@@ -316,8 +316,9 @@ function Flight.leave(player)
 end
 
 -- Throw a goblin: from a launcher's fuse, off the side of the skyship, or by the ship itself when the
--- window closes. `launcher` (optional) is only for the bang.
-function Flight.launch(player, velocity, launcher)
+-- window closes. `launcher` (optional) is only for the bang. `start` (optional, V13.2): where the flight begins (the
+-- ship firing a goblin off its moving deck): the goblin is put there, here and on their own client.
+function Flight.launch(player, velocity, launcher, start)
 	local root, humanoid = Util.aliveRoot(player)
 	if not root then
 		return false
@@ -347,6 +348,8 @@ function Flight.launch(player, velocity, launcher)
 	end
 	if launcher and launcher.fromFn then
 		root.CFrame = CFrame.new(from) * root.CFrame.Rotation
+	elseif typeof(start) == "Vector3" then
+		root.CFrame = CFrame.new(start) * root.CFrame.Rotation
 	end
 	setPhase(player, s, "diving")
 	s.bounces = 0
@@ -363,7 +366,11 @@ function Flight.launch(player, velocity, launcher)
 	player:SetAttribute("DiveMode", "tumble")
 	flop(player, s)
 	-- The character's own client flies it; tell that client where to start.
-	Net.send(player, "DiveStart", { velocity = velocity, token = s.token })
+	Net.send(player, "DiveStart", {
+		velocity = velocity,
+		token = s.token,
+		start = (typeof(start) == "Vector3" and start) or (launcher and launcher.fromFn and from) or nil,
+	})
 	return true
 end
 

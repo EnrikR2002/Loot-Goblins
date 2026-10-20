@@ -38,6 +38,8 @@ local buildCFrame -- where it was built (its local frame: every spot on it is st
 local shipVelocity = Vector3.zero
 local deck
 local route = nil -- V13.2: { points, opensAt, index, reversed, passBy = { [islandId] = SkyRoute.passBy(...) } }
+local routeLanding = {} -- V13.2: island id -> this route's landing spot, checked by flying the throw from where it passes
+local landWorld = nil -- the world refs findLandings was given (the per-route search uses them too)
 local REACH = SkyRoute.reach()
 local cannons = {}
 local deckSpawns = {} -- local CFrames on the deck
@@ -741,13 +743,124 @@ local function findLandings(worldRefs)
 	end
 end
 
--- Where a pick of island `id` comes down: its landing spot, or (an island with no treasure) its middle.
+-- V13.2: where a throw from `from` (a cannon in the air) aimed at `target` really comes down: the flight on Dive's own
+-- rules, a 30th of a second at a time, stopped by the first solid thing (or the sea) its path meets, the way the
+-- goblin's own client flies and stops it. Returns the touch point and whether it is water, or nil (out of reach).
+local THROW_BODY = 3 -- studs: the radius of a tumbling goblin, limbs and all
+local throwParams = RaycastParams.new()
+throwParams.FilterType = Enum.RaycastFilterType.Include
+throwParams.IgnoreWater = false
+local function throwLands(from, target)
+	local velocity, reach = Dive.solve(from, target, D.CANNON_ELEVATION, D.CANNON_SPEED)
+	if not reach then
+		return nil
+	end
+	local position, dt = from, 1 / 30
+	for _ = 1, 30 * 30 do
+		velocity = Dive.step(velocity, Vector3.zero, "tumble", dt)
+		local step = velocity * dt
+		-- A goblin is not a point: sweep a body-sized ball (a thin ray slipped over a hill's crest the real goblin hit,
+		-- and the real throw slid 59 studs down to the beach: measured in Studio).
+		local hit = workspace:Spherecast(position, THROW_BODY, step, throwParams)
+		if hit then
+			return hit.Position, hit.Material == Enum.Material.Water
+		end
+		position += step
+		if position.Y < -10 then
+			return position, true
+		end
+	end
+	return nil
+end
+Skyship.throwLands = throwLands
+
+-- A landing is GOOD from `from` if a throw at it comes down on dry ground near it.
+local LAND_NEAR = 22
+local function landsWell(from, spot)
+	local at, water = throwLands(from, spot)
+	return at ~= nil and not water and Vector3.new(at.X - spot.X, 0, at.Z - spot.Z).Magnitude <= LAND_NEAR
+end
+
+-- Where a pick of island `id` comes down: this raid's route's landing spot (V13.2), else its landing spot, or (an
+-- island with no treasure) its middle.
 function Skyship.landingFor(id)
 	local island = id and Archipelago.byId[id]
 	if not island then
 		return nil
 	end
-	return landing[id] or Vector3.new(island.x, 0, island.z)
+	return routeLanding[id] or landing[id] or Vector3.new(island.x, 0, island.z)
+end
+
+-- V13.2: the route decides where the throws come from, so each island's landing is chosen again for it: from where the
+-- ship passes it (its closest pass), the island's usual spot if a throw from there comes down on it, else the first
+-- spot round the treasure (the same strict, then loose, rules: dry, level, open, an apron of good ground) that a throw
+-- from there does come down on. Done a little at a time, while the Port waits. Islands it cannot fix keep their spot.
+local function planLandings(points, token)
+	if not landWorld or not landWorld.lootSpots then
+		return
+	end
+	local folders = landWorld.folders
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { workspace.Terrain, folders.ground, folders.structures }
+	params.IgnoreWater = false
+	local checked, fixed = 0, 0
+	for id, info in pairs(Config.ISLAND_INFO) do
+		if token ~= route.token then
+			return
+		end
+		local pass = info.major and route.passBy[id]
+		local usual = landing[id]
+		if pass and pass.from and usual then
+			checked += 1
+			local from = SkyRoute.cframeAt(points, 0, pass.at).Position + Vector3.new(0, 4.6, 0)
+			if not landsWell(from, usual) then
+				local treasure
+				for _, def in ipairs(Config.LOOT) do
+					if def.island == id and landWorld.lootSpots[def.id] then
+						treasure = landWorld.lootSpots[def.id].Position
+						break
+					end
+				end
+				treasure = (landWorld.landingHints and landWorld.landingHints[id]) or treasure or usual
+				local tries = 0
+				for _, pass2 in ipairs(Landing.PASSES) do
+					for _, point in ipairs(Landing.candidates(treasure, from)) do
+						local hit =
+							workspace:Raycast(Vector3.new(point.X, SKY, point.Z), Vector3.new(0, -SKY - 100, 0), params)
+						if
+							hit
+							and Landing.acceptable({
+								y = hit.Position.Y,
+								normalY = hit.Normal.Y,
+								water = hit.Material == Enum.Material.Water,
+								structure = hit.Instance:IsDescendantOf(folders.structures),
+								lava = insideLava(hit.Position, landWorld.lavaZones),
+							}, treasure.Y, pass2.sea)
+						then
+							tries += 1
+							if landsWell(from, hit.Position) then
+								routeLanding[id] = hit.Position
+								fixed += 1
+								break
+							end
+							if tries >= 14 then
+								break
+							end
+						end
+					end
+					if routeLanding[id] or tries >= 14 then
+						break
+					end
+				end
+			end
+			if routeLanding[id] then
+				folders.root:SetAttribute("Land_" .. id, routeLanding[id])
+			end
+			task.wait()
+		end
+	end
+	route.landingsChecked = { checked = checked, moved = fixed }
 end
 
 -- V13.2: the ship becomes ONE assembly: its Deck stays anchored as the root and everything else is welded to it, so
@@ -1008,6 +1121,9 @@ function Skyship.build(worldRefs)
 		c.barrel.CastShadow = true
 	end
 	findLandings(worldRefs)
+	landWorld = worldRefs
+	throwParams.FilterDescendantsInstances =
+		{ workspace.Terrain, worldRefs.folders.ground, worldRefs.folders.structures }
 	-- Between raids it waits at the start of a route (the Port shows the next one: Skyship.plan).
 	Skyship.plan(1, false)
 end
@@ -1018,13 +1134,22 @@ function Skyship.plan(index, reversed)
 	if not points then
 		return
 	end
-	route = { points = points, index = index, reversed = reversed, opensAt = math.huge, passBy = {} }
+	local token = (route and route.token or 0) + 1
+	route = { points = points, index = index, reversed = reversed, opensAt = math.huge, passBy = {}, token = token }
+	-- Back to every island's usual spot, then (in the background) the ones this route needs moved.
+	for id in pairs(routeLanding) do
+		if landWorld and landing[id] then
+			landWorld.folders.root:SetAttribute("Land_" .. id, landing[id])
+		end
+	end
+	table.clear(routeLanding)
 	for id in pairs(Config.ISLAND_INFO) do
 		local spot = Skyship.landingFor(id)
 		if spot then
-			route.passBy[id] = SkyRoute.passBy(points, spot.X, spot.Z, REACH)
+			route.passBy[id] = SkyRoute.passBy(points, spot.X, spot.Z, SkyRoute.reach(spot.Y))
 		end
 	end
+	task.spawn(planLandings, points, token)
 	workspace:SetAttribute("SkyRoute", index)
 	workspace:SetAttribute("SkyRouteReversed", reversed or nil)
 	workspace:SetAttribute("SkyRouteOpensAt", nil)
@@ -1040,7 +1165,7 @@ function Skyship.inReach(point)
 		return false
 	end
 	local p = shipCFrame.Position
-	return Vector3.new(point.X - p.X, 0, point.Z - p.Z).Magnitude <= REACH
+	return Vector3.new(point.X - p.X, 0, point.Z - p.Z).Magnitude <= SkyRoute.reach(point.Y)
 end
 
 -- V13.2: is this island in reach at some point on this raid's route? (nil if no route is planned)
@@ -1050,25 +1175,43 @@ function Skyship.reachable(id)
 end
 
 -- V13.2: the island whose landing spot is nearest the ship and in reach now (the straggler's auto-fire), or nil.
-function Skyship.bestInReach(preferred)
+function Skyship.bestInReach(preferred, from)
+	from = from or (shipCFrame.Position + Vector3.new(0, 4.6, 0))
 	if preferred then
 		local spot = Skyship.landingFor(preferred)
-		if spot and Skyship.inReach(spot) then
+		if spot and Skyship.inReach(spot) and landsWell(from, spot) then
 			return preferred, spot
 		end
 	end
-	local best, bestSpot, bestGap = nil, nil, math.huge
+	-- Nearest first, and only one a throw from here really comes down on (a few tries at most).
+	local list = {}
 	local p = shipCFrame.Position
 	for id, info in pairs(Config.ISLAND_INFO) do
 		local spot = info.major and Skyship.landingFor(id)
 		if spot then
 			local gap = Vector3.new(spot.X - p.X, 0, spot.Z - p.Z).Magnitude
-			if gap <= REACH and gap < bestGap then
-				best, bestSpot, bestGap = id, spot, gap
+			if gap <= SkyRoute.reach(spot.Y) then
+				table.insert(list, { id = id, spot = spot, gap = gap })
 			end
 		end
 	end
-	return best, bestSpot
+	table.sort(list, function(a, b)
+		return a.gap < b.gap
+	end)
+	for i, entry in ipairs(list) do
+		if i > 4 then
+			break
+		end
+		if landsWell(from, entry.spot) then
+			return entry.id, entry.spot
+		end
+	end
+	return list[1] and list[1].id, list[1] and list[1].spot
+end
+
+-- For tests and the playtest hook: how this route's landings were checked.
+function Skyship.routeLandings()
+	return route and route.landingsChecked, routeLanding
 end
 
 -- For tests and the map: the ship's CFrame and velocity now, and the cannons' reach.
@@ -1212,10 +1355,15 @@ function Skyship.choose(player, id)
 end
 
 -- Each frame ---------------------------------------------------------------------------------------------
--- V13.2: the ship fires a goblin from where they stand at a spot (an island's landing).
-local function fireAt(player, root, id, spot, why)
+-- V13.2: the ship fires a goblin standing on its deck at a spot (an island's landing). It fires them from a fixed point
+-- over the deck, which the server and every client agree on (the ship's route), and tells their client to start the
+-- flight exactly there: where the server last saw a goblin on a moving deck lags their own client by a few frames of the
+-- ship's travel (measured: 36 studs), enough to slide a throw off a hilltop landing.
+local FIRE_POINT = Vector3.new(0, 14, 0)
+local function fireAt(player, _root, id, spot, why)
 	aboard[player] = nil
-	Flight.launch(player, (Dive.solve(root.Position, spot, D.CANNON_ELEVATION, D.CANNON_SPEED)), nil)
+	local from = shipCFrame * FIRE_POINT
+	Flight.launch(player, (Dive.solve(from, spot, D.CANNON_ELEVATION, D.CANNON_SPEED)), nil, from)
 	Net.toast(player, why .. " " .. Archipelago.byId[id].name .. "!")
 end
 
@@ -1279,7 +1427,7 @@ function Skyship.tick(_dt)
 				-- The window is over: the ship fires the straggler at their island if it is in reach, else the nearest
 				-- landing it can reach (V13.2: a cannon cannot throw across the whole sea any more).
 				entry.autoFor = boardedFor
-				local best, spot = Skyship.bestInReach(id or player:GetAttribute("DeployDest"))
+				local best, spot = Skyship.bestInReach(id or player:GetAttribute("DeployDest"), shipCFrame * FIRE_POINT)
 				if best then
 					fireAt(player, root, best, spot, "Last call! The ship fires you at")
 				else

@@ -83,7 +83,6 @@ end
 
 -- V13.2: the ship's frame as this client last placed it (SkyRoute), and where a cannon throws from now.
 local shipFrame = nil
-local REACH = SkyRoute.reach()
 local function launchFrom()
 	local localFrom = player:GetAttribute("LaunchLocal")
 	if typeof(localFrom) == "Vector3" and shipFrame then
@@ -881,7 +880,7 @@ local function inReachNow()
 		local info = Config.ISLAND_INFO[island.id]
 		if info and info.major then
 			local spot = landingFor(island.id)
-			if Vector3.new(spot.X - p.X, 0, spot.Z - p.Z).Magnitude <= REACH then
+			if Vector3.new(spot.X - p.X, 0, spot.Z - p.Z).Magnitude <= SkyRoute.reach(spot.Y) then
 				table.insert(names, island.name)
 			end
 		end
@@ -1039,6 +1038,11 @@ end
 
 -- Server events -------------------------------------------------------------------------------------
 function Skyship.handlers.DiveStart(p)
+	-- V13.2: a throw off the moving skyship starts exactly where the server solved it from (both agree on the route).
+	local _, _, root = character()
+	if root and typeof(p.start) == "Vector3" then
+		root.CFrame = CFrame.new(p.start) * root.CFrame.Rotation
+	end
 	startDive(p.velocity)
 	Effects.punchFov(100)
 end

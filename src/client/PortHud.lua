@@ -396,11 +396,11 @@ local function updateNextCard(raiding)
 				local info = Config.ISLAND_INFO[island.id]
 				if info and info.major then
 					local spot = generated and generated:GetAttribute("Land_" .. island.id)
-					local x, z = island.x, island.z
+					local x, z, y = island.x, island.z, 0
 					if typeof(spot) == "Vector3" then
-						x, z = spot.X, spot.Z
+						x, z, y = spot.X, spot.Z, spot.Y
 					end
-					local pass = SkyRoute.passBy(points, x, z)
+					local pass = SkyRoute.passBy(points, x, z, SkyRoute.reach(y))
 					if pass.from then
 						table.insert(names, { name = island.name, at = pass.from })
 					end

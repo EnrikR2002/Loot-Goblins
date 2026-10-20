@@ -116,10 +116,12 @@ function Sea.chaosAt(x, z, t)
 			local ox, oz = x - cx, z - cz
 			local distance = math.sqrt(ox * ox + oz * oz)
 			if distance < wh.r and distance > 0.5 then
-				local strength = math.sin(math.pi * math.min(1, distance / wh.r * 1.15)) * k
+				-- Round fastest at mid-radius; the pull in grows toward the eye (it draws you to the middle).
+				local swirl = math.sin(math.pi * math.min(1, distance / wh.r * 1.15)) * k
+				local suck = (1 - (distance / wh.r) ^ 2) * k
 				local ux, uz = ox / distance, oz / distance
-				fx += (-uz * wh.spin - ux * wh.pull) * strength
-				fz += (ux * wh.spin - uz * wh.pull) * strength
+				fx += -uz * wh.spin * swirl - ux * wh.pull * suck
+				fz += ux * wh.spin * swirl - uz * wh.pull * suck
 				local rim = 1 - distance / wh.r
 				height -= wh.dip * rim * rim * k
 			end

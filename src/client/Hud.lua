@@ -766,26 +766,34 @@ local function buildHelp()
 		ZIndex = 10,
 	}, help)
 	corner(leave, 8)
+	local LEAVE_TEXT = "⚓ LEAVE THIS RAID (home to the Port)"
+	local leaveAsks = 0 -- which press the label's reset belongs to (an older one must not reset a newer one's question)
 	leave.Activated:Connect(function()
 		if os.clock() < leaveArmedUntil then
 			leaveArmedUntil = 0
+			leave.Text = LEAVE_TEXT
 			ReplicatedStorage:WaitForChild("LootGoblinsRemotes"):WaitForChild("RaidRequest"):FireServer("leave")
 			Hud.toggleHelp()
 		else
 			leaveArmedUntil = os.clock() + 4
+			leaveAsks += 1
+			local ask = leaveAsks
 			leave.Text = "SURE? You lose this raid's gold. Press again"
 			task.delay(4, function()
-				leave.Text = "⚓ LEAVE THIS RAID (home to the Port)"
+				if ask == leaveAsks then
+					leave.Text = LEAVE_TEXT
+				end
 			end)
 		end
 	end)
 	text(help, {
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 16, 1, -8),
-		Size = UDim2.new(1, -32, 0, 16),
+		Size = UDim2.new(1, -380, 0, 16), -- left of the leave button, not under it
 		Text = "H closes this",
 		Font = Enum.Font.GothamMedium,
 		TextColor3 = Color3.fromRGB(180, 180, 190),
+		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 9,
 	})
 	-- The Port's card.
