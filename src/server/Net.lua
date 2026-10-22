@@ -48,8 +48,8 @@ Net.BoatGun = remote("BoatGunRequest") -- (aimPoint): the driver clicked: their 
 Net.BoatChain = remote("BoatChainRequest") -- (kind): the driver's own anchor or hook let go ("sling", "arrived", ...).
 Net.Raid = remote("RaidRequest") -- (action): "in" / "out" of the next raid, "leave" the running one (Raid.lua).
 -- V13.3 (the Living Port):
-Net.Play = remote("PlayRequest") -- (action, a, b): a Port game: "leave", "rematch", or a game's own input (Minigames.lua).
-Net.Challenge = remote("ChallengeRequest") -- ("ask", userId, game) | ("answer", inviteId, yes) | ("cancel") (Challenges.lua).
+Net.Play = remote("PlayRequest") -- (action, a, b): a Port game: "leave", "again" (gameId), or a game's own input (Minigames.lua).
+Net.Challenge = remote("ChallengeRequest") -- ("ask", userId, game) | ("answer", inviteId, yes) | ("cancel") | ("rematch", id) (Challenges.lua).
 Net.Sanctuary = remote("SanctuaryRequest") -- ("home" | "visit", userId | "port" | "feed" | "toy", point | "bell").
 Net.GameEvent = remote("GameEvent")
 folder.Parent = ReplicatedStorage

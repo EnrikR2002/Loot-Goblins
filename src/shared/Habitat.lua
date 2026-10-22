@@ -260,11 +260,11 @@ function Habitat.place(profile, socket, decorId)
 	return result(true, "ok")
 end
 
--- The pets shown on the isle: owned (owns(petId) -> bool), not repeated, at most Config.SANCTUARY.RESIDENTS.
+-- The pets shown on the isle: owned (owns(petId) -> bool), not repeated, at most Config.PET_ISLES.RESIDENTS.
 function Habitat.setResidents(profile, list, owns)
 	local out, seen = {}, {}
 	for _, id in ipairs(type(list) == "table" and list or {}) do
-		if type(id) == "string" and not seen[id] and owns(id) and #out < Config.SANCTUARY.RESIDENTS then
+		if type(id) == "string" and not seen[id] and owns(id) and #out < Config.PET_ISLES.RESIDENTS then
 			seen[id] = true
 			table.insert(out, id)
 		end

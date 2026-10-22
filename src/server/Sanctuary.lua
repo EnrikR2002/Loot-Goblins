@@ -2,7 +2,7 @@
 -- they own wander, nap in their nests, splash in the pond, come running when they are fed, chase a thrown ball and
 -- gather at the bell. The goods and the rules are shared/Habitat.lua's; this module builds the isles and runs them.
 --
---   THE ISLES  one per goblin, in two rings over the town (Config.SANCTUARY.RINGS), built when their profile is first
+--   THE ISLES  one per goblin, in two rings over the town (Config.PET_ISLES.RINGS), built when their profile is first
 --              seen and rebuilt only when what it looks like changes (theme, features, decorations, trophies). The pets
 --              are drawn by every client from the isle's attributes (client/Sanctuary.lua): Residents (whom the owner
 --              chose, or the pets they own, newest first), Away (out on expeditions), FedAt, Toy*, BellAt.
@@ -33,7 +33,7 @@ local Minigames = require(script.Parent.Minigames)
 
 local Sanctuary = {}
 
-local SC = Config.SANCTUARY
+local SC = Config.PET_ISLES
 local rgb = Color3.fromRGB
 local v3 = Vector3.new
 local kit

@@ -583,9 +583,9 @@ function Leaderboards.init(kit)
 			end
 			if os.clock() >= nextRefresh then
 				nextRefresh = os.clock() + S.REFRESH
-				local okRefresh, err = pcall(refresh)
+				local okRefresh, refreshErr = pcall(refresh)
 				if not okRefresh then
-					warn("[Leaderboards] refresh: " .. tostring(err))
+					warn("[Leaderboards] refresh: " .. tostring(refreshErr))
 				end
 			end
 			if os.clock() >= nextPay then

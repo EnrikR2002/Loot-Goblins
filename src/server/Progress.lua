@@ -737,6 +737,9 @@ function Progress.handle(player, action, a, b)
 				Analytics.event(player, "FirstShiniesPurchase", outcome.price, { item = item.id })
 				Analytics.onboarding(player, 3)
 			end
+			if item.slot == "boat" and not item.free then
+				Progress.milestone(player, "FirstSpecialtyBoat") -- V13.3 (a Robux grant: Progress.granted)
+			end
 			-- Wear it straight away (a pet only where pets can change; a pet look only on its own pet).
 			local slot = item.slot
 			local equipped = false
@@ -831,6 +834,13 @@ function Progress.granted(player, urgent)
 	local s = sessions[player]
 	if s then
 		changed(s, urgent)
+		-- V13.3: a boat class from a game pass or product counts as the first specialty boat too.
+		for _, item in ipairs(Catalog.bySlot.boat or {}) do
+			if not item.free and Economy.owns(s.profile, item.id) then
+				Progress.milestone(player, "FirstSpecialtyBoat")
+				break
+			end
+		end
 	end
 end
 

@@ -1,6 +1,6 @@
 -- The pet sanctuaries on this client (V13.3).
 --
---   THE PETS    on every isle near the camera (Config.SANCTUARY.DRAW), the owner's pets wander, pause, do their idle
+--   THE PETS    on every isle near the camera (Config.PET_ISLES.DRAW), the owner's pets wander, pause, do their idle
 --               quirk, splash about the pond (swimmers and floaters hover over it), and react to the isle's moments:
 --               FED (they run to the trough and eat), a BALL thrown (they race to it), the BELL (they gather round it
 --               and hop). Pets out on expeditions are not there. All drawn with the shared animator (PetCrowd).
@@ -31,7 +31,7 @@ local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
 local shopRemote = remotes:WaitForChild("ShopRequest")
 local sanctuaryRemote = remotes:WaitForChild("SanctuaryRequest")
-local SC = Config.SANCTUARY
+local SC = Config.PET_ISLES
 local C = Ui.C
 local rgb = Color3.fromRGB
 local v3 = Vector3.new

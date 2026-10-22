@@ -66,7 +66,7 @@ return function(t)
 		Habitat.setResidents(profile, many, function()
 			return true
 		end)
-		t.eq(#profile.sanctuary.residents, Config.SANCTUARY.RESIDENTS, "capped")
+		t.eq(#profile.sanctuary.residents, Config.PET_ISLES.RESIDENTS, "capped")
 	end)
 
 	t.test("an expedition comes back on the server's clock and is paid once", function()

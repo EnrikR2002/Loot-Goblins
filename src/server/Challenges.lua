@@ -257,6 +257,7 @@ Minigames.Finished:Connect(function(session, standings)
 	end
 	if session.state == "waiting" or session.state == "lobby" then
 		-- It never started (one of them left while it waited for the venue): nobody won anything.
+		record.rematchUntil = 0 -- (and the record can go)
 		for _, p in ipairs({ record.a, record.b }) do
 			if p.Parent then
 				Net.toast(p, "The challenge was called off.")

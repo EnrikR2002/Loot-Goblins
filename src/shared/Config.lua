@@ -2765,7 +2765,8 @@ Config.SEASONS = {
 
 -- THE PET SANCTUARY (server/Sanctuary.lua, client/Sanctuary.lua, shared/Habitat.lua). Every goblin in the server has a
 -- little floating isle over the Port where the pets they own wander, eat, chase a ball and come running to a bell.
-Config.SANCTUARY = {
+-- (Not Config.SANCTUARY: that is V9's safe water round Goblin Cove.)
+Config.PET_ISLES = {
 	RINGS = { { radius = 250, y = 190, count = 10 }, { radius = 410, y = 230, count = 22 } }, -- 32 isles.
 	ISLE = 30, -- An isle's radius.
 	RESIDENTS = 12, -- Pets shown on an isle at once (the owner picks them; the newest first otherwise).
