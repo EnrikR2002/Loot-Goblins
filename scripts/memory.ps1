@@ -22,5 +22,10 @@ if (!$memoryPython) {
     $memoryPython = $launcher.Source
     $memoryPrefix = @('-3')
 }
+# Python writes progress (the test runner's dots) and warnings to stderr. Under Stop, Windows PowerShell 5.1 turns that
+# into a terminating error, so only the exit code decides here.
+$previousErrorAction = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 & $memoryPython @memoryPrefix (Join-Path $PSScriptRoot 'memory.py') $Action
+$ErrorActionPreference = $previousErrorAction
 if ($LASTEXITCODE -ne 0) { throw 'The memory step needs attention. The AI should read the reason above and repair it; existing records were preserved.' }
