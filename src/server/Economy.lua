@@ -12,6 +12,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Catalog"))
+local PortGames = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("PortGames"))
+local Seasons = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Seasons"))
 
 local Economy = {}
 
@@ -223,6 +225,7 @@ Economy.PRESET_SLOTS = {
 	"trickfx",
 	"callout",
 	"victory",
+	"title", -- V13.3
 }
 
 function Economy.savePreset(profile, index, name, maxPresets)
@@ -360,6 +363,8 @@ function Economy.statValue(profile, name)
 		return countKeys(stats.bankedFrom)
 	elseif name == "classes" then
 		return countKeys(stats.classBanks)
+	elseif name == "gamesTried" then
+		return PortGames.tried(profile) -- V13.3: Port games finished at least once
 	end
 	return stats[name] or 0
 end
@@ -391,14 +396,121 @@ end
 function Economy.mergeEarnings(profile, standIn)
 	Economy.addShinies(profile, standIn.shinies)
 	local from, to = standIn.stats, profile.stats
-	for _, key in ipairs({ "raids", "wins", "banked", "treasures", "snatches", "steals", "escapes" }) do
+	for _, key in ipairs({
+		"raids",
+		"wins",
+		"banked",
+		"treasures",
+		"snatches",
+		"steals",
+		"escapes",
+		"questsDone",
+		"expeditions",
+		"challengeWins",
+		"derbyWins",
+	}) do
 		to[key] = (to[key] or 0) + (from[key] or 0)
 	end
+	Economy.mergePort(profile, standIn)
 	to.bestCombo = math.max(to.bestCombo, from.bestCombo or 0)
 	for _, map in ipairs({ "bankedFrom", "escapedFrom", "classBanks" }) do
 		to[map] = to[map] or {}
 		for id, count in pairs(from[map] or {}) do
 			to[map][id] = (to[map][id] or 0) + count
+		end
+	end
+end
+
+-- V13.3: what a stand-in earned in the Port moves across too: the day's game counters (so the caps still hold), the
+-- personal bests, quest progress on the same day or week (added, up to the goal; distinct details joined), season
+-- bests on the same period (the better one) and the month's raid hauls, and the first-time milestones.
+function Economy.mergePort(profile, standIn)
+	local a, b = profile.games, standIn.games
+	if a and b then
+		if a.day == b.day then
+			for game, n in pairs(b.runs or {}) do
+				a.runs[game] = (a.runs[game] or 0) + n
+			end
+			a.earned = (a.earned or 0) + (b.earned or 0)
+			a.bests = (a.bests or 0) + (b.bests or 0)
+		elseif (b.day or 0) > (a.day or 0) then
+			a.day, a.runs, a.earned, a.bests = b.day, table.clone(b.runs or {}), b.earned or 0, b.bests or 0
+		end
+		for game, score in pairs(b.best or {}) do
+			if PortGames.better(game, score, a.best[game]) then
+				a.best[game] = score
+			end
+		end
+		for _, map in ipairs({ "plays", "wins" }) do
+			for game, n in pairs(b[map] or {}) do
+				a[map][game] = (a[map][game] or 0) + n
+			end
+		end
+	end
+	local qa, qb = profile.quests, standIn.quests
+	if qa and qb then
+		for _, pair in ipairs({ { "day", "daily" }, { "week", "weekly" } }) do
+			local period, list = pair[1], pair[2]
+			if qb[period] ~= nil and qa[period] == qb[period] then
+				for _, theirs in ipairs(qb[list] or {}) do
+					for _, ours in ipairs(qa[list] or {}) do
+						local def = Seasons.QUEST_BY_ID[ours.id]
+						if def and ours.id == theirs.id and not ours.claimed then
+							if def.distinct then
+								ours.seen = ours.seen or {}
+								local n = 0
+								for key in pairs(theirs.seen or {}) do
+									ours.seen[key] = true
+								end
+								for _ in pairs(ours.seen) do
+									n += 1
+								end
+								ours.n = math.min(def.goal, n)
+							else
+								ours.n = math.min(def.goal, (ours.n or 0) + (theirs.n or 0))
+							end
+						end
+					end
+				end
+			elseif qb[period] ~= nil and (qa[period] == nil or qb[period] > qa[period]) then
+				qa[period], qa[list] = qb[period], qb[list]
+			end
+		end
+	end
+	local sa, sb = profile.season, standIn.season
+	if sa and sb then
+		for name, value in pairs(sb.best or {}) do
+			local boardId = string.match(name, "^([%w_]+)@")
+			local board = boardId and Seasons.BOARD_BY_ID[boardId]
+			if board and not sa.paid[name] and Seasons.better(board, value, sa.best[name]) then
+				sa.best[name] = value
+			end
+		end
+		if sb.raids and sb.raids.key ~= "" then
+			if sa.raids.key == sb.raids.key then
+				for _, gold in ipairs(sb.raids.list or {}) do
+					table.insert(sa.raids.list, gold)
+				end
+				table.sort(sa.raids.list, function(x, y)
+					return x > y
+				end)
+				while #sa.raids.list > 10 do
+					table.remove(sa.raids.list)
+				end
+			elseif sa.raids.key < sb.raids.key then
+				sa.raids = { key = sb.raids.key, list = table.clone(sb.raids.list or {}) }
+			end
+		end
+	end
+	for name, at in pairs(standIn.milestones or {}) do
+		if profile.milestones and not profile.milestones[name] then
+			profile.milestones[name] = at
+		end
+	end
+	if profile.challenges and standIn.challenges and profile.challenges.day == standIn.challenges.day then
+		profile.challenges.paid += standIn.challenges.paid or 0
+		for who, n in pairs(standIn.challenges.pairs or {}) do
+			profile.challenges.pairs[who] = (profile.challenges.pairs[who] or 0) + n
 		end
 	end
 end

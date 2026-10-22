@@ -29,7 +29,7 @@ local function covered(item)
 		return BoatLook.covers(item)
 	elseif slot == "pet" or slot == "petskin" or slot == "pethat" then
 		return PetLook.covers(item)
-	elseif slot == "trail" or slot == "wake" or slot == "trickfx" or slot == "callout" then
+	elseif slot == "trail" or slot == "wake" or slot == "trickfx" or slot == "callout" or slot == "title" then
 		return StyleFx.covers(item)
 	elseif slot == "emote" or slot == "victory" then
 		return EmoteMoves.covers(item)
@@ -91,7 +91,11 @@ return function(t)
 
 	t.test("every item has exactly one way to be obtained", function()
 		for _, item in ipairs(Catalog.items) do
-			local ways = (Catalog.isFree(item) and 1 or 0) + (item.price and 1 or 0) + (item.unlock and 1 or 0)
+			-- V13.3: `award` (a leaderboard or a week's quests: shared/Seasons.lua) is a fourth way.
+			local ways = (Catalog.isFree(item) and 1 or 0)
+				+ (item.price and 1 or 0)
+				+ (item.unlock and 1 or 0)
+				+ (item.award and 1 or 0)
 			if item.rarity == "premium" then
 				t.eq(ways, 0, item.id .. ": a premium-only item must have no Shinies price, unlock or free flag")
 				t.ok(item.premium ~= nil, item.id .. ": premium without a product key")
@@ -293,6 +297,18 @@ return function(t)
 				end
 			end
 		end
+	end)
+
+	t.test("V13.3: every title has words to show, short enough to read over a head", function()
+		t.ok(#Catalog.bySlot.title >= 10, "titles exist")
+		for _, item in ipairs(Catalog.bySlot.title) do
+			local style = StyleFx.TITLES[item.id]
+			t.ok(style ~= nil and #style.text > 0 and #style.text <= 24, item.id .. ": text")
+			t.ok(typeof(style.color) == "Color3" and typeof(style.stroke) == "Color3", item.id .. ": colours")
+		end
+		local look = Catalog.decodeLook("title=title_seadog;hat=hat_tricorn")
+		t.eq(look.title, "title_seadog", "a title travels in the look")
+		t.eq(Catalog.decodeLook("title=hat_tricorn").title, nil, "a hat is not a title")
 	end)
 
 	t.test("every emote and victory dance poses without error from start to end", function()

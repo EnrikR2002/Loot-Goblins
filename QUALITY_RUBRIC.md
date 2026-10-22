@@ -138,6 +138,21 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### Windows PowerShell 5.1 stops a script on any stderr line from a program it runs
+
+**ID:** powershell-native-stderr-stops-script | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-22
+**Related checks:** General
+
+**Observed / proposed:** With $ErrorActionPreference = 'Stop', Windows PowerShell 5.1 turns each line a native program writes to stderr into a NativeCommandError, and the first one ends the script. Python's unittest runner writes its progress dots to stderr, so scripts/memory.ps1 'test' failed with exit code 1 even though all 27 tests passed when run directly. Setting the preference to 'Continue' around the native call, and letting $LASTEXITCODE decide, fixed it.
+
+**Recommendation:** When a PowerShell wrapper runs a tool that writes progress or warnings to stderr, do not rely on Stop for error handling. Around that call set $ErrorActionPreference to 'Continue' and check $LASTEXITCODE, then restore the old value. Run the tool directly once to tell a real test failure from a wrapper failure.
+
+**Applies when:** A Windows PowerShell 5.1 script runs Python, Rojo, selene or another program that writes to stderr; A check script exits 1 while the tool it runs reports success
+
+**Limits:** Observed on Windows PowerShell 5.1 with Python 3.12 unittest on one Windows 10 PC; PowerShell 7 treats native stderr differently and was not checked
+
+- [automated-test](https://github.com/EnrikR2002/Loot-Goblins/blob/40a5d567892c04c305750bf55b746c08e35479a0/scripts/memory.ps1): scripts/check.ps1 failed at the memory test step with exit code 1 and 27 progress dots on stderr. Running the same unittest directly gave 'Ran 27 tests ... OK'. After the fix in this commit the full check exits 0.
+
 ### Studio MCP's simulated mouse leaves the camera Fixed
 
 **ID:** studio-mcp-mouse-leaves-camera-fixed | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-19

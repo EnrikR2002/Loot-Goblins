@@ -24,6 +24,14 @@
 --   BoatAbilities  each boat class's own ability, validated (V13)
 --   WorldChaos   one physical chaos event per raid, played in episodes (V13.2)
 --   Raid sign-up the Port's JOIN / STAY IN PORT / AUTO-JOIN and the raid's LEAVE (V13.2: RaidRequest)
+--   V13.3, THE LIVING PORT:
+--   Minigames    the framework for the Port's seven games (Regatta, Gauntlet, CannonGolf, PetDerby, TreasureToss,
+--                TargetGallery, CrabChaos: one module each)
+--   Quests       the Captain's Quest Board (daily and weekly quests)
+--   Leaderboards weekly and monthly boards, the Hall of Records, season rewards
+--   Sanctuary    every goblin's floating pet isle and pet expeditions
+--   Challenges   one-on-one challenges to a Port game
+--   Prospects    the "what's next" card after a raid
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
@@ -73,6 +81,15 @@ local Port = require(script.Parent.Port)
 local BoatAbilities = require(script.Parent.BoatAbilities)
 local Knockout = require(script.Parent.Knockout)
 local WorldChaos = require(script.Parent.WorldChaos)
+local WorldKit = require(script.Parent.WorldKit)
+-- V13.3: the Living Port.
+local Minigames = require(script.Parent.Minigames)
+local Regatta = require(script.Parent.Regatta)
+local Quests = require(script.Parent.Quests)
+local Leaderboards = require(script.Parent.Leaderboards)
+local Sanctuary = require(script.Parent.Sanctuary)
+local Challenges = require(script.Parent.Challenges)
+local Prospects = require(script.Parent.Prospects)
 require(script.Parent.Bestiary)
 require(script.Parent.BestiaryMinor)
 local Raid = require(script.Parent.Raid)
@@ -101,9 +118,16 @@ print(
 		seaGrid.probes
 	)
 )
+-- V13.3: the Regatta's hoops and ramps are boat gates, so they exist before Boats.build sends every client the list.
+Regatta.addGates(WorldKit)
 Boats.build(refs)
 -- V13: the Goblin Port, where every goblin arrives and waits between raids (its slipways show every boat class).
 Port.build(refs, Boats.displayModel)
+-- V13.3: the Port's games, the Quest Board, the Hall of Records and the sanctuaries (each builds its own corner of town).
+for _, name in ipairs({ "Regatta", "Gauntlet", "CannonGolf", "PetDerby", "TreasureToss", "TargetGallery", "CrabChaos" }) do
+	Minigames.register(require(script.Parent[name]))
+end
+Minigames.build(Port.kit)
 refs.spawn.Enabled = false -- Goblin Cove's pad is no longer where goblins appear: the Port's is (Raid.placeCharacter)
 Skyship.build(refs)
 Flight.build(refs, Skyship.model())
@@ -130,6 +154,25 @@ WorldChaos.init(refs) -- V13.2 (before Raid: the Port shows the next raid's chao
 Raid.init(refs)
 BoatAbilities.init(refs)
 Progress.participating = Raid.isParticipant
+-- V13.3 (registered before Progress opens anyone's profile, so their first publish already includes the Port's parts).
+Minigames.reward = Progress.onPortGame
+Quests.init(Port.kit)
+Leaderboards.init(Port.kit)
+Sanctuary.init(Port.kit)
+Challenges.init()
+Prospects.init()
+Raid.onDeparting = function(players)
+	Minigames.leaveAll(players, "raid")
+end
+-- The world's chaos throwing a goblin about counts toward the chaos quests (once every few seconds at most).
+local tossedAt = setmetatable({}, { __mode = "k" })
+WorldChaos.Tossed:Connect(function(player)
+	local t = os.clock()
+	if t - (tossedAt[player] or 0) >= 4 then
+		tossedAt[player] = t
+		Progress.record(player, "chaos")
+	end
+end)
 Progress.init()
 Monetization.init()
 Storms.reset()
@@ -349,6 +392,7 @@ local function setupPlayer(player)
 	player.CharacterRemoving:Connect(function()
 		Loot.dropFor(player, "death")
 		Poltergoblin.finish(player, "cancel")
+		Minigames.leave(player, "reset") -- V13.3: a new body is a new start (a reset ends a Port game)
 	end)
 end
 
@@ -423,6 +467,20 @@ Net.Raid.OnServerEvent:Connect(function(player, action, value)
 		Raid.setAutoJoin(player, value == true)
 	elseif action == "leave" then
 		Raid.leave(player)
+	end
+end)
+-- V13.3: the Port's games, challenges and sanctuaries.
+Net.Play.OnServerEvent:Connect(function(player, action, a, b)
+	Minigames.request(player, action, a, b)
+end)
+Net.Challenge.OnServerEvent:Connect(function(player, action, a, b)
+	if type(action) == "string" then
+		Challenges.request(player, action, a, b)
+	end
+end)
+Net.Sanctuary.OnServerEvent:Connect(function(player, action, a)
+	if type(action) == "string" then
+		Sanctuary.request(player, action, a)
 	end
 end)
 Net.BoatAbility.OnServerEvent:Connect(function(player, aimPoint, info)
@@ -604,4 +662,5 @@ RunService.Heartbeat:Connect(function(dt)
 	Movement.tick(dt)
 	Emotes.tick()
 	Raid.tick()
+	Minigames.tick(dt) -- V13.3
 end)

@@ -166,6 +166,7 @@ local function previewLook()
 			"trickfx",
 			"callout",
 			"victory",
+			"title", -- V13.3
 		}) do
 			look[slot] = previewPreset[slot]
 		end
@@ -213,6 +214,7 @@ local STAGE_FOR = {
 	wake = "boat",
 	trickfx = "boat",
 	callout = "callout",
+	title = "callout", -- V13.3: a title previews flat, as the words over your head
 	emote = "goblin",
 	victory = "goblin",
 	pet = "pet",
@@ -606,6 +608,38 @@ local function stageOverlay(item)
 			TextColor3 = C.inkSoft,
 			TextXAlignment = Enum.TextXAlignment.Center,
 		})
+	elseif item.slot == "title" then
+		-- V13.3: the words as they float over a goblin's head.
+		local style = StyleFx.TITLES[item.id]
+		if style then
+			local label = overlayLabel({
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.45),
+				Size = UDim2.fromScale(0.92, 0.2),
+				Text = (style.glyph and (style.glyph .. " ") or "") .. style.text,
+				Font = Enum.Font.FredokaOne,
+				TextScaled = true,
+				TextColor3 = style.color,
+				TextXAlignment = Enum.TextXAlignment.Center,
+			})
+			Ui.make(
+				"UIStroke",
+				{ Color = style.stroke, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual },
+				label
+			)
+			if style.gradient then
+				Ui.make("UIGradient", { Color = style.gradient, Rotation = 90 }, label)
+			end
+			overlayLabel({
+				Position = UDim2.new(0, 10, 1, -54),
+				Size = UDim2.new(1, -20, 0, 20),
+				Text = "Floats over your goblin's head, for everyone to see.",
+				TextSize = 13,
+				Font = Ui.BODY,
+				TextColor3 = C.inkSoft,
+				TextXAlignment = Enum.TextXAlignment.Center,
+			})
+		end
 	elseif item.slot == "callout" then
 		local style = StyleFx.CALLOUTS[item.id] or StyleFx.CALLOUTS.callout_classic
 		local words = { "CORKSCREW!", "x3 COMBO!", "OUTRAGEOUS!" }
@@ -961,6 +995,23 @@ local function thumbnail(item, holder)
 			TextSize = 26,
 			TextXAlignment = Enum.TextXAlignment.Center,
 		})
+	elseif slot == "title" then
+		local style = StyleFx.TITLES[item.id]
+		local label = Ui.label(holder, {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(0.94, 0.42),
+			Text = style and style.text or item.name,
+			Font = Enum.Font.FredokaOne,
+			TextScaled = true,
+			TextColor3 = style and style.color or C.white,
+			TextXAlignment = Enum.TextXAlignment.Center,
+		})
+		Ui.make("UIStroke", {
+			Color = style and style.stroke or C.night,
+			Thickness = 2,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
+		}, label)
 	elseif slot == "callout" then
 		local style = StyleFx.CALLOUTS[item.id] or StyleFx.CALLOUTS.callout_classic
 		local label = Ui.label(holder, {
@@ -1008,6 +1059,9 @@ local function stateText(item, set, look)
 	end
 	if item.unlock then
 		return "🔒 TROPHY", Catalog.RARITIES.trophy.color:Lerp(C.ink, 0.35)
+	end
+	if item.award then
+		return "🏆 SEASON", Catalog.RARITIES.season.color:Lerp(C.ink, 0.3) -- V13.3
 	end
 	local premium = premiumInfo(item)
 	if Catalog.forSale(item) then
@@ -1116,6 +1170,11 @@ local function refreshInfo()
 	info.vibe.Text = item.vibe and string.upper(item.vibe) or ""
 	info.blurb.Text = item.blurb
 	local detail = describe(item)
+	if item.award and not owns(item, set) then
+		detail = item.award == "weekly_bundle"
+				and "Earned, not bought: claim all three of a week's quests at the Captain's Quest Board (it changes each week)."
+			or "Earned, not bought: a season prize from the Hall of Records (see the Quest Board's SEASON page)."
+	end
 	if item.unlock and not owns(item, set) then
 		local achievement = Catalog.achievementById[item.unlock]
 		local progress = achievementProgress()[item.unlock]
@@ -1164,9 +1223,9 @@ local function refreshInfo()
 			primary.Text = string.format("NEED ◆ %d MORE", item.price - shinies())
 			Ui.setStyle(primary, "ghost")
 		end
-	elseif item.unlock then
+	elseif item.unlock or item.award then
 		primary.Visible = true
-		primary.Text = "LOCKED"
+		primary.Text = item.award and "SEASON PRIZE" or "LOCKED"
 		Ui.setStyle(primary, "ghost")
 	end
 	if premium and not owned then
@@ -1271,6 +1330,8 @@ local function primaryPressed()
 		refreshInfo()
 	elseif item.unlock then
 		setMessage("This one is a trophy: see how to earn it above.", C.inkSoft)
+	elseif item.award then
+		setMessage("This one is a season prize: see how to earn it above.", C.inkSoft)
 	end
 end
 

@@ -56,6 +56,9 @@ local WorldChaos = require(script.Parent.WorldChaos)
 
 local Raid = {}
 Raid.phase = "port"
+-- V13.3: (players) goblins about to be taken to the raid: their Port games end first (Main: Minigames.leaveAll). The
+-- raid always wins over a game in the Port.
+Raid.onDeparting = function(_players) end
 
 local refs
 local phaseEndsAt = 0
@@ -204,7 +207,14 @@ function Raid.start()
 	table.clear(participants)
 	-- V13.2: only the goblins who signed up go (V13: everyone in the server). The rest stay in the Port.
 	local going = {}
+	local signed = {}
 	for _, player in ipairs(Players:GetPlayers()) do
+		if player:GetAttribute("RaidOptIn") and Util.aliveRoot(player) then
+			table.insert(signed, player)
+		end
+	end
+	pcall(Raid.onDeparting, signed)
+	for _, player in ipairs(signed) do
 		if player:GetAttribute("RaidOptIn") and Util.aliveRoot(player) then
 			join(player)
 			table.insert(going, player)
@@ -266,6 +276,7 @@ function Raid.joinLate(player)
 	if not Util.aliveRoot(player) then
 		return false
 	end
+	pcall(Raid.onDeparting, { player })
 	join(player)
 	Progress.onRaidStart({ player }, true)
 	Skyship.board(player)

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "new-config-table-can-replace-an-old-one",
+  "title": "A new settings table in a shared Config module can silently replace an existing one",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-22",
+  "topics": [
+    "architecture",
+    "configuration",
+    "testing"
+  ],
+  "observation": "A feature added a settings block `Config.SANCTUARY = { ... }` for floating pet isles near the end of a 2,800-line Config module. An older block with the same name (a safe zone used by pursuit, map and minimap code) sat 1,500 lines earlier. Luau raises nothing when a table field is assigned twice, so the new table replaced the old one at require time and every reader of the old fields would have got nil in play. StyLua, Selene, both Rojo builds and the new feature's own tests all passed; an older automated test that read the old table's RADIUS failed with 'arithmetic on nil', which is how it was found before anyone played.",
+  "recommendation": "When adding a top-level table to a large shared Config (or any module that builds one table across many lines), search for the name first and check for duplicate top-level assignments, for example by listing every `^Config\\.[A-Z_]+ =` line and looking for repeats. Keep at least one automated test that reads each older settings table, so a replacement fails loudly instead of in play.",
+  "applies_when": [
+    "Adding a settings table to a long shared Config module",
+    "Several people or agents add features to the same Config file over time"
+  ],
+  "limits": [
+    "One occurrence in one Roblox game's Config module (October 2026)",
+    "Linting with Selene 0.32 did not flag the duplicate assignment; other linters or rules may"
+  ],
+  "evidence": [
+    {
+      "kind": "automated-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/802fa17d21c3119c3a3a630f5be035af9d69c5c3/docs/reports/2026-10-22-v13-3-living-port.md",
+      "detail": "Section 7: ChaosSpec failed at Config.SANCTUARY.RADIUS (nil) after V13.3 redefined Config.SANCTUARY; renamed to Config.PET_ISLES, 136 of 136 Luau tests then passed."
+    }
+  ]
+}

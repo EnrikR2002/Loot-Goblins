@@ -937,6 +937,11 @@ local function update(dt)
 			)
 		end
 		hidePreview()
+	elseif (phase == "loaded" or phase == "fuse") and player:GetAttribute("LaunchKind") == "golf" then
+		-- V13.3: a Cannon Golf tee aims its own way (client/PlayGolf.lua): hold to charge, look to aim.
+		releaseView()
+		Map.setTitle()
+		setBanner(nil)
 	elseif phase == "loaded" or phase == "fuse" then
 		Map.setTitle(phase == "loaded" and "CLICK AN ISLAND TO POINT AT IT  -  M closes" or nil)
 		aimStep(dt, phase == "fuse")
@@ -995,7 +1000,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 	local phase = player:GetAttribute("DeployState")
-	if phase == "loaded" then
+	if phase == "loaded" and player:GetAttribute("LaunchKind") ~= "golf" then
 		if
 			input.KeyCode == Enum.KeyCode.Space
 			or (input.UserInputType == Enum.UserInputType.MouseButton1 and not Map.isOpen())

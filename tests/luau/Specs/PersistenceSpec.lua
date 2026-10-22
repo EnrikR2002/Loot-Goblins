@@ -59,7 +59,7 @@ return function(t)
 		t.eq(profile.welcomed, false, "migrated goblins get the V11 welcome too")
 	end)
 
-	t.test("V13: a version 2 profile upgrades to 3 keeping every item, Shiny, stat and achievement", function()
+	t.test("V13: a version 2 profile upgrades keeping every item, Shiny, stat and achievement", function()
 		local v2 = {
 			v = 2,
 			shinies = 412,
@@ -82,7 +82,7 @@ return function(t)
 		}
 		local profile, how = ProfileSchema.load(v2, LIMITS, 5)
 		t.eq(how, "upgraded", "how")
-		t.eq(profile.v, 3, "version 3")
+		t.eq(profile.v, ProfileSchema.VERSION, "the current version")
 		t.eq(profile.shinies, 412, "shinies")
 		t.ok(profile.owned.Gull and profile.owned.hat_tricorn and profile.owned.livery_starlit, "everything owned")
 		t.eq(profile.equipped.pet, "Gull", "pet out")
@@ -112,7 +112,7 @@ return function(t)
 			somethingNew = { kept = true },
 		}
 		local profile, how = ProfileSchema.load(damaged, LIMITS, 5)
-		t.eq(how, "upgraded", "how (a version 2 profile, upgraded to 3)")
+		t.eq(how, "upgraded", "how (a version 2 profile, upgraded)")
 		t.eq(profile.shinies, 0, "bad number to 0")
 		t.ok(profile.owned.hat_tricorn and profile.owned.future_item_v12, "owned kept, including unknown ids")
 		t.eq(profile.owned[5], nil, "a non-string key is dropped")
@@ -129,6 +129,120 @@ return function(t)
 		t.eq(#profile.presets[1].name, 24, "long name trimmed")
 		t.eq(type(profile.history), "table", "history")
 		t.ok(profile.somethingNew and profile.somethingNew.kept, "unknown top-level data kept")
+	end)
+
+	t.test("V13.3: a version 3 profile upgrades to 4 keeping everything, with empty Port tables", function()
+		local v3 = {
+			v = 3,
+			shinies = 640,
+			owned = { boat_wraith = true, Inky = true, hat_crown = true },
+			equipped = { boat = "boat_wraith", pet = "Inky", hat = "hat_crown" },
+			stats = {
+				raids = 41,
+				wins = 6,
+				banked = 410,
+				treasures = 33,
+				steals = 9,
+				escapes = 5,
+				escapedFrom = { Bone = 1 },
+			},
+			achievements = { first_haul = 10, leviathan_friend = 20 },
+			receipts = { "r-9" },
+			presets = {},
+			history = {},
+			welcomed = true,
+		}
+		local profile, how = ProfileSchema.load(v3, LIMITS, 5)
+		t.eq(how, "upgraded", "how")
+		t.eq(profile.v, 4, "version 4")
+		t.eq(profile.migratedFrom, 3, "from 3")
+		t.eq(profile.shinies, 640, "shinies")
+		t.ok(profile.owned.boat_wraith and profile.owned.Inky and profile.owned.hat_crown, "owned")
+		t.eq(profile.equipped.boat, "boat_wraith", "boat")
+		t.eq(profile.stats.escapedFrom.Bone, 1, "escape trophies' stat")
+		t.eq(profile.achievements.leviathan_friend, 20, "achievements")
+		t.eq(profile.stats.questsDone, 0, "new stat")
+		t.eq(profile.stats.expeditions, 0, "new stat")
+		t.eq(type(profile.games.best), "table", "games")
+		t.eq(#profile.quests.daily, 0, "no quests dealt yet")
+		t.eq(profile.quests.day, nil, "no quest day yet")
+		t.eq(type(profile.season.best), "table", "season")
+		t.eq(profile.sanctuary.theme, "meadow", "the free theme")
+		t.eq(#profile.sanctuary.decor, 4, "four empty decoration spots")
+		t.eq(#profile.expeditions.list, 0, "no expeditions")
+		t.eq(profile.expeditions.nextId, 1, "first expedition id")
+		t.eq(type(profile.milestones), "table", "milestones")
+	end)
+
+	t.test("V13.3: damaged Port tables are repaired, never trusted", function()
+		local damaged = ProfileSchema.new(5)
+		damaged.games = {
+			day = "today",
+			runs = { regatta = 3, golf = -2, [4] = 1 },
+			earned = 0 / 0,
+			best = { regatta = 41.5, golf = -10, toss = math.huge },
+			plays = "lots",
+		}
+		damaged.quests = {
+			day = 20383,
+			daily = { { id = "d_bank2", n = 1.7, claimed = "yes" }, "junk", { n = 4 } },
+			week = "x",
+			weekly = 7,
+		}
+		damaged.season = {
+			best = { ["haul@w2911"] = 18, ["bad@x"] = -3 },
+			paid = "no",
+			raids = { key = 5, list = { 12, -1, "x", 9 } },
+			trophies = { { board = "haul", key = "w2910", tier = "gold", rank = 3.6 }, { board = 4 } },
+		}
+		damaged.sanctuary = {
+			theme = 9,
+			owned = { decor_palm = true, [2] = true },
+			levels = { dock = 7.9, pond = "big" },
+			decor = { "palm", 4, "" },
+			residents = { "Crab", 5, "Gull" },
+		}
+		damaged.expeditions = {
+			list = { { id = 4, pet = "Crab", trip = "reef", at = 100, back = 200 }, { id = 2, pet = 7 } },
+			nextId = 1,
+			collected = -5,
+		}
+		damaged.milestones = { FirstRaid = 12, bad = "x" }
+		damaged.challenges = "none"
+		local profile = ProfileSchema.load(damaged, LIMITS, 5)
+		t.eq(profile.games.day, 0, "bad day")
+		t.eq(profile.games.runs.regatta, 3, "good count kept")
+		t.eq(profile.games.runs.golf, nil, "negative count dropped")
+		t.eq(profile.games.earned, 0, "NaN")
+		t.eq(profile.games.best.regatta, 41.5, "a best time keeps its fraction")
+		t.eq(profile.games.best.golf, nil, "negative best dropped")
+		t.eq(profile.games.best.toss, nil, "infinite best dropped")
+		t.eq(type(profile.games.plays), "table", "plays")
+		t.eq(#profile.quests.daily, 1, "only the well-formed quest kept")
+		t.eq(profile.quests.daily[1].n, 1, "whole progress")
+		t.eq(profile.quests.daily[1].claimed, false, "claimed only when true")
+		t.eq(profile.quests.week, nil, "bad week")
+		t.eq(#profile.quests.weekly, 0, "bad list")
+		t.eq(profile.season.best["haul@w2911"], 18, "a season best kept")
+		t.eq(profile.season.best["bad@x"], nil, "a bad one dropped")
+		t.eq(type(profile.season.paid), "table", "paid")
+		t.eq(profile.season.raids.key, "", "bad month key")
+		t.eq(#profile.season.raids.list, 2, "good hauls kept")
+		t.eq(#profile.season.trophies, 1, "a bad trophy dropped")
+		t.eq(profile.season.trophies[1].rank, 3, "whole rank")
+		t.eq(profile.sanctuary.theme, "meadow", "bad theme")
+		t.ok(profile.sanctuary.owned.decor_palm, "owned decor kept")
+		t.eq(profile.sanctuary.levels.dock, 7, "a level is whole")
+		t.eq(profile.sanctuary.levels.pond, nil, "a bad level dropped")
+		t.eq(profile.sanctuary.decor[2], "", "a bad decoration spot emptied")
+		t.eq(#profile.sanctuary.decor, 4, "always four spots")
+		t.eq(#profile.sanctuary.residents, 2, "bad resident dropped")
+		t.eq(#profile.expeditions.list, 1, "bad expedition dropped")
+		t.eq(profile.expeditions.nextId, 5, "the next id is past every id in use")
+		t.eq(profile.expeditions.collected, 0, "negative")
+		t.eq(profile.milestones.FirstRaid, 12, "milestone kept")
+		t.eq(profile.milestones.bad, nil, "bad milestone dropped")
+		t.eq(type(profile.challenges.pairs), "table", "challenges reset")
 	end)
 
 	t.test("a value that is not a table becomes a fresh profile; a newer version is left alone", function()

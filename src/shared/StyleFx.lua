@@ -171,8 +171,45 @@ StyleFx.CALLOUTS = {
 	},
 }
 
+-- V13.3: TITLES, a few words over a goblin's head that every client draws (client/Titles.lua) from the Look attribute.
+-- text: what it says; color, stroke: its letters; glyph: a small mark before it; gradient (optional): gold letters.
+StyleFx.TITLES = {
+	title_landlubber = { text = "Landlubber", glyph = "⚓", color = rgb(214, 196, 160), stroke = rgb(60, 40, 24) },
+	title_scallywag = { text = "Scallywag", glyph = "☠", color = rgb(255, 120, 90), stroke = rgb(50, 16, 12) },
+	title_seadog = { text = "Old Sea Dog", glyph = "⚓", color = rgb(130, 210, 255), stroke = rgb(16, 40, 70) },
+	title_royalty = {
+		text = "Goblin Royalty",
+		glyph = "♛",
+		color = rgb(255, 214, 70),
+		stroke = rgb(110, 60, 10),
+		gradient = seq(rgb(255, 250, 200), rgb(255, 190, 40)),
+	},
+	title_regular = { text = "Port Regular", glyph = "★", color = rgb(196, 150, 255), stroke = rgb(40, 16, 70) },
+	title_questor = { text = "Quest Taker", glyph = "✦", color = rgb(196, 150, 255), stroke = rgb(40, 16, 70) },
+	title_challenger = { text = "The Challenger", glyph = "⚔", color = rgb(196, 150, 255), stroke = rgb(40, 16, 70) },
+	title_haul = { text = "Haul Champion", glyph = "♛", color = rgb(255, 150, 110), stroke = rgb(70, 20, 10) },
+	title_regatta = { text = "Regatta Ace", glyph = "⚑", color = rgb(255, 150, 110), stroke = rgb(70, 20, 10) },
+	title_golf = { text = "Cannon Golf Ace", glyph = "⛳", color = rgb(255, 150, 110), stroke = rgb(70, 20, 10) },
+	title_champion = {
+		text = "Pirate Champion",
+		glyph = "♛",
+		color = rgb(255, 214, 70),
+		stroke = rgb(90, 20, 20),
+		gradient = seq(rgb(255, 236, 150), rgb(255, 120, 70)),
+	},
+	title_contender = {
+		text = "Championship Contender",
+		glyph = "★",
+		color = rgb(255, 150, 110),
+		stroke = rgb(70, 20, 10),
+	},
+	title_gauntlet = { text = "Gauntlet Legend", glyph = "✦", color = rgb(255, 150, 110), stroke = rgb(70, 20, 10) },
+}
+
 function StyleFx.covers(item)
-	if item.slot == "trail" then
+	if item.slot == "title" then
+		return StyleFx.TITLES[item.id] ~= nil
+	elseif item.slot == "trail" then
 		return StyleFx.TRAILS[item.id] ~= nil
 	elseif item.slot == "wake" then
 		return StyleFx.WAKES[item.id] ~= nil

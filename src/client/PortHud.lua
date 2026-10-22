@@ -11,6 +11,10 @@
 -- cancels; AUTO-JOIN keeps you signed up raid after raid. With nobody signed up the sign says it is waiting. On the left,
 -- the NEXT RAID card shows the raid's WORLD CHAOS event (its icon, name and line) and the skyship's route with the
 -- islands it comes in reach of, before anyone picks a boat. (RaidRequest: the server decides.)
+-- V13.3 (the Living Port): under the wallet, one line of what you are saving for (client/NextUp.lua's goal), and three
+-- more chips: 📜 QUESTS (how many are ready to claim; opens the Quest Board), ⚔ CHALLENGE (the picker) and 🐾 your
+-- SANCTUARY (up to your isle, or the expeditions when a pet is home). While you play a Port game the sign, the sign-up
+-- row and the next-raid card step aside for the game's own panel (client/PlayHud.lua).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -35,6 +39,8 @@ local C = Ui.C
 
 local gui, scaler, sign, countdown, subline, buttons, joinButton
 local wallet, shiniesLabel, boatChip, petChip
+local goalLine, questChip, challengeChip, sanctuaryChip -- V13.3
+local hooks = {} -- V13.3: set by Main (quests, challenge, sanctuary, goal, playing, questReady, petsHome)
 local fade
 local plankMarker, plankLabel
 local signRow, signButton, autoButton -- V13.2: sign up / stay, auto-join
@@ -271,6 +277,7 @@ local function build()
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -12, 0, 10),
 		Size = UDim2.fromOffset(196, 116),
+		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 	}, root)
 	Ui.make("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, wallet)
@@ -304,6 +311,40 @@ local function build()
 		end
 	end)
 	petChip.Name = "PetChip"
+	-- V13.3: what you are saving for, and the Living Port's three chips.
+	goalLine = Ui.label(wallet, {
+		Name = "Goal",
+		Size = UDim2.fromOffset(196, 18),
+		Text = "",
+		Font = Ui.BOLD,
+		TextSize = 13,
+		TextColor3 = C.goldPale,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		LayoutOrder = 0,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+	})
+	Ui.stroke(goalLine, C.night, 1.5).ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	goalLine.LayoutOrder = 0
+	pill.LayoutOrder = -1
+	questChip = chip(wallet, 3, function()
+		if hooks.quests then
+			hooks.quests()
+		end
+	end)
+	questChip.Name = "QuestChip"
+	challengeChip = chip(wallet, 4, function()
+		if hooks.challenge then
+			hooks.challenge()
+		end
+	end)
+	challengeChip.Name = "ChallengeChip"
+	challengeChip.Text = "⚔ Challenge a goblin"
+	sanctuaryChip = chip(wallet, 5, function()
+		if hooks.sanctuary then
+			hooks.sanctuary()
+		end
+	end)
+	sanctuaryChip.Name = "SanctuaryChip"
 
 	-- The fade, over everything (a goblin moved between the raid and the Port).
 	fade = Ui.make(
@@ -428,6 +469,9 @@ local shownShinies = nil
 local function update()
 	local here = inPort()
 	gui.Enabled = here and not player:GetAttribute("Spectating")
+	-- V13.3: in a Port game, the game's panel has the top of the screen.
+	local playing = hooks.playing and hooks.playing() or false
+	sign.Visible = not playing
 	local camera = workspace.CurrentCamera
 	if camera then
 		local size = camera.ViewportSize
@@ -457,12 +501,12 @@ local function update()
 			subline.Text = "Too late to join: watch it, the next one is soon."
 			boardText = "RAID UNDER WAY: " .. clock(status.seconds)
 		end
-		buttons.Visible = true
+		buttons.Visible = not playing
 		joinButton.Visible = status.canJoin
 		signRow.Visible = false
 	else
 		buttons.Visible = false
-		signRow.Visible = true
+		signRow.Visible = not playing
 		signButton.Text = optedIn and "✔ SIGNED UP  ·  STAY IN PORT" or "⚔  JOIN NEXT RAID"
 		autoButton.Text = player:GetAttribute("AutoJoin") and "AUTO-JOIN: ON" or "AUTO-JOIN: OFF"
 		local left = status.seconds
@@ -494,6 +538,9 @@ local function update()
 	end
 	-- V13.2: the next raid's chaos and route (chosen as the Port opens).
 	updateNextCard(status.state == "raid")
+	if playing then
+		nextCard.Visible = false
+	end
 	if not here then
 		return
 	end
@@ -516,6 +563,17 @@ local function update()
 	boatChip.Text = string.format("⛵ %s%s", boat and boat.name or "Skiff", ability and ("  " .. ability.glyph) or "")
 	local pet = look.pet and Catalog.get(look.pet)
 	petChip.Text = pet and ("🐾 " .. pet.name) or "🐾 No pet: adopt one"
+	-- V13.3
+	local goal = hooks.goal and hooks.goal() or nil
+	goalLine.Text = goal or ""
+	goalLine.Visible = goal ~= nil
+	local claimable = hooks.questReady and hooks.questReady() or 0
+	questChip.Text = claimable > 0 and string.format("📜 Quests: %d to claim!", claimable) or "📜 Quests"
+	Ui.setStyle(questChip, claimable > 0 and "gold" or "wood")
+	local home = hooks.petsHome and hooks.petsHome() or 0
+	sanctuaryChip.Text = home > 0 and string.format("🐾 %d pet%s home: collect!", home, home == 1 and "" or "s")
+		or "🐾 My sanctuary"
+	Ui.setStyle(sanctuaryChip, home > 0 and "gold" or "wood")
 end
 
 -- The fade: in from black whenever the Zone changes (a goblin moved to the raid or home to the Port).
@@ -526,8 +584,9 @@ local function fadeIn()
 	}):Play()
 end
 
-function PortHud.start(shop)
+function PortHud.start(shop, extra)
 	openShop = shop
+	hooks = extra or {}
 	build()
 	RunService.RenderStepped:Connect(update)
 	local lastZone = player:GetAttribute("Zone")
