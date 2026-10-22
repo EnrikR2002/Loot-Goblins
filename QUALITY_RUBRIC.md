@@ -138,6 +138,66 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### Studio MCP's simulated mouse leaves the camera Fixed
+
+**ID:** studio-mcp-mouse-leaves-camera-fixed | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-19
+**Related checks:** CL-11
+
+**Observed / proposed:** In a Studio play session, any Studio MCP user_mouse_input action (a plain x/y move as well as an instance_path click) switched workspace.CurrentCamera.CameraType from Custom to Fixed, and it stayed Fixed. When the game then teleported the character (raid start onto a flying ship, 5,000 studs away) the camera stayed behind at the old place, which looked exactly like a game bug. A listener on the camera's CameraType showed the change at the moment of the mouse action; no game code sets Fixed (searched), and setting Custom from a client execute_luau restored a following camera at once. The tool's x/y coordinates were also 58 px above the game's own mouse and viewport coordinates (the GUI inset).
+
+**Recommendation:** After any simulated mouse action in a Studio playtest, reset the camera (CameraType = Custom) from a client execute_luau before judging what the camera shows, and log CameraType changes before reporting a camera bug. Convert WorldToViewportPoint y to the tool's coordinates by subtracting the GUI inset, or click buttons by instance_path.
+
+**Applies when:** Playtesting a Roblox game through Studio MCP input tools; Judging camera behaviour, or anything after a teleport, in a session that used the simulated mouse
+
+**Limits:** One Windows PC, Studio in October 2026, a 1346 x 640 play viewport; Whether the tool restores the camera later on its own was not established; real mice are unaffected
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/4827c4b387f9c4d90409577da84384b33efb5db5/docs/reports/2026-10-19-v13-2-sea-of-chaos.md): Section 12, last bullet; the camera log read '5.3:Custom ... 9.4:Fixed' around a simulated click, and 'Fixed' again after a plain x/y move.
+
+### A contact one client reports must be judged with both views' lag
+
+**ID:** client-reported-contact-needs-both-lags | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-19
+**Related checks:** CL-13, CL-35
+
+**Observed / proposed:** Loot Goblins' Corsair boarding: the Corsair's own client simulates its hull and reports 'arrived' when it is alongside the rival boat (server-simulated). The server then re-checked the gap and refused every boarding. In Studio (no added latency) the server measured 44 to 53 studs at the moment the client measured under 20, with the pair at 94 and 68 studs/s: the server sees the client-owned hull late, and the client sees the server-owned hull late, so the gaps differ by both boats' speeds along the line times the lag (about 0.17 s here). Allowing reach + (both speeds along the line) x 0.35 s made the boarding land; a check with only the closing speed still failed.
+
+**Recommendation:** When a client reports a contact with something another machine simulates, judge it with an allowance of both bodies' velocity components along the line between them times a lag budget (with a cap), not the server's raw gap and not just the closing speed. Log both views' distances once in Studio before choosing the budget, and leave the server's own contact check (no allowance) for contacts it sees itself.
+
+**Applies when:** A client-simulated body (vehicle, character) touching or reaching a server-simulated or another client's body; The server re-validates a contact the owning client reports
+
+**Limits:** Measured in Studio on one machine, with no real network latency; a live game's lag is larger, so the 0.35 s budget is a first guess; The allowance trusts the reporting client a little: bounded here by a cap and by the ability's own range and cooldown checks
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/4827c4b387f9c4d90409577da84384b33efb5db5/docs/reports/2026-10-19-v13-2-sea-of-chaos.md): Section 11, first row: boarding refused at server gaps of 44-53 studs; with the both-speeds allowance 'FrikiEnriki BOARDED a Skiff!' (section 3's ability table).
+
+### Measure a rebalance's before and after on one harness, in one session
+
+**ID:** before-after-balance-on-one-harness | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-19
+**Related checks:** CL-23, CL-25
+
+**Observed / proposed:** Loot Goblins V13.2 compressed ten boat classes' speeds. Paper numbers (top speed 96-135 to 106-118) did not say what a player would feel, so a server-side autopilot drove every class from three islands to the home harbour along the game's own pathfinder (full throttle, boost whenever its own cooldown allowed, test boats unable to collide). The same harness, in the same play session, was then run with the old numbers patched into the live config for a true before. Result: the fleet's spread home from the farthest island went from 11.2 s to 3.5 s; the slow classes barely changed and the fast ones lost 3 to 6 s; and a winding route still favoured good turners (3.6 s spread), which the top-speed table did not show. One harness bug cost a run: aiming each boat at the path's first waypoint, which was its own start point, gave CFrame.lookAt a zero direction and dropped every hull out of the world.
+
+**Recommendation:** For a speed or balance change, build one autopilot over real routes, run it with the old and the new numbers in the same session (patch the live config, restore it after), and report spreads per route, not only per-class stats. Skip waypoints closer than a few studs before calling CFrame.lookAt, and sanity-check one run (distance sailed, top speed) before trusting a batch.
+
+**Applies when:** Rebalancing vehicle or movement speeds across classes; A balance claim would otherwise rest on a table of tuning values
+
+**Limits:** An autopilot is not a player: no abilities, drifting, tricks, hazards or rivals; it measures travel, not fun; Three routes, one Studio session
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/4827c4b387f9c4d90409577da84384b33efb5db5/docs/reports/2026-10-19-v13-2-sea-of-chaos.md): Section 3, 'Travel times (measured)': 10 classes x 3 routes after, 7 classes x 3 routes before.
+
+### A ballistic solver's elevation floor makes close shots land long
+
+**ID:** ballistic-angle-floor-overshoots-close-shots | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-19
+**Related checks:** CL-13, CL-14
+
+**Observed / proposed:** Loot Goblins' cannons solve a launch angle for a fixed muzzle speed and clamp it to at least 6 degrees below horizontal. A new driver's bow gun sits a few studs above the water; a target 17 studs off the bow needed about 14 degrees down, so the clamp sent the shot over it: the blast landed about 16 studs past the aim point, outside the 12-stud blast plus hull reach, and a rival boat sitting there took nothing. Logging the aim point and the blast point side by side found it in one shot; allowing the bow gun down to 40 degrees put the blast within 0.1 studs of the aim. The old floor had never shown on cannons that fire from high decks at far targets.
+
+**Recommendation:** When adding a new launcher to an existing ballistic solver, test close targets below the muzzle, and log the aim point next to the impact point. Make angle limits a per-launcher property instead of a global clamp, so changing one does not change the others' difficulty.
+
+**Applies when:** Adding a weapon, throw or launcher that reuses an existing projectile solver; Targets can be close and below the launcher
+
+**Limits:** One solver (low-angle solution, fixed speed, custom gravity) in one game
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/4827c4b387f9c4d90409577da84384b33efb5db5/docs/reports/2026-10-19-v13-2-sea-of-chaos.md): Section 11, third row; section 3's ability table, bow gun row.
+
 ### Studio MCP's simulated keys do not trigger ProximityPrompts
 
 **ID:** studio-simulated-keys-skip-proximity-prompts | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
