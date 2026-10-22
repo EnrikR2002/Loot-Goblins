@@ -7,9 +7,9 @@
 This file is a self-contained game description, quality rubric, and dated development history. Use it for coherent ideas and critique without the original chat. The current game description covers this branch; dated reports describe historical revisions and never override it. Mentioned plans are not implemented unless explicitly identified that way. Silence about a feature means undocumented, not confirmed absent. Source review, automated tests, Studio tests, human feedback, and release approval are different evidence levels. To confirm bugs or runtime behavior, inspect the actual code and relevant tests; this description is not runtime proof.
 
 **Game repository:** https://github.com/EnrikR2002/Loot-Goblins
-**Documented gameplay revision:** 8972cb4d56a32a3e198e2a827612c78d0e69c1f8
-**Shared rubric revision:** 5ce6e621fcd5f2f39d2eb37dd428e9bc2099a0ea
-**Document freshness fingerprint:** 5400ca48c4b2e36fc2b5d7bcc05c226a07014cf426af63259bf900f49f824d93
+**Documented gameplay revision:** 9d6d2c5c0e1dde8424d6b3816e4ff1c8c1b57ecb
+**Shared rubric revision:** ed8aa6f54025d0bb1b120717c7c61050a9970a28
+**Document freshness fingerprint:** f36ee8920b5f241d94e881519196ff009fa7a58cca8954fb09820541f3961496
 
 Ask an outside AI: 'Read this complete guide, compare the current game with the included rubric, and suggest the highest-value improvements. Separate documented gaps, hypotheses, and ideas. Respect game-specific decisions and current prototype gates.'
 
@@ -23,27 +23,27 @@ This is the single editable source for this game's vision, current mechanics, co
 
 The AI updates affected sections here, records task evidence under docs/reports/, and runs the existing guide export. Generated root GAME_GUIDE.md packages this document, exact tuning, the shared quality rubric and lessons, and full dated reports into one attachment for another AI. Do not edit that generated file. The manifest and freshness files under docs/game-guide/ are export metadata, not additional game descriptions.
 
-## Loot Goblins V13.1: identity, journey, and current scope
+## Loot Goblins V13.2: identity, journey, and current scope
 
 Loot Goblins is a social possession-and-escape game: steal ridiculous treasure from dangerous islands and other players, then somehow get it home. The desired rhythm is explore with awe, take something valuable, feel the world react, improvise an escape, bank the reward, and choose another risk. Fast movement and boat handling should be enjoyable before a reward appears. Danger challenges that power rather than restoring difficulty by making ordinary travel sluggish.
 
-This guide describes the **V13.1 (the V13 playtest fixes)** code on branch fix/v13-playtest-feedback, stacked on V13 (the Goblin Port, branch feature/v13-goblin-port, built on main after V11 and V12 merged in PRs #22 and #23). **V13.1 answers Ninety's first V13 playtest, ten points**: a goblin whose health runs out is KNOCKED OUT for 5 s where they fall (no death, no respawn) and drops what they carry; no creature or boss takes treasure any more, they hurt you instead; the Ghost Fleet, the Leviathan, Tangle Isle's new jade frogs and Frost Spire's Chill attack reliably; the Guardian's punch throws a boat sky high, spinning; driving over loose treasure picks it up; E gets you out of a boat; Poltergoblin is switched off; a called boat brakes to a stop beside you, and a big hint says B at the shore. See **V13.1: the playtest fixes** below and docs/reports/2026-10-18-v13-1-playtest-fixes.md. **V13 adds the half of the game that happens between raids**: goblins wait, shop, watch and show off in a harbour town, the Goblin Port, instead of on the skyship's deck; seven boat classes with their own abilities (two free, five earned); 42 pets on one shared animator; an economy with deeds and escape trophies; and a much quieter raid screen. See **V13: the Goblin Port** below and docs/reports/2026-10-18-v13-goblin-port.md. V13 was tested by one AI on one Studio client like the versions before it; **nobody has played it, and spectating and late entry need a second player to be seen for real.** Before V13: V12 was the **Cohesion Pass**, on branch feature/v12-cohesion-pass: V11 (Goblin Life, branch feature/v11-goblin-life: V10, The Living Archipelago, merged into main on 2026-10-17 with V9, plus a customization, pets, progression and monetization pass) with a pass over how the game reads and flows. **V12 makes what the game promises true** (a picked island is where the cannon throws you; the screen names the next step and its key; a banner stays long enough to read) and adds controller and touch input; no treasure value, speed, Heat rule or raid timer changed (a goblin who comes aboard late now gets 12 s on the deck). See **V12: the cohesion pass** below and docs/reports/2026-10-18-v12-cohesion-pass.md. V11 added what a goblin keeps and wears: see **V11: Goblin Life**, docs/reports/2026-10-17-v11-goblin-life.md and docs/MONETIZATION.md. V10 changed only how the world looks (see **V10: the look** and docs/ART_DIRECTION.md); V9 is described in **V9 systems**; where a V8 or V7 paragraph here disagrees with a later section, the later section is what the code does. V7 to V12 have each been tested by one AI on one Studio client; **none of V9, V10, V11 or V12 has been played by a person or with a second player** (V8 had one human multiplayer playtest, which V9 answers). The reports say exactly what was and was not exercised. The portable guide retains historical reports as history, while these current chapters describe the latest code.
+This guide describes the **V13.2 (Sea of Chaos)** code on branch feature/v13-2-sea-of-chaos, stacked on V13.1 (the V13 playtest fixes, branch fix/v13-playtest-feedback), itself stacked on V13 (the Goblin Port, branch feature/v13-goblin-port, built on main after V11 and V12 merged in PRs #22 and #23). **V13.2 answers Ninety's brief to make encounters more frequent, movement more expressive, boats more balanced and every raid unpredictable**: running builds momentum by itself (no sprint key) and the grapple swings; the fleet shares one speed band (106 to 118) and grows to ten with the Anchorjack, the Wavebreaker and the Corsair; every boat has a bow gun on the click; the skyship flies a route with finite cannon reach and a countdown the server enforces; going on a raid is a choice made in the Port; and every raid has one of eight world-chaos events. See **V13.2: Sea of Chaos** below and docs/reports/2026-10-19-v13-2-sea-of-chaos.md. V13.2 was tested by one AI on one Studio client; **nobody has played it**. **V13.1 answers Ninety's first V13 playtest, ten points**: a goblin whose health runs out is KNOCKED OUT for 5 s where they fall (no death, no respawn) and drops what they carry; no creature or boss takes treasure any more, they hurt you instead; the Ghost Fleet, the Leviathan, Tangle Isle's new jade frogs and Frost Spire's Chill attack reliably; the Guardian's punch throws a boat sky high, spinning; driving over loose treasure picks it up; E gets you out of a boat; Poltergoblin is switched off; a called boat brakes to a stop beside you, and a big hint says B at the shore. See **V13.1: the playtest fixes** below and docs/reports/2026-10-18-v13-1-playtest-fixes.md. **V13 adds the half of the game that happens between raids**: goblins wait, shop, watch and show off in a harbour town, the Goblin Port, instead of on the skyship's deck; seven boat classes with their own abilities (two free, five earned); 42 pets on one shared animator; an economy with deeds and escape trophies; and a much quieter raid screen. See **V13: the Goblin Port** below and docs/reports/2026-10-18-v13-goblin-port.md. V13 was tested by one AI on one Studio client like the versions before it; **nobody has played it, and spectating and late entry need a second player to be seen for real.** Before V13: V12 was the **Cohesion Pass**, on branch feature/v12-cohesion-pass: V11 (Goblin Life, branch feature/v11-goblin-life: V10, The Living Archipelago, merged into main on 2026-10-17 with V9, plus a customization, pets, progression and monetization pass) with a pass over how the game reads and flows. **V12 makes what the game promises true** (a picked island is where the cannon throws you; the screen names the next step and its key; a banner stays long enough to read) and adds controller and touch input; no treasure value, speed, Heat rule or raid timer changed (a goblin who comes aboard late now gets 12 s on the deck). See **V12: the cohesion pass** below and docs/reports/2026-10-18-v12-cohesion-pass.md. V11 added what a goblin keeps and wears: see **V11: Goblin Life**, docs/reports/2026-10-17-v11-goblin-life.md and docs/MONETIZATION.md. V10 changed only how the world looks (see **V10: the look** and docs/ART_DIRECTION.md); V9 is described in **V9 systems**; where a V8 or V7 paragraph here disagrees with a later section, the later section is what the code does. V7 to V12 have each been tested by one AI on one Studio client; **none of V9, V10, V11 or V12 has been played by a person or with a second player** (V8 had one human multiplayer playtest, which V9 answers). The reports say exactly what was and was not exercised. The portable guide retains historical reports as history, while these current chapters describe the latest code.
 
 ### The first raid from a player's perspective
 
-The world generates when Play starts, taking several seconds on the reported development machine; players are loaded after world construction. **Since V13 a goblin arrives in the Goblin Port** (a harbour town on its own island far to the south) and spends the minute between raids there: the Shipyard, the pet menagerie, the wardrobe, the Spyglass (watch the raid) and the podium; walking up the gangplank onto the little airship is being ready. When the countdown ends everyone goes to the skyship together. **A raid begins aboard the skyship** (V7): a flying pirate ship hung 540 studs over the middle of the sea. Goblins climb into a cannon and aim it by looking at where they want to land (V8), are thrown on a plain arc and tumble with loose limbs, and come down on land (head first like an ostrich if they fall fast, on their feet if they brake with a glide) or on the sea (which skips a fast goblin up to three times, each bounce smaller). They can also walk out along the ship's wings and step off. Since V12 an island picked on the map (`M`) is a promise: the cannon starts aimed at that island's **landing spot** (dry, open ground near its treasure, on the side facing the ship, under a beam), and a goblin still aboard when the window closes is fired there. A line along the bottom of the screen always says what to do next and which key does it. Goblin Cove is home. The Hoard is the visible gold ring/beam where treasure and coin proceeds are banked; it is never on the ship. Home also has boats, keg access, a practice cannon, movement toys, and a harbor jump. The intended introductory line is the harbor jump, the teal Gate Run, and the passage through the reef to the Crossroads. Home Bay deliberately leaves calm water and visual breathing room.
+The world generates when Play starts, taking several seconds on the reported development machine; players are loaded after world construction. **Since V13 a goblin arrives in the Goblin Port** (a harbour town on its own island far to the south) and spends the minute between raids there: the Shipyard, the pet menagerie, the wardrobe, the Spyglass (watch the raid) and the podium; **since V13.2 going is a choice**: JOIN NEXT RAID, or walking up the gangplank onto the little airship, signs a goblin up, and when the countdown ends only those signed up go to the skyship (with nobody signed up there is no countdown and no raid). **A raid begins aboard the skyship** (V7): a flying pirate ship 540 studs up. Since V13.2 it waits at one end of one of seven routes for 10 s while goblins aim (the cannons locked), then crosses the sea in 32 s; a cannon throws about 1,200 studs, so the islands in reach change as it flies. Goblins climb into a cannon and aim it by looking at where they want to land (V8), are thrown on a plain arc and tumble with loose limbs, and come down on land (head first like an ostrich if they fall fast, on their feet if they brake with a glide) or on the sea (which skips a fast goblin up to three times, each bounce smaller). They can also walk out along the ship's wings and step off. Since V12 an island picked on the map (`M`) is a promise: the cannon starts aimed at that island's **landing spot** (dry, open ground near its treasure, on the side facing the ship, under a beam), and a goblin still aboard when the window closes is fired there (V13.2: the map lights the islands in reach on this route, and a pick is fired at as the ship passes it). A line along the bottom of the screen always says what to do next and which key does it. Goblin Cove is home. The Hoard is the visible gold ring/beam where treasure and coin proceeds are banked; it is never on the ship. Home also has boats, keg access, a practice cannon, movement toys, and a harbor jump. The intended introductory line is the harbor jump, the teal Gate Run, and the passage through the reef to the Crossroads. Home Bay deliberately leaves calm water and visual breathing room.
 
 The near islands offer inexpensive short trips. Middle destinations add longer journeys and characteristic trouble. Far islands have harder return routes. Values are flat (4 to 11 gold) except the **Golden Idol (17)**, the prize of the sea. A treasure's light pillar, the map (M), the compass and the minimap help choose a destination; since V9 no names or values float on the horizon (they show only up close). Since V9 whatever guards a treasure **follows the thief across the sea almost to Goblin Cove**, ending at the sanctuary's gold lantern buoys. The physical geography gives currents, reef passes, ramps, cover, high ground, and alternate routes that influence pursuit. A thief normally carries one treasure at a time. The personal decision is which treasure is worth exposing oneself for, and how to return without being robbed or stopped by the world.
 
-A raid is **six minutes** of play (`Config.RAID_DURATION` 360, V9); since V13 the time between raids is the Goblin Port's 60 s countdown (shortened to 8 s when every goblin there has walked aboard), not V9's 10 s on the skyship. The raid opens with a 20 s launch window and **the six-minute clock starts when the window closes**, so a goblin who fires late still gets the whole six minutes; the cannons fire from 2 s in (a goblin can climb in and aim during the intermission) and anyone still aboard at 20 s (or 12 s after they came aboard, if that is later: V12) is fired off at the island they picked. In the last 50 s banking pays 25% more (the final rush). Banking adds Gold for that raid. At its end, every player tied for the highest positive Gold receives a Win; a zero-score raid has no winner. Gold resets next raid, and the world resets its systems. Wins are session values, not saved progression. Loose or carried treasure not banked in time does not become score. **Since V13.1 nobody dies**: a goblin whose health runs out is knocked out for 5 s where they fell, drops what they carry (loose, for anyone), and gets up with full health; only a body that falls out of the world, or the Reset button, is respawned. No creature takes treasure from a goblin's hands: their hits hurt a carrier until a knockout drops it.
+A raid is **six minutes** of play (`Config.RAID_DURATION` 360, V9); since V13 the time between raids is the Goblin Port's 60 s countdown (V13.2: it starts with the first sign-up, and is shortened to 8 s when everyone signed up has walked aboard), not V9's 10 s on the skyship. The raid opens with a 42 s launch window (V13.2: 10 s of prep with the cannons locked, then the 32 s pass; through V13.1 it was 20 s standing still) and **the six-minute clock starts when the window closes**, so a goblin who fires late still gets the whole six minutes; anyone still aboard when the pass ends is fired off at their pick if it is in reach, else at the best landing in reach. A goblin can leave a running raid (LEAVE THIS RAID on the `H` card, two presses): home to the Port, dropping what they carry and losing that raid's gold and Shinies. In the last 50 s banking pays 25% more (the final rush). Banking adds Gold for that raid. At its end, every player tied for the highest positive Gold receives a Win; a zero-score raid has no winner. Gold resets next raid, and the world resets its systems. Wins are session values, not saved progression. Loose or carried treasure not banked in time does not become score. **Since V13.1 nobody dies**: a goblin whose health runs out is knocked out for 5 s where they fell, drops what they carry (loose, for anyone), and gets up with full health; only a body that falls out of the world, or the Reset button, is respawned. No creature takes treasure from a goblin's hands: their hits hurt a carrier until a knockout drops it.
 
 Taking treasure triggers its own trouble and adds shared Heat. Continuing to carry outside the home ward raises Heat; when nobody carries, Heat cools. Other players and world threats create exposure. The intended social result is improvised chases, theft, escape, group reactions, and another raid. Existing solo mechanical observations and some human feedback do not establish full multiplayer fun or fairness.
 
 ### Player verbs and tradeoffs
 
-Run, sprint, dash, air-jump, grapple, board, steer, brake, drift, boost, anchor, steal, throw, swing, light a beacon, raise a chain, launch a keg, fire a cannon, hide, and bank. Not every verb needs a new system. The shared E key favors an actual visible prompt over spirit casting; C means dash on foot and drift while driving.
+Run (building momentum), dash, air-jump, grapple and swing, board, steer, brake, drift, boost, fire the bow gun, play the boat's ability, steal, throw, swing a sword, light a beacon, raise a chain, launch a keg, fire a cannon, hide, and bank. Not every verb needs a new system. The shared E key favors an actual visible prompt over spirit casting; `Shift` or `C` dash on foot; `C` drifts while driving (V13.2).
 
-Running at 28 is free. Stamina pays for sprinting and exceptional moves; carrying treasure increases their costs and slightly slows the carrier. A carrier can defend themselves with a weaker, slower, shorter, tiring sword swing, and can grapple to surfaces/boats but cannot use the grapple to steal another treasure. Boats trade speed, durability, draft, handling, capacity, and cannon access. Geography can separate a shallow-water player route from a deep-draft Navy route. A beacon diverts nearby Navy, and the fort chain prevents new departures from its harbor for a period.
+Running is free and, since V13.2, builds by itself from 21 to 38 over about two seconds (momentum; there is no sprint). Stamina pays for the exceptional moves (dash, air jump, a carrier's sword); carrying treasure increases their costs and slightly slows the carrier. A carrier can defend themselves with a weaker, slower, shorter, tiring sword swing, and can grapple to surfaces/boats but cannot use the grapple to steal another treasure. Boats trade speed, durability, draft, handling, capacity, and cannon access. Geography can separate a shallow-water player route from a deep-draft Navy route. A beacon diverts nearby Navy, and the fort chain prevents new departures from its harbor for a period.
 
 The score remains treasure. Coins encourage taking a skillful or interesting route, repair a little hull, and refund some boost cooldown; ten convert to one Gold when banked, with at most six Gold from coins in a raid. Timed courses provide a different movement challenge and a local best-time sign. Their presence should not turn every quiet crossing into a course.
 
@@ -76,6 +76,7 @@ An outside AI should deepen possession and escape, preserve movement agency, com
 | Branch feature/v11-goblin-life (PR to main) | **V11, Goblin Life**: customization, pets, progression and monetization on one ownership system. A 121-item catalogue (`shared/Catalog.lua`) and 11 achievements; saved profile v2 with V7 migration and session-locked `UpdateAsync` saves (`ProfileSchema`, `ProfileStore`, `Progress`); pure ownership rules (`Economy`); goblin cosmetics built by shared code for live goblins and previews (`Wardrobe`); boats wearing their driver's paint, flag, figurehead, trail, wake, trick effect and callout (`BoatLook`, `BoatStyle`, client `Looks`); emotes and victory dances (`EmoteMoves`, `Emotes`); five redesigned pets that walk, ride, cling and react (`PetLook`, client `Pets`); the Goblin Wardrobe shop and locker (client `Shop`), emote wheel and raid results; idempotent Robux receipts and game-pass checks, switched off (`Monetization`, `Receipts`); 46 Luau tests (`tests/luau`). Report: `docs/reports/2026-10-17-v11-goblin-life.md`. Studio-tested by one AI on one client with an in-memory store; **no human playtest, no second player, no live DataStore and no real purchase yet**. |
 | Branch feature/v12-cohesion-pass (PR to feature/v11-goblin-life) | **V12, the Cohesion Pass**: an audit of the game as a new player and fixes for what it found. Map picks and the ship's auto-fire land on a dry **landing spot** near each treasure on all 16 islands (`shared/Landing.lua`, `Skyship.findLandings`), flights no longer sink under Roblox gravity (a client anti-gravity force) or splash early over a beach (`Flight.resolveLanding`), and a dropped-throw race is closed; banners queue by priority (`client/BannerQueue.lua`); an objective line that names the next key (`client/Objective.lua`); a HUD that shows what each moment needs (ship, flight, boat, foot); red arrows for whatever chases you (`client/Danger.lua`); a one-screen controls card that no longer opens by itself; the welcome card waits for a calm moment; one feed line for interest; the bank banner shows what was paid; storm warnings that make sense; an E a step short no longer casts Poltergoblin; 12 s on deck for late arrivals; gamepad grapple, throw, map and keg; touch buttons (`client/TouchControls.lua`); a fainter carried treasure; landings scaled by air time. 53 Luau tests. Report: `docs/reports/2026-10-18-v12-cohesion-pass.md`. Studio-tested by one AI on one client; **no human playtest, no second player, no phone and no real controller yet**. |
 | Merged 2026-10-18: PRs #22 and #23 | **V11, Goblin Life** and **V12, the Cohesion Pass** (above) merged into main. |
+| Branch feature/v13-2-sea-of-chaos (PR to fix/v13-playtest-feedback) | **V13.2, Sea of Chaos**: Ninety's brief. Momentum instead of sprint and a swinging grapple (`shared/Momentum.lua`, `shared/Swing.lua`); the fleet compressed to one speed band and grown to ten (Anchorjack, Wavebreaker, Corsair; the anchor now only on the Anchorjack); a driver's bow gun on every boat; a skyship that flies one of seven routes with finite reach and a server-locked prep (`shared/SkyRoute.lua`); opt-in raids and leaving early; eight world-chaos events, one a raid (`server/WorldChaos.lua`, client `ChaosFx.lua`, waves and whirlpools in `shared/Sea.lua`). 107 Luau tests. Report: `docs/reports/2026-10-19-v13-2-sea-of-chaos.md`. Studio-tested by one AI on one client; **no human playtest, no second player**. |
 | Branch fix/v13-playtest-feedback (PR to feature/v13-goblin-port) | **V13.1, the playtest fixes**: Ninety's ten points from the first V13 playtest. The knockout (`server/Knockout.lua`: health 0 is 5 s down where you fell, treasure dropped, no respawn); no creature takes treasure (`Loot.knockLoose` hurts a carrier instead, `Config.KNOCKOUT.HIT`); the Ghost Fleet sails through land and escorts its dinghies; the Guardian's launch throws a boat about 170 studs up, tumbling (`BoatSim.tumble`); the Leviathan's lunge bites; Tangle Isle's imps became jade frogs that pounce on land and bound after you at sea; Frost Spire's Chill hails on land and bursts ice spikes at sea, both following a thief into the water at once; drive over loose treasure to take it (`Loot.sweepBoats`); E leaves a boat; Poltergoblin switched off (`Config.POLTER_ENABLED`); a called boat brakes to a stop beside you and holds there, with a big B hint at the shore. 82 Luau tests. Report: `docs/reports/2026-10-18-v13-1-playtest-fixes.md`. Studio-tested by one AI on one client. |
 | Branch feature/v13-goblin-port (PR to main) | **V13, the Goblin Port**: a harbour-town lobby replacing the skyship intermission (`Port.lua`, `shared/Lobby.lua`, client `PortHud`, `PortLife`), ready by walking aboard, late entry, spectating (`Port.spectate`, client `Spectate`); seven boat classes with stunt-key abilities (`BoatModels`, `BoatAbilities`, `BoatSim`, `Cannons`) and a showroom in the wardrobe; 42 pets on one animator (`PetLook.pose`, `PetBestiary`); deeds, escape trophies and profile v3; inert product keys for boats and two show-only pets; an icon-led raid HUD with progressive teaching; a V11 shop bug fixed (WEAR IT on an owned item took it off). 76 Luau tests. Report: `docs/reports/2026-10-18-v13-goblin-port.md`. Studio-tested by one AI on one client; **no human playtest, no second player, no phone or real controller, no live DataStore or purchase yet**. |
 | Merged 2026-10-14: PR #18 | **V8, Chaos & Counterplay**: one flight system for the skyship's cannons and the island catapults (aim by looking, a ballistic throw, glide as a brake, dive, three diminishing water skips, loose limbs while tumbling), walkable wings, a stronger boat hop and a speed-based super jump, a sea form for every island's creature (`Pursuit.lua`), three kinds of ordinary sea mob (`SeaMobs.lua`), a Leviathan 2.2 times the size that hunts boats, one rule for being hit by the world (`Impact.lua`: grace, smaller bites, a two-strike grip on treasure, hulls battered but never sunk by creatures), no gear requirement on any treasure, a front door to the Tide Vault, treasure values flattened. Report: `docs/reports/2026-10-13-v8-chaos-and-counterplay.md`. Studio-tested by one AI on one client; **no human playtest and no second player yet**. |
@@ -84,7 +85,7 @@ The V6 report was subsequently amended after Ninety found the blocked Skull Chal
 
 Enrik explicitly authorized merging the complete latest V6 development line into main on October 12, 2026. PR #14 targets main and includes the ancestor work from PRs #9–13 plus the shared-memory rollout in PR #15. GitHub records the actual integration outcome. This approval does not certify outstanding human, multiplayer, audio-by-ear, or device tests. Historical reports below retain their original checkpoint status.
 
-Everything below describes the V13 code: V9's systems (with the V8, V7 and V6 sections they build on) under V10's look, with V11's customization and progression on top, V12's cohesion pass through all of it, and V13's Port, fleet, bestiary and quieter screen, and their current limitations.
+Everything below describes the V13 code: V9's systems (with the V8, V7 and V6 sections they build on) under V10's look, with V11's customization and progression on top, V12's cohesion pass through all of it, V13's Port, fleet, bestiary and quieter screen, V13.1's fixes and V13.2's Sea of Chaos, and their current limitations.
 
 ## Purpose
 
@@ -98,7 +99,7 @@ The long-term vision later in this document is inspiration, not a plan; the team
 
 ## Core loop
 
-1. Players wait in the **Goblin Port** (V13: 60 s, or 8 s once everyone is aboard the little airship), start each raid on the **skyship** (V7), dive to an island of their choice, and bring treasure to **the Hoard** at **Goblin Cove**. A raid is a 20 s launch window and then `Config.RAID_DURATION` (360 s) of clock; then everyone in it comes home to the Port, the winners onto the podium.
+1. Players gather in the **Goblin Port** (V13) and **sign up** for the next raid (V13.2: only those who join go; 60 s from the first sign-up, or 8 s once everyone signed up is aboard the little airship), start each raid on the **skyship** (V7; since V13.2 it flies a route and its cannons reach about 1,200 studs), dive to an island in reach, and bring treasure to **the Hoard** at **Goblin Cove**. Each raid has one **world-chaos** event (V13.2), named in the Port. A raid is a 42 s launch window (V13.2; was 20 s) and then `Config.RAID_DURATION` (360 s) of clock; then everyone in it comes home to the Port, the winners onto the podium.
 2. Nineteen treasures wait on 19 islands (16 major, three keys with small stashes), each with a light pillar; its name and value show within 170 studs (V9; through V8 across the whole map). **Values are flat since V8** (4 to 11 g) with one exception since V9: **the Golden Idol, 17 g**.
 3. Prying treasure off its spot (hold E, 0.6 s) adds Heat and triggers that treasure's own **trouble** (a flooding vault, a volcano, the Leviathan, the Ghost Fleet, snapping bridges...). Most big islands also have an **inhabitant** with one rule to learn (see Island inhabitants), and since V9 every one of them **follows the thief to sea almost all the way home** (see V9 systems).
 4. The carrier is hunted by the world (see Heat), can be robbed by other players, pays more stamina for every move and slows the boat they sit in. On foot they are only a little slower than anyone else.
@@ -114,32 +115,33 @@ The long-term vision later in this document is inspiration, not a plan; the team
 | `E` on a boat | Board it (driver seat first, then passengers) | `Boats` |
 | `W A S D` in the driver seat | Drive. `S` against your motion is a brake | `BoatSim`, client `BoatDrive` |
 | `Shift` in the driver seat | **Boost** (2.4 s, 5 s cooldown, a kick at the start). Gamepad `X` | `Boats`, client `BoatDrive` |
-| `Space` in the driver seat | **Hop** the boat (about 18 studs up, 1.1 s cooldown). Faster than `BOAT_SUPER_MIN` (150: a boost, a hoop chain, a drift burst) it is a **super jump**, up to about 38 studs at 187 studs/s and 57 at 215; a clean landing from one pays the landing burst. It does not leave the seat. **Inside a tornado it bails out** (V9): the boat is thrown the way it points | `BoatSim`, client `BoatDrive` |
-| `R` (gamepad `R1`; touch STUNT) in the driver seat, **on the water** | **The boat's ability** (V13, `Config.BOAT_ABILITIES`): Nitro, Bow Gun, Spring, Broadside, Twister, Phantom or Ram Plow by class. Pressed while it recharges, a hint says how long | `BoatSim`, `BoatAbilities`, client `BoatDrive` |
+| Click (gamepad `R2`; touch GUN) in the driver seat | **The bow gun** (V13.2, every class, `Config.BOAT_GUN`): a light shot where you look, within about 70 degrees of the bow and 240 studs, 2.2 s reload. It shoves and splashes; it never sinks a boat or knocks treasure loose, and never reaches the Port or home. (The Cutter's deck cannon and the Broadside's side guns are still manned by friends with `E`) | `Cannons.driverFire`, client `BoatDrive` |
+| `Space` in the driver seat | **Hop** the boat (about 18 studs up, 1.1 s cooldown). Faster than `BOAT_SUPER_MIN` (V13.2: 132, above every class's cruise and below every boost) it is a **super jump**, reaching its full height at `BOAT_SUPER_FULL` (188); a clean landing from one pays the landing burst. It does not leave the seat. **Inside a tornado it bails out** (V9): the boat is thrown the way it points | `BoatSim`, client `BoatDrive` |
+| `R` (gamepad `R1`; touch STUNT) in the driver seat, **on the water** | **The boat's ability** (V13, `Config.BOAT_ABILITIES`): Nitro, Rally Horn, Spring, Broadside, Twister, Phantom, Ram Plow, Anchor, Breaker or Boarding Hook by class (V13.2; see **V13.2: Sea of Chaos**). Pressed while it recharges, a hint says how long; pressed while your own anchor holds, it lets go (a swing lets go as a slingshot) | `BoatSim`, `BoatAbilities`, client `BoatDrive` |
 | `R` (gamepad `R1`; touch STUNT) in the driver seat, in the air | **A trick** (V9; on a controller only since V12, see Known bugs). First press a spin, then each press the next in a combo (corkscrew, front flip, double spin); hold `A`/`D` for a roll, `S` for a backflip. A press during a trick plays when it ends. Landing clean after tricks pays a speed burst and some boost cooldown | `BoatSim.TRICKS`, client `BoatDrive`, `Tricks` |
 | `X` (gamepad `Y`), or `E` (V13.1), in a seat | Leave the boat. (`E` takes a prompt first if one is in reach; your own boat's Board prompt is hidden while you sit in it.) Gamepad `Y` on foot was Poltergoblin (V13; switched off in V13.1) | client `Main` |
 | `B` (D-pad down) | **Call a boat** to the nearest shore (45 s cooldown). It races in under boost and (V13.1) brakes hard to a stop at the water nearest you, then holds there. A carrier at the edge of an island sees a big gold **B · CALL A BOAT** (V13.1); the objective line names it too | `Recall`, client `Hud` |
-| `E` at a cannon on the skyship, or at an island catapult | Climb in. **Look** (mouse, or `W A S D`) at where you want to land; the ring is where you come down. Click or `Space` fires, `X` climbs out. `M` then an island points a ship's cannon at its landing spot; picked on the deck, the map closes and the deck banner names the island (V12). Gamepad: right stick aims, `A` fires; touch: drag to aim, FIRE | `Flight`, client `Skyship` |
+| `E` at a cannon on the skyship, or at an island catapult | Climb in. **Look** (mouse, or `W A S D`) at where you want to land; the ring is where you come down. Click or `Space` fires, `X` climbs out. `M` then an island points a ship's cannon at its landing spot; picked on the deck, the map closes and the deck banner names the island (V12). **V13.2: for the first 10 s the cannons are locked** (aim, but the server refuses a fire: 🔒 SETS OFF), and a cannon reaches about 1,200 studs: the map lights the islands in reach on this route, and a pick is fired at as the ship passes it. Gamepad: right stick aims, `A` fires; touch: drag to aim, FIRE | `Flight`, client `Skyship` |
 | In the air after a launch | `W A S D` nudge the arc. Hold `Space`: **glide** (an air brake: slower fall, speed bled off, a soft landing). Hold `Shift`: **dive** (head first, down hard). Nothing held: you tumble | client `Skyship`, `Dive`, `Flight` |
 | `P` (gamepad D-pad right; the 🧥 button, shown in the Port and at the Hoard; `E` at the Port's counters opens it at their page) | **The Goblin Wardrobe** (V11): SHOP and LOCKER, Shinies, **Boats (V13 showroom: stats, ability, price)**, goblin cosmetics, boat paint, style, emotes, pets (V13: theme filters), start kits, outfits, trophies. Buying takes two presses. Pets and boats change only in the Port or at the Hoard | client `Shop` |
-| Walk up the gangplank in the Port | **Ready** (V13): when every goblin in the Port is aboard the little airship the next raid leaves in 8 s | `Port`, `Raid`, `Lobby` |
+| JOIN NEXT RAID (Port screen), or walk up the gangplank | **Sign up** (V13.2): only goblins signed up go. The 60 s countdown starts with the first sign-up; when everyone signed up is aboard the little airship the raid leaves in 8 s. SIGNED UP · STAY IN PORT cancels; AUTO-JOIN signs you up for every raid until turned off | `Raid.signUp`, `Raid.setAutoJoin`, `Port`, `Lobby`, client `PortHud` |
+| LEAVE THIS RAID on the raid's `H` card (two presses) | **Go home** (V13.2): to the Port, dropping what you carry, losing that raid's gold and Shinies | `Raid.leave`, client `Hud` |
 | WATCH (Port screen), `E` at the Spyglass | **Spectate the raid** (V13). Left/Right (`Q`/`E`, D-pad, `L1`/`R1`) change who you watch; `Backspace` (gamepad `B`) or PORT goes back | `Port.spectate`, client `Spectate` |
 | JOIN (Port screen or spectator bar), `E` at the pier | **Join the running raid** (V13) while at least 120 s are left: aboard the skyship, no gold | `Raid.joinLate`, `Lobby.canJoinLate` |
 | `V` (gamepad D-pad up; the 😀 button) | **The emote wheel** (V11). Pick with a click, a tap, a number key or the left stick and A. Moving stops an emote | client `Emotes`, server `Emotes` |
 | `T` | Show every treasure on the board (default: loose or carried only) | client `Hud` |
 | Hold `C` in a turn, driver seat | **Drift**: slide round the turn, let go for a speed burst. Gamepad `B` | `BoatSim` |
-| `R` near a boat's winch | Drop or raise the anchor (not for the driver while driving since V9: `R` is the trick key) | `Boats` |
 | `E` at a cannon | Fire it where you aim | `Cannons` |
 | `E` at a lever | Pull it (Tide Vault gate, Fort Barnacle's harbor chain) | `Mechanisms` |
 | Hold `E` at a signal beacon | Light it: patrol ships within `BEACON_RANGE` go to look | `Mechanisms`, `Navy.distract` |
 | `G` (gamepad D-pad left, V12) | Throw a powder keg (take kegs from keg crates with `E`) | `Kegs` |
 | `E` at Gobbo, on the home dock | Take a powder keg from him | `BestiaryMinor` |
 | Drive or walk through a coin or a salvage crate | Collect it. No button | `Coins` |
-| Hold `Shift` on foot | Sprint (×1.36, carriers ×1.25), on land or swimming. Uses stamina | `Movement` |
-| `C` on foot | **Dash** the way you are moving, ground or air. 18 stamina. Gamepad `B` | client `Main`, `Movement` |
+| Running on foot | **Momentum** (V13.2; sprint is gone): 21 at the first step, the ordinary run (28) after 0.3 s, 38 after about 2 s more. A turn sharper than about 70 degrees or standing still spends it; a curve, a jump, a fall, a swing and a landing keep it. Swimming builds to 0.4 of it | client `Main`, `shared/Momentum`, `Movement` |
+| `Shift` or `C` on foot | **Dash** the way you are moving, ground or air (V13.2: it ends at full momentum, so it is also the quick start). 18 stamina. Gamepad `B` or a left-stick click | client `Main`, `Movement` |
 | `Space` in the air | **Air jump**, once per flight. 12 stamina. Gamepad `A` | client `Main`, `Movement` |
 | Click (sword) | Swing. A carrier's swing is slower, shorter, weaker and costs stamina | `Combat` |
-| `F` (gamepad `L2`, V12; touch HOOK) | Grapple hook: grab loose loot (70 studs), **catch a carrier within 40 studs** (knocked down 2 s, nothing stolen), or hook a surface **or a boat** and get pulled (a boat seats you). Carriers can only pull, on a 5 s cooldown | `Combat`, client `Main` |
+| `F` (gamepad `L2`, V12; touch HOOK) | **Grapple** (V13.2: it swings). Hook anything above you (rock, tree, bridge, mast; a forgiving cone, 170 studs) and you **swing**: `W A S D` pump, hold `F` to reel in, `F` or `Space` lets go keeping the speed. Level or below, it **pulls** you there; on a boat it seats you. At a carrier within 40 studs it throws a **catch hook** (170 studs/s: a dash gets out of its line) that knocks them down 2 s, nothing stolen; loose loot within 70 studs is grabbed. Carriers swing and pull too, every 2.4 s | `Combat`, client `Main`, `shared/Swing` |
 | `E` on a goblin who is down | **Steal** what they carry (within 8 studs, nothing in the way). `Space` gets a caught goblin up after 0.9 s | `Combat` |
 | `Q` (gamepad `L1`, V12; touch THROW) | Throw held treasure. On a controller or a touch screen the grapple and the throw aim at the middle of the screen | `Loot`, client `Main` |
 | `E` with no prompt showing | Nothing on foot since V13.1 (Poltergoblin is switched off; in a seat it leaves the boat). **A step short of a prompt** (within 6 studs of its reach) it says "A step closer to …" (V12) | client `Main` |
@@ -149,7 +151,7 @@ The long-term vision later in this document is inspiration, not a plan; the team
 | (always shown) | **Minimap** (V9), top right: turns with the camera; islands, the island you are at, the Hoard and sanctuary, tornadoes, whatever is chasing you | client `Minimap` |
 | `H` | In the Port, **the Port card** (V13: what is where). In a raid, **the controls card** (V12): the goal, the keys on foot, at sea, in the air and for the menus, three rules of the sea and the controller buttons, on one screen. It no longer opens by itself at the start | client `Hud` |
 
-Abilities are keyboard and mouse, with the gamepad buttons above (V12 added `L1` throw, `L2` grapple, `R3` map and D-pad left keg; `L3` was already sprint). **V12 touch buttons** (client `TouchControls.lua`: Roblox's own context-action buttons, bound only on a touch screen and only while they mean something, calling the same functions as the keys): FIRE in a cannon; BOAT, HOOK and THROW (while carrying) on foot; BOOST, HOP and TRICK at the wheel. Prompts and the sword worked on touch before. Dash, drift, sprint and keg still have no touch button. V11's wardrobe, emote wheel and results are built for mouse, touch and gamepad. **None of the controller or touch input has been tried on a phone or with a real controller.**
+Abilities are keyboard and mouse, with the gamepad buttons above (V12 added `L1` throw, `L2` grapple, `R3` map and D-pad left keg; `L3`, sprint until V13.2, now dashes). **V12 touch buttons** (client `TouchControls.lua`: Roblox's own context-action buttons, bound only on a touch screen and only while they mean something, calling the same functions as the keys): FIRE in a cannon; BOAT, HOOK and THROW (while carrying) on foot; BOOST, HOP and TRICK at the wheel. Prompts and the sword worked on touch before. V13.2 adds GUN at the wheel. Dash, drift and keg still have no touch button. V11's wardrobe, emote wheel and results are built for mouse, touch and gamepad. **None of the controller or touch input has been tried on a phone or with a real controller.**
 
 ## Systems
 
@@ -288,7 +290,7 @@ All tuning numbers live in `src/shared/Config.lua`. Gameplay modules never hardc
 
 ### Movement, combat, spirit, raid
 
-- **Movement** (`Movement.lua`): the only writer of `WalkSpeed`; owns stamina. Running (28) is free. Stamina pays for sprint, dash, air jump and a carrier's sword swing; `Movement.spend` scales every cost by the held treasure's weight (`CARRY_STAMINA_PER_WEIGHT`). `Movement.request(player, "dash" | "airjump")` is the client asking the server to pay for a move it already played. `Movement.chill(player, seconds)` stops regeneration and drains stamina (`CHILL_REGEN`, `CHILL_DRAIN`; attribute `Chilled`).
+- **Movement** (`Movement.lua`): the only writer of `WalkSpeed`; owns stamina. Running (28) is free; since V13.2 this is the BASE speed (published as `MoveCap`), which the goblin's own client multiplies by its momentum (`shared/Momentum.lua`, up to ×1.36). There is no sprint. Stamina pays for dash, air jump and a carrier's sword swing; `Movement.spend` scales every cost by the held treasure's weight (`CARRY_STAMINA_PER_WEIGHT`). `Movement.request(player, "dash" | "airjump")` is the client asking the server to pay for a move it already played. `Movement.chill(player, seconds)` stops regeneration and drains stamina (`CHILL_REGEN`, `CHILL_DRAIN`; attribute `Chilled`).
 - **Combat**: sword (carriers swing slowly and tiredly), grapple. **V7: a grapple at a carrier catches, it does not rob**: `Combat.catch` knocks them down (`PlatformStand`, yanked toward the thrower, `DownedUntil` attribute, 2 s, then 6 s of immunity), and `Combat.stealFrom` (the E key, sent by a prompt the client builds on a goblin who is down) validates the thief, distance, line of sight, the hold and the throw cooldown before `Loot.steal`. The Hoard's ward protects. A pet Shell Tortoise absorbs one catch per 30 s. The grapple pull follows a moving anchor; aim that passes near a moving boat catches the boat (`GRAPPLE_BOAT_ASSIST`), and the server seats the player on the boat it hooked for them (`Combat.hookedBoat`).
 - **Poltergoblin**: switched off since V13.1 (`Config.POLTER_ENABLED`); the module is kept for a later return.
 - **Raid** (`Raid.lua`): phases, scoring, `resetWorld()` resets every system (loot, Heat, threats, Navy and its mines, storms and their spouts, destructibles, mechanisms, cannons, kegs, boats, flood, coins and salvage, creatures).
@@ -302,7 +304,62 @@ All tuning numbers live in `src/shared/Config.lua`. Gameplay modules never hardc
 - `Map.lua`: the world map (`M`) and the **compass strip** (Hoard, treasures, storms).
 - `Weather.lua`: reads `StormData`; draws cloud walls, fog, rain and darkening; sets wave size; warns "STORM TO THE NORTH-EAST - 600 STUDS".
 - `Effects.lua`: sounds from `rbxasset://sounds/*`, neon effects, **markers** (a closing ring on the ground: the one visual language for "this lands here"), the Guardian's shockwave, lightning bolts, flares, shells, tentacles, fireworks, dash and air-jump puffs. The field of view follows speed (`Effects.setSpeed`) and kicks for a dash or a launch (`punchFov`); one writer per frame. **Sound has two kinds**, and `Effects.sound` decides by whether it is given a position: an INTERFACE sound (a chime, an alarm) plays in the player's ears; a WORLD sound plays at its place with `InverseTapered` rolloff, fades to silence at its `range`, and is **not played at all** beyond it or when it would be inaudible. At most `VOICE_LIMIT` of one sound start within `VOICE_WINDOW`, and the world's sound group has a compressor. Thunder is a world sound (`Effects.thunder`). Far-off markers, blasts and bolts are not drawn either. Numbers: `Config.AUDIO`.
-- `Main.client.lua`: input, sprint, dash, air jump, grapple, zipline/pad/geyser movement, cannon and keg input, hiding coins the moment you pass them, hiding signs that are out of range, creature sounds and puffs (`CREATURE_FX`), event routing.
+- `Main.client.lua`: input, momentum (V13.2), dash, air jump, the grapple swing and pull (V13.2), the bow gun click, zipline/pad/geyser movement, cannon and keg input, hiding coins the moment you pass them, hiding signs that are out of range, creature sounds and puffs (`CREATURE_FX`), event routing.
+
+## V13.2: Sea of Chaos
+
+V13.2 answers Ninety's brief after the multiplayer playtests: raw speed and convenient routes let players optimise each other away. The aim: **more encounters, more expressive movement, boats that differ by what they do rather than how fast they get home, a drop that is a decision, raids people choose to join, and a world that does something different every raid.** Everything V13 and V13.1 added stays (the Port, the pets and economy, the knockout, bosses that attack, boat recall, scooping treasure with a boat). Report and evidence: `docs/reports/2026-10-19-v13-2-sea-of-chaos.md`.
+
+### Movement: momentum and the swing (`shared/Momentum.lua`, `shared/Swing.lua`, client `Main`, `Combat`, `Config.MOMENTUM`, `Config.SWING`)
+
+- **No sprint.** The server sets a goblin's base speed (`Movement`: 28, less when carrying or in water; published as `MoveCap`) and the goblin's own client multiplies it by **momentum**: 0.75 at the first step, ×1 after 0.3 s, ×1.36 (38) after about 2 s more. A change of heading sharper than about 70 degrees spends up to 65% of it, standing still bleeds it, swimming builds only to 0.4. Jumps, falls, swings and landings keep it, and speed carried off a swing or a fall (up to 92) slides back to the run 0.75 s after landing. Stamina is no longer spent on running: only on the dash, the air jump and a carrier's swing.
+- **The dash** (`Shift` or `C`, gamepad `B` or a left-stick click) stays as the dodge and quick start: it ends at full momentum.
+- **The swing.** `F` aims a hook with a forgiving cone (7 degrees, 170 studs). A hook 6+ studs above you is a **pendulum** (gravity 150, the rope only ever pulls, `W A S D` pump at 46 studs/s², hold `F` to reel in, `F` or `Space` lets go with a little lift, 125 studs/s at most, 7 s at most, and it lets go by itself after 0.3 s on the ground with a slack rope); a hook level or below is V7's straight **pull**. A hook on a boat seats you. The client flies its own body (it owns its physics); the server checks the hook is on something that does not move and in range (`Combat`). Carriers may swing and pull every 2.4 s (was 5).
+- **The catch** is a thrown hook (`CATCH_HOOK_SPEED` 170, `CATCH_HOOK_WIDTH` 7): it flies to where the carrier was, and catches them only if they are still near it, so a dash dodges it. Shell Tortoise still bounces one.
+- Poltergoblin stays switched off. Pets: Spring Frog (dash), Shell Tortoise (catch) and SPIRIT (knockout) all keep their use.
+
+### The fleet: ten classes in one speed band (`Config.BOAT_TYPES`, `BOAT_ABILITIES`, `BOAT_CLASSES`, `server/BoatModels.lua`, `server/BoatAbilities.lua`, `shared/BoatSim.lua`)
+
+- **One band**: top speeds 106 (Ironbelly) to 118 (Skiff), acceleration 61 to 72 (V13: 96 to 135 and 54 to 100). Boost ×1.42 (was 1.5), boost thrust 2.2, the standstill punch 0.6 (was 0.9), super jump from 132 to its full height at 188. Classes differ by turning, hull, crash resistance, draft, crew, air, and above all their `R` ability. Measured with server-driven boats from three islands to the Hoard, the fleet docks within 1.4 s (Crystal Isle), 3.6 s (Tangle Isle) and 3.5 s (Skull Rock) of each other; with V13.1's numbers it was 4.0, 6.6 and 11.2 s, the Skiff always first. The free Cutter now keeps pace with the Skiff.
+- **The abilities** (every one escapes, disrupts, or both): Skiff **NITRO** (×1.45 for 1.1 s, 15 s: it breaks every chain, hook and tow on the hull and shrugs off shoves; its worth is getting loose, not winning races); Cutter **RALLY HORN** (16 s: every boat within 150 surges for 2.2 s, the Cutter's hull is patched, nearby pursuers and the Leviathan flinch); Reefhopper SPRING; Broadside BROADSIDE; Stormrunner TWISTER (24 s, was 28); Wraith PHANTOM; Ironbelly RAM PLOW; and three new classes:
+  - **Anchorjack** (500 Shinies; ⚓ ANCHOR, 9 s). The anchor is **only this boat's** now (the V7 to V13 winch on every boat is gone). Thrown where you look (150 studs, forward of the beam): a rival boat near the aim is **snagged**, chained to you for 3.5 s on a rope as long as the gap when it caught (both hulls feel it: you are towed, it is held back); otherwise it bites a rock, the shore or the sea bed and you **swing** round it for up to 2.6 s; `R` again lets go, a swing as a **slingshot** (+34 studs/s along your swing). Measured: a fleeing Skiff at 70 dropped to 6 on the snag; a swing at 92 turned 160 degrees in 1.7 s and the release took it from 79 to 135.
+  - **Wavebreaker** (550; 🌊 BREAKER, 11 s). The hull slams down and a ring of water races out 115 studs: boats in it are thrown outward (96 at the middle to 34 at the edge, with lift), swimmers within 75 washed away, pursuers within 130 knocked back, loose treasure on the water washed outward; the Wavebreaker hops onto its own crest and surges. It rides the water's own flow (a rogue wave, a whirlpool) 1.6× harder. Measured: a Skiff 51 studs off the beam thrown at 71 studs/s.
+  - **Corsair** (650; ⚔ BOARDING HOOK, 14 s). Harpoons a rival hull ahead (170 studs, a 44 degree cone) and reels in at 70 studs/s faster than it for up to 2.4 s (the line snaps if the gap grows past 1.7× its start, or the rival reaches a safe place); alongside, it **boards**: the rival is knocked across the Corsair's heading and keeps half its speed, takes 24 hull damage (the Corsair 12), and **everyone aboard drops what they carry** (`Loot.knockLoose`, "boarded"). No boat ahead: the hook bites a rock within 130 and zips you to it. Measured: a fleeing Skiff hooked from 107 studs and boarded.
+- **Chains** (`BoatAbilities`): the server keeps one registry of every chain (`snag`, `swing`, `reel`, `zip`) and draws it for everyone (`BoatChain`, `BoatChainEnd`); the physics is a `tether` on each hull in `BoatSim`, applied by whichever machine simulates that hull (`Boats.tether` sends it to a driver's client, `BoatTether`), with the anti-cheat's allowance widened for the moment. A rival hull named by the client is believed only if it passes the server's own range, arc and safe-zone tests. **Boarding and lag**: the Corsair's own client says when it has arrived; the server sees that hull a moment late and that client saw the rival a moment late (measured: 27 studs apart at 94 and 68 studs/s), so "arrived" is believed within the boarding reach plus both boats' speeds along the line × `A.hook.lag` (0.35 s).
+- **Ownership**: Skiff and Cutter free; the other eight earnable with Shinies (350 to 700, `shared/Catalog.lua`), each with an inert Robux key (`Config.MONETIZATION.PRODUCTS`, `id = nil`; a human creates products). No profile migration: boats are ordinary catalogue items.
+
+### The bow gun (`Config.BOAT_GUN`, `Cannons.driverFire`, `Cannons.mountOnBoat`, client `BoatDrive.fireGun`)
+
+Every class carries a small swivel gun on its bow that only its driver fires: **a click** at the wheel (gamepad `R2`, touch GUN). The server checks the shooter drives that boat, it floats, the gun is loaded (2.2 s), the boat is not in the Port or at home; an aim behind or beside the bow (more than about 70 degrees off) fires straight ahead instead, a far one is brought in to 240 studs. Its shot is light: 12-stud blast, 5 damage and 64 knockback to goblins, 12 hull and a 74 shove to boats (halved for a hull hit again within 1 s), **it never sinks a boat on its own and never knocks treasure loose**, and it never reaches anyone in the Port or at home. It may aim down to 40 degrees (other cannons keep their 6 degree floor), so a close boat is hit where aimed. Blasts go through `Blast.at`, so kegs, barrels, creatures, sea mobs and ships react. The Cutter's deck cannon and the Broadside's side guns remain for friends (`E`).
+
+### The skyship's routes (`shared/SkyRoute.lua`, `server/Skyship.lua`, `server/Flight.lua`, client `Skyship`, `Map`, `Config.SKYSHIP`)
+
+- **Seven routes** (`ROUTES`: the Westwind, the Eastwind, the Northern Arc, the Southern Sweep, the Spine, the Cinder Run, the Navy Run), flown forwards or backwards, never the one before; chosen when the Port opens and shown there and on the map. Each reaches 6 to 10 of the 16 major islands; every island is in reach on at least two (`SkyRouteSpec`).
+- **Finite reach**: `DIVE.CANNON_SPEED` 215 (was 440) throws about 1,200 studs from 540 up (`SkyRoute.reach(targetY)`, computed for the landing's height). Islands in reach change as the ship flies.
+- **The window**: aboard, the ship waits at the route's start for `PREP` (10 s) while goblins climb in and aim; **the server refuses any fire** (manual, a map pick's auto-fire, the straggler fire, a late joiner's); the HUD shows 🔒 SETS OFF. Then it flies the route in `PASS` (32 s, 152 to 222 studs/s), firing a goblin with a map pick at the pick's closest pass and anyone still aboard at the end at the best landing in reach. The six-minute clock starts when the pass ends (`WINDOW` 42 s). After the pass it swings round (`TURN`, 3 s) and flies back and forth for late joiners, who get `LATE_DECK` (24 s) aboard.
+- **The ship moves as one welded assembly** (the deck anchored, everything welded; barrels and propellers on Motor6Ds) along a route that is a function of server time, so every client draws it in the same place; a goblin on deck is carried by its own client, a goblin in a cannon is welded into it. Throws start from a fixed fire point on the ship (`Flight.launch(..., start)`), because the server's view of a goblin on a moving deck lags (it once landed a goblin 59 studs off).
+- **V12's dry landings, kept**: each route re-checks every island's landing spot by flying the real throw from its closest pass (`Skyship.throwLands`: `Dive.step` with a spherecast) and moves a spot that would not come down within 22 studs on dry ground (`planLandings`, a little at a time while the Port waits). All 110 route-and-island combinations come down good; real flights landed 10 to 20 studs from their spot.
+
+### Going is a choice (`server/Raid.lua`, `shared/Lobby.lua`, client `PortHud`, `Hud`)
+
+- **Signing up**: `RaidRequest("in")` (JOIN NEXT RAID) or walking aboard the Little Goblin; `"out"` cancels until it leaves; `"auto"` keeps you signed up raid after raid. Player attributes `RaidOptIn`, `AutoJoin`; workspace `PortSigned`.
+- **The countdown** (`Lobby.portEndsAt`, `Lobby.shouldDepart`): with nobody signed up the Port shows WAITING FOR RAIDERS and no raid starts; the first sign-up starts `PORT.DURATION` (60 s); when everyone signed up is aboard it is brought forward to 8 s. Only signed-up goblins are sent; everyone else stays to shop, chat, watch from the Spyglass or join late (`Lobby.canJoinLate`, 120 s left).
+- **Leaving** (`RaidRequest("leave")`, the `H` card's LEAVE THIS RAID, two presses): `Raid.leave` drops what they carry (`Loot.dropFor`, "left"), zeroes that raid's gold, takes them home to the Port; that raid's Shinies are forfeited too. A raid with nobody left in it ends.
+
+### World chaos (`server/WorldChaos.lua`, client `ChaosFx.lua`, `shared/Sea.lua`, `Config.CHAOS`)
+
+- **One event per raid** (`WorldChaos.choose`, never the last raid's), revealed when the Port opens: name, icon and a line on the Port screen and its board (`ChaosNext`, `ChaosName`, `ChaosIcon`, `ChaosLine`).
+- **Episodes** (`WorldChaos.tick`): the first 22 to 34 s into the clock, then each after 18 to 30 s of calm, none in the last 18 s. An episode is centred 80 to 260 studs off goblins in the raid (at sea for the sea events), never within 650 of the Hoard, never in the Port; goblins within 900 get its banner. Each is drawn afresh (count, size, shape, place, timing) from `Config.CHAOS`.
+- **The eight**: ☄ **Meteor Mayhem** (5 to 9 meteors under burning rings, sometimes THE BIG ONE first; blasts throw boats up and out, splash, set off kegs); 🐙 **Kraken's Tantrum** (4 to 6 tentacles after bubbles: sweeps across a 120 degree arc, slams, and tosses from beneath); 🌊 **Rogue Wave Rampage** (1 to 2 walls of water 20 to 30 high rolling at 58 to 74: a boat on the crest is carried, one in front is thrown; they break against land); 💣 **Cannonball Crossfire** (an armada in deep water 520 to 650 off shells a zone for 14 to 18 s, sometimes rolling across the sea, aiming at boats' paths); 💥 **Barrel Apocalypse** (fields of 26 to 40 drifting kegs, 70% powder: anything that goes bang near one sets it off, in chains); 🌀 **Whirlpool Outbreak** (wandering whirlpools that pull boats in, spin them and fling them out); 👻 **Haunted Seas** (twin portals that carry a boat from one to the other, and phantom ships that ram); ⚡ **Thunderstruck** (the sky darkens, a crackling ring, a giant strike on the busiest water: the shockwave throws boats and SUPERCHARGES them).
+- **Through the game's own rules**: explosions are `Blast.at` (creatures, sea mobs, the Navy, mines, kegs and barrels react: `Blast.Hit`); boats move through `Boats.shove` with crash grace scaled to the shove (chaos batters; it never sinks a boat outright); goblins through `Impact` (grace, no juggling, small damage); creatures are disturbed (`Creatures.disturb`), guardians staggered (`Threats.stagger`), the Leviathan recoils, pursuers are shoved (`Pursuit.shoveAt`). Rogue waves and whirlpools are part of the sea itself (`Sea.waveAt`, `Sea.currentAt` with `Sea.setChaos`): the server publishes them (`workspace.ChaosSea`) and every driver's client floats its boat on the same water. Barrels are data the server moves; every visual is the clients' (`Chaos` events).
+- **Reset**: `WorldChaos.reset` (called by `Raid`'s world reset) clears every wave, whirlpool, barrel, portal, ship and ring and the published sea.
+- **Cost**: with six AI boats round the goblin and each event forced in turn (and barrels with meteors at once), the Studio server held 60 steps a second (worst step 20 ms) and the client 60 fps.
+
+### Adding content (V13.2)
+
+- **A chaos event**: an entry in `Config.CHAOS.EVENTS` (id, name, icon, line) and its tuning block, an `EPISODE[id]` function in `WorldChaos` returning (seconds, radius), anything it keeps ticking in `WorldChaos.tick`, and its visuals as `Chaos` kinds in `ChaosFx`. `ChaosSpec` checks every event has its name, icon and tuning.
+- **A skyship route**: a `{ name, points }` entry in `Config.SKYSHIP.ROUTES`; `SkyRouteSpec` checks its bounds, speed and that every island stays reachable on two routes; the landings are re-checked by the server when it is planned.
+- **A boat class**: as in V13 (a `BOAT_TYPES` entry, a `BOAT_CLASSES` showroom card, a builder in `BoatModels`, a catalogue item, an ability), keeping inside the speed band `BoatClassSpec` checks (105 to 120, acceleration within a narrow range) and giving it something it beats every other class at.
 
 ## V13.1: the playtest fixes
 
@@ -340,6 +397,8 @@ V13 (branch feature/v13-goblin-port, Ninety's "V13 One-Shot: The Goblin Port" br
 
 ### The round (`server/Raid.lua`, `server/Port.lua`, `shared/Lobby.lua`)
 
+*(V13 as built. Since V13.2 only goblins who sign up go, the launch window is 42 s on a moving ship, and a raider can leave early: see **V13.2: Sea of Chaos**.)*
+
 - **PORT (`Config.PORT.DURATION`, 60 s) → skyship launch window (20 s) → raid (360 s) → PORT.** The old 10 s intermission on the skyship's deck is gone. A raid ends, everyone in it comes home to the Port (the winners onto the podium), the results card shows for `Results.SHOW_FOR` (22 s), and the next raid leaves when the countdown ends.
 - **Nobody has to ready up.** Walking up the gangplank onto the airship *The Little Goblin* makes a goblin READY (a box over its deck: `Port.isReady`). When every goblin in the Port is aboard, the countdown is brought forward to `READY_SECONDS` (8 s), never pushed back (`Lobby.portEndsAt`). An empty server holds the countdown.
 - **Everyone in the server goes** when the countdown ends (the Port is a place to wait, not a menu). Who is in the raid is explicit (`Raid.participants`): only they score, earn the raid's Shinies, respawn at Goblin Cove, and can be watched. A goblin who joins the server mid-raid arrives in the Port.
@@ -358,6 +417,8 @@ Built at start-up from parts and terrain (no assets): a lobed sand-and-grass isl
 From the Port (WATCH, or E at the Spyglass) a goblin watches a raider. The server decides who may be watched (a participant, alive), streams the world round them to the spectator (`Player.ReplicationFocus` and `RequestStreamAroundAsync`) and moves the spectator on when the target leaves, dies out of the raid, or the raid ends (`SpectateSwitch`, `SpectateEnd`). The client points the camera at the target's humanoid, turns the goblin's own controls off and catches its movement keys, and draws a bar: ◀ name ▶, their gold and what they are doing, the raid clock, JOIN (while late entry is open) and PORT. Keys: Left/Right (Q/E, D-pad, L1/R1) change target; Backspace (B) goes back. Joining the raid, the raid ending, and a respawn all put the camera and controls back.
 
 ### The fleet: seven boat classes (`Config.BOAT_TYPES`, `Config.BOAT_ABILITIES`, `Config.BOAT_CLASSES`, `server/BoatModels.lua`, `server/BoatAbilities.lua`, `shared/BoatSim.lua`)
+
+*(V13 as built. Since V13.2 the speeds are compressed into one band, the Cutter's ability is the Rally Horn (every boat has a bow gun), the anchor winch is gone, and there are ten classes: see **V13.2: Sea of Chaos**.)*
 
 Each class is one row of numbers in `Config.BOAT_TYPES` (hull size, speed, turning, health, crash damage taken, passengers...), one look in `BoatModels.lua` (welded, massless, non-colliding detail on the hull BoatSim drives, named so a goblin's paint dresses every class), one showroom row in `Config.BOAT_CLASSES` (role, best, worst, five pips) and **one ability on the stunt key** (`R`, R1, touch STUNT: on the water the ability, in the air a trick).
 
@@ -695,14 +756,15 @@ See Boats (B). In the last `FINAL_RUSH` seconds `Raid.onBanked` pays `FINAL_RUSH
 | `tests/luau/` | `ServerStorage.LootGoblinsTests` (only in `test.project.json`) | Luau tests (46 in V11, 53 in V12, 76 in V13: `LobbySpec`, `BoatClassSpec`, `PetSpec` are new): `Runner` and `Specs/*`. Run in Studio's Edit mode: `require(game.ServerStorage.LootGoblinsTests.Runner).run().summary` |
 
 - **Plain modules, no framework.** Direct calls and tiny `Util.signal()` events. Require order has no cycles: `Net`/`Util` → `Movement` → `Sea`/`SeaNav` → `World`/`Boats` → `Loot` → `Heat` → `Poltergoblin` → `Destructibles` → `Blast` → `Cannons`/`Kegs`/`Mechanisms` → `Combat`/`Threats` → `Storms` → `Navy` → `Troubles` → `Escalation` → `Coins` → `Creatures` → `Bestiary`/`BestiaryMinor` → `Raid` → `Main`. (`Main` requires the two bestiary modules only so they register their creatures before `Creatures.build`.) Injections that avoid cycles: `Loot.canBank`, `Destructibles.explode` (set by `Blast`), `Threats.handlers` (filled by `Troubles`), `Blast.Hit` (Navy's mines listen), `Mechanisms.BeaconLit` (Main tells the Navy), `Landform.touch` (set by `World`), `Boats.Sunk` and `Storms.Spent` (Main drops salvage), `Loot.Taken` (Main tells `Creatures.onTaken`).
-- **Remotes** (`ReplicatedStorage.LootGoblinsRemotes`, recreated at boot). Client → server: `ThrowRequest`, `GrappleRequest`, `PoltergoblinRequest`, `SprintRequest`, `MoveRequest("dash" | "airjump")`, `BoatBoostRequest`, `BoatDriftRequest(held)`, `BoatFxRequest(kind)`, `BoatBoardRequest`, `CannonRequest(basePart, aimPoint)`, `KegRequest(aimPoint)`; V7: `BoatJumpRequest`, `BoatRecallRequest`, `StealRequest(player)`, `DeployRequest(action, a, b)`, `ShopRequest(action, id)`.
+- **Remotes** (`ReplicatedStorage.LootGoblinsRemotes`, recreated at boot). Client → server: `ThrowRequest`, `GrappleRequest`, `PoltergoblinRequest`, `MoveRequest("dash" | "airjump")` (V13.2: `SprintRequest` removed), `BoatBoostRequest`, `BoatDriftRequest(held)`, `BoatFxRequest(kind)`, `BoatBoardRequest`, `CannonRequest(basePart, aimPoint)`, `KegRequest(aimPoint)`; V7: `BoatJumpRequest`, `BoatRecallRequest`, `StealRequest(player)`, `DeployRequest(action, a, b)`, `ShopRequest(action, id)`.
 - **V11 remotes and events.** Client → server: `ShopRequest(action, a, b)` (now `buy`, `equip`, `unequip`, `presetsave`, `presetload`, `opened`, `robux`), `EmoteRequest(emoteId | "stop")`. Server → client `GameEvent` kinds: `ShopResult`, `Welcome`, `Achievement`, `Premium`, `RaidReward`, `Celebrate`. Player attributes: `Look`, `Owned`, `Achievements`, `AchievementProgress` (JSON), `Presets` (JSON), `Emote`, `Shinies`, `SaveState`, `Pet`, `Kit`. Boat attributes: `StyleOwner`, `StyleSig`, `Trail`, `Wake`, `TrickFx`, `Callout`. Workspace: `PremiumPrices`, `PremiumPreview`. `ReplicatedStorage.LootGoblinsPreview` holds still copies of a skiff and a cutter for the shop.
 - **V9 added no remote.** `BoatFxRequest` carries more kinds (`trick` with its name, `trickland` with a count, `sketchy`, `bail`) and the server relays them as `BoatFx`; V9's server events are `SeaFx` kinds `quit`, `roar`, `spout`, `dart`, `gfist`, `yarr`, `cannon`, `stone`, and `GuardianLaunch`, `TwisterBorn`, `TwisterThrow`. V9 attributes: `workspace.TwisterData`, `workspace.RaidClockAt`, `workspace.GuardianState` (`board`, `sail`), pursuer models' `Pursuer` and `Chasing`.
 - **`GameEvent(kind, payload)`** server → client. V2's kinds plus: `Dash`, `AirJump`, `BoatFx` (a drift burst or clean landing on someone else's boat), `BoatPush` (to a driver: apply this push to your hull), `GuardianStomp`, `NavyRam`, `Spout`, `Beacon`, and V5's `Coin` (you took one), `CoinsBanked`, `Run` (started, finished, new best), `Creature` (a creature did something here: the client picks the sound and puff by `kind`). V7's server events: `DiveStart`, `DiveBounce`, `DiveFire`, `DiveImpact`, `DeployOpen`, `RecallCalled`, `AlertRaised`; `GrappleFX` gained `catch`. **V5 and V6 added no remote.** `Net.broadcastNear(position, range, kind, payload)` sends an event only to goblins within `range` of where it happened; `Blast.lua` uses it for markers, bolts and blasts (a storm across the sea is nobody's business at home). Use it for anything loud and local.
 - **V13 remotes and state.** Client → server: `PortRequest("join")`, `PortRequest("spectate", "start" | "next" | "back" | "stop", userId?)` (a few a second at most), `BoatAbilityRequest(aimPoint)`. Server → client `GameEvent` kinds: `SpectateEnd(why)`, `SpectateSwitch`, `RaidJoined`, `AbilityRefused`, `BoatFx` kind `ability`. Player attributes: `Zone` (`port` | `raid`), `InRaid`, `Ready`, `Spectating` (a userId), `BoatClass`, `Raids`. Workspace: `RaidPhase` is `port` or `raid`, `PortReady`, `PortCount`, `DevPortSeconds` (a Studio-only test hook in `Raid.init`). Boat: `AbilityReadyAt`. `PortCore` (persistent): `Center`, `Slipways` and `Pens` (JSON, for the client), the `Gangplank` and `DepartureBoard` parts. Prompts carry `OpensWardrobe` (`goblin`, `pet`, `boat:<class>`) or `PortAction` (`join`, `spectate`). `ReplicatedStorage.LootGoblinsPreview` holds all seven classes.
 - **V12 added no remote.** Attributes: `LootGoblinsGenerated.Land_<island>` (each island's landing spot), player `LaunchBy` (their own launch deadline). The client's anti-gravity force is a `VectorForce` named `FlightLift` in the goblin's root while diving.
+- **V13.2 remotes and state.** Client → server: `BoatGunRequest(aimPoint)` (the bow gun), `BoatChainRequest(kind)` (your own anchor or hook let go: `sling`, `arrived`, ...), `RaidRequest("in" | "out" | "auto" | "leave")`, `BoatAbilityRequest(aimPoint, { target })` (the anchor and hook name the hull the client chose). Server → client `GameEvent` kinds: `BoatTether` (a chain on the hull you simulate), `BoatChain`/`BoatChainEnd` (draw or drop a chain), `BoatWave`, `Boarded`, `Chaos` (every world-chaos visual), `RaidLeft`. Attributes: workspace `SkyRouteName`, `ChaosNext`/`ChaosName`/`ChaosIcon`/`ChaosLine` (shown in the Port), `ChaosEvent`, `ChaosZone`, `ChaosSea` (rogue waves and whirlpools for every client's sea), `PortSigned`; player `RaidOptIn`, `AutoJoin`, `MoveCap`; boat model `GunReadyAt`, `Chained`, `AbilityReadyAt`.
 - **V13.1 remote and attributes.** Client → server `ResetRequest` (the Reset button: a real respawn). Server → client `GameEvent` kinds `KnockedOut` (seconds, cause), `WokeUp`, `RecallParked`; boat pushes may carry `tumble` (seconds). Player: `KnockedOutUntil`, `KnockedOutAt`, `WokeAt`, `LastHitBy`, `LastHitAt`. Boat model: `RecallParked`. The jade frogs' sea form is `Pursuer` "The Jade Frogs".
-- **Replicated state is attributes** (times in `workspace:GetServerTimeNow()` units). Player: `CarryingLoot`, `Kegs`, `Stamina`, `Sprinting`, `Winded`, `Chilled`, `Coins`, `CoinGold`, grapple/Poltergoblin timers. Boat model: `BoatType`, `Health`, `MaxHealth`, `Pilot` (UserId of the client simulating it), `Moored`, `BoostEndsAt`, `BoostReadyAt`, `BoostRefund`, `Payload`. Coin part: `Value`. `workspace`: `RaidPhase`, `PhaseEndsAt`, `Heat`, `HeatTier`, `GuardianState`, `StormData`, `SeaRough`. `Loot` folder: `<id>State`, `Carrier`, `CarrierId`, `ReturnAt`, `Bonus`. Vent: `GeyserPeriod/Active/Phase`, `Launch`. Launch pad: `Launch`, and `Carry` on a catapult. V7: player `DeployState`, `DeployDest`, `DeployAim`, `Diving`, `DownedUntil`, `CatchImmuneUntil`, `Gear`, `Pet`, `Shinies`, `OwnedPets`, `OwnedKits`, `Kit`, `SaveState`, `RecallReadyAt`; boat `Recalled`; `workspace` `DeployOpensAt`, `DeployEndsAt`, `Alert_<island>`.
+- **Replicated state is attributes** (times in `workspace:GetServerTimeNow()` units). Player: `CarryingLoot`, `Kegs`, `Stamina`, `Winded`, `Chilled`, `Coins`, `CoinGold`, grapple/Poltergoblin timers. Boat model: `BoatType`, `Health`, `MaxHealth`, `Pilot` (UserId of the client simulating it), `Moored`, `BoostEndsAt`, `BoostReadyAt`, `BoostRefund`, `Payload`. Coin part: `Value`. `workspace`: `RaidPhase`, `PhaseEndsAt`, `Heat`, `HeatTier`, `GuardianState`, `StormData`, `SeaRough`. `Loot` folder: `<id>State`, `Carrier`, `CarrierId`, `ReturnAt`, `Bonus`. Vent: `GeyserPeriod/Active/Phase`, `Launch`. Launch pad: `Launch`, and `Carry` on a catapult. V7: player `DeployState`, `DeployDest`, `DeployAim`, `Diving`, `DownedUntil`, `CatchImmuneUntil`, `Gear`, `Pet`, `Shinies`, `OwnedPets`, `OwnedKits`, `Kit`, `SaveState`, `RecallReadyAt`; boat `Recalled`; `workspace` `DeployOpensAt`, `DeployEndsAt`, `Alert_<island>`.
 
 Integration points new code must respect:
 
@@ -710,8 +772,8 @@ Integration points new code must respect:
 - **V9:** a creature's hit at sea goes through `Pursuit.hit` (it asks `Impact.open` before touching the goblin or the boat). A pursuer's altitude and throws go through `Pursuit.air`. Nothing that follows a thief may enter the sanctuary (`Pursuit.inSanctuary`). Anything that lifts a boat or a goblin into the air should use `Twister.accel` or `Flight.launch` rather than writing velocities, and new hull-throwing effects must stay inside `Boats.police`'s allowances (it now tracks `lastHighAt`, `twistedAt` and server shoves).
 - **The shared E key:** a visible prompt always wins; in a seat (V13.1) E with nothing in reach leaves the boat; Poltergoblin is switched off.
 - **Health and treasure (V13.1):** health 0 is a knockout (`Knockout.lua`), never a death; `Util.aliveRoot` counts a knocked-out goblin as down. A world hit on a carrier goes through `Loot.knockLoose(player, from, reason, nil)` (it hurts, it never drops); give the reason a name in Loot's `WORLD_NAMES` so the knockout feed can say who did it.
-- **The shared C key:** dash on foot, drift in a driver's seat.
-- **The R key (V9; V13):** the boat's ability on the water and a trick in the air (`BoatDrive.stunt`) in a driver's seat; the anchor prompt elsewhere (hidden for the driver while driving).
+- **The shared C key:** dash on foot (so is `Shift`, V13.2), drift in a driver's seat. **The click at the wheel** is the bow gun (V13.2): never the sword or the grapple.
+- **The R key (V9; V13):** the boat's ability on the water and a trick in the air (`BoatDrive.stunt`) in a driver's seat; nothing elsewhere since V13.2 (the anchor winch is gone: the anchor is the Anchorjack's ability).
 - **V13:** anything a raid does that could reach the Port asks `Lobby.inPort` first; whether a goblin is in the raid is `Raid.isParticipant` (also injected as `Progress.participating` and `Port.inRaid`); a boat ability's server part goes through `BoatAbilities` and widens the boat's police allowance for its moment; anything that moves a goblin between the Port and the raid goes through `Port.arrive`, `Raid.placeCharacter` or `Skyship.board`.
 - **V11:** ownership, balances, achievements and Robux grants are decided only by `Progress`/`Economy`/`Monetization` on the server; anything a goblin wears is applied by the server (`GoblinLook`, `BoatStyle`) or drawn by clients from replicated attributes; cosmetics are always massless, non-colliding, not ray-hit and not touched; an emote never moves a character; pets never collide.
 
@@ -761,12 +823,13 @@ Integration points new code must respect:
 
 ## Known limitations
 
+- **V13.2**: one Studio client. Never seen with a second player: boarding a real goblin (their treasure dropping), an anchor or hook on a boat another client simulates (the chain is sent to that client), the bow gun between players, a Rally Horn surging a friend. Never tried: a real controller (`R2` gun, `L2` swing) or phone (GUN). The tuning is a first pass: whether momentum's 2 s build, the swing's 125 cap (it can fly you into a tree), the compressed boats and the chaos's frequency feel right is the playtest's question. Boarding trusts the Corsair's own client a little ("arrived" is believed within both boats' speeds × `A.hook.lag`, 0.35 s, of the boarding reach).
 - **V13**: one Studio client only, so **spectating another goblin, late entry while someone else raids, two goblins readying, the Port with a crowd and every ability against another player were not seen**; spectating was checked with the watch state forced onto the only goblin (camera, bar, frozen controls, Backspace back) and its server paths by their refusals. Studio's simulated keys do not drive Roblox's built-in prompt input, so the Port's counters and the pier prompt were opened by key (P) and by test commands rather than by holding E. The Stormrunner's twister follows its own boat's heading, so a Stormrunner that stops for long is caught by its own tornado after the 5 s grace (by design a ride, untested by people). The Port's water meets the far-sea plane in a visible straight seam from high up. The champion statue is a plain mannequin. Pet and boat balance, prices and the 60 s Port are first guesses. No phone, no real controller.
 - **V12**: nothing was tried on a phone, with a real controller or with a second player. The touch buttons were checked only for which actions each mode binds (Roblox draws them only on a touch screen); the danger arrows and toasts were placed on a 1736 x 801 Studio view and may crowd a small phone screen. The landing search runs once at start-up (a few hundred rays; all rings of every island would be 1,824 rays, 73 ms). A spot on a steep island top can leave a goblin sliding up to 20 studs downhill (Windmill Hills). Crystal Isle's and Skull Rock's landings are 146 and 121 studs from their treasures by design (at the way in).
 - **V11**: live DataStore saving and real Robux purchases have not run (no API access in the Studio place, no products); nothing was tested with a second player, on a phone or with a real controller; emotes on the classic six-part avatar map only some joints; dynamic and Rthro heads were not looked at; previews of trails, wakes and trick effects are flat colour previews (a ViewportFrame cannot draw particles); capes are static; prices are first guesses. See the V11 report, section 28.
 - The art is still built from primitive parts and ellipsoids (V10 made it deliberate, not detailed). V10 was judged by one AI from screenshots; a person has not looked at it. Close up, the landmarks' stone heads and arches are blocky by design.
 - Steep shore edges still stop a boat dead; boats pass through dock posts.
-- Dash, drift, sprint and keg have no touch buttons (V12 added FIRE, BOAT, HOOK, THROW, BOOST, HOP and TRICK).
+- Dash, drift and keg have no touch buttons (V12 added FIRE, BOAT, HOOK, THROW, BOOST, HOP and TRICK; V13.2 GUN).
 - **V13.1**: the creature numbers (a carrier hit of 22, the frogs' pounce every 1.4 s, the Chill's hail every 3.4 s, the Leviathan's bite every 6 s) are first guesses: one AI saw a goblin standing still or sailing straight knocked out in 13 to 24 s, which a player who dodges will not be. A knockout in lava can repeat once the 2 s wake grace runs out. A called boat parks at the nearest water deep enough for it, which off a long sand flat can be 60 studs out. The knockout pose is a goblin tipped onto its back by its own client.
 - The Guardian walks through walls and can't enter tunnels. So does every creature: a marine goes through a barracks, a Watcher climbs the outside of the lighthouse.
 - Creatures are a few dozen parts each since V10 (V9: a few blocks). Their numbers and the timed runs' pars are first guesses.
@@ -781,6 +844,7 @@ Integration points new code must respect:
 
 ## Known bugs
 
+- **V13.2 has not been played by a person or with a second player.** Fixed while testing: the Corsair's boarding never landing (the server's view of the hulls lags; "arrived" is now judged with that lag), a boarded boat being sped up (shoved along the line between hulls; now across), the bow gun's close shots going 15 to 20 studs long (the cannons' 6 degree floor; the bow gun may aim down to 40), the skyship's auto-fire landing 59 studs off (it now throws from a fixed point on the ship), the ship jumping back to its route's start, meteor-thrown boats taking crash damage, the kraken's markers tinting the screen, weak or misoriented rogue waves, whirlpools that never let go, an armada on a beach, left-over tentacles, and the leave button covering the card's last line. Studio's own test mouse leaves the camera Fixed (no game code does).
 - **Fixed in V13:** since V11 the server passed only the first argument of a shop request on (`Main.server.lua`), so **WEAR IT / BRING OUT on anything already owned took that slot off** (only a purchase, which wears the item itself, ever changed a look) and saved outfits lost their names; found in the V13 Studio playtest. Also fixed in V13: after buying a pet the wardrobe's stage fell back to the Crab; a 20-stud neon ready ring bloomed into a blinding yellow deck; the compass strip sat behind the Port's sign; long feed lines were cut off; the hook, throw and coin glyphs did not render in Roblox's font; a controller had no Poltergoblin; touch's TRICK button never used a boat ability.
 - **V13 has not been played by a person or with a second player.** Spectating and late entry are tested by rules (LobbySpec) and single-client checks only. Seen working in Studio: arriving in the Port, the countdown, ready-by-walking-aboard (571 s → 6 s), the raid starting by itself, raid end with podium, statue, results and payout (34 Shinies: 8 + 9 + 15 + 2), an abandoned raid ending, buying and wearing boats and pets (in the Port and at the Hoard; refused on the skyship), every class's ability through the real `R` key with the server accepting it, the pens, the quiet HUD, 60 fps with 590 pen-pet parts.
 - **Fixed in V12:** the `R1` trick (V9) never reached the game on a controller (Roblox's hotbar took the button, and pressing it could put the sword away); `L1`, `R1` and `R3` are now bound above Roblox's own actions (`LootGoblinsPad` in `Main.client.lua`), so a controller loses the camera's zoom toggle on `R3`.
@@ -821,7 +885,7 @@ The server owns body state, timers, damage marks, returns, and possession; the c
 
 ### Player and boat motion boundaries
 
-Movement is the single server writer of WalkSpeed and stamina. Ordinary running, carried speed, water scaling, sprint, and spirit bonuses compose through it. The client predicts dash/air-jump and sends intent; the server charges stamina and enforces eligibility/cooldowns. Regeneration pauses after spending, and exhausting the meter creates a winded recovery threshold. Chill suppresses regeneration and drains stamina.
+Movement is the single server writer of WalkSpeed and stamina. Ordinary running, carried speed, water scaling and spirit bonuses compose through it; since V13.2 that is the base the goblin's own client multiplies by its momentum (there is no sprint, and, as before, no server check on how fast a character really runs). The client predicts dash/air-jump and sends intent; the server charges stamina and enforces eligibility/cooldowns. Regeneration pauses after spending, and exhausting the meter creates a winded recovery threshold. Chill suppresses regeneration and drains stamina.
 
 BoatSim is shared physics code. Driven boats normally run on their driver's client, while empty and AI boats run on the server. Buoyancy samples six hull points against deterministic wave math; powered thrust, braking, grip, yaw, drift, bank, recovery, current drag, and controlled bursts determine motion. Server Boats owns seats, anchors, health, crash/scrape damage, sinking, respawn, boost cooldowns, and coarse motion policing. Setting BOAT_CLIENT_PHYSICS false returns driven simulation to the server for comparison.
 
@@ -1434,14 +1498,14 @@ Everything sold for Robux is either **something also earnable with Shinies** (a 
 | `livery_starlit` | Starlit Galleon (boat paint) | no, premium cosmetic |
 | `trail_aurora` | Aurora Ribbon (boost trail) | no, premium cosmetic |
 | `petskin_crab_gold` | Golden Crab (pet look) | no, premium cosmetic |
-| `boat_reefhopper`, `boat_wraith`, `boat_stormrunner`, `boat_ironbelly`, `boat_broadside` (V13) | that boat class | yes, for Shinies (350 to 700) |
+| `boat_reefhopper`, `boat_wraith`, `boat_stormrunner`, `boat_ironbelly`, `boat_broadside` (V13); `boat_anchorjack`, `boat_wavebreaker`, `boat_corsair` (V13.2) | that boat class | yes, for Shinies (350 to 700; the V13.2 three 500, 550 and 650). Since V13.2 every class has the same speed band, so a boat pass sells a play style, not speed |
 | `pet_Whelp` (V13) | the Gilded Whelp, a show pet | no, premium cosmetic: **it has no ability** |
 | `petskin_wobble_moon` (V13) | Moon Jelly (pet look for Wobble) | no, premium cosmetic |
-| `bundle_fleet` (V13) | all five unlockable boats | yes, each for Shinies. **No catalogue item points at it, so the shop does not show it**; it is ready for a team that wants a bundle pass |
+| `bundle_fleet` (V13; eight boats since V13.2) | all eight unlockable boats | yes, each for Shinies. **No catalogue item points at it, so the shop does not show it**; it is ready for a team that wants a bundle pass |
 
 ### What the team should decide (V13)
 
-Commercially sensible, and fair: everything that changes how you play is earnable in a few hours of ordinary raids (see the V13 report's economy model), so a boat pass sells time, not power. If the team wants to sell boats at all, a price that is a convenience next to about two to four hours of play, and a bundle cheaper than the five passes together, would fit. A show pet or a look is pure expression. The AI does not set prices; Roblox gives the real price to the shop once a product exists.
+Commercially sensible, and fair: everything that changes how you play is earnable in a few hours of ordinary raids (see the V13 report's economy model), so a boat pass sells time, not power. If the team wants to sell boats at all, a price that is a convenience next to about two to four hours of play, and a bundle cheaper than the eight passes together (five in V13), would fit. A show pet or a look is pure expression. The AI does not set prices; Roblox gives the real price to the shop once a product exists.
 
 ## Turning one on
 
@@ -1535,20 +1599,37 @@ Config.JUMP_POWER = 56 -- Roblox's default is 50: a little higher and longer.
 Config.WATER_SPEED_MULT = 0.85 -- Wading or swimming. Carry and spirit speed stack with it.
 Config.WATER_ROOT_Y = 3 -- A root lower than this is standing or swimming in the sea.
 
--- Sprint (hold Shift): a burst on top of the run, on land or in the water. Not in a seat.
-Config.SPRINT_MULT = 1.36 -- 28 -> 38 empty-handed.
-Config.CARRY_SPRINT_MULT = 1.25 -- Carriers run at 21-27 and sprint at 27-34.
+-- V13.2: MOMENTUM instead of sprint. A goblin starts moving at once at a jog and builds to a full run by keeping on
+-- running (shared/Momentum.lua, played by the goblin's own client on its own WalkSpeed; the server's WalkSpeed is the
+-- base the momentum multiplies). A turn sharper than about 70 degrees, or stopping on the ground, spends it; a jump, a
+-- fall, a grapple swing and a landing keep it. There is no sprint key any more (Shift on foot is the dash), and so no
+-- stamina drain from running: stamina pays for the dash, the air jump and a carrier's swing.
+-- (V13: Shift held to sprint, x1.36, 11 stamina a second.)
+Config.MOMENTUM = {
+	START = 0.75, -- Share of the run speed the first step is at (28 -> 21): moving at once, not crawling.
+	RUN_AT = 0.3, -- Momentum at which the ordinary run (x1) is reached...
+	RUN_TIME = 0.3, -- ...this many seconds after setting off.
+	TOP = 1.36, -- Full momentum (28 -> 38, carriers 21.5-27 -> 29-37: what V13's sprint was).
+	TOP_TIME = 2.0, -- Seconds of running on from RUN_AT to the top.
+	TURN_DOT = 0.35, -- A change of heading whose cosine is below this (about 70 degrees) spends momentum...
+	TURN_LOSS = 0.65, -- ...this much of it at a full reverse (less for a gentler turn).
+	STOP_DECAY = 2.6, -- Momentum lost per second standing still on the ground.
+	WATER_MAX = 0.4, -- Swimming builds no further than this.
+	-- Speed carried from a swing, a dash or a fall: the goblin may keep moving faster than its run for a moment.
+	CARRY_MAX = 92, -- Studs/s at most.
+	CARRY_AIR_DECAY = 0.12, -- Share lost per second while still in the air.
+	CARRY_GROUND_TIME = 0.75, -- Seconds after touching down that it slides back to the run (a slide-out, not a stop).
+}
 Config.STAMINA_MAX = 100
-Config.STAMINA_DRAIN = 11 -- Per second of sprinting: a full bar lasts 9 s.
 Config.STAMINA_REGEN = 32 -- Per second, once you stop spending.
 Config.STAMINA_REGEN_DELAY = 0.6 -- Pause after spending before stamina comes back.
-Config.STAMINA_RECOVER = 25 -- Run it dry and you're winded (no sprint) until it refills this far.
 -- Loot makes every stamina cost bigger instead of making you slow: each unit of the treasure's
 -- weight adds this much to sprint drain and to the cost of a dash, an air jump or a swing.
 Config.CARRY_STAMINA_PER_WEIGHT = 0.12 -- Leviathan Tooth (weight 6): everything costs 1.72x.
 
--- Dash (C): a short burst the way you are moving, on the ground or in the air. It is the dodge:
--- out of a marked circle, across a gap, away from a sword.
+-- Dash (C, V13.2: also Shift on foot): a short burst the way you are moving, on the ground or in the air. It is the
+-- dodge: out of a marked circle, across a gap, away from a sword or a grapple's hook. V13.2: it ends at full momentum,
+-- so it is also the quick start.
 Config.DASH_COST = 18
 Config.DASH_COOLDOWN = 0.9
 Config.DASH_SPEED = 85
@@ -1970,6 +2051,10 @@ Config.SWORD_KNOCKBACK = 34
 -- clear line of sight. Aimed at ground, walls, cliffs or a boat it pulls you there (a boat
 -- keeps moving: the rope follows it). Carriers can't steal with it, but they can still pull
 -- themselves around, on a longer cooldown. A miss costs no cooldown.
+-- V13.2: THE GRAPPLE IS HOW GOBLINS GET ABOUT ON FOOT (Config.SWING, shared/Swing.lua). Hooked to something above
+-- you, you SWING on the rope under your own momentum (W A S D pump the swing; hold F to reel in; F again or Space lets
+-- go and you keep every bit of the speed). Hooked to something level or below, it reels you to it (the old pull).
+-- It starts on your own client the moment you press (the server is told and checks the rope's reach).
 Config.GRAPPLE_RANGE = 70 -- Range for grabbing LOOSE loot (a carrier is caught at GRAPPLE_PVP_RANGE, below).
 Config.GRAPPLE_AIM_ASSIST = 8 -- Loot or a carrier this far off your aim line still counts.
 -- V7: the hook CATCHES a carrier, it does not rob them. A caught goblin is yanked toward you and falls
@@ -1989,10 +2074,29 @@ Config.GRAPPLE_FAIL_COOLDOWN = 1 -- After a steal that slipped off (steal immuni
 Config.GRAPPLE_PULL_RANGE = 170
 Config.GRAPPLE_PULL_SPEED = 135
 Config.GRAPPLE_PULL_COOLDOWN = 1.4
-Config.GRAPPLE_CARRY_COOLDOWN = 5 -- A carrier's pull: usable, but not spammable.
+Config.GRAPPLE_CARRY_COOLDOWN = 2.4 -- A carrier's pull or swing: usable, but not spammable. (V13.2; V13: 5.)
 Config.GRAPPLE_POP_SPEED = 42 -- Upward hop at the end of a pull, to climb onto ledges.
 Config.GRAPPLE_KEEP_SPEED = 0.6 -- How much of the pull's sideways speed you keep when it ends.
 Config.GRAPPLE_BOAT_ASSIST = 18 -- Aim passing this close to a boat hooks the boat (a fast boat is ahead of where you see it).
+-- V13.2: the catch is a thrown hook, not a hitscan: it flies at CATCH_HOOK_SPEED, so a carrier who sees it coming can
+-- dash out of its line (it must still be within CATCH_HOOK_WIDTH of where it was thrown when it gets there).
+Config.CATCH_HOOK_SPEED = 170
+Config.CATCH_HOOK_WIDTH = 7
+Config.SWING = {
+	RANGE = 170, -- Studs to a hook point (GRAPPLE_PULL_RANGE).
+	ASSIST = math.rad(7), -- Aim this far off a hookable surface still finds it (a cone of rays: forgiving).
+	ABOVE = 6, -- A hook this far above you is a swing; lower, it reels you in (the pull).
+	GRAVITY = 150, -- Studs/s/s while swinging (the world's is 196: a slower, readable arc).
+	PUMP = 46, -- Studs/s/s the move keys add along the swing.
+	START_SHORTEN = 0.9, -- The rope starts this share of the distance, so the swing begins at once.
+	REEL = 70, -- Studs/s the rope shortens while F is held.
+	MIN_LENGTH = 8,
+	MAX_SPEED = 125, -- Studs/s at most on a rope.
+	MAX_TIME = 7, -- A swing lets go by itself after this long.
+	RELEASE_POP = 18, -- Upward studs/s added when you let go moving up (a little lift off the top of an arc).
+	COOLDOWN = 0.35, -- After a swing or a pull ends, before the next hook. (Carriers: GRAPPLE_CARRY_COOLDOWN.)
+	GROUND_LET_GO = 0.3, -- Seconds on the ground with a slack rope before it lets go by itself.
+}
 
 -- Poltergoblin (was Soul Unbound, Yone's E) ----------------------------------------
 -- E leaves your body behind and sends your spirit out. Whatever loot the spirit
@@ -2047,7 +2151,15 @@ Config.SEA_WIND_DRIFT = 1.4 -- Studs/s of drift in calm weather (storms push har
 --   twisterBail    the tornado bail-out throw, as a multiple
 --   shoveTaken     how much of a shove (a monster, a blast, a cannon) reaches the hull
 --   righting       the upright assist, as a multiple
+--   surfer         (V13.2) how hard the water's own flow (a rogue wave, a whirlpool) carries it, as a multiple
 --   class          true: a player class the showroom and the catalogue list (the Navy is not one)
+-- V13.2 (Sea of Chaos): TEN PLAYER CLASSES ON ONE SPEED BAND. The V13 playtest found the free Skiff simply best: the
+-- fastest top speed, the quickest 0-to-top and Nitro on top. Now every class cruises between 106 and 118 studs/s and
+-- reaches it in about the same time (accel is about 0.6 of top speed for every class: 90% of top in 3.5 to 3.9 s),
+-- and the classes differ in HOW they play: handling, toughness, crew, air, and an ability that escapes or disrupts.
+-- (V13: 96 to 135, the Skiff 0-to-top in about 3 s and the Ironbelly in over 4.) Measured island-to-Hoard times are in
+-- docs/reports/2026-10-19-v13-2-sea-of-chaos.md. Every class also has a bow gun its driver fires with a click
+-- (Config.BOAT_GUN), separate from its ability.
 Config.BOAT_TYPES = {
 	skiff = {
 		name = "Skiff",
@@ -2056,15 +2168,15 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(9, 3, 20),
 		draft = 1.3,
 		density = 0.75,
-		accel = 100, -- (V6: 84, V2: 44)
-		maxSpeed = 135, -- (V6: 108, V2: 72)
-		turn = 2.5, -- (V6: 2.1)
-		turnFade = 230, -- (V6: 150) Slower to lose its bite: a V7 skiff at chain speed turns about as tightly as V6's did.
+		accel = 72, -- V13.2 (V13: 100, the extreme 0-to-top the playtest named)
+		maxSpeed = 118, -- V13.2 (V13: 135): still the top of the band, by 2 studs/s
+		turn = 2.6, -- V13.2 (V13: 2.5): agile is its job now, not speed
+		turnFade = 240,
 		grip = 3.4,
-		driftGrip = 0.35,
-		driftTurn = 1.65,
+		driftGrip = 0.32, -- the best drifter
+		driftTurn = 1.7,
 		lean = 40,
-		health = 160,
+		health = 170,
 		crashTaken = 1,
 		ramPower = 1,
 		passengers = 1,
@@ -2072,14 +2184,14 @@ Config.BOAT_TYPES = {
 	cutter = {
 		name = "Cutter",
 		class = true,
-		ability = "chaser",
+		ability = "rally",
 		size = Vector3.new(14, 4, 34),
 		draft = 2.1,
 		density = 0.8,
-		accel = 72, -- V13 (V7-V12: 68): a dependable all-rounder should not feel like a barge off the line.
-		maxSpeed = 110, -- V13 (V7-V12: 104): just faster than a patrol ship (106), so it can leave one behind.
-		turn = 1.8, -- V13 (V7-V12: 1.7)
-		turnFade = 200, -- V13 (V7-V12: 190)
+		accel = 69,
+		maxSpeed = 114,
+		turn = 1.9,
+		turnFade = 210,
 		grip = 2.8,
 		driftGrip = 0.45,
 		driftTurn = 1.4,
@@ -2088,10 +2200,9 @@ Config.BOAT_TYPES = {
 		crashTaken = 0.6,
 		ramPower = 1.8,
 		passengers = 3,
-		cannons = true,
+		cannons = true, -- the passenger's deck cannon (a prompt), as since V7
 		righting = 1.25, -- stable: it rights itself sooner
 	},
-	-- V13 specialty classes ------------------------------------------------------------------------------------------
 	reefhopper = {
 		name = "Reefhopper",
 		class = true,
@@ -2099,15 +2210,15 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(10, 3, 18),
 		draft = 1.2,
 		density = 0.72,
-		accel = 92,
-		maxSpeed = 124, -- slower than a Skiff on a straight
-		turn = 2.4,
-		turnFade = 220,
+		accel = 70,
+		maxSpeed = 113,
+		turn = 2.45,
+		turnFade = 225,
 		grip = 3.0,
 		driftGrip = 0.4,
 		driftTurn = 1.5,
 		lean = 34,
-		health = 150,
+		health = 160,
 		crashTaken = 1.1,
 		ramPower = 0.8,
 		passengers = 1,
@@ -2124,10 +2235,10 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(16, 5, 38),
 		draft = 2.4,
 		density = 0.85,
-		accel = 58,
-		maxSpeed = 98, -- a patrol ship (106) outruns it
-		turn = 1.45,
-		turnFade = 170,
+		accel = 63,
+		maxSpeed = 108,
+		turn = 1.5,
+		turnFade = 180,
 		grip = 2.6,
 		driftGrip = 0.5,
 		driftTurn = 1.3,
@@ -2148,15 +2259,15 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(11, 3.5, 26),
 		draft = 1.6,
 		density = 0.78,
-		accel = 84,
-		maxSpeed = 122, -- 144 in a storm or beside a tornado (stormSails)
-		turn = 2.1,
-		turnFade = 210,
+		accel = 67,
+		maxSpeed = 112, -- 132 in a storm or beside a tornado (stormSails)
+		turn = 2.15,
+		turnFade = 215,
 		grip = 3.0,
 		driftGrip = 0.4,
 		driftTurn = 1.5,
 		lean = 30,
-		health = 260,
+		health = 270,
 		crashTaken = 0.85,
 		ramPower = 1.1,
 		passengers = 2,
@@ -2171,15 +2282,15 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(8, 2.6, 22),
 		draft = 1.1,
 		density = 0.7,
-		accel = 96,
-		maxSpeed = 128,
+		accel = 71,
+		maxSpeed = 115,
 		turn = 3.1, -- the sharpest steering in the fleet
 		turnFade = 260,
 		grip = 3.8,
 		driftGrip = 0.3,
 		driftTurn = 1.8,
 		lean = 42,
-		health = 120, -- the most fragile
+		health = 130, -- the most fragile
 		crashTaken = 1.25,
 		ramPower = 0.7,
 		passengers = 1,
@@ -2191,10 +2302,10 @@ Config.BOAT_TYPES = {
 		size = Vector3.new(18, 6, 36),
 		draft = 2.6,
 		density = 0.9,
-		accel = 54,
-		maxSpeed = 96, -- the slowest
-		turn = 1.35,
-		turnFade = 160,
+		accel = 61,
+		maxSpeed = 106, -- the bottom of the band (V13: 96, ten seconds behind a Skiff on a long crossing)
+		turn = 1.4,
+		turnFade = 170,
 		grip = 2.4,
 		driftGrip = 0.55,
 		driftTurn = 1.25,
@@ -2208,13 +2319,79 @@ Config.BOAT_TYPES = {
 		righting = 1.6,
 		boardReach = 40, -- swimmers can climb aboard from far off (a rescue boat)
 	},
+	-- V13.2 classes ---------------------------------------------------------------------------------------------------
+	anchorjack = {
+		name = "Anchorjack",
+		class = true,
+		ability = "anchor",
+		size = Vector3.new(13, 4, 28),
+		draft = 1.9,
+		density = 0.82,
+		accel = 65,
+		maxSpeed = 110,
+		turn = 2.2,
+		turnFade = 220,
+		grip = 3.1,
+		driftGrip = 0.42,
+		driftTurn = 1.5,
+		lean = 26,
+		health = 360,
+		crashTaken = 0.7,
+		ramPower = 1.6,
+		passengers = 2,
+		righting = 1.2,
+	},
+	wavebreaker = {
+		name = "Wavebreaker",
+		class = true,
+		ability = "breaker",
+		size = Vector3.new(14, 4, 26),
+		draft = 1.8,
+		density = 0.8,
+		accel = 66,
+		maxSpeed = 111,
+		turn = 2.0,
+		turnFade = 210,
+		grip = 2.9,
+		driftGrip = 0.45,
+		driftTurn = 1.45,
+		lean = 22,
+		health = 320,
+		crashTaken = 0.75,
+		ramPower = 1.3,
+		passengers = 2,
+		jumpMult = 1.1,
+		surfer = 1.6, -- rides a rogue wave's push farther (BoatSim: the water's own flow pulls it harder)
+		shoveTaken = 0.75,
+		righting = 1.3,
+	},
+	corsair = {
+		name = "Corsair",
+		class = true,
+		ability = "hook",
+		size = Vector3.new(11, 3.6, 27),
+		draft = 1.5,
+		density = 0.78,
+		accel = 68,
+		maxSpeed = 116,
+		turn = 2.3,
+		turnFade = 230,
+		grip = 3.2,
+		driftGrip = 0.38,
+		driftTurn = 1.6,
+		lean = 34,
+		health = 250,
+		crashTaken = 0.9,
+		ramPower = 1.4,
+		passengers = 2,
+	},
 	navy = {
 		name = "Patrol Ship",
 		size = Vector3.new(16, 6, 42),
 		draft = 3.8,
 		density = 0.85,
-		accel = 68, -- (V6: 58, V2: 27)
-		maxSpeed = 106, -- (V6: 88, V2: 54) Slower than an empty skiff, a touch faster than a cutter.
+		accel = 64,
+		maxSpeed = 104, -- V13.2 (V13: 106): just under the slowest player class, so any boat can leave one behind
 		turn = 1.3, -- (V6: 1.15)
 		turnFade = 160, -- (V6: 120)
 		grip = 2.4,
@@ -2227,12 +2404,13 @@ Config.BOAT_TYPES = {
 		passengers = 0,
 	},
 }
-Config.BOAT_BOOST_MULT = 1.5 -- Top speed while boosting (a skiff: 202; V6: 1.4).
-Config.BOAT_BOOST_THRUST = 2.4 -- (V6: 2.1)
+Config.BOAT_BOOST_MULT = 1.42 -- Top speed while boosting (V13.2: a Skiff 168, an Ironbelly 150; V13: 1.5, a skiff 202).
+Config.BOAT_BOOST_THRUST = 2.2 -- V13.2 (V13: 2.4, V6: 2.1)
 Config.BOAT_BOOST_TIME = 2.4 -- (V6: 2.2)
 Config.BOAT_BOOST_COOLDOWN = 5 -- (V6: 5.5, V2: 7)
 Config.BOAT_BOOST_PUNCH = 14 -- Speed added the moment a boost starts: the kick in the back.
-Config.BOAT_LAUNCH_PUNCH = 0.9 -- Extra thrust from a standstill, fading out by half speed.
+Config.BOAT_LAUNCH_PUNCH = 0.6 -- Extra thrust from a standstill, fading out by half speed. (V13.2; V13: 0.9, which made
+-- the Skiff's start a jump-cut. Every class still answers the throttle at once.)
 Config.BOAT_BRAKE = 1.7 -- Thrust against the way you are moving: S is a brake, not a slow reverse.
 Config.BOAT_REVERSE = 0.5 -- Reverse thrust relative to forward.
 Config.BOAT_BEACH_SHOVE = 1.6 -- Thrust (as a share of accel) for shoving a hull along that is in the air or on a ledge the ground check cannot see...
@@ -2253,8 +2431,8 @@ Config.BOAT_JUMP_COOLDOWN = 1.1 -- (V7: 1.3)
 -- hop's to BOAT_SUPER_SPEED as the hull's speed goes from BOAT_SUPER_MIN to BOAT_SUPER_FULL. At full it is 57
 -- studs up and a second and a half in the air: 330 studs of flight at chain speed, over a rock, a patrol ship
 -- or a sea monster's back. Not on land. A clean landing from one pays the landing burst; a plain hop does not.
-Config.BOAT_SUPER_MIN = 150
-Config.BOAT_SUPER_FULL = 215
+Config.BOAT_SUPER_MIN = 132 -- V13.2 (V13: 150): above every class's cruise (118 at most), below every boost (150+)
+Config.BOAT_SUPER_FULL = 188 -- V13.2 (V13: 215)
 Config.BOAT_SUPER_SPEED = 150
 Config.BOAT_SUPER_PITCH = 0.5 -- How hard a super jump throws the bow up (the upright assist levels it again).
 Config.BOAT_YAW_SNAP = 8 -- How quickly the hull reaches the turn rate you ask for (V2: 5).
@@ -2272,22 +2450,31 @@ Config.BOAT_PAYLOAD_DRAG = 0.03 -- Each unit of loot weight aboard cuts thrust a
 -- V13: BOAT ABILITIES, one per class, on the stunt key while the hull is on the water (shared/BoatSim.lua plays the
 -- physical part on whichever machine simulates the hull; server/BoatAbilities.lua checks the cooldown, fires what the
 -- server owns and tells Boats.police what speed to allow). `glyph` and `verb` are what the HUD and the showroom show.
+-- V13.2: every ability helps its driver ESCAPE, DISRUPTS someone, or both; the universal bow gun (Config.BOAT_GUN, a
+-- click) is separate from all of them. Three new ones (anchor, breaker, hook), the Cutter's became RALLY (its bow gun is
+-- every boat's now), and Nitro is a short escape burst that breaks free of grabs instead of a straight-line win.
 Config.BOAT_ABILITIES = {
 	nitro = { -- Skiff: the escape artist's afterburner.
 		name = "NITRO",
 		glyph = "🔥",
-		verb = "Afterburner: a huge straight-line burst",
-		cooldown = 14,
-		time = 1.3,
-		mult = 1.75, -- top speed while it burns (a boost is BOAT_BOOST_MULT, 1.5)
-		thrust = 3.2,
-		kick = 30,
+		verb = "A short afterburner that breaks free of anchors, hooks and whirlpools",
+		cooldown = 15, -- V13.2 (V13: 14)
+		time = 1.1, -- V13.2 (V13: 1.3)
+		mult = 1.45, -- V13.2 (V13: 1.75): only a touch above a boost (1.42); its worth is getting loose
+		thrust = 2.6,
+		kick = 18, -- V13.2 (V13: 30)
+		shrug = 0.3, -- share of a shove that reaches the hull while it burns
 	},
-	chaser = { -- Cutter: the bow gun, fired by the driver at whatever they look at.
-		name = "BOW GUN",
-		glyph = "💥",
-		verb = "Fire the bow cannon where you look",
-		cooldown = 6,
+	rally = { -- Cutter (V13.2): a foghorn for a convoy.
+		name = "RALLY HORN",
+		glyph = "📯",
+		verb = "Boats near you surge forward; chasing monsters flinch back",
+		cooldown = 16,
+		radius = 150, -- every boat this close surges with you (friends, and rivals who happen to be there)
+		boost = 2.2, -- seconds of boost it gives each boat
+		patch = 40, -- hull the Cutter patches
+		flinch = 190, -- pursuers this close are knocked back
+		push = 120,
 	},
 	spring = { -- Reefhopper: leap off flat water like a ramp; SPACE in the air hops once more.
 		name = "SPRING",
@@ -2311,7 +2498,7 @@ Config.BOAT_ABILITIES = {
 		name = "TWISTER",
 		glyph = "🌪",
 		verb = "Spin up a tornado in your wake",
-		cooldown = 28,
+		cooldown = 24, -- V13.2 (V13: 28)
 		life = 12,
 		behind = 85, -- studs behind the stern
 		drift = 12, -- studs/s it follows your heading
@@ -2339,22 +2526,75 @@ Config.BOAT_ABILITIES = {
 		shove = 95, -- studs/s given to a boat it plows into
 		reach = 10, -- studs beyond the bow that count as a hit
 	},
+	-- V13.2 -------------------------------------------------------------------------------------------------------------
+	anchor = { -- Anchorjack: the anchor, which no other boat has any more.
+		name = "ANCHOR",
+		glyph = "⚓",
+		verb = "Throw the anchor where you look: snag a rival's boat, or a rock to swing round it",
+		cooldown = 9,
+		range = 150, -- studs the anchor flies
+		arc = 0.2, -- the aim must be at least this far forward (a dot product with the bow): no throwing it backwards
+		assist = 22, -- a rival hull this close to the aim line is snagged
+		snag = 3.5, -- seconds a snagged rival is chained to you
+		snagSlack = 1.0, -- the chain's length is the gap when it caught, times this (it never pulls you together)
+		snagMin = 34,
+		swing = 2.6, -- seconds you swing round a rock or the sea bed before it lets go (R lets go sooner)
+		swingMin = 26, -- the shortest chain to swing on
+		sling = 34, -- studs/s added along your swing when you let go: the slingshot
+		strength = 9, -- how hard a taut chain corrects motion (per second)
+	},
+	breaker = { -- Wavebreaker: the hull slams down and the sea itself shoves outward.
+		name = "BREAKER",
+		glyph = "🌊",
+		verb = "Slam a ring of water out: boats and swimmers thrown away, you ride the crest",
+		cooldown = 11,
+		radius = 115, -- boats inside are thrown outward
+		push = 96, -- at the middle; falls to edgePush at the edge
+		edgePush = 34,
+		lift = 46,
+		swimRadius = 75, -- goblins in the water this close are washed away
+		swimPush = 70,
+		flinch = 130, -- pursuers this close are knocked back
+		ride = 62, -- your own hop onto the crest
+		surge = 30, -- and a surge forward (or the way you steer)
+		boost = 1.4, -- seconds of boost after it
+	},
+	hook = { -- Corsair: a boarding hook that reels you in.
+		name = "BOARDING HOOK",
+		glyph = "⚔",
+		verb = "Harpoon the boat ahead and reel in; reach it to BOARD (a carrier drops their treasure)",
+		cooldown = 14,
+		range = 170, -- studs to a rival hull
+		cone = 0.72, -- it must be ahead of the bow (a dot product)
+		reel = 70, -- studs/s faster than the target the Corsair closes
+		reelTime = 2.4, -- seconds the line holds before it slips
+		board = 24, -- studs between the hulls' middles (plus half their widths) that count as BOARDED
+		lag = 0.35, -- when the Corsair's own client says it arrived, the server (which sees that hull a moment late, as
+		-- that client saw the rival) also allows both boats' speeds along the line for this many seconds
+		snap = 1.7, -- the line snaps if the gap grows past its starting length times this
+		hitShove = 70, -- the boarded boat is shoved aside this hard...
+		slow = 0.5, -- ...and keeps this share of its speed
+		hullDamage = 24, -- to the boarded boat
+		selfDamage = 12, -- the Corsair's own hull, for slamming alongside
+		zip = 130, -- no boat in reach: the hook bites a rock this close and zips you toward it
+	},
 }
 -- The showroom's order and what it says (1 to 5 pips each). Stats here are DESCRIPTIONS of the numbers above, kept
 -- beside them so a retune is one file; the tests check every class has a row and an ability.
+-- V13.2: speed pips are close together now (the band is 106 to 118); the difference is the rest of the row.
 Config.BOAT_CLASSES = {
 	{
 		id = "skiff",
 		role = "ESCAPE ARTIST",
-		best = "Fastest in a straight line; Nitro outruns anything",
+		best = "Nimble and the best drifter; Nitro breaks free of anchors, hooks and whirlpools",
 		worst = "Fragile: two hard crashes sink it",
-		pips = { speed = 5, handling = 4, toughness = 1, air = 3, firepower = 1 },
+		pips = { speed = 4, handling = 4, toughness = 1, air = 3, firepower = 1 },
 	},
 	{
 		id = "cutter",
 		role = "ALL-ROUNDER",
-		best = "Steady, tough, three friends aboard, a bow gun",
-		worst = "Slower to get going than a Skiff",
+		best = "Steady, tough, three friends aboard, a deck cannon; RALLY HORN surges the whole convoy",
+		worst = "A wide turner next to the small boats",
 		pips = { speed = 3, handling = 3, toughness = 4, air = 2, firepower = 3 },
 	},
 	{
@@ -2362,13 +2602,13 @@ Config.BOAT_CLASSES = {
 		role = "STUNT BOAT",
 		best = "Leaps off flat water, hops again in the air, quick tricks",
 		worst = "Fragile and a little slow on the straight",
-		pips = { speed = 4, handling = 4, toughness = 1, air = 5, firepower = 1 },
+		pips = { speed = 3, handling = 4, toughness = 1, air = 5, firepower = 1 },
 	},
 	{
 		id = "broadside",
 		role = "GUNBOAT",
 		best = "A three-gun volley and two cannon seats for friends",
-		worst = "Slow, wide-turning, a big target",
+		worst = "Wide-turning, a big target",
 		pips = { speed = 2, handling = 2, toughness = 4, air = 1, firepower = 5 },
 	},
 	{
@@ -2389,9 +2629,44 @@ Config.BOAT_CLASSES = {
 		id = "ironbelly",
 		role = "BRUISER",
 		best = "Shrugs off hits, rams anything aside, rescues swimmers",
-		worst = "The slowest, widest turner",
-		pips = { speed = 1, handling = 1, toughness = 5, air = 1, firepower = 3 },
+		worst = "The heaviest, widest turner",
+		pips = { speed = 2, handling = 1, toughness = 5, air = 1, firepower = 3 },
 	},
+	{
+		id = "anchorjack",
+		role = "ANCHOR",
+		best = "Chains a rival boat to you, or swings round a rock and slingshots out",
+		worst = "A plain sailer without its anchor",
+		pips = { speed = 3, handling = 3, toughness = 3, air = 2, firepower = 3 },
+	},
+	{
+		id = "wavebreaker",
+		role = "WAVE MAKER",
+		best = "A ring of water throws everything near it away; rides big waves farther",
+		worst = "Must be in the thick of it to matter",
+		pips = { speed = 3, handling = 3, toughness = 3, air = 3, firepower = 2 },
+	},
+	{
+		id = "corsair",
+		role = "BOARDER",
+		best = "Hooks the boat ahead and reels in to board it: a carrier drops their treasure",
+		worst = "Lightly built; boarding puts you right beside your target's guns",
+		pips = { speed = 4, handling = 3, toughness = 2, air = 2, firepower = 4 },
+	},
+}
+-- V13.2: EVERY BOAT'S BOW GUN, fired by its driver with a click (gamepad R2, the touch GUN button). A light shot built to
+-- shove and splash: it never sinks a boat on its own, never knocks treasure loose (Corsair boarding, Broadside volleys,
+-- swords, kegs and grapples still do), and never reaches anyone in the Port or at home.
+Config.BOAT_GUN = {
+	cooldown = 2.2,
+	range = 240, -- studs: farther aims land at the most it can reach that way
+	arc = 0.34, -- the aim must be in front of the bow (a dot product: about 70 degrees either side)
+	radius = 12,
+	damage = 5,
+	knockback = 64,
+	hullDamage = 12,
+	boatPush = 74,
+	sameBoatGrace = 1.0, -- a hull hit by a bow gun within this many seconds takes the next one at half strength
 }
 -- The Broadside's (and the Cutter's bow gun's) shot: built to shove and splash, not to sink. A ship's cannon at a
 -- fort or on a patrol ship keeps CANNON_* below.
@@ -2505,7 +2780,7 @@ Config.SEA_MOBS = {
 	SHORE_CLEAR = 150, -- None this close to any island's shore.
 	LEASH = 420, -- A nibbler school gives up this far from where it lives.
 	NIBBLER_SIGHT = 150,
-	NIBBLER_SPEED = 150, -- A little faster than a cruising skiff (135), slower than a boost.
+	NIBBLER_SPEED = 128, -- A little faster than any class cruises (118 at most), slower than a boost. (V13.2; V13: 150.)
 	NIBBLER_CHASE = 9,
 	NIBBLER_HOLD = 5, -- Seconds they stay on a hull that does not jump.
 	NIBBLER_BITE = 1.5, -- Hull lost each half second (never below IMPACT.HULL_FLOOR).
@@ -2522,16 +2797,35 @@ Config.SEA_MOBS = {
 	LANCER_REST = 12,
 }
 Config.STORM_CEILING = 200 -- Lightning and storm-seeding ignore goblins above this height (the skyship, a flight).
+-- V13.2: THE SKYSHIP FLIES A ROUTE (shared/SkyRoute.lua, server/Skyship.lua). Through V13 it hung still over the middle
+-- of the sea and its cannons reached every island, so the drop was a menu. Now it waits at one end of a route while
+-- goblins board and aim (PREP: the cannons are LOCKED, by the server), then crosses the archipelago in PASS seconds; a
+-- cannon throws about 1,200 studs across (DIVE.CANNON_SPEED), so what you can reach changes as it flies: fire when an
+-- island you want is in reach, or pick one on the map and the ship fires you as it passes. Anyone still aboard when the
+-- pass ends is fired at the nearest landing in reach. Each raid flies one of ROUTES (forwards or backwards), never the
+-- same as the raid before, chosen and shown in the Port. The six-minute clock starts when the pass ends.
 Config.SKYSHIP = {
-	POSITION = Vector3.new(0, 540, -80), -- Centre of the deck. The sea's walls are 700 high.
+	POSITION = Vector3.new(0, 540, -80), -- The deck's height (and where it is built). The sea's walls are 700 high.
 	BEAM = 44,
-	-- V9: the deployment window is 20 s (V8: 40, V7: 28) and the six-minute clock starts when it closes (Raid.lua).
-	-- A goblin can climb into a cannon and aim during the intermission; the cannons fire from COUNTDOWN on.
-	WINDOW = 20,
-	COUNTDOWN = 2, -- The cannons unlock this long after the raid starts (so a crowd goes together). (V8: 3)
+	PREP = 10, -- Seconds aboard before the cannons unlock and the ship sets off (V13: 2, which a goblin never noticed).
+	PASS = 32, -- Seconds the ship takes to fly its route, whatever its length (152 to 222 studs/s).
+	WINDOW = 42, -- PREP + PASS: from boarding to the raid clock starting. (V13: 20 standing still.)
 	-- V12: a goblin who comes aboard late in the window (a join, a respawn) is never fired off before this many
 	-- seconds on the deck: a first-timer gets time to find a cannon. The raid's clock is not changed.
 	MIN_DECK = 12,
+	LATE_DECK = 24, -- A goblin who joins once the pass is over rides the ship's next lap this long before it fires them.
+	TURN = 3, -- Seconds the ship takes to swing round at either end of its route (it flies back for late arrivals).
+	-- Each route: a name for the Port's board and the map, and its points { x, z } (north is -Z). Every route reaches 6
+	-- to 10 of the 16 major islands, and every island is in reach on at least two routes (tests/luau/Specs/SkyRouteSpec).
+	ROUTES = {
+		{ name = "THE WESTWIND", points = { { -2700, 2150 }, { 2700, -2450 } } },
+		{ name = "THE EASTWIND", points = { { 2750, 2150 }, { -2650, -2450 } } },
+		{ name = "THE NORTHERN ARC", points = { { -2750, 250 }, { 0, -1650 }, { 2750, 250 } } },
+		{ name = "THE SOUTHERN SWEEP", points = { { -2750, -500 }, { -500, 1050 }, { 2750, -250 } } },
+		{ name = "THE SPINE", points = { { 450, 2250 }, { -250, -2550 } } },
+		{ name = "THE CINDER RUN", points = { { 1150, 2250 }, { 1750, 250 }, { 1550, -2550 } } },
+		{ name = "THE NAVY RUN", points = { { -1450, 2250 }, { -1950, 250 }, { -1350, -2550 } } },
+	},
 }
 Config.DIVE = {
 	-- V8: the THROW gives the reach (a plain arc under GRAVITY, aimed where you look); the air gives
@@ -2554,7 +2848,8 @@ Config.DIVE = {
 	PENCIL_STEER = 28,
 	PENCIL_FLOOR = 30,
 	-- What throws.
-	CANNON_SPEED = 440, -- The skyship's cannons: 3,560 studs of reach from 540 up (the farthest island is 3,130 away).
+	CANNON_SPEED = 215, -- The skyship's cannons: about 1,200 studs of reach from 540 up (SkyRoute.reach). V13.2; V13: 440,
+	-- 3,560 studs, the whole sea from one spot.
 	CANNON_ELEVATION = math.rad(32),
 	CATAPULT_SPEED = 200, -- An island catapult: about 575 studs over level ground, more off a hill.
 	CATAPULT_ELEVATION = math.rad(60), -- A high lob: it has walls and cliffs to clear (at 44 degrees all three fell short).
@@ -2573,6 +2868,186 @@ Config.DIVE = {
 	OSTRICH_SPEED = 95, -- Hitting ground this fast goes in head first; braking with a glide lands on your feet.
 	EMBED_TIME = 1.1, -- Seconds stuck in the ground.
 	POP_SPEED = 62, -- The hop out.
+}
+
+-- V13.2: WORLD CHAOS (server/WorldChaos.lua, client/ChaosFx.lua). Every raid gets ONE of these, chosen when the Port
+-- opens and shown there (name, icon, one line) before anyone picks a boat. During the raid it plays EPISODES: a big
+-- physical event somewhere near goblins (never in the Port, never inside the sanctuary round home), telegraphed, then a
+-- calm. Each episode is drawn differently (its size, count, shape and place), so no two raids play the same. Events hit
+-- through the game's own rules: explosions are Blasts (every creature, sea mob, ship and mine already reacts to those),
+-- boats are shoved through Boats.shove (with the world's hull floor: chaos batters, it never sinks), goblins through
+-- Impact's grace (no juggling) and small damage, waves and whirlpools are part of the sea itself (shared/Sea.lua).
+Config.CHAOS = {
+	-- The order the Port's board lists them in, and what it says.
+	EVENTS = {
+		{
+			id = "meteors",
+			name = "METEOR MAYHEM",
+			icon = "☄",
+			line = "Meteor showers crash into the sea and the islands. Watch the sky for burning rings.",
+		},
+		{
+			id = "kraken",
+			name = "KRAKEN'S TANTRUM",
+			icon = "🐙",
+			line = "Giant tentacles burst up and swat boats sky-high. Bubbles mean MOVE.",
+		},
+		{
+			id = "waves",
+			name = "ROGUE WAVE RAMPAGE",
+			icon = "🌊",
+			line = "Walls of water roll across the sea: surf them, jump them, or get thrown.",
+		},
+		{
+			id = "crossfire",
+			name = "CANNONBALL CROSSFIRE",
+			icon = "💣",
+			line = "A rogue armada shells the sea. Dodge the rings, or lead your pursuers in.",
+		},
+		{
+			id = "barrels",
+			name = "BARREL APOCALYPSE",
+			icon = "💥",
+			line = "Fields of powder kegs drift in. One spark and the whole lot goes up.",
+		},
+		{
+			id = "whirls",
+			name = "WHIRLPOOL OUTBREAK",
+			icon = "🌀",
+			line = "Wandering whirlpools suck boats in, spin them round and fling them out.",
+		},
+		{
+			id = "haunted",
+			name = "HAUNTED SEAS",
+			icon = "👻",
+			line = "Ghost portals open: sail through one and come out of its twin. Phantom ships ram.",
+		},
+		{
+			id = "thunder",
+			name = "THUNDERSTRUCK",
+			icon = "⚡",
+			line = "Giant lightning strikes the busiest water: a shockwave throws boats, and SUPERCHARGES them.",
+		},
+	},
+	FIRST = { 22, 34 }, -- Seconds into the six-minute clock before the first episode (time to land and steal).
+	CALM = { 18, 30 }, -- Seconds of calm after an episode ends before the next one starts.
+	LAST = 18, -- No new episode in the last this-many seconds.
+	HOME_CLEAR = 650, -- Never centred this close to the Hoard (the sanctuary is 450).
+	FOCUS_JITTER = { 80, 260 }, -- An episode is centred this far off the goblins it is aimed near (not on their heads).
+	ALERT_RANGE = 900, -- Goblins this close to an episode get its warning banner.
+	-- Each event's numbers. Ranges { a, b } are drawn afresh for each episode.
+	meteors = {
+		count = { 5, 9 },
+		spread = { 180, 300 }, -- studs round the centre the meteors fall in
+		gap = { 0.45, 0.85 }, -- seconds between them
+		warn = 2.4, -- the burning ring before a meteor lands
+		radius = 40, -- its blast
+		launch = 76, -- boats this close are thrown...
+		up = { 120, 170 }, -- ...this hard upward (studs/s) at the middle
+		out = 85, -- ...and outward
+		damage = 10,
+		hull = 26,
+		bigChance = 0.3, -- an episode may bring THE BIG ONE first: one meteor, all of it bigger
+		bigScale = 1.8,
+		bigWarn = 3.8,
+	},
+	kraken = {
+		strikes = { 4, 6 },
+		gap = { 1.6, 2.4 },
+		warn = 1.5, -- bubbles before a tentacle rises
+		area = { 160, 240 },
+		sweepLength = 72, -- a sweeping tentacle's reach
+		sweepArc = math.rad(120),
+		sweepTime = 1.3,
+		width = 14,
+		swat = 115, -- sideways
+		lift = 70,
+		slamRadius = 42,
+		slamUp = 125,
+		tossUp = 190, -- a tentacle coming up under a boat
+	},
+	waves = {
+		count = { 1, 2 },
+		speed = { 58, 74 },
+		height = { 20, 30 },
+		width = { 30, 40 }, -- how thick the ridge is (studs either side of the crest)
+		half = { 320, 480 }, -- half its length along the front
+		start = 760, -- how far off the focus it starts (it rolls through it)
+		push = 55, -- goblins swimming in the crest are carried this fast...
+		lift = 26,
+	},
+	crossfire = {
+		time = { 14, 18 },
+		every = { 0.32, 0.5 }, -- seconds between shells
+		zone = { 180, 250 }, -- the bombarded water's radius
+		standoff = { 520, 650 }, -- how far off the armada lies
+		roll = 0.45, -- chance the barrage rolls across the sea instead of holding still
+		rollSpeed = 22,
+		warn = 1.4,
+		radius = 24,
+		damage = 7,
+		knockback = 78,
+		hull = 16,
+		push = 82,
+		aimAtBoats = 0.6, -- share of shells aimed at a boat's path
+	},
+	barrels = {
+		count = { 26, 40 },
+		spread = { 120, 180 },
+		powder = 0.7, -- share that explode
+		life = 55, -- seconds before the field sinks
+		max = 60, -- barrels on the whole sea at once
+		touch = 5, -- studs beyond a hull's half-length that count as touching
+		radius = 26,
+		damage = 8,
+		knockback = 85,
+		hull = 18,
+		push = 86,
+		chain = 32, -- powder barrels this close to an explosion go up too...
+		chainDelay = 0.16, -- ...this long after
+		snapshot = 0.12, -- seconds between the positions sent to clients
+	},
+	whirls = {
+		count = { 2, 4 },
+		radius = { 70, 110 },
+		spin = { 42, 58 },
+		pull = { 26, 34 }, -- (grows toward the eye: shared/Sea.lua)
+		dip = { 7, 12 },
+		wander = { 6, 14 },
+		life = { 22, 28 },
+		spread = { 140, 380 },
+		eye = 0.3, -- share of the radius that is the eye: a boat there is FLUNG
+		fling = 120,
+		flingUp = 95,
+		flingRest = 2.5, -- a flung boat is left alone this long
+	},
+	haunted = {
+		time = { 24, 30 },
+		pairDistance = { 600, 900 },
+		portalRadius = 22,
+		shipEvery = { 5, 7.5 },
+		shipSpeed = 115,
+		shipLife = 9,
+		ram = 18, -- studs: a ghost ship this close to a hull rams it
+		ramPush = 110,
+		volleyRange = 160,
+		volleyEvery = 3.2,
+	},
+	thunder = {
+		strikes = { 4, 7 },
+		gap = { 1.4, 2.4 },
+		warn = 2.0,
+		area = { 220, 320 },
+		ring = 170, -- the shockwave's reach
+		ringTime = 1.1,
+		push = 72,
+		lift = 46,
+		damage = 6,
+		hull = 12,
+		chain = 90, -- the bolt jumps between boats this close together...
+		chainMax = 3, -- ...this many times
+		charge = 1.6, -- seconds of free boost a struck boat gets: SUPERCHARGED
+	},
 }
 
 -- The sixteen major islands and what is around them (V7) -------------------------------------------
@@ -3010,14 +3485,27 @@ Config.MONETIZATION = {
 		boat_stormrunner = { kind = "pass", id = nil, grants = { "boat_stormrunner" } },
 		boat_ironbelly = { kind = "pass", id = nil, grants = { "boat_ironbelly" } },
 		boat_broadside = { kind = "pass", id = nil, grants = { "boat_broadside" } },
+		-- V13.2: the three new classes, also earnable with Shinies. No id: a human creates them in the Creator Dashboard.
+		boat_anchorjack = { kind = "pass", id = nil, grants = { "boat_anchorjack" } },
+		boat_wavebreaker = { kind = "pass", id = nil, grants = { "boat_wavebreaker" } },
+		boat_corsair = { kind = "pass", id = nil, grants = { "boat_corsair" } },
 		pet_Whelp = { kind = "pass", id = nil, grants = { "Whelp" } },
 		petskin_wobble_moon = { kind = "pass", id = nil, grants = { "petskin_wobble_moon" } },
-		-- A possible bundle (all five unlockable boats). No catalog item points at it, so the shop does not show
+		-- A possible bundle (all eight unlockable boats, V13.2). No catalog item points at it, so the shop does not show
 		-- it; it is here so a human who makes the pass has its grants ready.
 		bundle_fleet = {
 			kind = "pass",
 			id = nil,
-			grants = { "boat_reefhopper", "boat_wraith", "boat_stormrunner", "boat_ironbelly", "boat_broadside" },
+			grants = {
+				"boat_reefhopper",
+				"boat_wraith",
+				"boat_stormrunner",
+				"boat_ironbelly",
+				"boat_broadside",
+				"boat_anchorjack",
+				"boat_wavebreaker",
+				"boat_corsair",
+			},
 		},
 	},
 }
@@ -4063,6 +4551,37 @@ These are attributed observations and hypotheses, not automatic changes to the c
 
 - [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/d32829e321627f163d522fbabe498b1bd3c55fe6/docs/reports/2026-10-18-v13-goblin-port.md): Sections 30 and 32: held E and InputHoldBegin never reached the server; the steal worked through a test command calling Loot.tryGrab.
 
+### The nearest water to a creature inland can be across the island from its target
+
+**ID:** spawn-between-creature-and-target | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** Island creatures hand a chase over to a sea form when the target enters the water. Spawning the sea form at the water nearest the island creature put it on the far side of the island (the creature stood in the island's middle), hundreds of studs from the target. Taking the water nearest a point stepped from the target back toward the creature instead put it 59 studs from the target, on the same side, within 0.2 s of the target entering the water.
+
+**Recommendation:** When a handover spawns something near a creature to chase a target, search for the spawn point from the target's side (a point between target and creature), not from the creature's position.
+
+**Applies when:** Handing an AI from one medium or zone to another (land to sea, inside to outside)
+
+**Limits:** Measured on one island with a boat starting just offshore
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/reports/2026-10-18-v13-1-playtest-fixes.md): Point 4 (jade frogs): entering 59 studs away on the thief's side after the fix.
+
+### Check a test route's water depth before treating a stopped chaser as a bug
+
+**ID:** scan-test-routes-before-blaming-ai | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** A sea monster stopped chasing a scripted boat after one bite. The scripted route crossed an island's shallows, where the monster is designed to stop; the boat also ran aground there. Scanning candidate routes with downward raycasts first (water surface to seabed along the heading) and driving the deep one showed four bites in 30 seconds and no stop.
+
+**Recommendation:** Before judging an AI chase from a scripted drive, verify the route stays in conditions the AI is meant to follow into (depth, zones), and log the AI's own state over time alongside the target's.
+
+**Applies when:** Testing pursuers with scripted or autopilot movement
+
+**Limits:** One game's Leviathan and route; Studio, one client
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/reports/2026-10-18-v13-1-playtest-fixes.md): Point 6 (the Leviathan): four bites in 30 s on a deep route.
+- [source-review](https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/GAME_DESIGN.md): V13.1 lessons (4) in the game description.
+
 ### Some newer emoji render as empty boxes in Roblox's interface font
 
 **ID:** roblox-font-lacks-newer-emoji | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
@@ -4154,6 +4673,21 @@ These are attributed observations and hypotheses, not automatic changes to the c
 
 - [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md): Section C1, cause (3), and the landing table after the change.
 
+### Turning health 0 into a knockout needs the Dead state off on the server and the owning client
+
+**ID:** knockout-instead-of-death-needs-both-sides | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** To replace death and respawn with a 5 second knockout, the humanoid's Dead state was switched off (SetStateEnabled(Dead, false)) on the server and also on the player's own client, which runs its own humanoid's state machine; with both, health 0 no longer killed the character and a HealthChanged handler started the knockout. Roblox's default health regeneration then raised a downed character's health above 0, so the handler held it at 0 until the knockout ended. A body that fell out of the world or lost its root still needed a real respawn (LoadCharacter), checked a couple of times a second.
+
+**Recommendation:** When death should become something else, disable the Dead state on both the server and the owning client before health can reach 0, hold health at 0 for the duration against regeneration, mark the state with an attribute other systems check, and keep a fallback respawn for bodies that leave the world.
+
+**Applies when:** Replacing Roblox death and respawn with a downed, knocked-out or revive state
+
+**Limits:** One Studio client; Roblox's Reset button was routed to a real respawn but not pressed in testing
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/reports/2026-10-18-v13-1-playtest-fixes.md): The knockout in detail: drained to 0, knocked out in place, treasure dropped, up after 5 s with full health, no respawn.
+
 ### Turning the control module off may not stop a character moving; also catch the movement keys
 
 **ID:** disabling-controls-may-not-stop-movement | **Status:** hypothesis | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
@@ -4168,6 +4702,21 @@ These are attributed observations and hypotheses, not automatic changes to the c
 **Limits:** Seen only with Studio MCP's simulated keyboard input, which may reach the character differently from a real keyboard; Gamepad thumbsticks and touch were not tested
 
 - [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/d32829e321627f163d522fbabe498b1bd3c55fe6/docs/reports/2026-10-18-v13-goblin-port.md): Section 7: 34 studs moved with controls disabled, 0 with the movement keys also sunk, 28 after leaving.
+
+### ChangeState(GettingUp) takes a seated humanoid out of its seat
+
+**ID:** changestate-gettingup-unseats | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** A helper that stood a knocked-down character back up (PlatformStand off, then Humanoid:ChangeState(GettingUp)) was reused when a driver was knocked out at the wheel of a boat. The driver was thrown out of the seat. Replacing the call with one that only cleared the downed bookkeeping, leaving the body alone, kept the driver seated through the knockout and after waking.
+
+**Recommendation:** Before forcing a humanoid state on a character, check SeatPart; give seated characters a path that does not change their state.
+
+**Applies when:** Stunning, knocking down or reviving characters who may be in a VehicleSeat or Seat
+
+**Limits:** Observed on the server with a server-simulated boat in Studio
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/reports/2026-10-18-v13-1-playtest-fixes.md): The knockout in detail, 'Knocked out at the wheel': unseated in the first version, seated after the fix.
 
 ### Roblox gravity still pulls a body whose velocity a script sets every frame
 
@@ -4624,6 +5173,264 @@ These are attributed observations and hypotheses, not automatic changes to the c
 # Development changelog and historical test reports
 
 Reports below are preserved in full, newest first. A historical test pass applies to that recorded revision and environment. Old priorities, controls, limitations, and status may have been superseded by the current game description above.
+
+---
+
+## Report: 2026-10-19-v13-2-sea-of-chaos.md
+
+# V13.2: Sea of Chaos (2026-10-19)
+
+Ninety's brief: make encounters more frequent, movement more expressive, boats more balanced and every raid more unpredictable, without making the game simply harder. Built by Claude Opus 5.5 on branch `feature/v13-2-sea-of-chaos`, stacked on V13.1 (`fix/v13-playtest-feedback`, PR #25), which is stacked on V13 (`feature/v13-goblin-port`, PR #24). Neither is merged into `main` yet, so V13.2 starts from the newest complete code (V13 + V13.1) and its PR, [#26](https://github.com/EnrikR2002/Loot-Goblins/pull/26), targets the V13.1 branch. **Not merged.**
+
+**Read this first.** Everything below was built and tested by one AI on **one** Roblox Studio client, through a Studio-only test hook (a Workspace script obeying a `DebugCmd` attribute; never committed) and real key presses and clicks where it says so. Nobody has played V13.2. It has never had a second player, a phone or a real controller. Travel times come from server-driven test boats following the sea's own pathfinder, not from people. **Passing tests and smooth numbers do not prove the boats are balanced or the chaos is fun**: that needs Ninety, Ethan and Enrik playing it together.
+
+![The Port before a raid: WAITING FOR RAIDERS, the next raid's chaos and route on the left, JOIN NEXT RAID](2026-10-19-v13-2-port-waiting.jpg)
+
+## 1. What changed
+
+| Brief | Now |
+| --- | --- |
+| §3 On foot: momentum, grapple first | **No sprint key.** Running builds speed by itself: 21 on the first step, the normal 28 after 0.3 s, **38 after about 2 s**; a sharp turn or stopping spends it, jumps, falls, swings and landings keep it. **The grapple swings**: hook anything above you (rock, tree, bridge, mast, a moving boat) and you swing on a pendulum, `W A S D` pump, hold `F` to reel in, `F` or `Space` lets go keeping the speed. **Dash** stays as the dodge and quick start (`Shift` or `C`). The PvP catch is now a **thrown hook** you can see and dash out of. Poltergoblin stays switched off |
+| §4 Rebalance boats | Cruise speeds compressed from **96–135 to 106–118**, acceleration from **54–100 to 61–72**, boost ×1.5 → ×1.42, Nitro ×1.75 → ×1.45. Measured: from Skull Rock the fleet now docks within **3.5 s** of each other (was 11.2 s) |
+| §5 Ten classes | **Anchorjack** (the anchor, now only on this boat), **Wavebreaker** (a ring of water), **Corsair** (boarding hook) added; every class's `R` escapes, disrupts, or both. Skiff and Cutter free; the other eight for Shinies (350–700), with inert Robux keys |
+| §6 Cannon on every boat | **Click while driving fires the bow gun** (gamepad `R2`, touch GUN): 2.2 s reload, 240 studs, ±70° off the bow, shoves and splashes, never sinks a boat or knocks treasure loose, never in the Port or at home |
+| §7 Skyship | It **flies one of seven routes** (forwards or backwards) across the sea; cannons reach about **1,200 studs**, so what you can reach changes as it flies. **10 s prep with the cannons locked by the server**, then a 32 s pass; the six-minute clock starts after it. All 110 route-and-island landings verified dry |
+| §8 Opt-in | **Nobody is sent on a raid they did not join.** JOIN NEXT RAID (or walk aboard the Little Goblin), cancel any time before it leaves, AUTO-JOIN for regulars; no empty raids; late join and spectating as before; **LEAVE THIS RAID** (two presses) goes home, forfeiting that raid's gold and Shinies |
+| §9 World chaos | **One of eight events per raid**, named with its icon in the Port before anyone picks a boat: Meteor Mayhem, Kraken's Tantrum, Rogue Wave Rampage, Cannonball Crossfire, Barrel Apocalypse, Whirlpool Outbreak, Haunted Seas, Thunderstruck. Telegraphed episodes near goblins, each drawn differently, with calm between |
+
+## 2. On foot
+
+**Momentum** (`shared/Momentum.lua`, played by the goblin's own client over the server's speed cap; `Config.MOMENTUM`). Measured with a real `W` held on Tangle Isle:
+
+| Time running | 0.5 s | 0.6 s | 1.0 s | 1.6 s | 2.1 s | 2.5 s on |
+| --- | --- | --- | --- | --- | --- | --- |
+| Speed (studs/s) | 23 | 27 | 29 | 32 | 36 | **38** |
+
+A full reverse (`S`) dropped it to 28 and it built again; stopping returns to 21. A carrier's top is 29 to 37 (weight). The server still sets the base speed (`Movement`'s MoveCap: carrying, water, a knockout) and the goblin's own client multiplies it. As with every Roblox character the client moves its own body: there is no server check on running speed, before V13.2 or now (a known limit, not new).
+
+**The swing** (`shared/Swing.lua`, `Config.SWING`): the aim finds a hook within 170 studs with a forgiving 7° cone. Above you by 6 studs or more it is a **swing** (gravity 150, pump 46 studs/s², top 125 studs/s on the rope, 7 s at most); level or below it is V7's straight **pull**. Speed carried off a rope (up to 92) slides back to the run 0.75 s after landing. A hook on a boat seats you (V7). Carriers can swing too, every 2.4 s (was 5).
+
+Measured (real `F`, `W`, `Space` on Tangle Isle's canopy bridge, 42 studs up): hooked from standing, at the rope's cap (125) within about 0.3 s, about 95 studs covered in 0.8 s; released, landed at full momentum (38). One run flew straight into a tree trunk in its path, which is the kind of thing a human must judge: **it is fast, and possibly too fast**.
+
+**The catch** is a thrown hook (170 studs/s, 7 studs wide) instead of an instant hit: a carrier who sees it coming can dash out of its line. Shell Tortoise pets still bounce one catch; Spring Frog still speeds the dash; Pocket Ghost (SPIRIT) still shortens a knockout.
+
+![Swinging from the Tangle's canopy bridge](2026-10-19-v13-2-grapple-swing.jpg)
+
+## 3. Boats: before and after
+
+V13.1's numbers (git `8972cb4`) against V13.2's (`Config.BOAT_TYPES`):
+
+| Class | Top speed | Acceleration | Turn | Hull |
+| --- | --- | --- | --- | --- |
+| Skiff | 135 → **118** | 100 → **72** | 2.5 → 2.6 | 160 → 170 |
+| Cutter | 110 → **114** | 72 → **69** | 1.8 → 1.9 | 420 |
+| Reefhopper | 124 → **113** | 92 → **70** | 2.4 → 2.45 | 150 → 160 |
+| Broadside | 98 → **108** | 58 → **63** | 1.45 → 1.5 | 520 |
+| Stormrunner | 122 → **112** (132 in a storm) | 84 → **67** | 2.1 → 2.15 | 260 → 270 |
+| Wraith | 128 → **115** | 96 → **71** | 3.1 | 120 → 130 |
+| Ironbelly | 96 → **106** | 54 → **61** | 1.35 → 1.4 | 640 |
+| Anchorjack (new) | **110** | **65** | 2.2 | 360 |
+| Wavebreaker (new) | **111** | **66** | 2.0 | 320 |
+| Corsair (new) | **116** | **68** | 2.3 | 250 |
+| Patrol ship (Navy) | 106 → 104 | 68 → 64 | | |
+
+Shared: boost ×1.5 → **×1.42** (a Skiff 168, an Ironbelly 150), boost thrust 2.4 → 2.2, the standstill punch 0.9 → 0.6, super jump from 150 → **132** (still above every cruise, below every boost) to 188 for the full height. Nitro ×1.75 → **×1.45** for 1.1 s (was 1.3), kick 30 → 18, cooldown 15 s: its worth is now **breaking free** (anchors, hooks, tows, whirlpools: shoves are shrugged off while it burns), not winning races.
+
+### Travel times (measured)
+
+Each class driven by the server from the shore of an island to the Hoard's docks (within 260 studs of it), along the path `SeaNav` gives that hull's draft, full throttle, Shift whenever it was ready (with its own cooldown), no abilities, test boats unable to touch each other. "Before" is the same run in the same session with V13.1's numbers patched in for the seven old classes.
+
+| Class | Crystal Isle → docks (1,700 studs) | Tangle Isle → docks (2,700) | Skull Rock → docks (4,330) |
+| --- | --- | --- | --- |
+| Skiff | 10.5 → **12.5** s | 16.4 → **19.4** | 25.8 → **31.3** |
+| Cutter | 12.3 → **12.5** | 20.6 → **19.3** | 31.5 → **31.3** |
+| Reefhopper | 11.4 → **13.2** | 18.1 → **20.5** | 28.6 → **32.5** |
+| Broadside | 14.2 → **13.6** | 22.5 → **22.4** | 36.6 → **33.8** |
+| Stormrunner | 11.4 → **12.8** | 17.6 → **21.1** | 28.3 → **31.9** |
+| Wraith | 10.9 → **12.7** | 17.4 → **19.7** | 26.9 → **31.5** |
+| Ironbelly | 14.5 → **13.8** | 23.0 → **22.9** | 37.0 → **34.5** |
+| Anchorjack | **13.0** | **21.3** | **32.1** |
+| Wavebreaker | **12.9** | **20.5** | **32.0** |
+| Corsair | **12.4** | **19.6** | **31.0** |
+| **Spread (slowest − fastest)** | 4.0 → **1.4 s** | 6.6 → **3.6 s** | 11.2 → **3.5 s** |
+
+What it says: the Skiff no longer wins by seconds; **the free Cutter keeps pace with it** everywhere; the slow pair (Broadside, Ironbelly) lost most of their penalty; the long Tangle route still favours good turners (it winds). Top speeds seen on the way (boosts and currents) fell from 141–217 to 148–179. A long crossing takes 3 to 6 s longer in the fast boats: that time is now spent near other boats instead of ahead of them.
+
+### The fleet
+
+| Class | Price | Role | Size (W × H × L) | Top | Accel | Turn | Hull | Crash taken | Crew | `R` ability (cooldown) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Skiff | free | Escape artist | 9 × 3 × 20 | 118 | 72 | 2.6 | 170 | ×1.00 | 1 | 🔥 NITRO (15 s): a burst that breaks every chain, hook and tow and shrugs off shoves |
+| Cutter | free | All-rounder | 14 × 4 × 34 | 114 | 69 | 1.9 | 420 | ×0.60 | 3 | 📯 RALLY HORN (16 s): every boat within 150 surges, a hull patch, nearby pursuers and the Leviathan flinch |
+| Reefhopper | 350 | Stunt boat | 10 × 3 × 18 | 113 | 70 | 2.45 | 160 | ×1.10 | 1 | 🌀 SPRING (9 s) |
+| Broadside | 700 | Gunboat | 16 × 5 × 38 | 108 | 63 | 1.5 | 520 | ×0.50 | 3 | 💣 BROADSIDE (10 s) |
+| Stormrunner | 550 | Storm chaser | 11 × 3.5 × 26 | 112 | 67 | 2.15 | 270 | ×0.85 | 2 | 🌪 TWISTER (24 s, was 28) |
+| Wraith | 500 | Phantom | 8 × 2.6 × 22 | 115 | 71 | 3.1 | 130 | ×1.25 | 1 | 👻 PHANTOM (11 s) |
+| Ironbelly | 600 | Bruiser | 18 × 6 × 36 | 106 | 61 | 1.4 | 640 | ×0.30 | 4 | 🐗 RAM PLOW (14 s) |
+| **Anchorjack** | 500 | Anchor | 13 × 4 × 28 | 110 | 65 | 2.2 | 360 | ×0.70 | 2 | ⚓ ANCHOR (9 s): snag a rival boat ahead (150 studs) and chain it to you for 3.5 s, or bite a rock or the sea bed and swing round it; `R` again lets go as a slingshot |
+| **Wavebreaker** | 550 | Wave maker | 14 × 4 × 26 | 111 | 66 | 2.0 | 320 | ×0.75 | 2 | 🌊 BREAKER (11 s): a ring of water 115 studs out throws boats away and washes swimmers back; you hop onto the crest and surge. Rides rogue waves 1.6× farther |
+| **Corsair** | 650 | Boarder | 11 × 3.6 × 27 | 116 | 68 | 2.3 | 250 | ×0.90 | 2 | ⚔ BOARDING HOOK (14 s): harpoon the boat ahead (170 studs), reel in at 70 faster than it; reach it and you **board**: it is knocked aside and slowed, 24 hull damage, and **its crew drop what they carry**. No boat ahead: it zips you to a rock |
+
+Every ability is played by whichever machine simulates the hull and judged by the server (`BoatAbilities`: range, arc, safe zones, cooldown, what the anti-cheat lets the hull do meanwhile). The anchor and the hook name the rival hull the client chose, which the server believes only if it passes the same tests.
+
+### The abilities, measured (real `R` presses, one client, a server-driven rival)
+
+| Ability | What happened |
+| --- | --- |
+| ⚓ Anchor, snag | Rival Skiff fleeing at 70: **dropped to 6 on the snag**, held on the chain 3.5 s (its speed about halved), the Anchorjack towed along at 50–72; then it broke free. "SNAGGED! R lets the chain go" |
+| ⚓ Anchor, swing + sling | At 92, anchor bit the sea bed: **swung 160° in 1.7 s** at about 80, then `R` let go: **79 → 135** (a slingshot hairpin) |
+| ⚔ Boarding hook | Hooked a Skiff fleeing at 90 from 107 studs: reeled at up to 158, **BOARDED** ("FrikiEnriki BOARDED a Skiff!"): the rival 24 hull damage, the Corsair 12, the rival knocked 48° off its line and slowed (96 → 84) |
+| 🌊 Breaker | Rival 51 studs off the beam: **thrown at 71 studs/s** to 97 away; the Wavebreaker hopped 11 studs onto its crest |
+| 🔥 Nitro | A Skiff held on a 40-stud tow sat at 0 with the throttle down; Nitro **broke the chain** and it shot off to 130 |
+| 📯 Rally Horn | The Cutter surged **102 → 153** and patched to full hull (406 → 420) |
+| Bow gun | Real click at a rival 32 studs off the bow: the shot landed **within 0.1 studs of the aim**, 9 hull damage, the rival shoved away. A 5-keg chain reaction in Barrel Apocalypse from one shot (earlier in the session) |
+
+![The Wavebreaker's Breaker: the rival Skiff thrown away in spray](2026-10-19-v13-2-breaker.jpg)
+
+![HOOKED! Reeling in to board](2026-10-19-v13-2-hook-reel.jpg)
+
+## 4. Controls (and the collision audit)
+
+| Where | Keyboard / mouse | Controller | Touch |
+| --- | --- | --- | --- |
+| At the wheel | Click: **bow gun**. `Shift`: boost. `Space`: hop / super jump. `R`: the boat's ability on the water, a trick in the air. Hold `C`: drift. `E` or `X`: leave | `R2` gun, `X` boost, `A` hop, `R1` ability / trick, `B` drift, `Y` leave | GUN, BOOST, HOP, STUNT |
+| On foot | Running builds speed. `Shift` or `C`: dash. `Space` twice: air jump. `F`: grapple (swing / pull / catch); hold `F` reels in; `F` or `Space` lets go. Click: sword | `B` dash, `A` jump, `L2` grapple | HOOK |
+
+What was checked: at the wheel the click is the gun, never the sword (`Combat` refuses a driver's swing) and never the grapple (`F`); `R` was the anchor winch's key through V13 and is now only the ability/trick (the winch is gone: the anchor belongs to the Anchorjack); `Shift` on foot was sprint and is now the dash (no hold behaviour left to clash); a click over a button is the button's (`processed`); R2 at the wheel is bound above Roblox's own tool action. The controls card (`H`) says all of it. Not checked: a real controller, a real phone.
+
+![The controls card in a raid](2026-10-19-v13-2-controls-card.jpg)
+
+## 5. The skyship
+
+`shared/SkyRoute.lua`, `server/Skyship.lua`, `Config.SKYSHIP`.
+
+- **Seven routes** (the Westwind, the Eastwind, the Northern Arc, the Southern Sweep, the Spine, the Cinder Run, the Navy Run), each flown forwards or backwards, never the same as the raid before, chosen and shown when the Port opens. Each reaches 6 to 10 of the 16 major islands; every island is in reach on at least two routes (tested).
+- **Finite reach**: the cannon throws at 215 (was 440): about **1,200 studs** from 540 up (was 3,560: the whole sea). Skull Rock from the middle of the sea is out of reach (tested).
+- **The countdown is real**: aboard, the ship waits at its route's start for **10 s** with the cannons **locked by the server** (`Flight`/`Skyship` refuse a fire; the HUD says 🔒 SETS OFF). Aiming works. Then it flies the route in **32 s** (152 to 222 studs/s). Manual fire, the auto-fire of a map pick, the end-of-pass straggler fire and late joiners all go through the same check.
+- **The six-minute clock starts when the pass ends** (42 s from boarding).
+- **Picking on the map** (`M`) lights the islands in reach on this route; the ship fires you as it passes your pick's closest point. The map shows the route, the ship and the reach ring. Anyone still aboard at the end is fired at the best landing in reach.
+- **Late joiners** board the ship mid-route (it flies back and forth, swinging round at the ends instead of jumping) and get 24 s on deck.
+- **V12's dry landings, kept**: each route checks every island's landing spot by flying the actual throw from its closest pass (`Skyship.throwLands`), and moves it if needed. **All 110 route-and-island combinations come down dry within 22 studs of their spot.** Real flights in Studio landed 10 to 20 studs from the spot on seven islands (Crystal Isle 33, on a ledge above it).
+
+![The route on the map: the Westwind, the ship at its start, the reach ring](2026-10-19-v13-2-route-map.jpg)
+
+![🔒 SETS OFF: aboard and aiming, the cannons still locked](2026-10-19-v13-2-cannons-locked.jpg)
+
+## 6. Going is a choice
+
+`server/Raid.lua`, `shared/Lobby.lua`, client `PortHud.lua`, `Hud.lua`.
+
+- The Port says **WAITING FOR RAIDERS** while nobody has joined: no countdown, no empty raid. **JOIN NEXT RAID** (or walking aboard the Little Goblin) signs you up; the first sign-up starts the 60 s countdown; once everyone signed up is aboard it leaves in 8 s. **SIGNED UP · STAY IN PORT** cancels. **AUTO-JOIN** signs you up for every raid until you turn it off.
+- Only signed-up goblins go. Everyone else stays to shop, chat, watch (Spyglass), or JOIN a running raid late (while 2 minutes are left).
+- **LEAVE THIS RAID** on the `H` card (two presses: "SURE? You lose this raid's gold. Press again") takes you home to the Port: what you carry drops for others, that raid's gold and Shinies are forfeited. If the last raider leaves, the raid ends.
+
+Seen in Studio with real clicks: WAITING → JOIN (countdown 0:59, "1 signed up") → raid → skyship (route, prep) → fired onto Tide Vault → LEAVE, two presses → "FrikiEnriki sailed home to the Port", gold 0, raid over, the Port waiting again with the next chaos and route. Cancel and walk-aboard were checked earlier in the session.
+
+## 7. World chaos
+
+`server/WorldChaos.lua` (the server's events), `client/ChaosFx.lua` (all their visuals), rogue waves and whirlpools in the shared sea maths (`shared/Sea.lua`: the server and every driver's client float boats on the same water), `Config.CHAOS`.
+
+Every raid draws **one** event (never the last raid's), shown in the Port with its icon and a line. During the six minutes it plays **episodes**: the first 22–34 s in, then one after another with 18–30 s of calm between, none in the last 18 s. Each is centred 80–260 studs off where goblins are (never on their heads, never within 650 of the Hoard, never in the Port), telegraphed, and drawn afresh (size, count, shape, place). Everything hits through the game's own rules: explosions are `Blast`s (creatures, sea mobs, the Navy, mines and kegs react), boats are shoved through `Boats.shove` with the crash grace (chaos batters, it never sinks), goblins through `Impact`'s grace (no juggling).
+
+| Event | What happens | Seen in Studio |
+| --- | --- | --- |
+| ☄ Meteor Mayhem | 5–9 meteors (sometimes THE BIG ONE first, ×1.8) under burning rings; blasts throw boats up 120–170 and out, splash, set off kegs | A boat thrown high off the blast; crash grace stopped the landing from sinking it |
+| 🐙 Kraken's Tantrum | 4–6 tentacles after bubbles: some sweep a 120° arc, some slam, some come up under a boat and toss it (190 up) | A Wavebreaker tossed 25 up, 320 → 298 hull |
+| 🌊 Rogue Wave Rampage | 1–2 walls of water 20–30 high rolling at 58–74 across the sea; break against land | The sea rose 22.8 studs under a boat and **carried it 159 studs**, no damage |
+| 💣 Cannonball Crossfire | An armada 520–650 off (always in deep water) shells a 180–250 zone for 14–18 s, sometimes rolling across the sea; 60% of shells aim at boats' paths | Rings and shells round the boat; armada ships placed in deep water after a beach spawn was fixed |
+| 💥 Barrel Apocalypse | Fields of 26–40 kegs (70% powder) drift in; anything that goes bang sets off the ones near it, in chains | One bow-gun shot set off a 5-keg chain |
+| 🌀 Whirlpool Outbreak | Wandering whirlpools (70–110 studs in radius) pull boats in, spin them round, fling them out of the far side | A boat spun at 70 studs/s and pulled to the eye |
+| 👻 Haunted Seas | Twin portals (sail into one, out of the other) and phantom ships that ram | A boat in portal A came out at portal B |
+| ⚡ Thunderstruck | The sky darkens, a crackling ring, then a giant strike on the busiest water: the shockwave throws boats and **SUPERCHARGES** them (a burst of speed), with chains of lightning between boats | 13 supercharges in one test, fastest throw 39 up |
+
+After a raid: chaos cleared (`WorldChaos.reset`: no waves, whirlpools, barrels, portals or ships left), the next event and route chosen, opt-ins cleared (checked twice, two raids in a row).
+
+![Rogue Wave Rampage](2026-10-19-v13-2-rogue-wave.jpg)
+
+![Meteor Mayhem: a boat thrown off a blast](2026-10-19-v13-2-meteor-launch.jpg)
+
+![Whirlpool Outbreak](2026-10-19-v13-2-whirlpools.jpg)
+
+![Cannonball Crossfire](2026-10-19-v13-2-crossfire.jpg)
+
+![Barrel Apocalypse and the bow gun](2026-10-19-v13-2-barrels-bow-gun.jpg)
+
+![Haunted Seas: a ghost portal](2026-10-19-v13-2-ghost-portal.jpg)
+
+![Thunderstruck: SUPERCHARGED](2026-10-19-v13-2-thunder-supercharged.jpg)
+
+## 8. Performance
+
+Each event forced in turn round the test goblin's Cutter with six AI boats circling it (Studio on the development PC, one client, Studio in front):
+
+| Scene | Server frame (avg / worst) | Client fps |
+| --- | --- | --- |
+| Calm | 16.7 / 19.9 ms | 60–61 |
+| Meteors | 16.7 / 19.1 ms | 60–61 |
+| Kraken | 16.7 / 19.0 ms | 60–61 |
+| Rogue waves | 16.7 / 20.2 ms | 60–61 |
+| Crossfire | 16.7 / 19.9 ms | 60–61 |
+| Barrels (31 kegs) | 16.7 / 19.6 ms | 60–61 |
+| Whirlpools (4) | 16.7 / 19.3 ms | 60–61 |
+| Haunted (3 ghost ships) | 16.7 / 19.7 ms | 60–61 |
+| Thunder | 16.7 / 20.2 ms | 60–61 |
+| **Barrels + meteors together** (27 kegs) | 16.7 / 19.9 ms | 60–61 |
+
+The server never dropped below 60 steps a second; the client held 60 (it dipped to 36 for one second while the test boats spawned). Barrels are data, not physics parts (the server moves them and draws nothing; clients draw them); whirlpools and waves are maths in the shared sea; every visual is drawn on the clients (`ChaosFx`). **Not measured**: a full 3-player server, a phone.
+
+## 9. Profile and economy
+
+- **No profile migration needed**: boats are catalogue items (`boat_anchorjack` 500, `boat_wavebreaker` 550, `boat_corsair` 650 Shinies) owned the V11/V13 way, so every existing owner keeps everything. Free: Skiff and Cutter.
+- **Robux**: inert product keys for the three new boats and the fleet bundle (now all eight), `id = nil`. A human creates any product in the Creator Dashboard (docs/MONETIZATION.md).
+- `EconomySpec`: the whole fleet is still earnable in under 26 hours of ordinary raids.
+- Pets: nothing depended on sprint. Spring Frog speeds the dash (kept), Shell Tortoise bounces a catch (now a thrown hook, still blocked), SPIRIT shortens a knockout.
+- Leaving a raid forfeits that raid's gold and Shinies, so it can't be used to bank Shinies and skip the risk.
+
+## 10. Tests and checks
+
+- **107 Luau tests pass** in Studio (V13.1's 82, all kept, plus 25): `MovementSpec` (momentum: moving at once, the run, the top; a hard turn or stop spends it, a curve, jump or fall keeps it; swing speed kept in the air, sliding back after landing; the swing: swing or pull by height, a pendulum that never stretches the rope, pump, reel, release with a lift, a pull that arrives), `SkyRouteSpec` (finite reach; every route 6–10 islands, every island on 2+ routes; bounds and speed; the prep wait; the pass and the swing-round with no jump; reversed routes; in reach at the closest pass), `ChaosSpec` (eight events with names, icons, lines and tuning; several episodes with calm between; hits recoverable; the sea's chaos reaching clients intact; a rogue wave lifts, carries and breaks against land; a whirlpool swirls round and in), `BoatClassSpec` (ten classes in the showroom; no class better at everything; one speed band 105–120 and nobody much quicker to top speed; a 3,000-stud crossing from a standstill about the same for all; Nitro an escape, not a straight-line win; every ability escapes or disrupts; the bow gun shoves more than it hurts; snag, swing and hook become the right chains and a swing lets go as a sling), `LobbySpec` (a raid leaves only with somebody signed up and the countdown over; a raid nobody is left in ends).
+- StyLua and Selene clean; `./scripts/check.ps1` (see the PR).
+- Studio: everything in sections 2 to 8 above.
+
+## 11. Bugs found and fixed while testing
+
+| Found | Fix |
+| --- | --- |
+| The Corsair's boarding never happened: its own client says "arrived" alongside the rival, but the server sees that hull a moment late and the client saw the rival a moment late (27 studs apart at 94 and 68 studs/s) | On "arrived" the server allows both boats' speeds along the line × 0.35 s (`A.hook.lag`) |
+| A boarded boat sped up (it was shoved along the line between the hulls: straight ahead when boarding from behind) | Shoved across the Corsair's heading |
+| The bow gun's shots at something close went 15–20 studs long (every cannon's aim was floored at 6° down) | The bow gun may aim down to 40° (other cannons unchanged) |
+| The skyship's auto-fire landed 59 studs off (the server's view of a goblin on the moving deck lags) | Throws from a fixed point on the ship; the client starts the flight there |
+| The ship jumped back to the route's start after its pass | It swings round over 3 s and flies back |
+| A meteor-thrown boat took big crash damage landing | Shoves give crash grace for their size |
+| Kraken markers tinted the whole screen purple (a tall column) | Warning rings instead |
+| Rogue waves weak near land, crests turned 90° | Softer shelter, crests along the front |
+| Whirlpools orbited a boat forever | Stronger pull at the centre |
+| The armada could spawn on a beach | Tries 16 headings for deep water |
+| Leftover tentacle parts when not rendering | A cleanup backstop |
+| The leave button covered "H closes this", and an old reset could relabel a second question early | Text moved left; the reset knows which question it belongs to |
+| Frost Spire unreachable at its landing height on the Spine | Reach computed for the landing's height |
+
+## 12. Not tested, or unverified
+
+- **A second player**: boarding a real goblin (their treasure dropping), a snag or hook on a boat another client simulates (the tether is sent to that client: written, never seen), PvP with the bow gun, rally surging a friend, spectating and late entry with others.
+- **Feel**: whether momentum's 2 s build feels good; whether the swing's 125 cap is too fast (it can fly you into trees); whether the compressed boats make the sea feel slower in a bad way; whether eight events are fun, too much or too little. **These are the playtest.**
+- A real controller (R2 gun, L2 swing) and a phone (the GUN button).
+- A full six-minute raid with three people under chaos; the events with every guardian (meteors were seen to throw creatures through `Blast`, not with each guardian).
+- Pursuit interactions such as the Leviathan being hit by a meteor were not staged.
+- The Spine route's Frost Spire landing passes in simulation; no real flight onto it was made.
+- Studio's own mouse tool leaves the camera fixed; real mice do not (no game code sets it), but nobody has played a raid start with a real mouse since.
+
+## 13. Playtest guide (for three people)
+
+1. Everyone presses **Play**. You arrive in the Port. Look at the top left: **the next raid's chaos and the skyship's route**.
+2. Press **JOIN NEXT RAID** (or walk up the gangplank). Try cancelling, and try AUTO-JOIN. Someone stays behind and watches from the Spyglass.
+3. On the skyship: climb into a cannon (`E`) and aim. **It will not fire for 10 s.** Press `M`: the lit islands are in reach now; pick one, or fire yourself when your island comes into reach.
+4. On foot: just run, and feel the speed build. Press `F` at a tree, a rock or a bridge above you and **swing**; `W` pumps, `F` or `Space` lets go. Try swinging onto a moving boat.
+5. At sea: **click to fire the bow gun** at each other. Try every boat at least once (the Shipyard, or `P`): the Anchorjack's anchor on a friend's boat, the Corsair boarding a carrier, the Wavebreaker's ring in a crowd, the Skiff's Nitro to escape a chain.
+6. Race home from a far island in different boats. Does any boat feel useless? Does anyone feel too slow?
+7. Watch the chaos: is it funny? Too often? Too rare? Did it ever feel unfair?
+8. Someone press `H` and **LEAVE THIS RAID** (twice) to check you go home.
+9. Report what felt bad, what was funny, and send a screenshot of any red error.
 
 ---
 

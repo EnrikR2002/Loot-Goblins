@@ -72,7 +72,7 @@ local function refresh(modeOf)
 	end
 end
 
--- fns = { fire, call, grapple, throw, boost, hop, trick }; modeOf() returns "ship", "aim", "flight", "boat", "foot" or
+-- fns = { fire, call, grapple, throw, boost, hop, trick, gun (V13.2) }; modeOf() returns "ship", "aim", "flight", "boat", "foot" or
 -- (V13) "port", where nothing is bound: the Port's own buttons are on its screen.
 -- force: bind them on a computer too (a Studio check of which actions each mode binds; Roblox draws the buttons
 -- only on a touch screen, so how they look and feel needs a phone or Studio's device emulator). The game never
@@ -136,6 +136,14 @@ function TouchControls.start(fns, modeOf, force)
 			fn = fns.trick,
 			when = function(s)
 				return s.mode == "boat"
+			end,
+		},
+		LootGoblinsTouchGun = {
+			title = "GUN", -- V13.2: the bow gun, fired where the middle of the screen looks
+			slot = 3,
+			fn = fns.gun,
+			when = function(s)
+				return s.mode == "boat" and fns.gun ~= nil
 			end,
 		},
 	}

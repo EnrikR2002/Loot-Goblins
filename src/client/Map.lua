@@ -2,11 +2,15 @@
 -- and what state it is in (waiting, carried, loose, banked), live storms, the Hoard and you. It
 -- shows the sea, never other players' positions: you still have to look for rivals. Also draws the
 -- compass strip along the top of the screen.
+-- V13.2: while the skyship deploys, its ROUTE (a dotted line), where it is, and its cannons' REACH (a ring round it)
+-- are on the map; islands in reach now are lit green, islands it never comes in reach of this raid are dimmed (they
+-- cannot be picked). The current WORLD CHAOS episode is marked where it is happening.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local Archipelago = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Archipelago"))
+local SkyRoute = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("SkyRoute"))
 local Weather = require(script.Parent.Weather)
 local Twisters = require(script.Parent.Twisters)
 
@@ -29,6 +33,12 @@ local hoardPosition
 local sanctuaryView
 local twisterViews = {}
 local visible = false
+-- V13.2: the route, the ship, its reach, and the chaos episode.
+local routeDashes = {}
+local routeKey = nil
+local shipView, reachView, chaosView
+local REACH = SkyRoute.reach()
+local reachable = {} -- island id -> true when it comes in reach on this raid's route
 
 -- Compass
 local COMPASS_FOV = 170
@@ -252,6 +262,48 @@ function Map.build(gui, hoard)
 		}, view)
 		stormViews[i] = view
 	end
+	-- V13.2: the skyship's reach (a ring), the ship, and the chaos episode's patch of sea.
+	reachView = make("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = Color3.fromRGB(255, 230, 140),
+		BackgroundTransparency = 0.85,
+		Visible = false,
+		ZIndex = 24,
+	}, canvas)
+	make("UICorner", { CornerRadius = UDim.new(1, 0) }, reachView)
+	make("UIStroke", { Color = GOLD, Thickness = 2, Transparency = 0.1 }, reachView)
+	shipView = make("TextLabel", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Size = UDim2.fromOffset(74, 18),
+		BackgroundColor3 = GOLD,
+		Font = Enum.Font.GothamBlack,
+		Text = "SKYSHIP",
+		TextColor3 = DARK,
+		TextSize = 10,
+		Visible = false,
+		ZIndex = 29,
+	}, canvas)
+	make("UICorner", { CornerRadius = UDim.new(1, 0) }, shipView)
+	chaosView = make("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = Color3.fromRGB(255, 110, 60),
+		BackgroundTransparency = 0.7,
+		Visible = false,
+		ZIndex = 25,
+	}, canvas)
+	make("UICorner", { CornerRadius = UDim.new(1, 0) }, chaosView)
+	make("UIStroke", { Color = Color3.fromRGB(255, 120, 60), Thickness = 2 }, chaosView)
+	make("TextLabel", {
+		Name = "Icon",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Font = Enum.Font.GothamBlack,
+		Text = "",
+		TextColor3 = WHITE,
+		TextStrokeTransparency = 0.2,
+		TextSize = 20,
+		ZIndex = 26,
+	}, chaosView)
 	youMarker = make("TextLabel", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Size = UDim2.fromOffset(20, 20),
@@ -428,6 +480,88 @@ local function wrap(degrees)
 	return (degrees + 180) % 360 - 180
 end
 
+-- V13.2: map pixels for a world point.
+local function toPixels(x, z)
+	return Vector2.new((x - min.X) / spanX * MAP_W, (z - min.Z) / spanZ * MAP_H)
+end
+
+local function ellipse(view, x, z, radius)
+	view.Position = toMap(x, z)
+	view.Size = UDim2.fromOffset(radius * 2 / spanX * MAP_W, radius * 2 / spanZ * MAP_H)
+end
+
+-- The route as a dotted line (rebuilt when the route changes).
+local function drawRoute(points, key)
+	if routeKey == key then
+		return
+	end
+	routeKey = key
+	for _, dash in ipairs(routeDashes) do
+		dash:Destroy()
+	end
+	table.clear(routeDashes)
+	table.clear(reachable)
+	if not points then
+		return
+	end
+	for i = 2, #points do
+		local a, b = toPixels(points[i - 1].X, points[i - 1].Z), toPixels(points[i].X, points[i].Z)
+		local length = (b - a).Magnitude
+		local steps = math.max(1, math.floor(length / 14))
+		for k = 0, steps - 1 do
+			local from = a:Lerp(b, k / steps)
+			local to = a:Lerp(b, (k + 0.55) / steps)
+			local mid = (from + to) / 2
+			local dash = make("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromOffset(mid.X, mid.Y),
+				Size = UDim2.fromOffset((to - from).Magnitude, 3),
+				Rotation = math.deg(math.atan2(b.Y - a.Y, b.X - a.X)),
+				BackgroundColor3 = GOLD,
+				BorderSizePixel = 0,
+				ZIndex = 24,
+			}, canvas)
+			table.insert(routeDashes, dash)
+		end
+	end
+	-- The arrow at its far end.
+	local last, before = points[#points], points[#points - 1]
+	local tip = toPixels(last.X, last.Z)
+	local arrow = make("TextLabel", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(tip.X, tip.Y),
+		Size = UDim2.fromOffset(20, 20),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBlack,
+		Text = "^",
+		TextColor3 = GOLD,
+		TextSize = 22,
+		Rotation = math.deg(math.atan2(last.X - before.X, -(last.Z - before.Z))),
+		ZIndex = 24,
+	}, canvas)
+	table.insert(routeDashes, arrow)
+	for _, island in ipairs(Archipelago.islands) do
+		local info = Config.ISLAND_INFO[island.id]
+		if info and info.major then
+			local generated = workspace:FindFirstChild("LootGoblinsGenerated")
+			local spot = generated and generated:GetAttribute("Land_" .. island.id)
+			local x, z, y = island.x, island.z, 0
+			if typeof(spot) == "Vector3" then
+				x, z, y = spot.X, spot.Z, spot.Y
+			end
+			reachable[island.id] = SkyRoute.passBy(points, x, z, SkyRoute.reach(y)).from ~= nil
+		end
+	end
+end
+
+-- V13.2: is this island ever in the skyship's reach on this raid's route? (true when no route is known)
+function Map.reachable(id)
+	if routeKey == nil then
+		return true
+	end
+	return reachable[id] == true
+end
+
 -- Places a compass marker for a world point, or hides it if it is behind you.
 local function place(label, heading, x, z, from)
 	local bearing = math.deg(math.atan2(x - from.X, -(z - from.Z)))
@@ -445,6 +579,23 @@ function Map.update(now)
 	-- V13: the compass is for the sea; the Port has its own screen.
 	compass.Visible = player:GetAttribute("Zone") ~= "port"
 	local chosen = player:GetAttribute("DeployDest")
+	-- V13.2: the skyship's route and reach while it deploys (or a goblin rides a later lap).
+	local points, opensAt, index = SkyRoute.current()
+	local deploying = points ~= nil
+		and (workspace:GetAttribute("DeployEndsAt") ~= nil or player:GetAttribute("DeployState") == "aboard")
+		and player:GetAttribute("InRaid") == true
+	drawRoute(deploying and points or nil, deploying and (tostring(index) .. tostring(points[1])) or nil)
+	local shipAt = nil
+	if deploying then
+		local cf = SkyRoute.cframeAt(points, opensAt, now)
+		shipAt = cf.Position
+	end
+	reachView.Visible = shipAt ~= nil and visible
+	shipView.Visible = shipAt ~= nil and visible
+	if shipAt then
+		ellipse(reachView, shipAt.X, shipAt.Z, REACH)
+		shipView.Position = toMap(shipAt.X, shipAt.Z)
+	end
 	for id, view in pairs(islandViews) do
 		local stroke = view:FindFirstChild("Chosen")
 		if stroke then
@@ -454,6 +605,43 @@ function Map.update(now)
 		if alarm then
 			alarm.Thickness = (workspace:GetAttribute("Alert_" .. id) or 0) * 2
 		end
+		local island = Archipelago.byId[id]
+		local info = Config.ISLAND_INFO[id]
+		if deploying and info and info.major then
+			local inReachNow = shipAt and (Vector3.new(island.x - shipAt.X, 0, island.z - shipAt.Z)).Magnitude <= REACH
+			view.BackgroundTransparency = reachable[id] and 0 or 0.7
+			if alarm and inReachNow then
+				alarm.Color = Color3.fromRGB(120, 255, 150)
+				alarm.Thickness = 3
+			elseif alarm then
+				alarm.Color = Color3.fromRGB(255, 70, 50)
+			end
+		else
+			view.BackgroundTransparency = 0
+			if alarm then
+				alarm.Color = Color3.fromRGB(255, 70, 50)
+			end
+		end
+	end
+	-- V13.2: the chaos episode under way (WorldChaos publishes "kind,x,z,radius,untilAt").
+	local zone = workspace:GetAttribute("ChaosZone")
+	local fields = type(zone) == "string" and string.split(zone, ",") or nil
+	if fields and #fields >= 5 and tonumber(fields[5]) and now < tonumber(fields[5]) then
+		chaosView.Visible = visible
+		ellipse(
+			chaosView,
+			tonumber(fields[2]) or 0,
+			tonumber(fields[3]) or 0,
+			math.max(120, tonumber(fields[4]) or 200)
+		)
+		local icon = chaosView:FindFirstChild("Icon")
+		for _, entry in ipairs(Config.CHAOS.EVENTS) do
+			if entry.id == fields[1] and icon then
+				icon.Text = entry.icon
+			end
+		end
+	else
+		chaosView.Visible = false
 	end
 	local camera = workspace.CurrentCamera
 	local character = player.Character

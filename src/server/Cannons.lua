@@ -6,6 +6,11 @@
 --
 -- A cannonball is a Blast with the biggest numbers in the game: it opens gates, snaps bridges,
 -- wrecks boats, knocks loot loose and throws people. It is also how players sink the Navy.
+--
+-- V13.2: EVERY BOAT HAS A BOW GUN its driver fires with a click (gamepad R2, the touch GUN button): Cannons.driverFire.
+-- It is light (Config.BOAT_GUN): it shoves and splashes, never knocks treasure loose, never sinks a boat by itself, and
+-- a hull it hit a moment ago takes the next shot at half strength (no juggling). It never fires from the Port or the
+-- Hoard's ward, and never reaches anyone standing in either (Blast.safe).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -48,7 +53,9 @@ end
 
 -- The low arc that lands on the target with the cannon's muzzle speed, or 45 degrees if it is
 -- out of range. Returns a unit direction.
-local function solve(origin, target)
+-- steep (V13.2, the bow gun): it may aim well down at something close (the old floor of -6 degrees sent a shot at a
+-- boat 20-35 studs off the bow 15-20 studs long, measured in Studio). Other cannons keep their floor.
+local function solve(origin, target, steep)
 	local g, speed = Config.CANNON_GRAVITY, Config.CANNON_SPEED
 	local delta = target - origin
 	local flat = Vector3.new(delta.X, 0, delta.Z)
@@ -59,7 +66,7 @@ local function solve(origin, target)
 	local v2 = speed * speed
 	local disc = v2 * v2 - g * (g * distance * distance + 2 * delta.Y * v2)
 	local angle = disc < 0 and math.rad(45) or math.atan2(v2 - math.sqrt(disc), g * distance)
-	angle = math.clamp(angle, math.rad(-6), math.rad(62))
+	angle = math.clamp(angle, math.rad(steep and -40 or -6), math.rad(62))
 	return flat.Unit * math.cos(angle) + Vector3.yAxis * math.sin(angle)
 end
 
@@ -94,7 +101,7 @@ end
 -- carry its own (entry.profile). Without one it is a full cannonball (Config.CANNON_*).
 function Cannons.launch(entry, aimPoint, owner, profile)
 	local pivot = pivotOf(entry)
-	local direction = solve(pivot, aimPoint)
+	local direction = solve(pivot, aimPoint, (profile or entry.profile or {}).bowGun)
 	aimBarrel(entry, direction)
 	local muzzle = pivot + direction * 6
 	local ball = Instance.new("Part")
@@ -135,9 +142,49 @@ function Cannons.launch(entry, aimPoint, owner, profile)
 	return true
 end
 
+-- V13.2: a bow gun's shot that lands within BOAT_GUN.sameBoatGrace of the last one on the same hull is halved.
+local gunHitAt = setmetatable({}, { __mode = "k" }) -- boat -> server time a bow gun last hit it
+
 local function explodeShot(shot, position)
 	shot.part:Destroy()
 	local p = shot.profile
+	if p and p.bowGun then
+		-- Its own little blast: shove and splash only (no loot, no sinking: the world floor applies).
+		local G = Config.BOAT_GUN
+		local t = now()
+		local scaled = {}
+		for _, boat in ipairs(Boats.list) do
+			if boat ~= shot.entry.boat and boat.state == "float" and not Cannons.inSafeZone(boat.hull.Position) then
+				local reach = G.radius + boat.spec.size.Z * 0.4
+				if (boat.hull.Position - position).Magnitude < reach then
+					scaled[boat] = t - (gunHitAt[boat] or -math.huge) < G.sameBoatGrace and 0.5 or 1
+					gunHitAt[boat] = t
+				end
+			end
+		end
+		for boat, k in pairs(scaled) do
+			local offset = boat.hull.Position - position
+			local falloff = math.clamp(1 - offset.Magnitude / (G.radius + boat.spec.size.Z * 0.4), 0.3, 1) * k
+			local away = Vector3.new(offset.X, 0, offset.Z)
+			away = away.Magnitude > 0.1 and away.Unit or Vector3.new(0, 0, 1)
+			Boats.damage(
+				boat,
+				math.min(G.hullDamage * falloff, math.max(0, boat.health - boat.spec.health * 0.25)),
+				nil
+			)
+			Boats.shove(boat, (away * G.boatPush + Vector3.new(0, G.boatPush * 0.45, 0)) * falloff)
+		end
+		Blast.at(position, {
+			radius = G.radius,
+			damage = G.damage,
+			knockback = G.knockback,
+			owner = shot.owner,
+			wardSafe = true,
+			cause = shot.owner and (shot.owner.DisplayName .. "'s bow gun") or "a bow gun",
+			color = Color3.fromRGB(255, 200, 110),
+		})
+		return
+	end
 	Blast.at(position, {
 		radius = p and p.radius or Config.CANNON_RADIUS,
 		damage = p and p.damage or Config.CANNON_DAMAGE,
@@ -210,8 +257,8 @@ local function onFire(player, base, aimPoint)
 	end
 	local entry = findEntry(base)
 	local root = Util.aliveRoot(player)
-	if not entry or not root or not base.Parent then
-		return
+	if not entry or not root or not base.Parent or entry.driver then
+		return -- (V13.2: a driver's bow gun is fired through Cannons.driverFire, never through a prompt)
 	end
 	if entry.boat and entry.boat.state ~= "float" then
 		return
@@ -243,44 +290,81 @@ local function onFire(player, base, aimPoint)
 end
 
 -- Boat-mounted cannons ride on the hull: welded parts and a weld whose offset aims the barrel.
+-- V13.2: every player class gets a small driver's bow gun (no prompt: the driver clicks), on top of the Cutter's deck
+-- cannon and the Broadside's two side guns, which friends still man with E.
 function Cannons.mountOnBoat(boat)
 	local hull = boat.hull
 	local size = boat.spec.size
-	local spots = boat.typeName == "navy" and { Vector3.new(-4.5, 0, -8), Vector3.new(4.5, 0, -8) }
-		or { Vector3.new(0, 0, -size.Z * 0.26) }
-	-- V13: the Broadside's two gunner cannons, one each side by a passenger seat, firing the light shot.
+	local spots = {}
 	local sides = {}
-	if boat.spec.broadside then
-		spots = { Vector3.new(-(size.X / 2 - 2.2), 0, 2.5), Vector3.new(size.X / 2 - 2.2, 0, 2.5) }
-		sides = { -1, 1 }
+	local drivers = {}
+	if boat.typeName == "navy" then
+		spots = { Vector3.new(-4.5, 0, -8), Vector3.new(4.5, 0, -8) }
+	else
+		if boat.spec.class then
+			table.insert(spots, Vector3.new(0, 0, -size.Z * 0.4))
+			drivers[#spots] = true
+		end
+		if boat.spec.cannons then
+			table.insert(spots, Vector3.new(0, 0, -size.Z * 0.26))
+		end
+		-- V13: the Broadside's two gunner cannons, one each side by a passenger seat, firing the light shot.
+		if boat.spec.broadside then
+			table.insert(spots, Vector3.new(-(size.X / 2 - 2.2), 0, 2.5))
+			sides[#spots] = -1
+			table.insert(spots, Vector3.new(size.X / 2 - 2.2, 0, 2.5))
+			sides[#spots] = 1
+		end
 	end
 	for index, spot in ipairs(spots) do
-		local pivot = Vector3.new(spot.X, size.Y / 2 + 2.6, spot.Z)
+		local driver = drivers[index] == true
+		local scale = driver and 0.6 or 1
+		local pivot = Vector3.new(spot.X, size.Y / 2 + (driver and 1.6 or 2.6), spot.Z)
 		local base = Instance.new("Part")
-		base.Name = "CannonBase"
-		base.Size = Vector3.new(4.6, 1.4, 5.4)
+		base.Name = driver and "BowGunBase" or "CannonBase"
+		base.Size = Vector3.new(4.6, 1.4, 5.4) * scale
 		base.Color = Color3.fromRGB(70, 48, 32)
 		base.Material = Enum.Material.WoodPlanks
-		base.CFrame = hull.CFrame * CFrame.new(spot.X, size.Y / 2 + 0.7, spot.Z)
+		base.CFrame = hull.CFrame * CFrame.new(spot.X, size.Y / 2 + 0.7 * scale, spot.Z)
 		base.CanCollide = false
+		base.CanQuery = false
 		base.Massless = true
 		local weldBase = Instance.new("WeldConstraint")
 		weldBase.Part0, weldBase.Part1 = hull, base
 		weldBase.Parent = base
 		base.Parent = boat.model
 		local barrel = Instance.new("Part")
-		barrel.Name = "CannonBarrel"
-		barrel.Size = Vector3.new(2.4, 2.4, 7)
+		barrel.Name = driver and "BowGunBarrel" or "CannonBarrel"
+		barrel.Size = Vector3.new(2.4, 2.4, 7) * scale
 		barrel.Color = Color3.fromRGB(58, 58, 66)
 		barrel.Material = Enum.Material.Metal
 		barrel.CanCollide = false
+		barrel.CanQuery = false
 		barrel.Massless = true
-		barrel.CFrame = hull.CFrame * CFrame.new(pivot) * CFrame.new(0, 0, -3)
+		barrel.CFrame = hull.CFrame * CFrame.new(pivot) * CFrame.new(0, 0, -3 * scale)
 		local weld = Instance.new("Weld")
 		weld.Part0, weld.Part1 = base, barrel
 		weld.C0 = base.CFrame:ToObjectSpace(barrel.CFrame)
 		weld.Parent = barrel
 		barrel.Parent = boat.model
+		if driver then
+			-- The driver's gun: no prompt (a click fires it), the light shot, its own cooldown on the model.
+			local entry = {
+				base = base,
+				barrel = barrel,
+				weld = weld,
+				boat = boat,
+				localPivot = pivot,
+				name = "Bow gun",
+				driver = true,
+				profile = { bowGun = true },
+				cooldown = Config.BOAT_GUN.cooldown,
+			}
+			table.insert(Cannons.entries, entry)
+			boat.cannons = boat.cannons or {}
+			table.insert(boat.cannons, entry)
+			continue
+		end
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "CannonPrompt"
 		prompt.ObjectText = boat.spec.name .. " cannon"
@@ -314,15 +398,76 @@ function Cannons.mountOnBoat(boat)
 	end
 end
 
--- V13: a boat's own gun fired by its driver (the Cutter's bow gun, the Broadside's volley): server/BoatAbilities.lua.
--- `side` picks the Broadside's gun (-1 port, 1 starboard); nil picks the bow gun. Returns the entry used, or nil.
+-- V13: a boat's own gun fired by its driver (the Broadside's volley): server/BoatAbilities.lua. `side` picks the
+-- Broadside's gun (-1 port, 1 starboard); nil picks the deck cannon (V13.2: never the driver's bow gun). Returns the
+-- entry used, or nil.
 function Cannons.boatGun(boat, side)
 	for _, entry in ipairs(boat.cannons or {}) do
-		if entry.side == side then
+		if entry.side == side and not entry.driver then
 			return entry
 		end
 	end
 	return nil
+end
+
+-- V13.2: the driver's bow gun on this boat, or nil.
+function Cannons.bowGun(boat)
+	for _, entry in ipairs(boat.cannons or {}) do
+		if entry.driver then
+			return entry
+		end
+	end
+	return nil
+end
+
+-- V13.2: the driver clicked. aimPoint: where they were looking. The server checks they drive this boat, it floats, the
+-- gun is loaded, the shot goes forward of the bow and the boat is not in the Port or at home; a far aim is brought in
+-- to the gun's range. Returns true if it fired, or false and a reason for the driver.
+Cannons.inSafeZone = function(_position)
+	return false
+end
+function Cannons.driverFire(player, boat, aimPoint)
+	if not boat or boat.state ~= "float" then
+		return false, nil
+	end
+	local entry = Cannons.bowGun(boat)
+	if not entry then
+		return false, nil
+	end
+	local t = now()
+	if t < (entry.readyAt or 0) - 0.1 then
+		return false, nil
+	end
+	local G = Config.BOAT_GUN
+	local hull = boat.hull
+	if Cannons.inSafeZone(hull.Position) then
+		return false, "No cannons in the Port or at home."
+	end
+	local look = Vector3.new(hull.CFrame.LookVector.X, 0, hull.CFrame.LookVector.Z)
+	look = look.Magnitude > 0.05 and look.Unit or Vector3.new(0, 0, -1)
+	local from = pivotOf(entry)
+	local toward = typeof(aimPoint) == "Vector3"
+			and finite(aimPoint)
+			and Vector3.new(aimPoint.X - from.X, 0, aimPoint.Z - from.Z)
+		or look * G.range
+	if toward.Magnitude < 12 or toward.Unit:Dot(look) < G.arc then
+		-- Behind or beside the arc: it fires straight ahead instead (a click is never wasted).
+		toward = look * math.min(G.range, math.max(60, toward.Magnitude))
+	elseif toward.Magnitude > G.range then
+		toward = toward.Unit * G.range
+	end
+	local target = Vector3.new(
+		from.X + toward.X,
+		math.max(0, typeof(aimPoint) == "Vector3" and aimPoint.Y or 0),
+		from.Z + toward.Z
+	)
+	if target.Y > from.Y + 40 then
+		target = Vector3.new(target.X, from.Y + 40, target.Z)
+	end
+	entry.readyAt = t + G.cooldown
+	boat.model:SetAttribute("GunReadyAt", entry.readyAt)
+	Cannons.launch(entry, target, player, entry.profile)
+	return true, nil
 end
 
 function Cannons.build(worldRefs)
@@ -331,7 +476,7 @@ function Cannons.build(worldRefs)
 		table.insert(Cannons.entries, entry)
 	end
 	for _, boat in ipairs(Boats.list) do
-		if boat.spec.cannons or boat.spec.broadside then
+		if boat.spec.class or boat.spec.cannons or boat.spec.broadside then
 			Cannons.mountOnBoat(boat)
 		end
 	end
@@ -341,7 +486,7 @@ end
 -- An AI boat (the Navy) fires one of its cannons at a point.
 function Cannons.fireAI(boat, aimPoint)
 	for _, entry in ipairs(boat.cannons or {}) do
-		if now() >= (entry.readyAt or 0) then
+		if now() >= (entry.readyAt or 0) and not entry.driver then
 			entry.readyAt = now() + Config.CANNON_COOLDOWN * 1.6
 			Cannons.launch(entry, aimPoint, nil)
 			return true
@@ -352,7 +497,7 @@ end
 
 -- A boat built later (an AI ship) gets its guns when it spawns.
 function Cannons.mountIfArmed(boat)
-	if (boat.spec.cannons or boat.spec.broadside) and not boat.cannons then
+	if (boat.spec.class or boat.spec.cannons or boat.spec.broadside) and not boat.cannons then
 		Cannons.mountOnBoat(boat)
 	end
 end
@@ -364,6 +509,9 @@ function Cannons.reset()
 	table.clear(shots)
 	for _, entry in ipairs(Cannons.entries) do
 		entry.readyAt = 0
+		if entry.driver and entry.boat and entry.boat.model then
+			entry.boat.model:SetAttribute("GunReadyAt", nil)
+		end
 	end
 end
 

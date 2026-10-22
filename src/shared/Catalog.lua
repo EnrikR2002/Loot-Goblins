@@ -68,15 +68,15 @@ Catalog.GROUPS = {
 }
 
 local ITEMS = {
-	-- Boats (V13): the class B calls. `class` is a key of Config.BOAT_TYPES. Two are free for ever; the other five are
-	-- earned with Shinies (Robux is only ever a second way to the same boat). A sidegrade, never an upgrade: see
-	-- Config.BOAT_CLASSES for what each is best and worst at.
+	-- Boats (V13): the class B calls. `class` is a key of Config.BOAT_TYPES. Two are free for ever; the other eight
+	-- (V13.2; V13: five) are earned with Shinies (Robux is only ever a second way to the same boat). A sidegrade, never
+	-- an upgrade: see Config.BOAT_CLASSES for what each is best and worst at.
 	{
 		id = "boat_skiff",
 		slot = "boat",
 		class = "skiff",
 		name = "Skiff",
-		blurb = "The fastest thing on the water, with a Nitro afterburner. Two bad crashes and it is driftwood.",
+		blurb = "Nimble, quick to drift, and its Nitro breaks free of anchors and hooks. Two bad crashes and it is driftwood.",
 		rarity = "common",
 		free = true,
 		vibe = "speedy",
@@ -86,7 +86,7 @@ local ITEMS = {
 		slot = "boat",
 		class = "cutter",
 		name = "Cutter",
-		blurb = "Steady, tough and roomy: three friends aboard, a cannon for one of them and a bow gun for you.",
+		blurb = "Steady, tough and roomy: three friends aboard, a deck cannon, and a Rally Horn that surges the convoy.",
 		rarity = "common",
 		free = true,
 		vibe = "dependable",
@@ -145,6 +145,40 @@ local ITEMS = {
 		price = 700,
 		premium = "boat_broadside",
 		vibe = "booming",
+	},
+	-- V13.2 (Sea of Chaos): three more classes, each with an ability that escapes and disrupts.
+	{
+		id = "boat_anchorjack",
+		slot = "boat",
+		class = "anchorjack",
+		name = "Anchorjack",
+		blurb = "The only boat with an anchor: chain a rival's boat to yours, or hook a rock and slingshot round it.",
+		rarity = "rare",
+		price = 500,
+		premium = "boat_anchorjack",
+		vibe = "salty",
+	},
+	{
+		id = "boat_wavebreaker",
+		slot = "boat",
+		class = "wavebreaker",
+		name = "Wavebreaker",
+		blurb = "It slams the sea flat: a ring of water throws every boat and swimmer nearby away while you ride the crest.",
+		rarity = "rare",
+		price = 550,
+		premium = "boat_wavebreaker",
+		vibe = "splashy",
+	},
+	{
+		id = "boat_corsair",
+		slot = "boat",
+		class = "corsair",
+		name = "Corsair",
+		blurb = "A pirate boarder: harpoon the boat ahead, reel in, and board it. A carrier you board drops their treasure.",
+		rarity = "rare",
+		price = 650,
+		premium = "boat_corsair",
+		vibe = "piratical",
 	},
 	-- Hats ---------------------------------------------------------------------------------------------------------
 	{

@@ -7,6 +7,10 @@
 --   * the departures board on the pier and a marker over the gangplank say the same thing in the world;
 --   * a short fade from black when a goblin is moved between the raid and the Port, so the teleport is not a pop.
 -- Everything it shows comes from replicated attributes; JOIN and WATCH ask the server (PortRequest), which decides.
+-- V13.2: going is a CHOICE. Under the sign, JOIN NEXT RAID signs you up (walking aboard does too) and STAY IN PORT
+-- cancels; AUTO-JOIN keeps you signed up raid after raid. With nobody signed up the sign says it is waiting. On the left,
+-- the NEXT RAID card shows the raid's WORLD CHAOS event (its icon, name and line) and the skyship's route with the
+-- islands it comes in reach of, before anyone picks a boat. (RaidRequest: the server decides.)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -16,6 +20,8 @@ local Shared = ReplicatedStorage:WaitForChild("LootGoblins")
 local Config = require(Shared:WaitForChild("Config"))
 local Catalog = require(Shared:WaitForChild("Catalog"))
 local Lobby = require(Shared:WaitForChild("Lobby"))
+local SkyRoute = require(Shared:WaitForChild("SkyRoute"))
+local Archipelago = require(Shared:WaitForChild("Archipelago"))
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
 
@@ -24,12 +30,15 @@ local PortHud = {}
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
 local portRemote = remotes:WaitForChild("PortRequest")
+local raidRemote = remotes:WaitForChild("RaidRequest") -- V13.2
 local C = Ui.C
 
 local gui, scaler, sign, countdown, subline, buttons, joinButton
 local wallet, shiniesLabel, boatChip, petChip
 local fade
 local plankMarker, plankLabel
+local signRow, signButton, autoButton -- V13.2: sign up / stay, auto-join
+local nextCard, nextTitle, chaosIcon, chaosName, chaosLine, routeLine -- V13.2: the next raid's chaos and route
 local openShop -- set by Main: (focus) -> opens the wardrobe at a page
 
 local function now()
@@ -160,6 +169,102 @@ local function build()
 		Effects.sound("blip", { speed = 1.4, volume = 0.5 })
 	end)
 
+	-- V13.2: signing up for the next raid (while the Port counts down).
+	signRow = Ui.make("Frame", {
+		Name = "SignUp",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 110),
+		Size = UDim2.fromOffset(440, 46),
+		BackgroundTransparency = 1,
+	}, root)
+	Ui.make("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		Padding = UDim.new(0, 10),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, signRow)
+	signButton = Ui.button(signRow, {
+		text = "⚔  JOIN NEXT RAID",
+		style = "gold",
+		size = UDim2.fromOffset(250, 44),
+		order = 1,
+		textSize = 19,
+		name = "SignUpButton",
+	}, function()
+		raidRemote:FireServer(player:GetAttribute("RaidOptIn") and "out" or "in")
+		Effects.sound("blip", { speed = 1.4, volume = 0.5 })
+	end)
+	autoButton = Ui.button(signRow, {
+		text = "AUTO-JOIN: OFF",
+		style = "wood",
+		size = UDim2.fromOffset(160, 44),
+		order = 2,
+		textSize = 14,
+		name = "AutoJoinButton",
+	}, function()
+		raidRemote:FireServer("auto", not player:GetAttribute("AutoJoin"))
+		Effects.sound("blip", { speed = 1.1, volume = 0.4 })
+	end)
+
+	-- V13.2: the next raid, left side: its WORLD CHAOS event and the skyship's route.
+	nextCard = Ui.make("Frame", {
+		Name = "NextRaid",
+		Position = UDim2.fromOffset(12, 10),
+		Size = UDim2.fromOffset(300, 150),
+		BackgroundColor3 = C.night,
+		BackgroundTransparency = 0.15,
+	}, root)
+	Ui.corner(nextCard, 14)
+	Ui.stroke(nextCard, Color3.fromRGB(255, 140, 60), 2)
+	nextTitle = Ui.label(nextCard, {
+		Position = UDim2.fromOffset(12, 6),
+		Size = UDim2.new(1, -24, 0, 16),
+		Text = "NEXT RAID'S CHAOS",
+		Font = Ui.BOLD,
+		TextSize = 13,
+		TextColor3 = Color3.fromRGB(255, 170, 110),
+	})
+	chaosIcon = Ui.label(nextCard, {
+		Position = UDim2.fromOffset(10, 22),
+		Size = UDim2.fromOffset(46, 46),
+		Text = "",
+		Font = Ui.TITLE,
+		TextSize = 38,
+		TextColor3 = C.white,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+	chaosName = Ui.label(nextCard, {
+		Name = "ChaosName",
+		Position = UDim2.fromOffset(60, 26),
+		Size = UDim2.new(1, -70, 0, 26),
+		Text = "",
+		Font = Ui.TITLE,
+		TextSize = 20,
+		TextColor3 = C.goldPale,
+	})
+	Ui.stroke(chaosName, C.night, 1.5).ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	chaosLine = Ui.label(nextCard, {
+		Position = UDim2.fromOffset(12, 68),
+		Size = UDim2.new(1, -24, 0, 34),
+		Text = "",
+		Font = Ui.BOLD,
+		TextSize = 12,
+		TextWrapped = true,
+		TextColor3 = C.parchment,
+		TextYAlignment = Enum.TextYAlignment.Top,
+	})
+	routeLine = Ui.label(nextCard, {
+		Name = "Route",
+		Position = UDim2.fromOffset(12, 104),
+		Size = UDim2.new(1, -24, 0, 40),
+		Text = "",
+		Font = Ui.BOLD,
+		TextSize = 12,
+		TextWrapped = true,
+		TextColor3 = C.white,
+		TextYAlignment = Enum.TextYAlignment.Top,
+	})
+
 	-- Top right: Shinies, your boat, your pet.
 	wallet = Ui.make("Frame", {
 		Name = "Wallet",
@@ -239,7 +344,7 @@ local function buildMarker()
 	}, player:WaitForChild("PlayerGui"))
 	plankLabel = Ui.label(plankMarker, {
 		Size = UDim2.fromScale(1, 1),
-		Text = "⬆ WALK ABOARD TO GET READY",
+		Text = "⬆ WALK ABOARD TO SIGN UP",
 		Font = Ui.TITLE,
 		TextScaled = true,
 		TextColor3 = C.goldPale,
@@ -268,6 +373,56 @@ local function writeBoard(textValue)
 	end
 end
 
+-- V13.2: the next raid's card (its world chaos, its route and the islands the ship comes in reach of).
+local routeKey, routeText = nil, ""
+local function updateNextCard(raiding)
+	local name = workspace:GetAttribute("ChaosName")
+	nextCard.Visible = name ~= nil
+	if not name then
+		return
+	end
+	nextTitle.Text = raiding and "THIS RAID'S CHAOS" or "NEXT RAID'S CHAOS"
+	chaosIcon.Text = workspace:GetAttribute("ChaosIcon") or ""
+	chaosName.Text = name
+	chaosLine.Text = workspace:GetAttribute("ChaosLine") or ""
+	local key = tostring(workspace:GetAttribute("SkyRoute")) .. tostring(workspace:GetAttribute("SkyRouteReversed"))
+	if key ~= routeKey then
+		routeKey = key
+		local points = SkyRoute.current()
+		local names = {}
+		if points then
+			local generated = workspace:FindFirstChild("LootGoblinsGenerated")
+			for _, island in ipairs(Archipelago.islands) do
+				local info = Config.ISLAND_INFO[island.id]
+				if info and info.major then
+					local spot = generated and generated:GetAttribute("Land_" .. island.id)
+					local x, z, y = island.x, island.z, 0
+					if typeof(spot) == "Vector3" then
+						x, z, y = spot.X, spot.Z, spot.Y
+					end
+					local pass = SkyRoute.passBy(points, x, z, SkyRoute.reach(y))
+					if pass.from then
+						table.insert(names, { name = island.name, at = pass.from })
+					end
+				end
+			end
+			table.sort(names, function(a, b)
+				return a.at < b.at
+			end)
+		end
+		local list = {}
+		for _, entry in ipairs(names) do
+			table.insert(list, entry.name)
+		end
+		routeText = string.format(
+			"⛵ %s: %s",
+			workspace:GetAttribute("SkyRouteName") or "THE SKYSHIP",
+			#list > 0 and table.concat(list, ", ") or "?"
+		)
+	end
+	routeLine.Text = routeText
+end
+
 -- Each frame -----------------------------------------------------------------------------------------------------------
 local shownShinies = nil
 local function update()
@@ -280,10 +435,17 @@ local function update()
 	end
 	local t = now()
 	local phase = workspace:GetAttribute("RaidPhase") or "port"
-	local status = Lobby.status(phase, t, workspace:GetAttribute("PhaseEndsAt"), player:GetAttribute("InRaid") == true)
-	local count = workspace:GetAttribute("PortCount") or 0
+	local signed = workspace:GetAttribute("PortSigned") or 0
+	local status = Lobby.status(
+		phase,
+		t,
+		workspace:GetAttribute("PhaseEndsAt"),
+		player:GetAttribute("InRaid") == true,
+		phase ~= "raid" and signed or nil
+	)
 	local ready = workspace:GetAttribute("PortReady") or 0
 	local mine = player:GetAttribute("Ready") == true
+	local optedIn = player:GetAttribute("RaidOptIn") == true
 	local boardText
 	if status.state == "raid" then
 		countdown.Text = "🏴 RAID UNDER WAY  " .. clock(status.seconds)
@@ -297,28 +459,41 @@ local function update()
 		end
 		buttons.Visible = true
 		joinButton.Visible = status.canJoin
+		signRow.Visible = false
 	else
 		buttons.Visible = false
+		signRow.Visible = true
+		signButton.Text = optedIn and "✔ SIGNED UP  ·  STAY IN PORT" or "⚔  JOIN NEXT RAID"
+		autoButton.Text = player:GetAttribute("AutoJoin") and "AUTO-JOIN: ON" or "AUTO-JOIN: OFF"
 		local left = status.seconds
-		local allAboard = count > 0 and ready >= count
-		if status.state == "boarding" then
+		local allAboard = signed > 0 and ready >= signed
+		if status.state == "waiting" then
+			-- V13.2: nobody has signed up: nothing leaves, the town carries on.
+			countdown.Text = "⛵ WAITING FOR RAIDERS"
+			boardText = "NEXT RAID: WHEN SOMEONE SIGNS UP"
+		elseif status.state == "boarding" then
 			countdown.Text = "⛵ ALL ABOARD!"
 			boardText = "BOARDING NOW!"
 		else
 			countdown.Text = "⛵ NEXT RAID  " .. clock(left)
-			boardText = "NEXT RAID  " .. clock(left)
+			boardText = "NEXT RAID  " .. clock(left) .. "  ·  " .. signed .. " SIGNED UP"
 		end
-		countdown.TextColor3 = (left <= 10 and math.sin(t * 8) > 0) and C.gold or C.white
-		if allAboard then
-			subline.Text = string.format("Everyone's aboard! Casting off in %d...", math.ceil(left))
+		countdown.TextColor3 = (status.state ~= "waiting" and left <= 10 and math.sin(t * 8) > 0) and C.gold or C.white
+		if status.state == "waiting" then
+			subline.Text = "JOIN NEXT RAID (or walk aboard) to set sail  ·  H: help"
+		elseif allAboard then
+			subline.Text = string.format("Everyone signed up is aboard! Casting off in %d...", math.ceil(left))
 		elseif mine then
-			subline.Text = string.format("✔ You're aboard  ·  %d of %d ready", ready, count)
-		elseif ready > 0 then
-			subline.Text = string.format("%d of %d aboard  ·  walk up the gangplank to go sooner", ready, count)
+			subline.Text = string.format("✔ You're aboard  ·  %d of %d signed up aboard", ready, signed)
+		elseif optedIn then
+			subline.Text =
+				string.format("✔ You're going (%d signed up)  ·  shop, then walk aboard to go sooner", signed)
 		else
-			subline.Text = "Walk up the gangplank when you're ready  ·  H: help"
+			subline.Text = string.format("%d signed up  ·  JOIN, or stay to shop, watch and chat", signed)
 		end
 	end
+	-- V13.2: the next raid's chaos and route (chosen as the Port opens).
+	updateNextCard(status.state == "raid")
 	if not here then
 		return
 	end
@@ -326,6 +501,7 @@ local function update()
 	buildMarker()
 	if plankMarker then
 		plankMarker.Enabled = here and not mine and status.state ~= "raid"
+		plankLabel.Text = optedIn and "⬆ WALK ABOARD TO GO SOONER" or "⬆ WALK ABOARD TO SIGN UP"
 	end
 	-- The wallet.
 	local shinies = player:GetAttribute("Shinies") or 0
@@ -370,6 +546,11 @@ function PortHud.start(shop)
 	player:GetAttributeChangedSignal("Ready"):Connect(function()
 		if player:GetAttribute("Ready") and inPort() then
 			Effects.chime({ 1, 1.5 }, 0.5)
+		end
+	end)
+	player:GetAttributeChangedSignal("RaidOptIn"):Connect(function()
+		if inPort() then
+			Effects.chime(player:GetAttribute("RaidOptIn") and { 1, 1.26, 1.5 } or { 1.2, 1 }, 0.5)
 		end
 	end)
 end

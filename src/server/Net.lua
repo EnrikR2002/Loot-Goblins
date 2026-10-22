@@ -24,7 +24,6 @@ end
 Net.Throw = remote("ThrowRequest")
 Net.Grapple = remote("GrappleRequest")
 Net.Poltergoblin = remote("PoltergoblinRequest")
-Net.Sprint = remote("SprintRequest")
 Net.Move = remote("MoveRequest") -- "dash" | "airjump": pay stamina for a move the client played.
 Net.BoatBoost = remote("BoatBoostRequest")
 Net.BoatDrift = remote("BoatDriftRequest") -- (held): the driver's drift key.
@@ -44,6 +43,10 @@ Net.Emote = remote("EmoteRequest") -- (emoteId | "stop"): strike a pose you own 
 Net.Port = remote("PortRequest") -- (action, a): "join" the running raid; "spectate" start|next|back|stop (server/Port.lua).
 Net.BoatAbility = remote("BoatAbilityRequest") -- (aimPoint): the driver used their boat's ability (server/BoatAbilities.lua).
 Net.Reset = remote("ResetRequest") -- V13.1: the Reset button (a real respawn, for a goblin who is stuck).
+-- V13.2:
+Net.BoatGun = remote("BoatGunRequest") -- (aimPoint): the driver clicked: their boat's bow gun (Cannons.driverFire).
+Net.BoatChain = remote("BoatChainRequest") -- (kind): the driver's own anchor or hook let go ("sling", "arrived", ...).
+Net.Raid = remote("RaidRequest") -- (action): "in" / "out" of the next raid, "leave" the running one (Raid.lua).
 Net.GameEvent = remote("GameEvent")
 folder.Parent = ReplicatedStorage
 

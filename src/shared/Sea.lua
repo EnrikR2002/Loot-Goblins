@@ -26,6 +26,18 @@ Sea.streams = {} -- Rivers in the sea.
 Sea.whirls = {} -- Whirlpools.
 Sea.shelterFn = nil -- (x, z) -> 0..1, set by SeaNav once the map exists.
 Sea.rough = 0 -- Global extra roughness (Heat's FRENZY raises it).
+-- V13.2, WORLD CHAOS on the water (server/WorldChaos.lua writes these; a client follows them from workspace.ChaosSea):
+--   waves   rogue waves: a long ridge of water travelling across the sea. Boats float on it (waveAt), it carries
+--           whatever is on its face along with it (currentAt), and it breaks to nothing beside land (shelter).
+--           { x, z (where its middle starts), dx, dz (its heading), speed, born, life, height, width (its thickness),
+--             half (half its length along the front) }
+--   whirls  moving whirlpools: water circles and is sucked toward the eye, and the surface dips into a funnel there.
+--           { x, z (where it starts), vx, vz (how it wanders), born, life, r, spin, pull, dip }
+-- Both are pure functions of time once published, so every machine floats every boat on the same water.
+Sea.chaos = { waves = {}, whirls = {} }
+Sea.clock = function()
+	return workspace:GetServerTimeNow()
+end
 
 local TWO_PI = math.pi * 2
 -- Three crossing wave trains. speed is how fast the pattern travels, in studs/s.
@@ -60,13 +72,81 @@ function Sea.waveScale(x, z)
 	return Config.SEA_WAVE_AMP * (1 + Config.SEA_STORM_WAVES * storm + Sea.rough) * calm
 end
 
+-- How much of a chaos event is there at time t (it swells in and dies away): 0..1.
+local function envelope(born, life, t)
+	local age = t - born
+	if age < 0 or age > life then
+		return 0
+	end
+	return math.min(1, age / 1.5, (life - age) / 2)
+end
+
+-- V13.2: the chaos events' share of the surface height and of the water's flow at (x, z, t).
+function Sea.chaosAt(x, z, t)
+	local height, fx, fz = 0, 0, 0
+	local chaos = Sea.chaos
+	if #chaos.waves == 0 and #chaos.whirls == 0 then
+		return 0, 0, 0
+	end
+	for _, w in ipairs(chaos.waves) do
+		local k = envelope(w.born, w.life, t)
+		if k > 0 then
+			local travelled = w.speed * (t - w.born)
+			local cx, cz = w.x + w.dx * travelled, w.z + w.dz * travelled
+			local along = (x - cx) * w.dx + (z - cz) * w.dz
+			local across = math.abs(-(x - cx) * w.dz + (z - cz) * w.dx)
+			if math.abs(along) < w.width * 3 and across < w.half then
+				local edge = math.clamp((w.half - across) / (w.half * 0.25), 0, 1)
+				-- It breaks against land: right beside a shore it is a ripple, in a sheltered channel half its height.
+				local open = (1 - Sea.shelterAt(x, z) * 0.8) ^ 1.5
+				local profile = math.exp(-(along / w.width) ^ 2) * edge * open * k
+				height += w.height * profile
+				-- The face carries what is on it the way the wave goes (a boat on it surfs).
+				local carry = w.speed * 0.6 * profile
+				fx += w.dx * carry
+				fz += w.dz * carry
+			end
+		end
+	end
+	for _, wh in ipairs(chaos.whirls) do
+		local k = envelope(wh.born, wh.life, t)
+		if k > 0 then
+			local age = t - wh.born
+			local cx, cz = wh.x + wh.vx * age, wh.z + wh.vz * age
+			local ox, oz = x - cx, z - cz
+			local distance = math.sqrt(ox * ox + oz * oz)
+			if distance < wh.r and distance > 0.5 then
+				-- Round fastest at mid-radius; the pull in grows toward the eye (it draws you to the middle).
+				local swirl = math.sin(math.pi * math.min(1, distance / wh.r * 1.15)) * k
+				local suck = (1 - (distance / wh.r) ^ 2) * k
+				local ux, uz = ox / distance, oz / distance
+				fx += -uz * wh.spin * swirl - ux * wh.pull * suck
+				fz += ux * wh.spin * swirl - uz * wh.pull * suck
+				local rim = 1 - distance / wh.r
+				height -= wh.dip * rim * rim * k
+			end
+		end
+	end
+	return height, fx, fz
+end
+
+-- Just the flow part (BoatSim: a Wavebreaker surfs a rogue wave harder).
+function Sea.chaosFlow(x, z, t)
+	local _, fx, fz = Sea.chaosAt(x, z, t or Sea.clock())
+	return fx, fz
+end
+
 function Sea.waveAt(x, z, t)
 	local height = 0
 	for _, wave in ipairs(TRAINS) do
 		local phase = ((wave.dx * x + wave.dz * z) - wave.speed * t) * TWO_PI / wave.length
 		height += wave.amp * math.sin(phase)
 	end
-	return height * Sea.waveScale(x, z)
+	height *= Sea.waveScale(x, z)
+	if #Sea.chaos.waves > 0 or #Sea.chaos.whirls > 0 then
+		height += (Sea.chaosAt(x, z, t))
+	end
+	return height
 end
 
 -- Distance from a point to a segment on the XZ plane, and the 0..1 position along it.
@@ -99,7 +179,8 @@ function Sea.addWhirl(name, center, radius, spin, pull)
 	table.insert(Sea.whirls, { name = name, x = center.X, z = center.Z, r = radius, spin = spin, pull = pull })
 end
 
-function Sea.currentAt(x, z)
+-- t (optional, V13.2): the time, for the chaos events' flow (now if not given).
+function Sea.currentAt(x, z, t)
 	local storm = Sea.stormAt(x, z)
 	local drift = Config.SEA_WIND_DRIFT * (0.5 + storm * 2.4 + Sea.rough * 2)
 	local vx, vz = Config.SEA_WIND.X * drift, Config.SEA_WIND.Z * drift
@@ -123,12 +204,105 @@ function Sea.currentAt(x, z)
 			vz += (ux * whirl.spin - uz * whirl.pull) * strength
 		end
 	end
+	if #Sea.chaos.waves > 0 or #Sea.chaos.whirls > 0 then
+		local _, fx, fz = Sea.chaosAt(x, z, t or Sea.clock())
+		vx += fx
+		vz += fz
+	end
 	return vx, vz
 end
 
 function Sea.reset()
 	table.clear(Sea.storms)
 	Sea.rough = 0
+	Sea.setChaos(nil)
+end
+
+-- V13.2: the chaos events on the water, as one string (server: WorldChaos publishes it as workspace.ChaosSea). Every
+-- number is rounded: the events are functions of time, so this only changes when one starts or ends.
+--   "W,x,z,dx,dz,speed,born,life,height,width,half;H,x,z,vx,vz,born,life,r,spin,pull,dip;..."
+function Sea.encodeChaos(chaos)
+	local parts = {}
+	for _, w in ipairs(chaos.waves) do
+		table.insert(
+			parts,
+			string.format(
+				"W,%.1f,%.1f,%.4f,%.4f,%.1f,%.2f,%.1f,%.1f,%.1f,%.1f",
+				w.x,
+				w.z,
+				w.dx,
+				w.dz,
+				w.speed,
+				w.born,
+				w.life,
+				w.height,
+				w.width,
+				w.half
+			)
+		)
+	end
+	for _, h in ipairs(chaos.whirls) do
+		table.insert(
+			parts,
+			string.format(
+				"H,%.1f,%.1f,%.2f,%.2f,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f",
+				h.x,
+				h.z,
+				h.vx,
+				h.vz,
+				h.born,
+				h.life,
+				h.r,
+				h.spin,
+				h.pull,
+				h.dip
+			)
+		)
+	end
+	return table.concat(parts, ";")
+end
+
+function Sea.decodeChaos(text)
+	local chaos = { waves = {}, whirls = {} }
+	for _, entry in ipairs(string.split(text or "", ";")) do
+		local v = string.split(entry, ",")
+		local n = {}
+		for i = 2, #v do
+			n[i - 1] = tonumber(v[i]) or 0
+		end
+		if v[1] == "W" and #n >= 10 then
+			table.insert(chaos.waves, {
+				x = n[1],
+				z = n[2],
+				dx = n[3],
+				dz = n[4],
+				speed = n[5],
+				born = n[6],
+				life = n[7],
+				height = n[8],
+				width = n[9],
+				half = n[10],
+			})
+		elseif v[1] == "H" and #n >= 10 then
+			table.insert(chaos.whirls, {
+				x = n[1],
+				z = n[2],
+				vx = n[3],
+				vz = n[4],
+				born = n[5],
+				life = n[6],
+				r = n[7],
+				spin = n[8],
+				pull = n[9],
+				dip = n[10],
+			})
+		end
+	end
+	return chaos
+end
+
+function Sea.setChaos(chaos)
+	Sea.chaos = chaos or { waves = {}, whirls = {} }
 end
 
 -- Server -> client ------------------------------------------------------------------------
@@ -176,10 +350,15 @@ function Sea.follow()
 	local function readRough()
 		Sea.rough = workspace:GetAttribute("SeaRough") or 0
 	end
+	local function readChaos()
+		Sea.setChaos(Sea.decodeChaos(workspace:GetAttribute("ChaosSea") or ""))
+	end
 	workspace:GetAttributeChangedSignal("StormData"):Connect(readStorms)
 	workspace:GetAttributeChangedSignal("SeaRough"):Connect(readRough)
+	workspace:GetAttributeChangedSignal("ChaosSea"):Connect(readChaos)
 	readStorms()
 	readRough()
+	readChaos()
 end
 
 return Sea

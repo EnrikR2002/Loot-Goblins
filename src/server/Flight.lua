@@ -155,6 +155,15 @@ end
 --   prompt = ProximityPrompt,
 --   aim = function(direction), fired = function(direction)?, ready = function(player) -> ok, why?,
 --   exit = Vector3 (where a goblin who climbs out is put), back = string (the DeployState to return to) }
+-- V13.2, a launcher that MOVES (the skyship's cannons) also has: fromFn / exitFn / restFn (asked each time instead of
+-- from / exit / rest), localFrom (its spot in the ship's frame, for the client: LaunchLocal), and mount(player, root),
+-- orient(player, direction) and unmount(player): the goblin is welded into it (it rides along) instead of anchored.
+local function fromOf(launcher)
+	return launcher.fromFn and launcher.fromFn() or launcher.from
+end
+local function exitOf(launcher)
+	return launcher.exitFn and launcher.exitFn() or launcher.exit
+end
 function Flight.addLauncher(launcher)
 	launcher.occupant = nil
 	launcher.prompt.Triggered:Connect(function(player)
@@ -170,6 +179,9 @@ local function release(s)
 		launcher.occupant = nil
 		launcher.prompt.Enabled = true
 		s.launcher = nil
+		if launcher.unmount and s.player then
+			launcher.unmount(s.player)
+		end
 		return launcher
 	end
 	return nil
@@ -235,14 +247,22 @@ function Flight.load(player, launcher, target)
 		end
 		humanoid.Sit = false
 	end
-	local s = { bounces = 0, fall = 0, token = 0, launcher = launcher, loadedAt = now() }
+	local s = { bounces = 0, fall = 0, token = 0, launcher = launcher, loadedAt = now(), player = player }
 	state[player] = s
 	launcher.occupant = player
 	launcher.prompt.Enabled = false
-	root.Anchored = true
 	humanoid.PlatformStand = true
-	target = target or (launcher.restFor and launcher.restFor(player)) or launcher.rest
-	player:SetAttribute("LaunchFrom", launcher.from)
+	if launcher.mount then
+		launcher.mount(player, root) -- V13.2: welded into a moving launcher (the skyship), it rides along
+	else
+		root.Anchored = true
+	end
+	target = target
+		or (launcher.restFor and launcher.restFor(player))
+		or (launcher.restFn and launcher.restFn())
+		or launcher.rest
+	player:SetAttribute("LaunchFrom", fromOf(launcher))
+	player:SetAttribute("LaunchLocal", launcher.localFrom) -- V13.2: the client follows the moving ship with it
 	player:SetAttribute("LaunchSpeed", launcher.speed)
 	player:SetAttribute("LaunchElevation", launcher.elevation)
 	player:SetAttribute("LaunchKind", launcher.kind)
@@ -259,16 +279,20 @@ function Flight.aim(player, target)
 		return
 	end
 	local launcher = s.launcher
-	if target ~= target or (target - launcher.from).Magnitude > D.AIM_RANGE then
+	local from = fromOf(launcher)
+	if target ~= target or (target - from).Magnitude > D.AIM_RANGE then
 		return -- not a number, or nowhere this could throw
 	end
-	local velocity = Dive.solve(launcher.from, target, launcher.elevation, launcher.speed)
+	local velocity = Dive.solve(from, target, launcher.elevation, launcher.speed)
 	s.velocity = velocity
+	s.target = target
 	launcher.aim(velocity.Unit)
 	local root = Util.aliveRoot(player)
-	if root then
+	if launcher.orient then
+		launcher.orient(player, velocity.Unit)
+	elseif root then
 		-- inside it, head toward the way out
-		root.CFrame = CFrame.lookAt(launcher.from - velocity.Unit * 1.5, launcher.from + velocity.Unit * 20)
+		root.CFrame = CFrame.lookAt(from - velocity.Unit * 1.5, from + velocity.Unit * 20)
 	end
 end
 
@@ -279,17 +303,22 @@ function Flight.leave(player)
 	end
 	local root, humanoid = Util.aliveRoot(player)
 	local launcher = s.launcher
+	local exit = exitOf(launcher)
+	if launcher.unmount then
+		launcher.unmount(player) -- (first: moving a root still welded into the ship would move the ship)
+	end
 	if root then
 		root.Anchored = false
-		root.CFrame = CFrame.new(launcher.exit)
+		root.CFrame = CFrame.new(exit)
 		root.AssemblyLinearVelocity = Vector3.zero
 	end
 	finish(player, s, humanoid, root, launcher.back)
 end
 
 -- Throw a goblin: from a launcher's fuse, off the side of the skyship, or by the ship itself when the
--- window closes. `launcher` (optional) is only for the bang.
-function Flight.launch(player, velocity, launcher)
+-- window closes. `launcher` (optional) is only for the bang. `start` (optional, V13.2): where the flight begins (the
+-- ship firing a goblin off its moving deck): the goblin is put there, here and on their own client.
+function Flight.launch(player, velocity, launcher, start)
 	local root, humanoid = Util.aliveRoot(player)
 	if not root then
 		return false
@@ -300,10 +329,15 @@ function Flight.launch(player, velocity, launcher)
 		state[player] = s
 		Poltergoblin.finish(player, "cancel")
 	end
+	-- V13.2: a moving launcher's throw is solved again from where it is now, at the place the goblin aimed.
+	local from = launcher and fromOf(launcher)
+	if launcher and launcher.fromFn and s.target then
+		velocity = Dive.solve(from, s.target, launcher.elevation, launcher.speed)
+	end
 	release(s)
 	if launcher then
-		Net.broadcastNear(launcher.from, 2600, "DiveFire", {
-			position = launcher.from,
+		Net.broadcastNear(from, 2600, "DiveFire", {
+			position = from,
 			direction = velocity.Unit,
 			userId = player.UserId,
 			kind = launcher.kind,
@@ -311,6 +345,11 @@ function Flight.launch(player, velocity, launcher)
 		if launcher.fired then
 			launcher.fired(velocity.Unit)
 		end
+	end
+	if launcher and launcher.fromFn then
+		root.CFrame = CFrame.new(from) * root.CFrame.Rotation
+	elseif typeof(start) == "Vector3" then
+		root.CFrame = CFrame.new(start) * root.CFrame.Rotation
 	end
 	setPhase(player, s, "diving")
 	s.bounces = 0
@@ -327,7 +366,11 @@ function Flight.launch(player, velocity, launcher)
 	player:SetAttribute("DiveMode", "tumble")
 	flop(player, s)
 	-- The character's own client flies it; tell that client where to start.
-	Net.send(player, "DiveStart", { velocity = velocity, token = s.token })
+	Net.send(player, "DiveStart", {
+		velocity = velocity,
+		token = s.token,
+		start = (typeof(start) == "Vector3" and start) or (launcher and launcher.fromFn and from) or nil,
+	})
 	return true
 end
 
@@ -336,6 +379,7 @@ function Flight.fire(player)
 	if not s or s.phase ~= "loaded" or not s.velocity then
 		return
 	end
+	-- V13.2: the skyship's lock is checked on the server every time, whoever asks (the client, the auto-fire).
 	if s.launcher.canFire then
 		local ok, why = s.launcher.canFire(player)
 		if not ok then

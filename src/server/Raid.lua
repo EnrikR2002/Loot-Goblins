@@ -1,15 +1,17 @@
 -- The match (V13): the Goblin Port, then a raid, forever.
 --
 --   PORT     Config.PORT.DURATION (60 s) in the harbour town (server/Port.lua): results, shopping, pets, the
---            shipyard, spectating. Everyone aboard the Little Goblin's deck brings the raid forward; nobody in the
---            server holds it. Nobody has to ready up.
---   RAID     everyone in the Port goes aboard the skyship together: the launch window (Config.SKYSHIP.WINDOW), then
---            the six-minute clock (Config.RAID_DURATION). Banked loot adds gold to your score.
+--            shipyard, spectating. V13.2: goblins SIGN UP for the next raid (the Port screen's JOIN, or walking aboard
+--            the Little Goblin) and may cancel; the countdown waits until somebody has, and everyone signed up being
+--            aboard brings it forward. The next raid's skyship route and its WORLD CHAOS event are chosen here and shown.
+--   RAID     the goblins who signed up go aboard the skyship together: its PREP and PASS (Config.SKYSHIP), then the
+--            six-minute clock (Config.RAID_DURATION). Banked loot adds gold to your score. A raider may LEAVE early
+--            (back to the Port, losing this raid's gold and Shinies); one in the Port may join late.
 --   END      the richest goblin wins; loot still out in the world is lost; everything resets; everyone in the raid
 --            comes home to the Port, the winners onto the podium.
 --
--- Who is in the raid is explicit (`participants`): the goblins who were in the Port when it set off, plus anyone who
--- joined late from the Port while at least Config.PORT.LATE_JOIN_MIN was left (shared/Lobby.lua). Only they score,
+-- Who is in the raid is explicit (`participants`): the goblins signed up when it set off (V13.2; V13: everyone in the
+-- Port), plus anyone who joined late from the Port while at least Config.PORT.LATE_JOIN_MIN was left. Only they score,
 -- earn the raid's Shinies, respawn at Goblin Cove when they die, and can be watched by spectators. A goblin who joins
 -- the server mid-raid arrives in the Port.
 local Players = game:GetService("Players")
@@ -50,6 +52,7 @@ local Emotes = require(script.Parent.Emotes)
 local Port = require(script.Parent.Port)
 local BoatAbilities = require(script.Parent.BoatAbilities)
 local Knockout = require(script.Parent.Knockout)
+local WorldChaos = require(script.Parent.WorldChaos)
 
 local Raid = {}
 Raid.phase = "port"
@@ -60,6 +63,7 @@ local lastCallSent = false
 local rushSent = false
 local participants = {} -- player -> true: who is in the raid that is running
 local nextHome = 0
+local lastRoute = nil -- V13.2: the route the last raid flew (the next one is never the same)
 
 local function now()
 	return workspace:GetServerTimeNow()
@@ -125,6 +129,44 @@ local function join(player)
 	end
 end
 
+-- V13.2: the next raid's skyship route and world chaos event, chosen as the Port opens so the Port can show them.
+local function preparePort()
+	local routes = #Config.SKYSHIP.ROUTES
+	local index = math.random(routes)
+	if routes > 1 and index == lastRoute then
+		index = index % routes + 1
+	end
+	lastRoute = index
+	Skyship.plan(index, math.random() < 0.5)
+	workspace:SetAttribute("SkyRouteName", Config.SKYSHIP.ROUTES[index].name)
+	WorldChaos.choose()
+end
+
+-- V13.2: signing up for the next raid. on: true signs up, false cancels (only while the Port is counting down).
+function Raid.signUp(player, on)
+	if participants[player] then
+		return
+	end
+	if on then
+		if not player:GetAttribute("RaidOptIn") then
+			player:SetAttribute("RaidOptIn", true)
+			Net.toast(player, "You're in the next raid! (STAY IN PORT cancels.)")
+		end
+	elseif player:GetAttribute("RaidOptIn") then
+		player:SetAttribute("RaidOptIn", nil)
+		player:SetAttribute("AutoJoin", nil)
+		Net.toast(player, "You'll stay in the Port this time.")
+	end
+end
+
+-- V13.2: sign up for every raid from now on (until cancelled), for goblins who just want to keep raiding.
+function Raid.setAutoJoin(player, on)
+	player:SetAttribute("AutoJoin", on and true or nil)
+	if on then
+		Raid.signUp(player, true)
+	end
+end
+
 -- Puts every system back to the start-of-raid state.
 local function resetWorld()
 	Poltergoblin.cancelAll()
@@ -154,29 +196,59 @@ local function resetWorld()
 	GhostFleet.reset()
 	BoatAbilities.reset()
 	Knockout.reset()
+	WorldChaos.reset()
 end
 
 function Raid.start()
 	resetWorld()
 	table.clear(participants)
-	-- Everyone in the server goes: the Port is a place to wait, not a menu to click through.
+	-- V13.2: only the goblins who signed up go (V13: everyone in the server). The rest stay in the Port.
 	local going = {}
 	for _, player in ipairs(Players:GetPlayers()) do
-		join(player)
-		table.insert(going, player)
+		if player:GetAttribute("RaidOptIn") and Util.aliveRoot(player) then
+			join(player)
+			table.insert(going, player)
+			if not player:GetAttribute("AutoJoin") then
+				player:SetAttribute("RaidOptIn", nil) -- signing up is for one raid (AUTO-JOIN keeps it)
+			end
+		end
 	end
 	Port.stopAll("raid")
 	lastCallSent = false
 	rushSent = false
-	-- V9: the six-minute clock starts when the launch window closes, so everyone gets all six minutes of play.
-	local clockAt = now() + Config.SKYSHIP.WINDOW
+	-- V9: the six-minute clock starts when the deployment ends, so everyone gets all six minutes of play. V13.2: the
+	-- skyship's PREP (cannons locked) and PASS (the route) come first (Skyship.open returns when the pass ends).
+	local clockAt = Skyship.open()
 	workspace:SetAttribute("RaidClockAt", clockAt)
 	setPhase("raid", clockAt + Config.RAID_DURATION)
 	Loot.setEnabled(true)
-	Skyship.open()
 	Skyship.boardList(going)
 	Progress.onRaidStart(going)
+	WorldChaos.start(clockAt, phaseEndsAt)
 	Net.broadcast("RaidStart", { endsAt = phaseEndsAt })
+	if workspace:GetAttribute("ChaosName") then
+		Net.feed("This raid's chaos: " .. workspace:GetAttribute("ChaosName") .. "!", Color3.fromRGB(255, 170, 90))
+	end
+end
+
+-- V13.2: a raider goes home to the Port before the end. What they carry drops where they are; they lose this raid's
+-- gold and its Shinies (only those still in the raid at its end are paid), and they can watch or join the next one.
+function Raid.leave(player)
+	if Raid.phase ~= "raid" or not participants[player] then
+		return false
+	end
+	Loot.dropFor(player, "left")
+	participants[player] = nil
+	player:SetAttribute("InRaid", nil)
+	local gold = stat(player, "Gold")
+	if gold then
+		gold.Value = 0
+	end
+	Skyship.forget(player)
+	Port.arrive(player)
+	Net.feed(player.DisplayName .. " sailed home to the Port.", Color3.fromRGB(200, 200, 210))
+	Net.send(player, "RaidLeft", {})
+	return true
 end
 
 -- A goblin in the Port joins the raid that is running (shared/Lobby.canJoinLate says when). They go aboard the
@@ -248,6 +320,7 @@ function Raid.finish()
 	-- Loot still out there is lost; the world goes quiet until the next raid.
 	resetWorld()
 	setPhase("port", now() + Config.PORT.DURATION)
+	preparePort()
 	workspace:SetAttribute("RaidClockAt", nil)
 	Skyship.reset()
 	Port.stopAll("ended")
@@ -339,22 +412,29 @@ function Raid.forget(player)
 	participants[player] = nil
 end
 
--- For the Port's screen: how many goblins are aboard the Little Goblin, and how many are in the Port at all.
+-- For the Port's screen: how many goblins are in the Port, how many have signed up for the next raid and how many of
+-- those stand aboard the Little Goblin. V13.2: walking aboard signs a goblin up.
 local function readiness()
-	local inPort, ready = 0, 0
+	local inPort, signed, ready = 0, 0, 0
 	for _, player in ipairs(Players:GetPlayers()) do
 		if not participants[player] and Util.aliveRoot(player) then
 			inPort += 1
 			local isReady = Port.isReady(player)
-			if isReady then
-				ready += 1
+			if isReady and not player:GetAttribute("RaidOptIn") and Raid.phase == "port" then
+				Raid.signUp(player, true)
+			end
+			if player:GetAttribute("RaidOptIn") then
+				signed += 1
+				if isReady then
+					ready += 1
+				end
 			end
 			if (player:GetAttribute("Ready") == true) ~= isReady then
 				player:SetAttribute("Ready", isReady or nil)
 			end
 		end
 	end
-	return inPort, ready
+	return inPort, signed, ready
 end
 
 local nextReadyCheck = 0
@@ -380,19 +460,22 @@ function Raid.tick()
 			Raid.finish()
 		end
 	else
+		local signed = workspace:GetAttribute("PortSigned") or 0
 		if t >= nextReadyCheck then
 			nextReadyCheck = t + 0.25
-			local inPort, ready = readiness()
+			local inPort, ready
+			inPort, signed, ready = readiness()
 			local before = phaseEndsAt
-			local after = Lobby.portEndsAt(t, phaseEndsAt, inPort, ready, #Players:GetPlayers())
+			local after = Lobby.portEndsAt(t, phaseEndsAt, signed, ready, #Players:GetPlayers())
 			if math.abs(after - before) > 0.05 then
 				phaseEndsAt = after
 				workspace:SetAttribute("PhaseEndsAt", after)
 			end
 			workspace:SetAttribute("PortReady", ready)
 			workspace:SetAttribute("PortCount", inPort)
+			workspace:SetAttribute("PortSigned", signed)
 		end
-		if t >= phaseEndsAt and #Players:GetPlayers() > 0 then
+		if Lobby.shouldDepart(t, phaseEndsAt, signed) and #Players:GetPlayers() > 0 then
 			Raid.start()
 		end
 	end
@@ -405,6 +488,7 @@ function Raid.init(worldRefs)
 	setPhase("port", now() + Config.PORT.DURATION)
 	Loot.setEnabled(false)
 	Port.inRaid = Raid.isParticipant
+	preparePort()
 	workspace:GetAttributeChangedSignal("DevPortSeconds"):Connect(function()
 		local seconds = workspace:GetAttribute("DevPortSeconds")
 		if game:GetService("RunService"):IsStudio() and Raid.phase == "port" and type(seconds) == "number" then

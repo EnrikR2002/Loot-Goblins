@@ -12,6 +12,8 @@
 --   Reefhopper   twin pontoons, a gold spring on the stern, a fin  Broadside    two square-rigged masts, gun ports
 --   Stormrunner  one tall lightning-bolt sail, a spinning vane     Wraith       low and narrow, glowing ghost sails
 --   Ironbelly    no sails: an iron ram, a smoking funnel, tyres
+--   Anchorjack   an iron anchor at the bow, a capstan, a gaff sail   Wavebreaker  a curling wave plough, round sails
+--   Corsair      black hull, blood-red sails, a harpoon on the bow (V13.2)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Palette = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Palette"))
@@ -64,6 +66,28 @@ BoatModels.LIVERY = {
 		stripe = rgb(255, 200, 40),
 		sail = rgb(230, 230, 230),
 		sailStripe = rgb(40, 38, 40),
+	},
+	-- V13.2
+	anchorjack = {
+		hull = rgb(48, 112, 104),
+		trim = rgb(150, 76, 40),
+		stripe = rgb(240, 200, 120),
+		sail = rgb(236, 220, 186),
+		sailStripe = rgb(150, 76, 40),
+	},
+	wavebreaker = {
+		hull = rgb(36, 96, 170),
+		trim = rgb(230, 244, 255),
+		stripe = rgb(120, 220, 255),
+		sail = rgb(236, 246, 255),
+		sailStripe = rgb(36, 96, 170),
+	},
+	corsair = {
+		hull = rgb(34, 30, 36),
+		trim = rgb(150, 30, 34),
+		stripe = rgb(230, 190, 80),
+		sail = rgb(170, 30, 36),
+		sailStripe = rgb(24, 22, 26),
 	},
 }
 
@@ -613,6 +637,230 @@ BUILD.ironbelly = function(model, hull, size, look, trim)
 	)
 end
 
+-- V13.2: Anchorjack. A stout harbour workboat: a big iron anchor hung at the bow on a chain, a capstan, a crane boom
+-- over the stern and a gaff sail. (The thrown anchor is drawn by the clients: client/Main's ability effects.)
+BUILD.anchorjack = function(model, hull, size, look, trim)
+	common(model, hull, size, look, 0.66)
+	local top, bow = size.Y / 2, -size.Z / 2
+	-- The anchor: shank, stock, two flukes and a ring, hanging over the bow.
+	local anchorAt = CFrame.new(0, top - 1.2, bow - 2.2)
+	add(model, hull, "AnchorShank", Vector3.new(0.7, 4.6, 0.7), anchorAt, Palette.IRON, METAL)
+	add(model, hull, "AnchorStock", Vector3.new(3.6, 0.6, 0.6), anchorAt * CFrame.new(0, 1.9, 0), Palette.IRON, METAL)
+	for _, side in ipairs({ -1, 1 }) do
+		add(
+			model,
+			hull,
+			"AnchorFluke",
+			Vector3.new(0.6, 2.2, 0.7),
+			anchorAt * CFrame.new(side * 1.1, -2.0, 0) * CFrame.Angles(0, 0, side * math.rad(-48)),
+			Palette.IRON,
+			METAL
+		)
+	end
+	add(
+		model,
+		hull,
+		"AnchorRing",
+		Vector3.new(0.4, 1.4, 1.4),
+		anchorAt * CFrame.new(0, 2.7, 0) * CFrame.Angles(0, math.rad(90), 0),
+		look.stripe,
+		METAL,
+		{ shape = "cyl" }
+	)
+	for i = 0, 3 do
+		add(
+			model,
+			hull,
+			"AnchorChain",
+			Vector3.new(0.5, 0.9, 0.5),
+			CFrame.new(0, top + 0.4 - i * 0.3, bow + 1.2 - i * 0.9) * CFrame.Angles(math.rad(40), 0, 0),
+			rgb(90, 90, 96),
+			METAL
+		)
+	end
+	-- The capstan on the foredeck.
+	add(
+		model,
+		hull,
+		"Capstan",
+		Vector3.new(2.4, 2.6, 2.6),
+		CFrame.new(0, top + 1.2, bow + 5) * UPRIGHT,
+		look.trim,
+		WOOD,
+		{ shape = "cyl" }
+	)
+	for _, angle in ipairs({ 0, 90 }) do
+		add(
+			model,
+			hull,
+			"CapstanBar",
+			Vector3.new(4.6, 0.35, 0.35),
+			CFrame.new(0, top + 2.2, bow + 5) * CFrame.Angles(0, math.rad(angle), 0),
+			rgb(88, 58, 36),
+			WOOD
+		)
+	end
+	-- The wheelhouse, a gaff-rigged mast and a crane boom over the stern.
+	add(model, hull, "Cabin", Vector3.new(7, 3.4, 6), CFrame.new(0, top + 1.7, size.Z / 2 - 6), look.hull, PLANKS)
+	add(model, hull, "Mast", Vector3.new(0.8, 14, 0.8), CFrame.new(0, top + 7, -2), rgb(88, 58, 36))
+	add(
+		model,
+		hull,
+		"Sail",
+		Vector3.new(0.3, 9, 7),
+		CFrame.new(0, top + 7.5, 1.4),
+		look.sail,
+		FABRIC,
+		{ shape = "wedge" }
+	)
+	add(
+		model,
+		hull,
+		"Boom",
+		Vector3.new(0.5, 0.5, 9),
+		CFrame.new(0, top + 6, size.Z / 2 - 4) * CFrame.Angles(math.rad(-20), 0, 0),
+		look.stripe,
+		WOOD
+	)
+	add(model, hull, "Flag", Vector3.new(0.3, 2.2, 3.4), CFrame.new(0, top + 14.2, -2), trim, FABRIC)
+end
+
+-- V13.2: Wavebreaker. A blunt, broad-bowed boat with a curling wave plough on the bow, foam-white trim, a low
+-- wheelhouse and two short masts with rounded sails.
+BUILD.wavebreaker = function(model, hull, size, look, trim)
+	common(model, hull, size, look, 0.8)
+	local top, bow = size.Y / 2, -size.Z / 2
+	-- The plough: a curved shield of three tilted plates across the bow, and a white curl on top.
+	for i, angle in ipairs({ -35, 0, 35 }) do
+		add(
+			model,
+			hull,
+			"Plough",
+			Vector3.new(size.X * 0.42, size.Y * 1.1, 0.6),
+			CFrame.new((i - 2) * size.X * 0.3, 0.2, bow - 0.9 + math.abs(i - 2) * 1.3)
+				* CFrame.Angles(math.rad(-18), math.rad(angle), 0),
+			look.stripe,
+			SMOOTH
+		)
+	end
+	for i = 0, 4 do
+		add(
+			model,
+			hull,
+			"Curl",
+			Vector3.new(size.X * 0.9 - i * 1.2, 0.8, 0.8),
+			CFrame.new(0, top + 0.6 + math.sin(i * 0.8) * 0.9, bow + 0.4 + i * 0.7),
+			look.trim,
+			SMOOTH,
+			{ shape = "cyl" }
+		)
+	end
+	-- Wave crests painted down both sides.
+	for _, side in ipairs({ -1, 1 }) do
+		for i = -2, 2 do
+			add(
+				model,
+				hull,
+				"Crest",
+				Vector3.new(0.3, 1.2, 2.6),
+				CFrame.new(side * (size.X / 2 + 0.2), -0.4, i * size.Z * 0.17) * CFrame.Angles(math.rad(30), 0, 0),
+				look.trim,
+				SMOOTH,
+				{ shape = "wedge" }
+			)
+		end
+	end
+	add(model, hull, "Cabin", Vector3.new(8, 3, 6), CFrame.new(0, top + 1.5, size.Z / 2 - 5), look.hull, PLANKS)
+	for _, z in ipairs({ -4, 4 }) do
+		add(model, hull, "Mast", Vector3.new(0.8, 13, 0.8), CFrame.new(0, top + 6.5, z), rgb(88, 58, 36))
+		add(
+			model,
+			hull,
+			"Sail",
+			Vector3.new(0.3, 8, 7.5),
+			CFrame.new(0, top + 7.5, z + 0.6),
+			look.sail,
+			FABRIC,
+			{ shape = "egg" }
+		)
+	end
+	add(model, hull, "Flag", Vector3.new(0.3, 2.2, 3.4), CFrame.new(0, top + 13.4, -4), trim, FABRIC)
+end
+
+-- V13.2: Corsair. A lean black pirate sloop with blood-red sails, a gold stripe, a crow's nest and a harpoon launcher
+-- on the bow (the boarding hook).
+BUILD.corsair = function(model, hull, size, look, trim)
+	common(model, hull, size, look, 0.55)
+	local top, bow = size.Y / 2, -size.Z / 2
+	-- The harpoon: a swivel post, a barrel and a barbed head.
+	add(model, hull, "HookPost", Vector3.new(1.2, 1.6, 1.2), CFrame.new(0, top + 0.8, bow + 3.4), look.trim, WOOD)
+	add(
+		model,
+		hull,
+		"HookBarrel",
+		Vector3.new(0.9, 0.9, 4.6),
+		CFrame.new(0, top + 1.9, bow + 2.4) * CFrame.Angles(math.rad(8), 0, 0),
+		Palette.IRON,
+		METAL
+	)
+	for _, side in ipairs({ -1, 1 }) do
+		add(
+			model,
+			hull,
+			"HookBarb",
+			Vector3.new(0.35, 0.35, 1.6),
+			CFrame.new(side * 0.5, top + 2.1, bow - 0.3) * CFrame.Angles(0, side * math.rad(35), 0),
+			look.stripe,
+			METAL
+		)
+	end
+	-- A long bowsprit, a tall mast with a crow's nest, a red mainsail and jib.
+	add(
+		model,
+		hull,
+		"Bowsprit",
+		Vector3.new(0.5, 0.5, 9),
+		CFrame.new(0, top + 2, bow - 3) * CFrame.Angles(math.rad(14), 0, 0),
+		rgb(70, 44, 30),
+		WOOD
+	)
+	add(model, hull, "Mast", Vector3.new(0.9, 20, 0.9), CFrame.new(0, top + 10, -1), rgb(52, 36, 30))
+	add(
+		model,
+		hull,
+		"CrowsNest",
+		Vector3.new(1.4, 3, 3),
+		CFrame.new(0, top + 17, -1) * UPRIGHT,
+		look.trim,
+		PLANKS,
+		{ shape = "cyl" }
+	)
+	add(model, hull, "Sail", Vector3.new(0.3, 11, 8), CFrame.new(0, top + 9.5, 0.2), look.sail, FABRIC)
+	add(
+		model,
+		hull,
+		"Jib",
+		Vector3.new(0.25, 7, 6),
+		CFrame.new(0, top + 6, bow + 3.2) * CFrame.Angles(0, math.rad(180), 0),
+		look.sail,
+		FABRIC,
+		{ shape = "wedge" }
+	)
+	-- The emblem on the mainsail: a pale moon (the skull of a jolly roger at a distance).
+	add(
+		model,
+		hull,
+		"SailEmblem",
+		Vector3.new(0.4, 3.6, 3.6),
+		CFrame.new(-0.2, top + 10, 0.2) * CFrame.Angles(0, math.rad(90), 0),
+		rgb(236, 230, 214),
+		SMOOTH,
+		{ shape = "cyl" }
+	)
+	add(model, hull, "Flag", Vector3.new(0.3, 2.4, 3.8), CFrame.new(0, top + 20.4, -1), trim, FABRIC)
+	add(model, hull, "Cabin", Vector3.new(6, 2.4, 5), CFrame.new(0, top + 1.2, size.Z / 2 - 4.5), look.hull, PLANKS)
+end
+
 -- The Navy's patrol ship (AI only; Boats.lua repaints it white and blue afterwards).
 BUILD.navy = function(model, hull, size, _look, _trim)
 	common(model, hull, size, Palette.BOATS.navy)
@@ -674,6 +922,16 @@ local SEATS = {
 	end,
 	ironbelly = function(y)
 		return { Vector3.new(-4, y, 0), Vector3.new(4, y, 0), Vector3.new(-4, y, -8), Vector3.new(4, y, -8) }
+	end,
+	-- V13.2
+	anchorjack = function(y)
+		return { Vector3.new(-3, y, 1), Vector3.new(3, y, 1) }
+	end,
+	wavebreaker = function(y)
+		return { Vector3.new(-3, y, 0.5), Vector3.new(3, y, 0.5) }
+	end,
+	corsair = function(y)
+		return { Vector3.new(0, y, 3), Vector3.new(0, y, -5) }
 	end,
 }
 

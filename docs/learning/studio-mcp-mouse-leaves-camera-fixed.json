@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "studio-mcp-mouse-leaves-camera-fixed",
+  "title": "Studio MCP's simulated mouse leaves the camera Fixed",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-19",
+  "topics": [
+    "testing",
+    "studio",
+    "camera"
+  ],
+  "observation": "In a Studio play session, any Studio MCP user_mouse_input action (a plain x/y move as well as an instance_path click) switched workspace.CurrentCamera.CameraType from Custom to Fixed, and it stayed Fixed. When the game then teleported the character (raid start onto a flying ship, 5,000 studs away) the camera stayed behind at the old place, which looked exactly like a game bug. A listener on the camera's CameraType showed the change at the moment of the mouse action; no game code sets Fixed (searched), and setting Custom from a client execute_luau restored a following camera at once. The tool's x/y coordinates were also 58 px above the game's own mouse and viewport coordinates (the GUI inset).",
+  "recommendation": "After any simulated mouse action in a Studio playtest, reset the camera (CameraType = Custom) from a client execute_luau before judging what the camera shows, and log CameraType changes before reporting a camera bug. Convert WorldToViewportPoint y to the tool's coordinates by subtracting the GUI inset, or click buttons by instance_path.",
+  "applies_when": [
+    "Playtesting a Roblox game through Studio MCP input tools",
+    "Judging camera behaviour, or anything after a teleport, in a session that used the simulated mouse"
+  ],
+  "limits": [
+    "One Windows PC, Studio in October 2026, a 1346 x 640 play viewport",
+    "Whether the tool restores the camera later on its own was not established; real mice are unaffected"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/4827c4b387f9c4d90409577da84384b33efb5db5/docs/reports/2026-10-19-v13-2-sea-of-chaos.md",
+      "detail": "Section 12, last bullet; the camera log read '5.3:Custom ... 9.4:Fixed' around a simulated click, and 'Fixed' again after a plain x/y move."
+    }
+  ],
+  "rubric_checks": [
+    "CL-11"
+  ]
+}

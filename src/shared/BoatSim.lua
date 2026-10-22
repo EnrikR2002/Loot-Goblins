@@ -159,6 +159,146 @@ function BoatSim.tumble(boat, seconds, side, t)
 	return true
 end
 
+-- V13.2: CHAINS. One rope on a hull at a time, applied by whichever machine simulates it (so a chained rival's own
+-- client drags it, the way a shove is applied there). boat.tether = {
+--   kind      "swing"  the Anchorjack round its anchor on a rock or the sea bed (R again, or `untilAt`, lets go: a sling)
+--             "snag"   the Anchorjack chained to a rival's hull it caught
+--             "towed"  a rival chained to the Anchorjack that caught it (sent to the rival's client by the server)
+--             "reel"   the Corsair reeled in toward a rival's hull its hook bit
+--             "zip"    the Corsair reeled toward a rock its hook bit (no boat in reach)
+--   point     Vector3, a fixed end;  or part, a BasePart that moves (a hull)
+--   length    the rope's length (swing, snag, towed): it only ever pulls when taut
+--   untilAt   server time it lets go
+-- }
+local function flat(v)
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+function BoatSim.attach(boat, kind, target, t)
+	if type(target) ~= "table" then
+		return false
+	end
+	local A = Config.BOAT_ABILITIES[kind]
+	local here = flat(boat.hull.Position)
+	local part = typeof(target.part) == "Instance" and target.part:IsA("BasePart") and target.part or nil
+	local point = typeof(target.point) == "Vector3" and flat(target.point) or nil
+	if not part and not point then
+		return false
+	end
+	local other = part and flat(part.Position) or point
+	local gap = (other - here).Magnitude
+	if kind == "anchor" then
+		if part then
+			boat.tether = {
+				kind = "snag",
+				part = part,
+				length = math.max(A.snagMin, gap * A.snagSlack),
+				untilAt = t + A.snag,
+			}
+		else
+			boat.tether = {
+				kind = "swing",
+				point = point,
+				length = math.max(A.swingMin, gap),
+				untilAt = t + A.swing,
+			}
+		end
+	elseif kind == "hook" then
+		boat.tether = {
+			kind = part and "reel" or "zip",
+			part = part,
+			point = point,
+			untilAt = t + A.reelTime,
+			startGap = gap,
+		}
+	end
+	return true
+end
+
+-- Lets a hull's chain go. A swing let go is a SLINGSHOT: a kick along the way it was swinging.
+function BoatSim.release(boat, t, sling)
+	local tether = boat.tether
+	if not tether then
+		return nil
+	end
+	boat.tether = nil
+	if sling and tether.kind == "swing" then
+		local hull = boat.hull
+		local v = flat(hull.AssemblyLinearVelocity)
+		if v.Magnitude > 4 then
+			hull:ApplyImpulse(v.Unit * Config.BOAT_ABILITIES.anchor.sling * hull.AssemblyMass)
+		end
+		boat.boostUntil = math.max(boat.boostUntil, t + 1)
+		boat.wasBoosting = true
+		return "sling"
+	end
+	return tether.kind
+end
+
+-- One step of the chain: returns a yaw rate to add (a swinging hull turns its bow round with the swing), or 0.
+local function applyTether(boat, dt, t)
+	local tether = boat.tether
+	if not tether then
+		return 0
+	end
+	local hull = boat.hull
+	if t >= tether.untilAt or (tether.part and not tether.part.Parent) or boat.sinking then
+		boat.justReleased = BoatSim.release(boat, t, true)
+		return 0
+	end
+	local mass = hull.AssemblyMass
+	local here = flat(hull.Position)
+	local endAt = tether.part and flat(tether.part.Position) or tether.point
+	local endVelocity = tether.part and flat(tether.part.AssemblyLinearVelocity) or Vector3.zero
+	local offset = here - endAt
+	local distance = offset.Magnitude
+	if distance < 0.5 then
+		return 0
+	end
+	local n = offset / distance
+	local velocity = flat(hull.AssemblyLinearVelocity)
+	local relative = velocity - endVelocity
+	if tether.kind == "reel" or tether.kind == "zip" then
+		-- Reeled in: close on the target at its own speed plus the reel's, whatever the hull was doing.
+		local A = Config.BOAT_ABILITIES.hook
+		local want = endVelocity - n * A.reel
+		if tether.kind == "zip" then
+			want = -n * (A.reel + 50)
+		end
+		local blend = math.min(1, dt * 5)
+		hull:ApplyImpulse((want - velocity) * blend * mass)
+		if distance < (tether.kind == "zip" and 30 or A.board * 0.8) then
+			boat.tether = nil -- arrived (the server decides whether it was a boarding)
+			boat.justReleased = "arrived"
+		end
+		-- Point the bow at it.
+		local look = flat(hull.CFrame.LookVector)
+		look = look.Magnitude > 0.05 and look.Unit or n
+		local cross = look:Cross(-n).Y
+		return math.clamp(cross * 4, -2.5, 2.5) -- (a positive yaw rate turns the bow anticlockwise, seen from above)
+	end
+	-- A rope: nothing until it is taut, then the part of the motion that would stretch it is taken away (and a
+	-- little more, to pull the hull back in), so the hull swings round the end instead of leaving it.
+	local over = distance - tether.length
+	if over > 0 then
+		local A = Config.BOAT_ABILITIES.anchor
+		local outward = relative:Dot(n)
+		local correction = Vector3.zero
+		if outward > 0 then
+			correction -= n * outward * math.min(1, dt * A.strength * 2)
+		end
+		correction -= n * math.min(over, 30) * math.min(1, dt * A.strength) * 3
+		hull:ApplyImpulse(correction * mass)
+	end
+	if tether.kind == "swing" then
+		-- The bow follows the swing: turn at the rate the hull goes round the anchor.
+		local tangential = relative - n * relative:Dot(n)
+		local around = n:Cross(tangential).Y -- the sign of the way round
+		return math.clamp(tangential.Magnitude / math.max(distance, 10), 0, 3.2) * (around >= 0 and 1 or -1)
+	end
+	return 0
+end
+
 -- V13: can the class ability be used right now (the stunt key on the water)? The same test runs inside step().
 function BoatSim.abilityReady(boat, t)
 	local spec = boat.spec
@@ -201,6 +341,7 @@ function BoatSim.step(boat, input, dt, t)
 	local out = boat.out
 	out.event = nil
 	out.ability = nil
+	out.released = nil
 	out.airhop = nil
 
 	-- Buoyancy: spring + damper at each point under the surface.
@@ -273,6 +414,11 @@ function BoatSim.step(boat, input, dt, t)
 	-- on whichever machine simulates the hull; server/BoatAbilities.lua owns the cooldown, fires anything the server
 	-- owns (a cannon volley, a tornado, a ghost decoy) and tells the anti-cheat what to allow.
 	local A = spec.ability and Config.BOAT_ABILITIES[spec.ability]
+	-- V13.2: the stunt key while your own anchor holds lets it go (a swing lets go as a slingshot).
+	if input.ability == true and boat.tether and (boat.tether.kind == "swing" or boat.tether.kind == "snag") then
+		out.released = BoatSim.release(boat, t, true)
+		input.ability = false
+	end
 	if
 		input.ability == true
 		and A
@@ -287,6 +433,27 @@ function BoatSim.step(boat, input, dt, t)
 		if kind == "nitro" then
 			boat.nitroUntil = t + A.time
 			hull:ApplyImpulse(ahead * A.kick * mass)
+			-- V13.2: the escape artist breaks free: any chain, hook or tow on this hull lets go.
+			boat.tether = nil
+		elseif kind == "rally" then
+			-- V13.2, the Cutter's horn: it surges itself (the server surges the boats round it).
+			boat.boostUntil = math.max(boat.boostUntil, t + A.boost)
+			boat.wasBoosting = true
+			hull:ApplyImpulse(ahead * 12 * mass)
+		elseif kind == "breaker" then
+			-- V13.2, the Wavebreaker: the slam lifts it onto its own crest and surges it the way it steers.
+			local right = Vector3.new(-ahead.Z, 0, ahead.X)
+			local way = (ahead + right * math.clamp(steer, -1, 1) * 0.8).Unit
+			local v = hull.AssemblyLinearVelocity
+			hull.AssemblyLinearVelocity = Vector3.new(v.X, math.max(v.Y, A.ride), v.Z) + way * A.surge
+			boat.boostUntil = math.max(boat.boostUntil, t + A.boost)
+			boat.wasBoosting = true
+			boat.hopOnly = true
+		elseif kind == "anchor" or kind == "hook" then
+			-- V13.2: the Anchorjack's anchor and the Corsair's boarding hook. Where they went was decided before the key
+			-- reached the physics (client/BoatDrive.aimAbility, or server/BoatAbilities for a server-run hull):
+			-- input.target = { point = Vector3 } (a rock, the sea bed) or { part = a rival's hull }.
+			BoatSim.attach(boat, kind, input.target, t)
 		elseif kind == "spring" then
 			local v = hull.AssemblyLinearVelocity
 			if grounded then
@@ -323,8 +490,14 @@ function BoatSim.step(boat, input, dt, t)
 	end
 	boat.stormy = stormy
 
-	-- Horizontal motion relative to the water's own flow.
-	local flowX, flowZ = Sea.currentAt(position.X, position.Z)
+	-- Horizontal motion relative to the water's own flow. V13.2: a Wavebreaker is carried harder by moving water (a
+	-- rogue wave's push, a whirlpool's swirl: Sea.chaosFlow), so it surfs farther.
+	local flowX, flowZ = Sea.currentAt(position.X, position.Z, t)
+	if spec.surfer then
+		local cx, cz = Sea.chaosFlow(position.X, position.Z, t)
+		flowX += cx * (spec.surfer - 1)
+		flowZ += cz * (spec.surfer - 1)
+	end
 	local flow = Vector3.new(flowX, 0, flowZ) * wet
 	local forward = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
 	forward = forward.Magnitude > 0.05 and forward.Unit or Vector3.new(0, 0, -1)
@@ -469,6 +642,18 @@ function BoatSim.step(boat, input, dt, t)
 	end
 	hull:ApplyImpulse(acceleration * mass * dt)
 	boat.predicted = horizontal + Vector3.new(acceleration.X, 0, acceleration.Z) * dt
+	-- V13.2: a chain (the Anchorjack's anchor, a Corsair's hook, a tow). Its pull is not water drag: the drag measurement
+	-- skips the next step.
+	local swingYaw = 0
+	if boat.tether then
+		swingYaw = applyTether(boat, dt, t)
+		boat.predicted = nil
+	end
+	out.tethered = boat.tether and boat.tether.kind or nil
+	if boat.justReleased then
+		out.released = out.released or boat.justReleased
+		boat.justReleased = nil
+	end
 
 	-- Steering: aim for a yaw rate. Sharp when slow, wider at top speed, sharper again in a
 	-- drift, and a little control in the air to line up a landing.
@@ -498,6 +683,10 @@ function BoatSim.step(boat, input, dt, t)
 	end
 	if twistState == "inside" and not spec.twisterBail then
 		yawTarget += 2.4 -- Round and round with the funnel. (V13: a Stormrunner holds its heading: aim the bail-out.)
+	end
+	if swingYaw ~= 0 then
+		-- V13.2: swinging round an anchor, or reeled toward a hook, the bow comes round with it (steering still adds).
+		yawTarget = swingYaw - steer * yawRate * 0.5
 	end
 	local trick = boat.trick
 	if trick then

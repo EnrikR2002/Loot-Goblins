@@ -15,11 +15,11 @@
 -- tenth of a second, that the boat's own engine and keel cannot explain. Dragging a hull fast
 -- over sand or rock scrapes it. A hull left alone patches itself slowly. A wrecked boat ejects
 -- everyone aboard, goes under, and comes back at its dock after BOAT_RESPAWN_TIME. Empty boats
--- drift with the sea unless someone drops anchor, and boats far from every player are frozen
--- so the physics stays cheap.
+-- drift with the sea, and boats far from every player are frozen so the physics stays cheap.
 --
--- Boarding uses a prompt on the hull (E). R drops or raises the anchor. Shift boosts and C
--- drifts (client). The server validates all of it.
+-- Boarding uses a prompt on the hull (E). Shift boosts and C drifts (client). The server validates all of it.
+-- V13.2: there is no anchor winch on every boat any more: the anchor is the Anchorjack's ability (BoatAbilities).
+-- `moored` stays as the hull's "hold still" state (a called boat waiting for you, Recall.lua).
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -304,7 +304,7 @@ local function buildBoat(spawn)
 		end
 	end
 
-	-- Boarding prompt (E) on the hull, and an anchor winch at the stern (R).
+	-- Boarding prompt (E) on the hull. (V13.2: no anchor winch: the anchor is the Anchorjack's ability.)
 	if not spawn.ai then
 		local board = Instance.new("ProximityPrompt")
 		board.Name = "BoardPrompt"
@@ -318,29 +318,6 @@ local function buildBoat(spawn)
 		board.Parent = hull
 		board.Triggered:Connect(function(player)
 			Boats.board(boat, player)
-		end)
-
-		local winch = detail(
-			model,
-			hull,
-			"Anchor",
-			Vector3.new(1.2, 1.2, 1.2),
-			CFrame.new(size.X * 0.32, size.Y / 2 + 0.6, size.Z / 2 - 1.2),
-			Color3.fromRGB(70, 70, 80),
-			Enum.Material.Metal
-		)
-		local anchorPrompt = Instance.new("ProximityPrompt")
-		anchorPrompt.Name = "AnchorPrompt"
-		anchorPrompt.ObjectText = "Anchor"
-		anchorPrompt.ActionText = "Drop anchor"
-		anchorPrompt.HoldDuration = 0.4
-		anchorPrompt.MaxActivationDistance = 10
-		anchorPrompt.RequiresLineOfSight = false
-		anchorPrompt.KeyboardKeyCode = Enum.KeyCode.R
-		anchorPrompt.Parent = winch
-		boat.anchorPrompt = anchorPrompt
-		anchorPrompt.Triggered:Connect(function(player)
-			Boats.toggleAnchor(boat, player)
 		end)
 	end
 
@@ -366,6 +343,10 @@ function Boats.displayModel(typeName)
 	local hull = boat.hull
 	local size = spec.size
 	local guns = {}
+	if spec.class then
+		-- V13.2: every class's driver bow gun, a little swivel gun on the bow (Cannons.mountOnBoat's `driver` entry).
+		table.insert(guns, { CFrame.new(0, size.Y / 2 + 1.6, -size.Z * 0.4), 0, 0.6 })
+	end
 	if spec.cannons then
 		table.insert(guns, { CFrame.new(0, size.Y / 2 + 2.4, -size.Z * 0.26), 0 })
 	end
@@ -375,13 +356,13 @@ function Boats.displayModel(typeName)
 		end
 	end
 	for _, gun in ipairs(guns) do
-		local at, side = gun[1], gun[2]
+		local at, side, scale = gun[1], gun[2], gun[3] or 1
 		BoatModels.add(
 			model,
 			hull,
 			"CannonBase",
-			Vector3.new(4.6, 1.4, 5.4),
-			at * CFrame.new(0, -1.7, 0),
+			Vector3.new(4.6, 1.4, 5.4) * scale,
+			at * CFrame.new(0, -1.7 * scale, 0),
 			Palette.WOOD_DARK
 		)
 		local facing = side == 0 and CFrame.new() or CFrame.Angles(0, -side * math.rad(90), 0)
@@ -389,8 +370,8 @@ function Boats.displayModel(typeName)
 			model,
 			hull,
 			"CannonBarrel",
-			Vector3.new(2.4, 2.4, 7),
-			at * facing * CFrame.new(0, 0, -2) * CFrame.Angles(math.rad(8), 0, 0),
+			Vector3.new(2.4, 2.4, 7) * scale,
+			at * facing * CFrame.new(0, 0, -2 * scale) * CFrame.Angles(math.rad(8), 0, 0),
 			Palette.IRON,
 			Enum.Material.Metal
 		)
@@ -505,16 +486,40 @@ function Boats.board(boat, player, reach)
 	Net.toast(player, "This boat is full")
 end
 
-function Boats.toggleAnchor(boat, player)
+-- V13.2: a CHAIN on a hull (the Anchorjack's snag, the Corsair's hook: server/BoatAbilities.lua). Like a shove, it is
+-- applied by whichever machine simulates the hull: a driven boat's own client gets it. `tether` is BoatSim's (see
+-- BoatSim.attach), with the far end as `part` (a hull) or `point`; nil lets go. allow: extra speed the anti-cheat lets
+-- the hull have meanwhile (it can be dragged faster than it drives).
+function Boats.tether(boat, tether, allow)
 	if boat.state ~= "float" then
 		return
 	end
-	boat.moored = not boat.moored
-	boat.model:SetAttribute("Moored", boat.moored)
-	if boat.anchorPrompt then
-		boat.anchorPrompt.ActionText = boat.moored and "Raise anchor" or "Drop anchor"
+	if boat.asleep then
+		boat.hull.Anchored = false
+		boat.asleep = false
 	end
-	Net.toast(player, boat.moored and "Anchor down - the boat holds here" or "Anchor up")
+	local t = now()
+	boat.impactGraceUntil = math.max(boat.impactGraceUntil, t + 0.6)
+	if tether then
+		boat.shovedBy = math.max(t < (boat.shovedUntil or 0) and (boat.shovedBy or 0) or 0, allow or 60)
+		boat.shovedUntil = math.max(boat.shovedUntil or 0, (tether.untilAt or t) + 2)
+	end
+	boat.serverTether = tether -- what the server believes (for the HUD's chain and for snapping it)
+	boat.model:SetAttribute("Chained", tether and tether.kind or nil)
+	if boat.pilot then
+		Net.send(boat.pilot, "BoatTether", {
+			hull = boat.hull,
+			tether = tether and {
+				kind = tether.kind,
+				part = tether.part,
+				point = tether.point,
+				length = tether.length,
+				untilAt = tether.untilAt,
+			} or nil,
+		})
+	else
+		boat.tether = tether
+	end
 end
 
 -- The driver pressed Shift: a burst of speed, then a cooldown. (The driver's client starts its
@@ -661,6 +666,10 @@ function Boats.shove(boat, velocity, spin, tumble)
 	if t < (boat.plowUntil or 0) then
 		taken *= 0.2
 	end
+	-- V13.2: a Skiff burning its Nitro shrugs most of a shove off.
+	if t < (boat.nitroUntil or 0) then
+		taken *= Config.BOAT_ABILITIES.nitro.shrug
+	end
 	if tumble then
 		taken = 1
 		boat.liftedUntil = t + tumble.allow
@@ -670,7 +679,9 @@ function Boats.shove(boat, velocity, spin, tumble)
 		velocity *= taken
 		spin = spin and spin * taken or nil
 	end
-	boat.impactGraceUntil = math.max(boat.impactGraceUntil, t + 0.5)
+	-- V13.2: a big throw (a meteor, a tentacle, a whirlpool's eye) is not the driver's crash: the flight and its landing
+	-- are forgiven (the world batters boats, it does not wreck them with their own landings).
+	boat.impactGraceUntil = math.max(boat.impactGraceUntil, t + math.clamp(velocity.Magnitude / 45, 0.5, 3.5))
 	boat.crash = nil
 	local size = velocity.Magnitude
 	if size > 20 then
@@ -851,6 +862,12 @@ local function police(boat, dt, t)
 	if t < (boat.abilityAllowUntil or 0) then
 		allowed += boat.abilityAllow or 0
 	end
+	-- V13.2: the world's chaos moves water (a rogue wave's face, a whirlpool's swirl): a boat it carries is not cheating.
+	local cx, cz = Sea.chaosFlow(position.X, position.Z, t)
+	if cx ~= 0 or cz ~= 0 then
+		allowed += math.sqrt(cx * cx + cz * cz) * (spec.surfer or 1) * 1.4 + 25
+		boat.lastHighAt = t -- (and a wave can throw it high)
+	end
 	local broken = position.X ~= position.X or speed ~= speed or math.abs(position.Y) > 5000
 	-- Updates from the driver arrive in bursts on a bad connection, so a jump is judged
 	-- against the time since the hull last moved here, not against one frame.
@@ -953,14 +970,14 @@ local function respawn(boat)
 	boat.reclaimUntil = 0
 	boat.nitroUntil, boat.plowUntil, boat.slipUntil, boat.abilityAllowUntil = 0, 0, 0, 0
 	boat.abilityReadyAt = 0
+	boat.tether, boat.serverTether = nil, nil
 	boat.model:SetAttribute("AbilityReadyAt", nil)
+	boat.model:SetAttribute("GunReadyAt", nil)
+	boat.model:SetAttribute("Chained", nil)
 	boat.model:SetAttribute("Health", boat.health)
 	boat.model:SetAttribute("Moored", false)
 	boat.model:SetAttribute("BoostEndsAt", nil)
 	boat.model:SetAttribute("BoostReadyAt", nil)
-	if boat.anchorPrompt then
-		boat.anchorPrompt.ActionText = "Drop anchor"
-	end
 	hull.Anchored = false
 	hull.CanCollide = true
 	boat.model.Parent = refs.folders.structures
@@ -1078,6 +1095,10 @@ local function simulate(boat, dt, t)
 		boat.abilityQueued = false
 		if input.ability then
 			boat.abilityReadyAt = 0 -- the server's own cooldown is BoatAbilities'; let the physics play once
+			input.target = boat.abilityTarget -- (V13.2: where BoatAbilities sent an anchor or a hook)
+			boat.abilityTarget = nil
+		else
+			input.target = nil
 		end
 	else
 		input = IDLE

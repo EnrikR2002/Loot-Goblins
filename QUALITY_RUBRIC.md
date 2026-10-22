@@ -153,6 +153,37 @@ These are attributed observations and hypotheses, not automatic changes to the c
 
 - [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/d32829e321627f163d522fbabe498b1bd3c55fe6/docs/reports/2026-10-18-v13-goblin-port.md): Sections 30 and 32: held E and InputHoldBegin never reached the server; the steal worked through a test command calling Loot.tryGrab.
 
+### The nearest water to a creature inland can be across the island from its target
+
+**ID:** spawn-between-creature-and-target | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** Island creatures hand a chase over to a sea form when the target enters the water. Spawning the sea form at the water nearest the island creature put it on the far side of the island (the creature stood in the island's middle), hundreds of studs from the target. Taking the water nearest a point stepped from the target back toward the creature instead put it 59 studs from the target, on the same side, within 0.2 s of the target entering the water.
+
+**Recommendation:** When a handover spawns something near a creature to chase a target, search for the spawn point from the target's side (a point between target and creature), not from the creature's position.
+
+**Applies when:** Handing an AI from one medium or zone to another (land to sea, inside to outside)
+
+**Limits:** Measured on one island with a boat starting just offshore
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/reports/2026-10-18-v13-1-playtest-fixes.md): Point 4 (jade frogs): entering 59 studs away on the thief's side after the fix.
+
+### Check a test route's water depth before treating a stopped chaser as a bug
+
+**ID:** scan-test-routes-before-blaming-ai | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** A sea monster stopped chasing a scripted boat after one bite. The scripted route crossed an island's shallows, where the monster is designed to stop; the boat also ran aground there. Scanning candidate routes with downward raycasts first (water surface to seabed along the heading) and driving the deep one showed four bites in 30 seconds and no stop.
+
+**Recommendation:** Before judging an AI chase from a scripted drive, verify the route stays in conditions the AI is meant to follow into (depth, zones), and log the AI's own state over time alongside the target's.
+
+**Applies when:** Testing pursuers with scripted or autopilot movement
+
+**Limits:** One game's Leviathan and route; Studio, one client
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/reports/2026-10-18-v13-1-playtest-fixes.md): Point 6 (the Leviathan): four bites in 30 s on a deep route.
+- [source-review](https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/GAME_DESIGN.md): V13.1 lessons (4) in the game description.
+
 ### Some newer emoji render as empty boxes in Roblox's interface font
 
 **ID:** roblox-font-lacks-newer-emoji | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
@@ -244,6 +275,21 @@ These are attributed observations and hypotheses, not automatic changes to the c
 
 - [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md): Section C1, cause (3), and the landing table after the change.
 
+### Turning health 0 into a knockout needs the Dead state off on the server and the owning client
+
+**ID:** knockout-instead-of-death-needs-both-sides | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** To replace death and respawn with a 5 second knockout, the humanoid's Dead state was switched off (SetStateEnabled(Dead, false)) on the server and also on the player's own client, which runs its own humanoid's state machine; with both, health 0 no longer killed the character and a HealthChanged handler started the knockout. Roblox's default health regeneration then raised a downed character's health above 0, so the handler held it at 0 until the knockout ended. A body that fell out of the world or lost its root still needed a real respawn (LoadCharacter), checked a couple of times a second.
+
+**Recommendation:** When death should become something else, disable the Dead state on both the server and the owning client before health can reach 0, hold health at 0 for the duration against regeneration, mark the state with an attribute other systems check, and keep a fallback respawn for bodies that leave the world.
+
+**Applies when:** Replacing Roblox death and respawn with a downed, knocked-out or revive state
+
+**Limits:** One Studio client; Roblox's Reset button was routed to a real respawn but not pressed in testing
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/reports/2026-10-18-v13-1-playtest-fixes.md): The knockout in detail: drained to 0, knocked out in place, treasure dropped, up after 5 s with full health, no respawn.
+
 ### Turning the control module off may not stop a character moving; also catch the movement keys
 
 **ID:** disabling-controls-may-not-stop-movement | **Status:** hypothesis | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
@@ -258,6 +304,21 @@ These are attributed observations and hypotheses, not automatic changes to the c
 **Limits:** Seen only with Studio MCP's simulated keyboard input, which may reach the character differently from a real keyboard; Gamepad thumbsticks and touch were not tested
 
 - [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/d32829e321627f163d522fbabe498b1bd3c55fe6/docs/reports/2026-10-18-v13-goblin-port.md): Section 7: 34 studs moved with controls disabled, 0 with the movement keys also sunk, 28 after leaving.
+
+### ChangeState(GettingUp) takes a seated humanoid out of its seat
+
+**ID:** changestate-gettingup-unseats | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** A helper that stood a knocked-down character back up (PlatformStand off, then Humanoid:ChangeState(GettingUp)) was reused when a driver was knocked out at the wheel of a boat. The driver was thrown out of the seat. Replacing the call with one that only cleared the downed bookkeeping, leaving the body alone, kept the driver seated through the knockout and after waking.
+
+**Recommendation:** Before forcing a humanoid state on a character, check SeatPart; give seated characters a path that does not change their state.
+
+**Applies when:** Stunning, knocking down or reviving characters who may be in a VehicleSeat or Seat
+
+**Limits:** Observed on the server with a server-simulated boat in Studio
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/reports/2026-10-18-v13-1-playtest-fixes.md): The knockout in detail, 'Knocked out at the wheel': unseated in the first version, seated after the fix.
 
 ### Roblox gravity still pulls a body whose velocity a script sets every frame
 
