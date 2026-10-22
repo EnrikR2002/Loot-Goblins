@@ -506,6 +506,9 @@ Config.GRAPPLE_BOAT_ASSIST = 18 -- Aim passing this close to a boat hooks the bo
 -- Poltergoblin (was Soul Unbound, Yone's E) ----------------------------------------
 -- E leaves your body behind and sends your spirit out. Whatever loot the spirit
 -- holds rides the tether back to the body.
+-- V13.1 (the V13 playtest): SUNSET. Poltergoblin is switched off and E is kept for prompts (boats, treasure,
+-- cannons, levers) and for leaving a boat. Everything below and server/Poltergoblin.lua stay, so it can come back.
+Config.POLTER_ENABLED = false
 Config.POLTER_DASH_DISTANCE = 16
 Config.POLTER_DASH_TIME = 0.16
 Config.POLTER_DURATION = 5
@@ -980,7 +983,8 @@ Config.PURSUIT = {
 	PER_TARGET = 2, -- At most this many island pursuers on one goblin (a thief carries one treasure, but a
 	-- pursuer whose treasure was snatched may still be closing on its new holder).
 	CHECK = 0.5, -- Seconds between looks for a new thief to follow.
-	CLEAR = 70, -- A thief must be this far off the island's shore, on the water, before it sets out.
+	CLEAR = 70, -- A thief must be this far off the island's shore, on the water, before it sets out. (A form may
+	-- set its own `clear`: V13.1's jade frogs and the Chill follow you into the water at once.)
 	LEASH = 99999, -- V9: no distance leash (V8: 1100 studs from the shore). A form may still set its own.
 	TIME = 150, -- Seconds a pursuit lasts at most: a backstop for one stuck behind an island, not a design limit (V8: 50).
 	COOLDOWN = 25, -- Seconds before the same island can send its pursuer again (V8: 40, of a twelve-minute raid).
@@ -1414,7 +1418,8 @@ Config.PET_ABILITIES = {
 		glyph = "🛡",
 		effect = "Bounces off one grapple catch, then rests 45 s. It glows while ready, for everyone to see.",
 	},
-	Ghost = { name = "SPIRIT", glyph = "👻", effect = "Poltergoblin recharges 25% faster." },
+	-- V13.1: Poltergoblin is switched off, so SPIRIT is about the knockout now (Config.KNOCKOUT).
+	Ghost = { name = "SPIRIT", glyph = "👻", effect = "You wake from a knockout 40% sooner." },
 	Mender = {
 		name = "MENDER",
 		glyph = "🔧",
@@ -1475,7 +1480,8 @@ Config.PET_MENDER_DELAY = 4 -- seconds without damage before a Mender's boat sta
 Config.PET_MENDER_RATE = 2 -- times BOAT_REPAIR_RATE
 Config.PET_CRAB_RECALL = 0.6 -- Recall cooldown multiple.
 Config.PET_FROG_DASH = 0.65 -- Dash cooldown multiple.
-Config.PET_GHOST_COOLDOWN = 0.75 -- Poltergoblin cooldown multiple.
+Config.PET_GHOST_COOLDOWN = 0.75 -- Poltergoblin cooldown multiple (while it is switched off: unused).
+Config.PET_GHOST_KNOCKOUT = 0.6 -- V13.1: a SPIRIT pet's goblin is knocked out for this share of KNOCKOUT.TIME.
 Config.PET_TORTOISE_REST = 45 -- Seconds before the shell works again (V7: 30).
 Config.PET_GULL_RANGE = 1400 -- How far the gull sees.
 -- Pets drawn on each client (client/Pets.lua): how far other goblins' pets are drawn, and the distance within which
@@ -1565,10 +1571,16 @@ Config.LEVIATHAN = {
 	CONTACT = 18, -- Studs between its snout and the hull's nearest end that count as a catch.
 	CONTACT_REST = 4, -- Seconds after a catch before it can catch the same boat again (it drops back to FOLLOW).
 	CONTACT_HULL = 8, -- Hull damage of a catch (before IMPACT.HULL_SCALE; never below IMPACT.HULL_FLOOR).
-	CONTACT_DAMAGE = 10, -- To a goblin it catches swimming.
-	LUNGE_GAP = 7, -- Seconds between lunges (a roar, jaws open, a burst of speed)...
-	LUNGE_SPEED = 55, -- ...this much faster than it was going...
-	LUNGE_TIME = 0.8, -- ...for this long. Against a boat holding its speed it falls about 10 studs short.
+	CONTACT_DAMAGE = 10, -- To the goblin it catches (V13.1: aboard too; plus KNOCKOUT.HIT for a carrier).
+	-- V13.1 (the V13 playtest: "the leviathan needs to be able to attack"): the lunge is a real BITE now. A roar and
+	-- jaws open for LUNGE_TELL (the tell), then it surges LUNGE_SPEED faster for LUNGE_TIME: a boat that keeps
+	-- straight is caught and bitten; a boost, a hard turn or a jump gets away. V9: a near miss every time.
+	LUNGE_GAP = 6, -- Seconds between lunges...
+	LUNGE_TELL = 0.9, -- ...the roar before each...
+	LUNGE_SPEED = 150, -- ...this much faster than the boat...
+	LUNGE_TIME = 1.2, -- ...for this long.
+	BITE_DAMAGE = 14, -- To the goblin aboard (plus KNOCKOUT.HIT for a carrier).
+	BITE_HULL = 16,
 	SHALLOW = 7, -- Water shallower than this (studs) it will not enter: it waits at the edge...
 	SHALLOW_GIVE_UP = 10, -- ...and gives up after the boat has stayed in it this long.
 	HUNT_TIME = 180, -- A backstop, not a design limit (V8: 55 s and a 2,400-stud leash; now the sanctuary ends it).
@@ -1582,12 +1594,27 @@ Config.LEVIATHAN = {
 Config.IMPACT = {
 	GRACE = 1.2, -- After a world hit lands, nothing else from the world lands on that goblin for this long.
 	DAMAGE_SCALE = 0.55, -- World damage to goblins, as a share of what each source asks for.
-	LAST_STAND = 30, -- A goblin with more health than this cannot be killed by one world hit (it leaves 1).
+	LAST_STAND = 30, -- A goblin with more health than this cannot be knocked out by one world hit (it leaves 1).
+	-- V13.1: except a goblin carrying treasure: for a carrier, being hit is the danger (Config.KNOCKOUT).
 	HULL_SCALE = 0.6, -- The same for hulls: world blasts (boulders, lightning, monsters) bite this much smaller.
 	HULL_FLOOR = 0.12, -- A creature or sea-mob hit never takes a hull below this share of its health: only
 	-- cannons, shells, mines, kegs and real crashes sink boats.
 }
--- The two-strike grip. An ordinary world hit does not knock treasure out of a carrier's hands: it LOOSENS their
+-- V13.1 (the V13 playtest): the KNOCKOUT. A goblin whose health runs out is not killed and respawned at home: they
+-- are knocked out where they fall for TIME seconds, drop whatever they carry (it lies there, loose, for anyone), and
+-- get up with full health. Nothing from the world takes treasure out of a goblin's hands any more (no creature, boss
+-- or boulder steals): instead every hit that used to loosen a carrier's grip HURTS (HIT, on top of its own damage),
+-- so a creature that keeps landing hits knocks a carrier out, and that is how treasure is lost to the world.
+-- Rivals still steal with a sword, a keg, a cannon or a grapple catch (unchanged). server/Knockout.lua.
+Config.KNOCKOUT = {
+	TIME = 5, -- Seconds knocked out. (A SPIRIT pet: PET_GHOST_KNOCKOUT of this.)
+	HIT = 22, -- Health a world hit takes from a CARRIER on top of its own damage: about four knock one out.
+	WAKE_GRACE = 2, -- Seconds after getting up before the world can land another hit.
+	WAIT = 9, -- Seconds a pursuer circles a knocked-out thief and their treasure before it goes home.
+	VOID_Y = -250, -- A body below this has fallen out of the world: it is put back properly (a real respawn).
+}
+-- The two-strike grip (V8 to V13; RETIRED in V13.1 by the knockout above: Loot.knockLoose no longer drops treasure
+-- for the world). An ordinary world hit did not knock treasure out of a carrier's hands: it LOOSENED their
 -- grip for SLIP_TIME seconds (they are told). A second world hit inside that time drops it. A few rare,
 -- clearly marked attacks (HEAVY) drop it at once. Once the world has made a goblin drop treasure, it cannot do
 -- so again for RECOVER seconds. None of this applies to another goblin's sword, keg, cannon or grapple.
@@ -1672,8 +1699,13 @@ Config.GUARDIAN_BOAT = {
 	REACH = 120, -- It launches when the thief is this close.
 	TELL = 0.85, -- Seconds the mark shows before the fist comes up.
 	RADIUS = 20, -- Of the mark.
-	LIFT = 118, -- Studs/s up (about 35 studs, roughly 20 feet of goblin-scale height, 1.2 s in the air).
-	PUSH = 30, -- Studs/s along the thief's way: it throws you on, not back.
+	-- V13.1 (the V13 playtest: "literally needs to send your ship flying very high into the air and send it
+	-- spinning"): up at 255 studs/s is about 165 studs high and 2.6 s in the air, tumbling end over end the whole
+	-- way (BoatSim.tumble), landing level. V9: 118 (about 35 studs).
+	LIFT = 255,
+	PUSH = 70, -- Studs/s along the thief's way: it throws you on, not back.
+	ALTITUDE = 330, -- Studs above the sea Boats.police allows a launched boat for LAUNCH_ALLOW seconds...
+	LAUNCH_ALLOW = 8, -- ...(a driver's own hull is never this high).
 	HULL = 4,
 	LEAP_TIME = 1.6, -- The Guardian's leap from where it stands onto its boat.
 }
@@ -1685,9 +1717,14 @@ Config.GUARDIAN_BOAT = {
 Config.GHOST_FLEET = {
 	SHIPS = 3,
 	CREW = 4, -- Ghost pirates on each ship's deck.
-	SHIP_SPEED = 170,
-	SHIP_SURGE = 230,
-	SHIP_TURN = 1.1,
+	-- V13.1 (the V13 playtest: the ships got stuck and did not follow): ghost ships sail THROUGH land (they are
+	-- ghosts), surge to catch up and, when the pirates take to the dinghies, keep sailing ALONGSIDE them all the
+	-- way to the sanctuary instead of sinking into the fog. V9: 170 / 230, stopped by every rock.
+	SHIP_SPEED = 190,
+	SHIP_SURGE = 330,
+	SHIP_TURN = 1.4,
+	ESCORT = 150, -- Studs either side of the thief's wake the ships keep once the dinghies are out.
+	ESCORT_VOLLEY_GAP = 7, -- Seconds between a ship's volleys while it escorts (the dinghies do most of the work).
 	SPACING = 110, -- Studs apart across the thief's wake.
 	VOLLEY_GAP = 4.5, -- Seconds between a ship's volleys.
 	VOLLEY_RANGE = 360,
@@ -1701,11 +1738,11 @@ Config.GHOST_FLEET = {
 	DINGHY_SPEED = 190,
 	DINGHY_SURGE = 290,
 	DINGHY_TURN = 3.2,
-	BOARD_REACH = 20, -- A pirate this close leaps for the treasure (a grip hit, no damage)...
+	BOARD_REACH = 20, -- A pirate this close leaps aboard and lays into you (V13.1: a hit, Config.KNOCKOUT)...
 	BOARD_TELL = 0.7, -- ...after waving its cutlass this long.
-	BOARD_REST = 6, -- Fleet-wide: with the tell, 6.7 s between leaps, longer than the grip's SLIP_TIME (6), so
-	-- pirates alone never strip a thief; it takes a pirate and something else.
-	SHIP_FADE = 14, -- Seconds after the dinghies go before the ships sink into the fog.
+	BOARD_REST = 3.5, -- Fleet-wide seconds between leaps (V9: 6, when a leap loosened the grip).
+	BOARD_DAMAGE = 10,
+	SHIP_FADE = 14, -- (V9 to V13: seconds after the dinghies went before the ships sank. V13.1: they stay.)
 	HEAD_START = 18, -- Seconds late if the Captain's shade was dozing (BestiaryMinor).
 }
 
@@ -1730,6 +1767,13 @@ Config.RECALL_OFFSHORE = 520 -- Studs out from the shore the boat starts: about 
 Config.RECALL_SHORE_MAX = 420 -- The goblin must be this near water a skiff can use.
 Config.RECALL_BOAT_CLEAR = 70 -- No call while a free boat is this close.
 Config.RECALL_ARRIVE = 45 -- The boat stops this far from the shore point.
+-- V13.1 (the V13 playtest: "it comes in like a tesla, keep that, but it should stop reliably near you"): the called
+-- boat races in at boost speed and then BRAKES HARD to a stop at its parking spot, the water nearest the caller (moved
+-- along with them if they walk the shore), instead of letting go of the throttle and coasting past.
+Config.RECALL_PARK = 10 -- Studs short of the parking spot it aims to stop (measured: 18 left it 65 from the caller).
+Config.RECALL_BRAKE = 260 -- Studs/s/s of braking in the last stretch (it starts braking just in time for this).
+Config.RECALL_HOLD = 30 -- Seconds a parked boat holds its spot for the caller (then it is an ordinary boat again).
+Config.RECALL_HINT_EDGE = 80 -- (client) A carrier on foot with water this close is "at the edge": the B hint shows.
 Config.RECALL_TIMEOUT = 32 -- Seconds before a boat that is stuck is put beside the shore.
 Config.RECALL_EXTRA_MAX = 10 -- Skiffs and Cutters Recall may build when every one is busy (V13: 10, was 6; a goblin's
 -- own specialty boat does not count: there is at most one each).
@@ -1949,15 +1993,21 @@ Config.CREATURES = {
 		stun = 5,
 		waterY = 5, -- A goblin whose root is below this is in the water.
 	},
-	-- Tangle Isle. Imps that snatch treasure in the canopy and run off to a nest with it.
-	Imp = {
-		notice = 105, -- A carrier this close, up in the canopy, is fair game.
-		leap = 1.1, -- Seconds from shriek to landing: the time to get off the mark.
-		reach = 7,
-		hold = 18, -- Seconds it sits on the treasure at the nest before putting it back.
-		scare = 9, -- Get this close and it drops the treasure and bolts.
-		rest = 6,
-		hop = 95, -- Studs/s between perches.
+	-- Tangle Isle (V13.1, the V13 playtest): JADE FROGS, the treasure's guardians. They bound after a goblin carrying
+	-- the Jade Frog anywhere on the island and POUNCE (a ring where you are, then a belly slam), and they hop into
+	-- the sea after you (Pursuit forms.Tangle). They never take the treasure. Replaces V5's imps.
+	JadeFrog = {
+		count = 3,
+		island = 380, -- They chase a carrier this close to the island's middle.
+		hop = 64, -- Studs/s on the ground (in bounds of hop, about 26 studs each).
+		hopLength = 26,
+		pounce = 0.75, -- Seconds of ring before the slam: the time to get off it.
+		reach = 10, -- The ring's radius.
+		damage = 12,
+		push = 62,
+		lift = 46,
+		rest = 1.4, -- Seconds after a pounce before that frog pounces again.
+		range = 48, -- It pounces from this close.
 	},
 	-- Fort Barnacle. Marines who throw intruders over the wall.
 	Marine = {
@@ -1986,7 +2036,24 @@ Config.CREATURES = {
 		quench = 20, -- A carrier standing in the sea this close: the cinderling jumps in after them and goes out.
 	},
 	-- Frost Spire. A drifting cold that drains stamina.
-	Chill = { speed = 15, carrierSpeed = 21, aura = 40, wakeHeight = 30, leash = 270, scatter = 12 }, -- V9: aura 40 (V8: 30), it is bigger
+	Chill = {
+		speed = 15,
+		carrierSpeed = 21,
+		aura = 40, -- V9: 40 (V8: 30), it is bigger
+		wakeHeight = 30,
+		leash = 270,
+		scatter = 12,
+		-- V13.1 (the V13 playtest: "the aurora gem island and boss needs a rework"): the Chill now ATTACKS a goblin
+		-- carrying the Aurora Gem: HAIL, an icy ring where they are going, then a crash of ice (a hit), every
+		-- hailEvery seconds while it can see them. It follows them down the mountain and into the sea.
+		carrierSpeed2 = 44, -- Its speed after a carrier (V9: 21: it could never keep up)
+		hailEvery = 3.4,
+		hailTell = 1.0,
+		hailRadius = 13,
+		hailRange = 150,
+		hailDamage = 12,
+		hailLift = 40,
+	},
 	-- Leviathan's Rest. Something under the water that wakes to the noise of fast boats.
 	Sleeper = {
 		range = 240,

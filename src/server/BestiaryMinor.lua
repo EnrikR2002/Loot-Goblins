@@ -335,7 +335,62 @@ local function chill()
 			self.position, self.yaw = self.home, 0
 			self.goneUntil = 0
 			self.told = {}
+			self.nextHail, self.hail, self.hidden = 0, nil, false
 			C.pose(self)
+		end,
+
+		-- V13.1: HAIL. An icy ring where the carrier is going; hailTell seconds later a crash of ice on it.
+		hailAt = function(self, entry, t)
+			local to = entry.root.Position
+			local lead = to + flat(entry.root.AssemblyLinearVelocity) * (k.hailTell * 0.6)
+			local y = C.floor(lead.X, lead.Z, to.Y + 20)
+			if y < to.Y - 30 then
+				y = to.Y - 3 -- (over the sea: the water)
+			end
+			local spot = v3(lead.X, math.max(y, 0.4), lead.Z)
+			C.mark(spot + v3(0, 0.3, 0), k.hailRadius, k.hailTell, ICE)
+			C.fx("chill", self.position)
+			self.hail = { at = spot, when = t + k.hailTell }
+			self.nextHail = t + k.hailEvery
+		end,
+
+		hailFalls = function(self)
+			local spot = self.hail.at
+			self.hail = nil
+			C.fx("hail", spot)
+			-- Shards of ice come down on the ring (a moment of scenery, cleaned up after).
+			for i = 1, 5 do
+				local a = i / 5 * math.pi * 2
+				local shard = Instance.new("Part")
+				shard.Name = "Hail"
+				shard.Size = v3(1.6, 5, 1.6)
+				shard.Color = ICE
+				shard.Material = M.Ice
+				shard.Transparency = 0.15
+				shard.Anchored = true
+				shard.CanCollide, shard.CanQuery, shard.CanTouch = false, false, false
+				shard.CFrame = CFrame.new(
+					spot + v3(math.cos(a) * k.hailRadius * 0.55, 2, math.sin(a) * k.hailRadius * 0.55)
+				) * CFrame.Angles(rad(math.random(-25, 25)), 0, rad(math.random(-25, 25)))
+				shard.Parent = self.model
+				game:GetService("Debris"):AddItem(shard, 1.6)
+			end
+			for _, entry in ipairs(C.players(spot, k.hailRadius + 1.5)) do
+				if math.abs(entry.root.Position.Y - spot.Y) < 14 then
+					local away = flatUnit(entry.root.Position - spot, v3(0, 0, 1))
+					if
+						C.strike(entry, spot, {
+							damage = k.hailDamage,
+							push = away * 24 + v3(0, k.hailLift, 0),
+							reason = "chill",
+							cause = "the Chill",
+							text = entry.item and "HAIL! The Chill's ice came down on you. Keep moving!" or nil,
+						})
+					then
+						Movement.chill(entry.player, 1.2)
+					end
+				end
+			end
 		end,
 
 		onBlast = function(self)
@@ -349,29 +404,50 @@ local function chill()
 		end,
 
 		tick = function(self, dt, t)
+			-- V13.1: its sea form is out (Pursuit forms.Frost): the Chill went down to the sea after the thief.
+			if C.seaOut.Frost then
+				if not self.hidden then
+					self.hidden, self.hail = true, nil
+					self.root.CFrame = CFrame.new(0, -200, 0)
+				end
+				self.busy = false
+				return
+			elseif self.hidden then
+				self.hidden = false
+				self.position = self.home
+			end
 			if t < self.goneUntil then
 				self.busy = true
 				return
 			end
-			-- Whoever is on the mountain: a carrier first.
-			local climbers = {}
+			if self.hail and t >= self.hail.when then
+				self:hailFalls()
+			end
+			-- Whoever is on the mountain: a carrier first. V13.1: a carrier anywhere on the island, down to the beach
+			-- (V9: only above wakeHeight, so a thief who reached the shore had left it behind).
+			local climbers, carriers = {}, {}
 			for _, entry in ipairs(C.players(center, k.leash)) do
-				if entry.root.Position.Y > k.wakeHeight then
+				if entry.item then
+					table.insert(carriers, entry)
+				elseif entry.root.Position.Y > k.wakeHeight then
 					table.insert(climbers, entry)
 				end
 			end
-			local carriers = {}
-			for _, entry in ipairs(climbers) do
-				if entry.item then
-					table.insert(carriers, entry)
-				end
-			end
 			local target = C.nearest(#carriers > 0 and carriers or climbers, self.position)
-			local goal = target and (target.root.Position + v3(0, 4, 0)) or self.home
+			local goal = target and (target.root.Position + v3(0, target.item and 14 or 4, 0)) or self.home
 			local to = goal - self.position
 			if to.Magnitude > 1 then
-				local speed = target and (target.item and k.carrierSpeed or k.speed) or k.speed
+				local speed = target and (target.item and k.carrierSpeed2 or k.speed) or k.speed
 				self.position += to.Unit * math.min(speed * dt, to.Magnitude)
+			end
+			if
+				target
+				and target.item
+				and not self.hail
+				and t >= self.nextHail
+				and (target.root.Position - self.position).Magnitude <= k.hailRange
+			then
+				self:hailAt(target, t)
 			end
 			self.busy = target ~= nil or to.Magnitude > 2
 			self.yaw = t * 0.6

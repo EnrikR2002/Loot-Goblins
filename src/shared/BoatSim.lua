@@ -51,6 +51,11 @@ BoatSim.TRICKS = {
 		local e = ease(p)
 		return CFrame.Angles(0, TAU * e * side, 0) * CFrame.Angles(0, 0, -TAU * e * side)
 	end,
+	-- V13.1: not a trick the driver does: the Guardian's launch throws the boat end over end the whole way up and
+	-- down (BoatSim.tumble). Whole turns on every axis, so it finishes level; a hull that lands early is levelled.
+	tumble = function(p, side)
+		return CFrame.Angles(2 * TAU * p, TAU * p * side, TAU * p * side)
+	end,
 }
 -- How long each takes (Config.TRICK.TIME by family).
 local TRICK_FAMILY = {
@@ -130,6 +135,27 @@ function BoatSim.startTrick(boat, kind, side, t)
 		duration = (Config.TRICK.TIME[TRICK_FAMILY[kind]] or 0.6) / (boat.spec.trickSpeed or 1),
 		base = CFrame.lookAt(Vector3.zero, flat),
 	}
+	return true
+end
+
+-- V13.1: thrown end over end for `seconds` (the Guardian's launch: server/Pursuit.lua forms.Temple). Unlike a trick
+-- it starts from the water, ignores what is running, and pays nothing when it ends (it was not the driver's doing).
+function BoatSim.tumble(boat, seconds, side, t)
+	if boat.sinking or boat.moored then
+		return false
+	end
+	local look = boat.hull.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	flat = flat.Magnitude > 0.05 and flat.Unit or Vector3.new(0, 0, -1)
+	boat.trick = {
+		kind = "tumble",
+		side = side or 1,
+		startedAt = t,
+		duration = math.max(0.5, seconds),
+		base = CFrame.lookAt(Vector3.zero, flat),
+		tumble = true,
+	}
+	boat.tricksDone = 0
 	return true
 end
 
@@ -478,12 +504,16 @@ function BoatSim.step(boat, input, dt, t)
 		-- V9: a trick owns the hull's orientation (see BoatSim.TRICKS). A hull that touches the water mid-trick
 		-- comes down level anyway: a sketchy landing, never a capsized boat.
 		local progress = (t - trick.startedAt) / trick.duration
-		local landed = wet > 0.25 or grounded or sinking
+		-- (V13.1: a tumble starts on the water, so it only counts as landed once it has been up a moment.)
+		local landed = (wet > 0.25 or grounded or sinking) and not (trick.tumble and progress < 0.25)
 		local rotation
 		if landed or progress >= 1 then
 			rotation = trick.base
 			boat.trick = nil
-			if landed then
+			if trick.tumble then
+				-- Thrown, not a trick: no callout, no burst, no penalty.
+				boat.tricksDone = 0
+			elseif landed then
 				boat.tricksDone = 0
 				boat.sketchy = true
 				out.event = "sketchy"

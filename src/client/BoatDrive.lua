@@ -237,6 +237,10 @@ function BoatDrive.push(payload)
 		if typeof(payload.spin) == "Vector3" then
 			simHull:ApplyAngularImpulse(payload.spin * simHull.AssemblyMass * 20)
 		end
+		-- V13.1: the Guardian's launch throws the boat end over end (BoatSim.tumble).
+		if type(payload.tumble) == "number" then
+			BoatSim.tumble(sim, payload.tumble, math.random() < 0.5 and -1 or 1, now())
+		end
 	end
 end
 
@@ -296,6 +300,11 @@ RunService.PreSimulation:Connect(function(dt)
 	sim.payload = model:GetAttribute("Payload") or 0
 	sim.boostUntil = math.max(sim.boostUntil, model:GetAttribute("BoostEndsAt") or 0)
 	input.throttle, input.steer, input.drift = seat.ThrottleFloat, seat.SteerFloat, driftHeld
+	-- V13.1: knocked out at the wheel: hands off, the boat coasts.
+	if player:GetAttribute("KnockedOutUntil") then
+		input.throttle, input.steer, input.drift = 0, 0, false
+		jumpQueued, abilityQueued = false, false
+	end
 	input.jump = jumpQueued
 	jumpQueued = false
 	input.ability = abilityQueued

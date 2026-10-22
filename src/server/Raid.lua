@@ -49,6 +49,7 @@ local GhostFleet = require(script.Parent.GhostFleet)
 local Emotes = require(script.Parent.Emotes)
 local Port = require(script.Parent.Port)
 local BoatAbilities = require(script.Parent.BoatAbilities)
+local Knockout = require(script.Parent.Knockout)
 
 local Raid = {}
 Raid.phase = "port"
@@ -152,6 +153,7 @@ local function resetWorld()
 	Tornadoes.reset()
 	GhostFleet.reset()
 	BoatAbilities.reset()
+	Knockout.reset()
 end
 
 function Raid.start()
@@ -202,6 +204,7 @@ end
 
 function Raid.finish()
 	Loot.setEnabled(false)
+	Knockout.reset() -- V13.1: nobody goes home to the Port knocked out
 	local raiders = participantList()
 	local results = {}
 	local best = 0

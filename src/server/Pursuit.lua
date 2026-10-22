@@ -20,7 +20,7 @@
 --
 -- Forms (one per island, each a different kind of chase; numbers beside each):
 --   Windmill  Bramble in a washtub: lines up and CHARGES in a straight line. Turn or jump when he bleats.
---   Tangle    the imps' raft: pulls alongside and an imp leaps for the treasure. Get away from its side.
+--   Tangle    the JADE FROGS (V13.1): bound over the waves after you; one pounces on a ringed boat. Get off the ring.
 --   Shoals    Old Clacker under the water: a ring opens where you are going, then up he comes.
 --   Tide      the Warden eel: goes under the bow and lashes the boat round.
 --   Coral     the clam, in jets: clamps on and drags. Jump: it cannot hold a boat in the air.
@@ -31,7 +31,7 @@
 --             punches up under the thief and LAUNCHES them twenty feet up (marked first).
 --   Cross     a WATCHER rides a stone slab after you, and like the statues it only moves while nobody faces it.
 --   Ember     the cinderlings race AHEAD on a lava-rock raft and lay burning patches across your way.
---   Frost     the Chill drifts after you and freezes patches of sea in front of you.
+--   Frost     the Chill (V13.1) flies down after you, locks on and bursts ICE SPIKES up under you; freezes the odd patch.
 -- The Leviathan (Bone) and the Ghost Fleet (Skull) are pursuers too, in their own modules, under the same rules.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -153,13 +153,15 @@ function Pursuit.hit(player, from, opts)
 		throw += (v.Magnitude > 5 and v.Unit or away) * opts.along
 	end
 	if boat then
-		Boats.shove(boat, throw, opts.spin and Vector3.new(0, opts.spin, 0) or nil)
+		Boats.shove(boat, throw, opts.spin and Vector3.new(0, opts.spin, 0) or nil, opts.tumble)
 		Pursuit.batter(boat, opts.hull or 0, opts.cause)
 	end
 	return Creatures.strike({ player = player, root = root, humanoid = humanoid }, from, {
 		damage = opts.damage,
 		push = not boat and throw or nil,
 		reason = opts.reason,
+		cause = opts.cause,
+		harmless = opts.harmless,
 		text = opts.text,
 		opened = true,
 	})
@@ -206,7 +208,9 @@ function Pursuit.swim(mover, goal, speed, dt, turnRate)
 		local probe = mover.position + direction * 28
 		return SeaNav.passable(probe.X, probe.Z, draft)
 	end
-	if not open(want) then
+	-- V13.1: a GHOST (the Ghost Fleet's ships) sails straight through rocks and islands: it never steers round
+	-- land, so it can never be stuck behind it (they were, and stopped following).
+	if not mover.ghost and not open(want) then
 		local found = false
 		for _, degrees in ipairs({ 35, -35, 70, -70, 110, -110 }) do
 			local option = turned(want, math.rad(degrees))
@@ -512,44 +516,132 @@ forms.Windmill = defaults({
 
 -- THE IMPS (Tangle Isle): three of them on a raft of lashed barrels. They do not ram: they pull alongside
 -- and one LEAPS the gap for the treasure. Stay away from the raft's side for a moment and it is called off.
+-- THE JADE FROGS (Tangle Isle, V13.1): the island's frogs plop into the sea after the thief and BOUND over the waves
+-- after them, three abreast, splashing down every hop. Close up, one pounces: a ring opens under your boat (the tell:
+-- they lock on and match your speed) and it lands on you (a hit: Config.KNOCKOUT). Boost, turn or jump off the ring.
+-- (V8 to V13: the imps' raft, whose imps leapt for the treasure itself.)
+local JADE = Color3.fromRGB(52, 178, 116)
+local JADE_DARK = Color3.fromRGB(30, 118, 80)
+local function frogParts(prefix, at)
+	local o = CFrame.new(at)
+	return {
+		ball(prefix .. "Body", 3, o, JADE, Enum.Material.SmoothPlastic),
+		ball(prefix .. "Head", 2.3, o * CFrame.new(0, 0.9, -1.3), JADE, Enum.Material.SmoothPlastic),
+		ball(prefix .. "EyeL", 1, o * CFrame.new(-0.7, 1.9, -1.4), GOLD, Enum.Material.Neon),
+		ball(prefix .. "EyeR", 1, o * CFrame.new(0.7, 1.9, -1.4), GOLD, Enum.Material.Neon),
+		block(
+			prefix .. "LegL",
+			Vector3.new(0.8, 0.9, 2.4),
+			o * CFrame.new(-1.4, -0.9, 0.6),
+			JADE_DARK,
+			Enum.Material.SmoothPlastic
+		),
+		block(
+			prefix .. "LegR",
+			Vector3.new(0.8, 0.9, 2.4),
+			o * CFrame.new(1.4, -0.9, 0.6),
+			JADE_DARK,
+			Enum.Material.SmoothPlastic
+		),
+	}
+end
+local function frogPack()
+	-- The first part is the root (an invisible float); then three frogs in a wedge.
+	local parts = { block("Pack", Vector3.new(2, 1, 2), nil, JADE, Enum.Material.SmoothPlastic, 1) }
+	for _, spec in ipairs({
+		{ "A", Vector3.new(0, 1, -3) },
+		{ "B", Vector3.new(-4.5, 1, 2) },
+		{ "C", Vector3.new(4.5, 1, 2) },
+	}) do
+		for _, part in ipairs(frogParts(spec[1], spec[2])) do
+			table.insert(parts, part)
+		end
+	end
+	return parts
+end
+-- Where a sea form sets out from: the nearest of an island creature's bodies to the thief (`prefix` names them).
+local function creatureNear(prefix, target, within)
+	local root = Pursuit.vessel(target)
+	if not root then
+		return nil
+	end
+	local best, bestDistance
+	for _, creature in ipairs(Creatures.list) do
+		if string.sub(creature.name, 1, #prefix) == prefix and creature.position and not creature.hidden then
+			local distance = Util.flatDistance(creature.position, root.Position)
+			if distance < within and (not bestDistance or distance < bestDistance) then
+				best, bestDistance = creature.position, distance
+			end
+		end
+	end
+	if best then
+		-- Into the water on the thief's side of it: the water nearest a point a little way from the thief back
+		-- toward the creature (the water nearest the creature itself could be across the island).
+		local back = Vector3.new(best.X - root.Position.X, 0, best.Z - root.Position.Z)
+		local step = math.min(70, back.Magnitude * 0.5)
+		local probe = root.Position + (back.Magnitude > 1 and back.Unit * step or Vector3.zero)
+		local water = SeaNav.nearestWater(probe.X, probe.Z, 2)
+		return water and Vector3.new(water.X, 0, water.Z) or nil
+	end
+	return nil
+end
+
 forms.Tangle = defaults({
-	name = "The Imps' Raft",
-	say = "THE IMPS ARE AFTER YOU ON A RAFT OF BARRELS!",
-	gone = "The imps paddle off, cackling.",
-	quit = "The imps' raft spins to a halt at the cove lights. They blow raspberries and paddle home.",
-	color = Color3.fromRGB(96, 190, 84),
-	speed = 165,
-	surge = 270,
-	turn = 3.4,
-	reach = 20,
-	tell = 0.9,
-	rest = 4.5,
-	scale = 1.3, -- the imps are minions: the raft grows a little, they do not
-	body = {
-		block("Raft", Vector3.new(10, 1, 12), nil, WOOD, Enum.Material.WoodPlanks),
-		block("BarrelL", Vector3.new(3, 3, 12), CFrame.new(-4, -1.2, 0), DARK_WOOD, Enum.Material.Wood),
-		block("BarrelR", Vector3.new(3, 3, 12), CFrame.new(4, -1.2, 0), DARK_WOOD, Enum.Material.Wood),
-		ball("ImpA", 3, CFrame.new(-2.4, 2.2, -2), Color3.fromRGB(96, 190, 84), Enum.Material.SmoothPlastic),
-		ball("ImpB", 3, CFrame.new(2.4, 2.2, -1), Color3.fromRGB(110, 205, 96), Enum.Material.SmoothPlastic),
-		ball("ImpC", 3, CFrame.new(0, 2.2, 3), Color3.fromRGB(84, 170, 74), Enum.Material.SmoothPlastic),
-		block("Mast", Vector3.new(0.6, 9, 0.6), CFrame.new(0, 5, 0), DARK_WOOD, Enum.Material.Wood),
-		block("Rag", Vector3.new(5, 4, 0.3), CFrame.new(0, 7, 0.4), Color3.fromRGB(190, 60, 60), Enum.Material.Fabric),
-	},
-	onTell = function(p)
-		Pursuit.fx("shriek", p.position)
+	name = "The Jade Frogs",
+	say = "THE JADE FROGS HAVE HOPPED IN AFTER YOU!",
+	gone = "The jade frogs croak and paddle home.",
+	quit = "The jade frogs bob at the cove lights, croak at you, and hop home.",
+	color = JADE,
+	speed = 175,
+	surge = 290,
+	turn = 3.6,
+	reach = 24,
+	tell = 0.75,
+	rest = 2.2,
+	follow = 55,
+	clear = -math.huge, -- after you the moment you are in the water
+	scale = 1.5,
+	body = frogPack(),
+	from = function(_island, target)
+		return creatureNear("JadeFrog", target, 600)
+	end,
+	-- Bounding over the waves: a hop every 0.55 s (faster when it is faster), a splash each time it comes down.
+	always = function(p, _target, dt, t)
+		p.hopPhase = (p.hopPhase or 0) + dt * (1.2 + (p.speed or 0) / 150)
+		local s = math.abs(math.sin(p.hopPhase * math.pi))
+		p.bob = p.state == "tell" and 0 or s * 9
+		if p.hopPhase - (p.lastSplash or 0) >= 1 then
+			p.lastSplash = math.floor(p.hopPhase)
+			if t - (p.splashFxAt or 0) > 0.9 then
+				p.splashFxAt = t
+				Pursuit.fx("splash", p.position)
+			end
+		end
+	end,
+	onTell = function(p, target)
+		local root, _, boat = Pursuit.vessel(target)
+		local at = boat and boat.hull.Position or (root and root.Position)
+		if at then
+			Creatures.mark(Vector3.new(at.X, 0.5, at.Z), 18, p.form.tell, JADE)
+		end
+		Pursuit.fx("croak", p.position)
 	end,
 	strike = function(p, target)
 		local root, _, boat = Pursuit.vessel(target)
 		local at = boat and boat.hull.Position or (root and root.Position)
-		if at and flat(at - p.position).Magnitude < 26 then
+		if at and flat(at - p.position).Magnitude < 30 then
 			p.landed = true
 			Pursuit.hit(target, p.position, {
-				push = 18,
-				reason = "imp",
-				cause = "the imps",
-				text = "AN IMP IS ON YOUR TREASURE! Shake the raft off!",
+				push = 40,
+				lift = 55,
+				spin = 2,
+				hull = 6,
+				damage = 12,
+				reason = "frog",
+				cause = "the jade frogs",
+				text = "A JADE FROG POUNCED ON YOUR BOAT!",
 			})
-			Pursuit.fx("snatch", at)
+			Pursuit.fx("crash", at)
 		end
 		return true
 	end,
@@ -1337,6 +1429,8 @@ forms.Temple = defaults({
 		local where = boat and boat.hull.Position or (root and root.Position)
 		if where and flat(where - at).Magnitude < GB.RADIUS + (boat and boat.spec.size.Z * 0.45 or 2) then
 			p.landed = true
+			-- V13.1: sky high and spinning, end over end the whole flight (the V13 playtest asked for it).
+			local airtime = 2 * GB.LIFT / workspace.Gravity
 			local landed = Pursuit.hit(target, at, {
 				away = Vector3.new(0, 0, 0),
 				push = 0,
@@ -1346,10 +1440,11 @@ forms.Temple = defaults({
 				hull = GB.HULL,
 				damage = 2,
 				cause = "the Guardian",
-				text = "LAUNCHED BY THE GUARDIAN! Trick (R) or glide while you're up there!",
+				tumble = { seconds = airtime * 0.96, altitude = GB.ALTITUDE, allow = GB.LAUNCH_ALLOW },
+				text = "LAUNCHED BY THE GUARDIAN!",
 			})
 			if landed then
-				Impact.protect(target, P.LIFT_GRACE)
+				Impact.protect(target, math.max(P.LIFT_GRACE, airtime + 0.6))
 				Net.broadcastNear(at, 1400, "GuardianLaunch", { position = at, userId = target.UserId })
 			end
 			p.nextLaunch = t + GB.COOLDOWN
@@ -1549,17 +1644,25 @@ forms.Ember = defaults({
 -- THE CHILL (Frost Spire): the cold itself drifts after you, a pale, glittering fog, and breathes on the sea
 -- AHEAD of you: the water there sets. A boat that runs onto the ice is held for as long as it stays on it.
 forms.Frost = defaults({
+	-- V13.1 (the V13 playtest: "the aurora gem island and boss needs a rework and how it chases you after getting into
+	-- water"): the Chill comes down off the mountain the moment the thief is in the water (from beside the island
+	-- Chill), flies after them low over the waves, and ATTACKS: close up it locks on (the tell: an icy ring under the
+	-- boat) and ICE SPIKES burst up through the sea (a hit). It still freezes the odd patch of sea ahead (rarer).
+	-- V9 to V13 it only froze patches: it never touched anyone.
 	name = "The Chill",
-	say = "THE CHILL IS DRIFTING AFTER YOU. THE SEA FREEZES WHERE IT BREATHES!",
+	say = "THE CHILL HAS COME DOWN TO THE SEA AFTER YOU!",
 	gone = "The Chill thins away to nothing.",
 	quit = "The Chill shivers at the cove lights and melts into mist.",
 	color = Color3.fromRGB(190, 235, 255),
-	speed = 160,
-	surge = 260,
-	reach = 0,
-	follow = 90,
-	lunge = 0,
-	ride = 3,
+	speed = 185,
+	surge = 320,
+	turn = 3,
+	reach = 26,
+	tell = 0.9,
+	rest = 2.6,
+	follow = 70,
+	ride = 8,
+	clear = -math.huge, -- after you the moment you are in the water
 	scale = Config.GUARDIAN_SCALE.Chill,
 	body = {
 		ball("Core", 10, nil, Color3.fromRGB(220, 245, 255), Enum.Material.Glass, 0.35),
@@ -1576,19 +1679,71 @@ forms.Frost = defaults({
 			Enum.Material.Ice
 		),
 	},
+	from = function(_island, target)
+		return creatureNear("Chill", target, 700)
+	end,
+	onTell = function(p, target)
+		local root, _, boat = Pursuit.vessel(target)
+		local at = boat and boat.hull.Position or (root and root.Position)
+		if at then
+			Creatures.mark(Vector3.new(at.X, 0.5, at.Z), 20, p.form.tell, p.form.color)
+		end
+		Pursuit.fx("chill", p.position)
+		Net.toast(target, "THE CHILL IS FREEZING THE SEA UNDER YOU! Boost or turn off the ring!")
+	end,
+	strike = function(p, target)
+		local root, _, boat = Pursuit.vessel(target)
+		local at = boat and boat.hull.Position or (root and root.Position)
+		if not at then
+			return true
+		end
+		-- Ice spikes burst up through the sea where the ring was (scenery for a moment).
+		local folderNow = folder
+		for i = 1, 6 do
+			local a = i / 6 * math.pi * 2
+			local spike = Instance.new("Part")
+			spike.Name = "IceSpike"
+			spike.Size = Vector3.new(2.4, 14, 2.4)
+			spike.Color = Color3.fromRGB(190, 235, 255)
+			spike.Material = Enum.Material.Ice
+			spike.Transparency = 0.1
+			spike.Anchored = true
+			spike.CanCollide, spike.CanQuery, spike.CanTouch = false, false, false
+			spike.CFrame = CFrame.new(at.X + math.cos(a) * 9, 3, at.Z + math.sin(a) * 9)
+				* CFrame.Angles(math.cos(a) * 0.35, 0, math.sin(a) * 0.35)
+			spike.Parent = folderNow
+			game:GetService("Debris"):AddItem(spike, 1.4)
+		end
+		Pursuit.fx("chill", at)
+		if flat(at - p.position).Magnitude < 34 then
+			p.landed = true
+			Pursuit.hit(target, at, {
+				away = Vector3.new(0, 0, 0),
+				push = 0,
+				lift = 85,
+				spin = 1.6,
+				hull = 8,
+				damage = 12,
+				reason = "chill",
+				cause = "the Chill",
+				text = "ICE SPIKES! The Chill froze the sea under you.",
+			})
+		end
+		return true
+	end,
+	-- And now and then a frozen patch ahead (a boat on one is held).
 	always = function(p, target, dt, _t, info)
-		p.fireAt = (p.fireAt or 2.5) - dt
-		if p.fireAt > 0 or (p.alt or 0) > 2 or info.gap > 300 then
+		p.fireAt = (p.fireAt or 4) - dt
+		if p.fireAt > 0 or (p.alt or 0) > 2 or info.gap > 300 or p.state == "tell" then
 			return
 		end
-		p.fireAt = 3.4
+		p.fireAt = 6.5
 		local spot = Pursuit.lead(target, 2.2)
 		if not spot or Pursuit.inSanctuary(spot, 40) then
 			return
 		end
 		local at = Vector3.new(spot.X, 0.5, spot.Z)
 		Creatures.mark(at, 24, 1.4, p.form.color)
-		Pursuit.fx("chill", at)
 		local current = generation
 		task.delay(1.4, function()
 			if current == generation then
@@ -1635,6 +1790,9 @@ end
 
 local function finish(p, word)
 	p.done = true
+	if Creatures.seaOut[p.form.id] == p then
+		Creatures.seaOut[p.form.id] = nil
+	end
 	formFinish(p)
 	if p.model then
 		p.model:Destroy()
@@ -1712,6 +1870,15 @@ local function setOut(form, island, target)
 	if form.trail then
 		addTrail(p, form.trail)
 	end
+	-- V13.1: a form may set out from where its island creature is (the jade frogs hop in off the beach, the Chill
+	-- drifts down off the mountain), and the island creature knows its sea form is out (Creatures.seaOut).
+	if form.from then
+		local from = form.from(island, target)
+		if from then
+			p.position = Vector3.new(from.X, 0, from.Z)
+		end
+	end
+	Creatures.seaOut[form.id] = p
 	Pursuit.place(p, form.ride)
 	Pursuit.fx("launch", p.position)
 	setAttributes(p)
@@ -1744,7 +1911,7 @@ local function considerNew(t)
 				local root = Pursuit.vessel(target)
 				-- (Measured from the island's SHORE: the big islands are 450 studs across.)
 				local off = Util.flatDistance(root.Position, Vector3.new(island.x, 0, island.z)) - island.r
-				if off > P.CLEAR and off < form.leash and not Pursuit.inSanctuary(root.Position) then
+				if off > (form.clear or P.CLEAR) and off < form.leash and not Pursuit.inSanctuary(root.Position) then
 					setOut(form, island, target)
 					if #active >= P.MAX then
 						return
@@ -1924,7 +2091,7 @@ local function tickMover(p, dt, t)
 	elseif (p.alt or 0) > 1 then
 		extra = CFrame.Angles(math.rad(math.clamp(p.vy * 0.4, -35, 35)), 0, 0) -- nose up going up, down coming down
 	end
-	local ride = form.ride
+	local ride = form.ride + (p.bob or 0) -- (V13.1: the jade frogs bound)
 	if p.popUntil and t < p.popUntil then
 		ride = 3 -- up out of the water for a moment
 	end
@@ -1955,6 +2122,16 @@ function Pursuit.tick(dt)
 			end
 			continue
 		end
+		-- V13.1: a thief who has been KNOCKED OUT (server/Knockout.lua) is down, not gone: their treasure lies loose
+		-- beside them and the pursuer circles, in case they get up and grab it again, for KNOCKOUT.WAIT seconds.
+		local knocked = target.Parent and target:GetAttribute("KnockedOutAt")
+		local downLately = knocked and now() - knocked < Config.KNOCKOUT.WAIT
+		if not root and downLately and target:GetAttribute("KnockedOutUntil") then
+			p.speed = math.max(0, p.speed - form.decel * dt)
+			Pursuit.air(p, dt, t)
+			Pursuit.place(p, form.ride)
+			continue
+		end
 		if not root then
 			reason = false -- died, left, or between bodies
 		else
@@ -1968,9 +2145,10 @@ function Pursuit.tick(dt)
 					Net.toast(holder, form.name .. " is after YOU now!")
 					p.lostAt = nil
 				else
-					-- Banked, dropped or taken ashore: the island has no quarrel with anyone at sea now.
+					-- Banked, dropped or taken ashore: the island has no quarrel with anyone at sea now. (V13.1: just after
+					-- a knockout it waits longer: the thief may get up and take it back.)
 					p.lostAt = p.lostAt or t
-					if t - p.lostAt > 3 then
+					if t - p.lostAt > (downLately and Config.KNOCKOUT.WAIT or 3) then
 						reason = form.gone
 					end
 				end

@@ -6,6 +6,7 @@
 --   "carried" welded above a player's head
 --   "loose"   a physics object on the ground (or floating in the sea)
 --   "away"    banked; it comes back to its spot after Config respawn time
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
@@ -38,6 +39,29 @@ local slipUntil = {} -- player -> time their grip stops being loose (the two-str
 local dropSafeUntil = {} -- player -> time before which the world cannot make them drop again
 local enabled = false
 local refs
+-- V13.1: who to name when a world hit knocks a carrier out ("knocked out by ..."), by the hit's reason.
+local WORLD_NAMES = {
+	guardian = "the Guardian",
+	guardianleap = "the Guardian",
+	boulder = "a boulder",
+	cannon = "a cannonball",
+	keg = "a powder keg",
+	crab = "Old Clacker",
+	echo = "the Echo",
+	eel = "the Warden",
+	ghost = "a ghost pirate",
+	imp = "the jade frogs",
+	frog = "the jade frogs",
+	chill = "the Chill",
+	lancer = "a lancer",
+	lava = "lava",
+	leviathan = "the Leviathan",
+	lightning = "lightning",
+	marine = "the garrison",
+	ram = "Bramble",
+	watcher = "a Watcher",
+	pursuit = "a pursuer",
+}
 
 local function now()
 	return workspace:GetServerTimeNow()
@@ -874,27 +898,25 @@ end
 
 -- A hit pops the loot off the carrier, away from the hit. Respects steal
 -- immunity. Returns true if something came loose.
+-- V13.1 (the V13 playtest: "no bosses should be able to steal the treasure from you"): only a RIVAL's hit (byPlayer)
+-- knocks treasure loose. A hit from the world (creatures, bosses, boulders, lava; byPlayer nil) never takes it: it
+-- HURTS the carrier instead (Config.KNOCKOUT.HIT on top of the hit's own damage), and a carrier whose health runs
+-- out is knocked out and drops it (server/Knockout.lua). V8 to V13 it loosened their grip (two hits dropped it).
 function Loot.knockLoose(player, fromPosition, reason, byPlayer)
 	local item = carrying[player]
 	if not item or now() < item.immuneUntil then
 		return false
 	end
 	if byPlayer == nil then
-		-- The world did it, not a rival: the two-strike grip (Config.GRIP).
-		local t = now()
-		if t < (dropSafeUntil[player] or 0) then
-			return false
+		local _, humanoid = Util.getCharacterParts(player)
+		if humanoid and humanoid.Health > 0 then
+			if WORLD_NAMES[reason] then
+				player:SetAttribute("LastHitBy", WORLD_NAMES[reason])
+				player:SetAttribute("LastHitAt", now())
+			end
+			humanoid:TakeDamage(Config.KNOCKOUT.HIT)
 		end
-		if not Config.GRIP.HEAVY[reason] and t >= (slipUntil[player] or 0) then
-			slipUntil[player] = t + Config.GRIP.SLIP_TIME
-			player:SetAttribute("GripSlipUntil", slipUntil[player])
-			Net.toast(player, "YOUR GRIP IS SLIPPING! One more hit in the next few seconds and you drop it.")
-			Net.send(player, "GripSlip", { seconds = Config.GRIP.SLIP_TIME })
-			return false
-		end
-		slipUntil[player] = nil
-		player:SetAttribute("GripSlipUntil", nil)
-		dropSafeUntil[player] = t + Config.GRIP.RECOVER
+		return false
 	end
 	local root = Util.aliveRoot(player)
 	local away = root and (root.Position - fromPosition) or Vector3.zero
@@ -1044,19 +1066,49 @@ function Loot.forget(player)
 	dropSafeUntil[player] = nil
 end
 
--- A creature that TAKES treasure (the imps): allowed unless the world has just made this goblin drop it.
--- Returns the item it knocked loose, or nil.
+-- A creature that TAKES treasure (V5's imps). V13.1: nothing from the world takes treasure any more; a world hit
+-- hurts instead (Loot.knockLoose). Kept so an old caller is harmless: it hurts and returns nil.
 function Loot.worldTake(player, reason)
-	local item = carrying[player]
-	local t = now()
-	if not item or t < item.immuneUntil or t < (dropSafeUntil[player] or 0) then
-		return nil
+	Loot.knockLoose(player, Vector3.zero, reason, nil)
+	return nil
+end
+
+-- V13.1 (the V13 playtest: "allow treasure to be picked up by boating over to it"): a driver whose hull passes over
+-- loose treasure picks it up, the same as grabbing it (Loot.Taken, immunity, the thrower's regrab delay all apply).
+-- `boats`: Boats.list. Called each frame from Main; cheap (it looks at loose treasure only).
+function Loot.sweepBoats(boats)
+	if not enabled then
+		return
 	end
-	dropSafeUntil[player] = t + Config.GRIP.RECOVER
-	slipUntil[player] = nil
-	player:SetAttribute("GripSlipUntil", nil)
-	Loot.dropFor(player, reason)
-	return item
+	local t = now()
+	for _, item in ipairs(Loot.items) do
+		if item.state == "loose" and not item.held then
+			local position = item.core.Position
+			for _, boat in ipairs(boats) do
+				local seat = boat.driver
+				local occupant = seat and seat.Occupant
+				local player = occupant and Players:GetPlayerFromCharacter(occupant.Parent)
+				if player and not carrying[player] and boat.state == "float" then
+					local hull = boat.hull
+					local offset = hull.CFrame:PointToObjectSpace(position)
+					local size = boat.spec.size
+					if
+						math.abs(offset.X) < size.X / 2 + 5
+						and math.abs(offset.Z) < size.Z / 2 + 5
+						and offset.Y > -14
+						and offset.Y < 16
+						and not (item.noRegrab and item.noRegrab.player == player and t < item.noRegrab.untilTime)
+						and Util.aliveRoot(player)
+					then
+						attach(item, player, Util.aliveRoot(player))
+						Loot.Taken:Fire(item, player, false, nil)
+						Net.toast(player, "SCOOPED IT UP! " .. string.upper(item.def.name) .. " is aboard.")
+						break
+					end
+				end
+			end
+		end
+	end
 end
 
 return Loot

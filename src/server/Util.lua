@@ -17,10 +17,10 @@ function Util.getCharacterParts(player)
 	return character, humanoid, root
 end
 
--- Returns the live root of a player who is alive, or nil.
+-- Returns the live root of a player who is alive (and, V13.1, not knocked out: server/Knockout.lua), or nil.
 function Util.aliveRoot(player)
 	local _, humanoid, root = Util.getCharacterParts(player)
-	if root and humanoid.Health > 0 then
+	if root and humanoid.Health > 0 and not player:GetAttribute("KnockedOutUntil") then
 		return root, humanoid
 	end
 	return nil

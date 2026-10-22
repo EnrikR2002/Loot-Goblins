@@ -268,6 +268,14 @@ function Combat.standUp(victim, immunity)
 	end
 end
 
+-- V13.1: a knockout overtakes a grapple catch: the catch is forgotten (its timer will not stand them up), and the
+-- body is left as the knockout put it.
+function Combat.cancelDown(victim)
+	downToken[victim] = (downToken[victim] or 0) + 1
+	victim:SetAttribute("DownedUntil", nil)
+	victim:SetAttribute("DownedBy", nil)
+end
+
 local function knockDown(victim, humanoid, root, attacker, attackerRoot)
 	local t = workspace:GetServerTimeNow()
 	local token = (downToken[victim] or 0) + 1

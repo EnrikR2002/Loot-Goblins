@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
@@ -43,6 +44,7 @@ local kegRemote = remotes:WaitForChild("KegRequest")
 local recallRemote = remotes:WaitForChild("BoatRecallRequest")
 local stealRemote = remotes:WaitForChild("StealRequest")
 local eventRemote = remotes:WaitForChild("GameEvent")
+local resetRemote = remotes:WaitForChild("ResetRequest")
 
 local generated = workspace:WaitForChild("LootGoblinsGenerated")
 local hoardPart = generated:WaitForChild("Landmarks"):WaitForChild("HoardMarker"):WaitForChild("Hoard")
@@ -90,14 +92,45 @@ local function now()
 	return workspace:GetServerTimeNow()
 end
 
+-- (V13.1: a goblin who is knocked out counts as down: their keys do nothing until they get up.)
 local function getCharacter()
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not humanoid or not root or humanoid.Health <= 0 then
+	if not humanoid or not root or humanoid.Health <= 0 or player:GetAttribute("KnockedOutUntil") then
 		return nil
 	end
 	return character, humanoid, root
+end
+
+-- V13.1: health 0 is a KNOCKOUT, not a death (server/Knockout.lua). This client owns its humanoid's states, so it
+-- switches the Dead state off too (or Roblox would kill the body here and respawn it at home).
+local function noDying(character)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if humanoid then
+		humanoid.BreakJointsOnDeath = false
+		humanoid.RequiresNeck = false
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+	end
+end
+player.CharacterAdded:Connect(noDying)
+if player.Character then
+	task.spawn(noDying, player.Character)
+end
+-- The Reset button still gets a stuck goblin out (a real respawn, the server's choice: Knockout.respawn).
+do
+	local resetEvent = Instance.new("BindableEvent")
+	resetEvent.Event:Connect(function()
+		resetRemote:FireServer()
+	end)
+	task.spawn(function()
+		for _ = 1, 30 do
+			if pcall(StarterGui.SetCore, StarterGui, "ResetButtonCallback", resetEvent) then
+				return
+			end
+			task.wait(0.5)
+		end
+	end)
 end
 
 local function inWard(position)
@@ -203,6 +236,28 @@ local function promptOwnsE()
 		end
 	end
 	return false
+end
+
+-- V13.1: the boat you are sitting in does not offer you "Board" (its prompt used to take E, so E could not get
+-- you out). A local change only: everyone else still sees it.
+do
+	local hiddenBoard
+	RunService.Heartbeat:Connect(function()
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local seat = humanoid and humanoid.SeatPart
+		local hull = seat and seat.Parent and seat.Parent:FindFirstChild("Hull")
+		local prompt = hull and hull:FindFirstChild("BoardPrompt")
+		if prompt ~= hiddenBoard then
+			if hiddenBoard and hiddenBoard.Parent then
+				hiddenBoard.Enabled = true
+			end
+			hiddenBoard = prompt
+			if prompt then
+				prompt.Enabled = false
+			end
+		end
+	end)
 end
 
 -- Ziplines (client-driven ride; your own character is yours to move) ---------------------
@@ -862,6 +917,16 @@ local function pressPoltergoblin()
 	if not root or promptOwnsE() then
 		return
 	end
+	-- V13.1: Poltergoblin is switched off (Config.POLTER_ENABLED): E is for prompts. A press a step short of one
+	-- still says so.
+	if not Config.POLTER_ENABLED then
+		local almost = not humanoid.SeatPart and almostPrompt(6)
+		if almost then
+			local what = almost.ActionText ~= "" and almost.ActionText or "use it"
+			Hud.toast(string.format("A step closer to %s (E).", string.lower(what)))
+		end
+		return
+	end
 	local t = now()
 	local endsAt = player:GetAttribute("PolterEndsAt")
 	if endsAt then
@@ -1029,7 +1094,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		if humanoid and humanoid.SeatPart then
 			humanoid.Sit = false
 			humanoid.Jump = true
-		elseif input.KeyCode == Enum.KeyCode.ButtonY then
+		elseif input.KeyCode == Enum.KeyCode.ButtonY and Config.POLTER_ENABLED then
 			pressPoltergoblin()
 		end
 	elseif input.KeyCode == Enum.KeyCode.B or input.KeyCode == Enum.KeyCode.DPadDown then
@@ -1048,10 +1113,16 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		pressGrapple()
 	elseif input.KeyCode == Enum.KeyCode.E then
 		-- V8: E belongs to whatever is IN REACH, not only to what the camera happens to show (see reachPrompt).
+		-- V13.1 (the V13 playtest: "cant press E to get off boat"): in a boat with nothing else in reach, E gets you
+		-- out (your own boat's Board prompt is hidden while you sit in it, so it no longer takes the key).
 		local prompt = not promptOwnsE() and reachPrompt() or nil
+		local _, humanoid = getCharacter()
 		if prompt then
 			heldPrompt = prompt
 			prompt:InputHoldBegin()
+		elseif humanoid and humanoid.SeatPart then
+			humanoid.Sit = false
+			humanoid.Jump = true
 		else
 			pressPoltergoblin()
 		end
@@ -1823,6 +1894,9 @@ local CREATURE_FX = {
 	chill = { "blip", 0.5, 0.7, Color3.fromRGB(190, 235, 255) },
 	eye = { "rise", 0.5, 0.9, Color3.fromRGB(150, 90, 220) },
 	splash = { "splash", 1, 0.8, Color3.fromRGB(220, 240, 255) },
+	-- V13.1: the jade frogs and the Chill's hail.
+	croak = { "thud", 1.9, 1, Color3.fromRGB(52, 178, 116) },
+	hail = { "thud", 2.2, 1, Color3.fromRGB(190, 235, 255) },
 }
 
 function handlers.Creature(p)
@@ -1891,6 +1965,9 @@ end
 function handlers.RecallCalled(p)
 	if p.userId == player.UserId then
 		Effects.ring(p.position, Color3.fromRGB(110, 255, 190), 28, 1.2)
+		if typeof(p.boat) == "Instance" then
+			Hud.calledBoat(p.boat) -- V13.1: the shore hint says it is coming
+		end
 	end
 end
 
@@ -1951,6 +2028,34 @@ function handlers.TwisterThrow(p)
 		Effects.sound("whoosh", { position = p.position, speed = 0.7, volume = 1, range = 500 })
 		Effects.spray(p.position, 1)
 	end
+end
+
+-- V13.1: knocked out (server/Knockout.lua): the screen dims and counts down; then up again.
+function handlers.KnockedOut(p)
+	Hud.knockout(p.seconds, p.cause)
+	Effects.punchFov(60)
+	-- Flat on its back (a goblin at the wheel just slumps there). Its own client owns the body, so it lays it down.
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if humanoid and root and not humanoid.SeatPart then
+		humanoid.PlatformStand = true
+		local _, yaw = root.CFrame:ToEulerAnglesYXZ()
+		root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(math.rad(-80), 0, 0)
+	end
+	stopRide(false)
+	stopPull(false)
+	if sprintHeld then
+		setSprint(false)
+	end
+end
+
+function handlers.WokeUp()
+	Hud.knockout(nil)
+end
+
+function handlers.RecallParked()
+	Effects.chime(Effects.CHIME_GOOD, 0.6)
 end
 
 function handlers.BoatPush(p)
@@ -2024,6 +2129,7 @@ local SEA_FX = {
 	spout = { "splash", 1.4, 0.7, Color3.fromRGB(220, 240, 255), 0.6 },
 	yarr = { "rise", 0.8, 1, Color3.fromRGB(110, 255, 210) },
 	cannon = { "boom", 1.1, 0.9, Color3.fromRGB(110, 255, 210) },
+	croak = { "thud", 1.9, 1, Color3.fromRGB(52, 178, 116), 0.6 }, -- V13.1: the jade frogs
 }
 
 function handlers.SeaFx(p)

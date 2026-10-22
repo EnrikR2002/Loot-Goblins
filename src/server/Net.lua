@@ -43,6 +43,7 @@ Net.Emote = remote("EmoteRequest") -- (emoteId | "stop"): strike a pose you own 
 -- V13:
 Net.Port = remote("PortRequest") -- (action, a): "join" the running raid; "spectate" start|next|back|stop (server/Port.lua).
 Net.BoatAbility = remote("BoatAbilityRequest") -- (aimPoint): the driver used their boat's ability (server/BoatAbilities.lua).
+Net.Reset = remote("ResetRequest") -- V13.1: the Reset button (a real respawn, for a goblin who is stuck).
 Net.GameEvent = remote("GameEvent")
 folder.Parent = ReplicatedStorage
 

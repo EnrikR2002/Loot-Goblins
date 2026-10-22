@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "scan-test-routes-before-blaming-ai",
+  "title": "Check a test route's water depth before treating a stopped chaser as a bug",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-18",
+  "topics": [
+    "testing",
+    "ai"
+  ],
+  "observation": "A sea monster stopped chasing a scripted boat after one bite. The scripted route crossed an island's shallows, where the monster is designed to stop; the boat also ran aground there. Scanning candidate routes with downward raycasts first (water surface to seabed along the heading) and driving the deep one showed four bites in 30 seconds and no stop.",
+  "recommendation": "Before judging an AI chase from a scripted drive, verify the route stays in conditions the AI is meant to follow into (depth, zones), and log the AI's own state over time alongside the target's.",
+  "applies_when": [
+    "Testing pursuers with scripted or autopilot movement"
+  ],
+  "limits": [
+    "One game's Leviathan and route; Studio, one client"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/reports/2026-10-18-v13-1-playtest-fixes.md",
+      "detail": "Point 6 (the Leviathan): four bites in 30 s on a deep route."
+    },
+    {
+      "kind": "source-review",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/GAME_DESIGN.md",
+      "detail": "V13.1 lessons (4) in the game description."
+    }
+  ]
+}

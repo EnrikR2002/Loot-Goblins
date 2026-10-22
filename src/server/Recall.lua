@@ -18,6 +18,10 @@
 -- built); a specialty class is the goblin's own boat (one each, built the first time and brought again after that).
 -- The class changes only in the Port or at the Hoard, so it is never swapped mid-chase, and the cooldown is the same.
 -- Nothing here trusts the client: it only says "B".
+-- V13.1 (the V13 playtest: "it comes in like a tesla, definitely keep that, but it should stop reliably near you"): it
+-- still races in under boost, but its parking spot is the water nearest the CALLER, followed as they walk the shore,
+-- and when it is just its own braking distance away it BRAKES HARD (Config.RECALL_BRAKE) to a dead stop there. Then
+-- it HOLDS that spot (waves and currents do not carry it off) until someone climbs in or RECALL_HOLD runs out.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -170,8 +174,9 @@ local function finish(boat, quiet)
 		job.beacon:Destroy()
 	end
 	boat.model:SetAttribute("Recalled", nil)
+	boat.model:SetAttribute("RecallParked", nil)
 	if not quiet and job.player.Parent then
-		Net.toast(job.player, "Your boat is here. Hold E at it to climb in.")
+		Net.toast(job.player, "Your boat is here: E to climb in.")
 	end
 end
 
@@ -305,10 +310,15 @@ function Recall.request(player)
 	Net.broadcast("RecallCalled", { position = goal, userId = player.UserId, boat = boat.model })
 end
 
-local function drive(boat, job, t)
+-- Velocity across the water scaled to `keep` of itself (the hull is the server's while it is being brought).
+local function damp(hull, keep)
+	local v = hull.AssemblyLinearVelocity
+	hull.AssemblyLinearVelocity = Vector3.new(v.X * keep, v.Y, v.Z * keep)
+end
+
+local function drive(boat, job, t, dt)
 	local hull = boat.hull
 	local position = hull.Position
-	local goal = job.goal
 	if Boats.occupied(boat) or boat.state ~= "float" then
 		finish(boat, true)
 		if boat.state ~= "float" and job.player.Parent then
@@ -318,20 +328,65 @@ local function drive(boat, job, t)
 		end
 		return
 	end
+	-- V13.1: the parking spot follows the caller along the shore (the water nearest them).
+	local root = Util.aliveRoot(job.player)
+	if root and not job.parked and t >= (job.followAt or 0) then
+		job.followAt = t + 0.75
+		local water = SeaNav.nearestWater(root.Position.X, root.Position.Z, boat.spec.draft)
+		if water and flat(water - root.Position).Magnitude <= Config.RECALL_SHORE_MAX then
+			job.goal = Vector3.new(water.X, 0, water.Z)
+		end
+	end
+	local goal = job.goal
 	local toGoal = flat(goal - position)
-	if toGoal.Magnitude < Config.RECALL_ARRIVE or t - job.startedAt > Config.RECALL_TIMEOUT then
+	local speed = flat(hull.AssemblyLinearVelocity).Magnitude
+	-- Parked: it holds the spot for the caller (no drifting off on the waves).
+	if job.parked then
+		boat.input.throttle, boat.input.steer, boat.input.boost = 0, 0, false
+		damp(hull, math.exp(-4 * dt))
+		if t - job.parkedAt > Config.RECALL_HOLD then
+			finish(boat, true)
+		end
+		return
+	end
+	if t - job.startedAt > Config.RECALL_TIMEOUT then
 		if toGoal.Magnitude >= Config.RECALL_ARRIVE * 2 then
 			-- It is stuck somewhere: put it beside the shore rather than leave a goblin waiting.
 			Boats.place(boat, CFrame.lookAt(goal + Vector3.new(0, boat.hull.Position.Y, 0) + toGoal.Unit * -40, goal))
 		end
-		finish(boat, false)
+		job.parked, job.parkedAt = true, t
+		boat.model:SetAttribute("RecallParked", true)
+		if job.player.Parent then
+			Net.toast(job.player, "Your boat is here: E to climb in.")
+		end
 		return
 	end
-	-- Follow the route; the last point is the shore.
+	-- The tesla stop: full speed until its own braking distance (plus the parking margin) is left, then hard on the
+	-- brakes, engine off, to a dead stop.
+	local stopping = speed * speed / (2 * Config.RECALL_BRAKE)
+	if toGoal.Magnitude <= stopping + Config.RECALL_PARK then
+		boat.input.throttle, boat.input.boost = 0, false
+		damp(hull, math.max(0, speed - Config.RECALL_BRAKE * dt) / math.max(speed, 0.001))
+		if speed < 6 then
+			damp(hull, 0)
+			hull.AssemblyAngularVelocity = Vector3.zero
+			job.parked, job.parkedAt = true, t
+			boat.model:SetAttribute("RecallParked", true)
+			if job.player.Parent then
+				Net.toast(job.player, "Your boat is here: E to climb in.")
+				Net.send(job.player, "RecallParked", { boat = boat.model })
+			end
+		end
+		return
+	end
+	-- Follow the route; the last point is the shore. Close in, straight at the (moving) parking spot.
 	local waypoint = job.path[job.index] or goal
 	if job.index < #job.path and flat(waypoint - position).Magnitude < 70 then
 		job.index += 1
 		waypoint = job.path[job.index]
+	end
+	if toGoal.Magnitude < 220 or job.index >= #job.path then
+		waypoint = goal
 	end
 	local cf = hull.CFrame
 	local forward = flat(cf.LookVector)
@@ -345,23 +400,20 @@ local function drive(boat, job, t)
 		steer = cross >= 0 and -1 or 1
 	end
 	local throttle = dot > 0.5 and 1 or 0.45
-	-- Ease off for the last stretch so it stops beside the player instead of on the beach.
-	if toGoal.Magnitude < 150 then
-		throttle = math.min(throttle, math.clamp(toGoal.Magnitude / 150, 0.12, 1))
-	end
 	boat.input.throttle, boat.input.steer = throttle, steer
 	boat.input.boost = toGoal.Magnitude > 260 and dot > 0.9
 end
 
-function Recall.tick()
+function Recall.tick(dt)
 	local t = now()
+	dt = math.min(dt or 1 / 60, 0.1)
 	for boat, job in pairs(active) do
 		if not boat.hull.Parent then
 			active[boat] = nil
 		elseif not job.player.Parent then
 			finish(boat, true)
 		else
-			drive(boat, job, t)
+			drive(boat, job, t, dt)
 		end
 	end
 end
