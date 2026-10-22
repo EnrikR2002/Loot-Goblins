@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "studio-simulated-keys-skip-proximity-prompts",
+  "title": "Studio MCP's simulated keys do not trigger ProximityPrompts",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-18",
+  "topics": [
+    "testing",
+    "studio",
+    "input"
+  ],
+  "observation": "In a Studio play session driven through Studio MCP, holding E with user_keyboard_input beside an enabled, in-range treasure prompt (9 studs of a 10-stud reach, no line-of-sight requirement) never triggered it, and calling InputHoldBegin/InputHoldEnd on the prompt from execute_luau in the client did not either: a server listener on Triggered and on ProximityPromptService saw nothing. The same session's simulated keys did reach the game's own UserInputService and ContextActionService handlers (H opened a card, R fired a boat ability, Backspace left spectating). Calling the server function the prompt calls, from a Studio-only test script, worked.",
+  "recommendation": "Do not count a prompt as untestable or broken because simulated keys cannot hold it. Test a prompt's effect through a Studio-only server test command that calls the same function, test the key path only where the game binds the key itself, and say in the report which prompts were not held by a key.",
+  "applies_when": [
+    "Playtesting a Roblox game through Studio MCP input tools",
+    "A feature is reached by holding a ProximityPrompt"
+  ],
+  "limits": [
+    "One Windows PC, Studio in October 2026, keyboard input only",
+    "Real players' prompt input is unaffected; earlier Loot Goblins sessions reached prompts through the game's own reach-prompt fallback, which was not exercised here"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/d32829e321627f163d522fbabe498b1bd3c55fe6/docs/reports/2026-10-18-v13-goblin-port.md",
+      "detail": "Sections 30 and 32: held E and InputHoldBegin never reached the server; the steal worked through a test command calling Loot.tryGrab."
+    }
+  ],
+  "rubric_checks": [
+    "CL-13"
+  ]
+}

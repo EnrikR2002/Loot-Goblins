@@ -11,8 +11,10 @@
 -- boost and drift keys along.
 --
 -- It also draws every nearby boat's wake and spray, from how fast and how sideways it moves.
+local Debris = game:GetService("Debris")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -30,6 +32,7 @@ local boostRemote = remotes:WaitForChild("BoatBoostRequest")
 local driftRemote = remotes:WaitForChild("BoatDriftRequest")
 local fxRemote = remotes:WaitForChild("BoatFxRequest")
 local jumpRemote = remotes:WaitForChild("BoatJumpRequest")
+local abilityRemote = remotes:WaitForChild("BoatAbilityRequest")
 
 local gates = {}
 local sim, simHull = nil, nil
@@ -43,6 +46,13 @@ local onEvent = function(_kind, _position, _a, _b) end
 local hiddenPrompt = nil -- the anchor prompt of the boat we drive: hidden for its driver (R is the trick key)
 local spinSide = 1
 local trickQueued = false -- R pressed during a trick: the next one starts when it ends
+-- V13: the class ability (the stunt key on the water). Queued for the next physics step, sent to the server only once
+-- it has actually played; our own guess at its cooldown until the server's attribute arrives.
+local abilityQueued = false
+local predictedAbilityAt = 0
+local aimProvider = function()
+	return nil
+end
 
 local function now()
 	return workspace:GetServerTimeNow()
@@ -90,8 +100,67 @@ function BoatDrive.boost()
 	local readyAt = math.max(model:GetAttribute("BoostReadyAt") or 0, predictedReadyAt)
 	if sim and t >= readyAt and not model:GetAttribute("Moored") then
 		sim.boostUntil = t + Config.BOAT_BOOST_TIME
-		predictedReadyAt = t + Config.BOAT_BOOST_COOLDOWN
+		predictedReadyAt = t + (sim.spec.boostCooldown or Config.BOAT_BOOST_COOLDOWN)
 	end
+end
+
+-- V13: where the driver is looking (Main sets it: the same aim the grapple and the kegs use). Sent with an ability
+-- that fires something (the bow gun, the volley).
+function BoatDrive.setAimProvider(fn)
+	aimProvider = fn
+end
+
+-- The class ability. Returns true if it was queued (it plays on the next physics step, on the water).
+function BoatDrive.ability()
+	if not sim then
+		return false
+	end
+	local t = now()
+	if t < predictedAbilityAt then
+		return false
+	end
+	sim.abilityReadyAt = math.max(simHull.Parent:GetAttribute("AbilityReadyAt") or 0, predictedAbilityAt)
+	if not BoatSim.abilityReady(sim, t) then
+		return false
+	end
+	abilityQueued = true
+	return true
+end
+
+-- V13: the stunt key (R, R1, the touch STUNT button). In the air: a trick. On the water: the boat's ability.
+-- Returns "trick", "ability" or nil (nothing happened).
+function BoatDrive.stunt()
+	if not sim then
+		return nil
+	end
+	local airborne = (sim.out.wet or 0) <= 0 and not sim.grounded
+	if airborne or sim.trick then
+		return BoatDrive.trick() and "trick" or nil
+	end
+	return BoatDrive.ability() and "ability" or nil
+end
+
+-- The server refused an ability (its cooldown, a rule like "no tornado near home"): forget our own guess.
+function BoatDrive.abilityRefused()
+	predictedAbilityAt = 0
+end
+
+-- For the HUD: { id, readyAt, cooldown } of the boat being driven, or nil.
+function BoatDrive.abilityInfo()
+	local _, model = seatAndModel()
+	local spec = model and Config.BOAT_TYPES[model:GetAttribute("BoatType")]
+	local id = spec and spec.ability
+	local a = id and Config.BOAT_ABILITIES[id]
+	if not a then
+		return nil
+	end
+	return {
+		id = id,
+		def = a,
+		readyAt = math.max(model:GetAttribute("AbilityReadyAt") or 0, predictedAbilityAt),
+		cooldown = a.cooldown,
+		airborne = sim ~= nil and (sim.out.wet or 0) <= 0 and not sim.grounded,
+	}
 end
 
 -- Space in the driver's seat: a hop. Our own sim plays it this frame; if the server is the one
@@ -229,9 +298,24 @@ RunService.PreSimulation:Connect(function(dt)
 	input.throttle, input.steer, input.drift = seat.ThrottleFloat, seat.SteerFloat, driftHeld
 	input.jump = jumpQueued
 	jumpQueued = false
+	input.ability = abilityQueued
+	abilityQueued = false
+	if input.ability then
+		sim.abilityReadyAt = math.max(model:GetAttribute("AbilityReadyAt") or 0, predictedAbilityAt)
+	end
 	-- The real frame time, down to 10 frames a second, so a slow client's boat still gets its
 	-- full thrust and buoyancy (the forces are impulses scaled by dt).
 	local out = BoatSim.step(sim, input, math.min(dt, Config.BOAT_MAX_STEP), t)
+	if out.ability then
+		-- It played: now tell the server (with where we are looking) and show it.
+		local a = Config.BOAT_ABILITIES[out.ability]
+		predictedAbilityAt = t + (a and a.cooldown or 1)
+		abilityRemote:FireServer(aimProvider())
+		onEvent("ability", hull.Position, out.ability)
+	end
+	if out.airhop then
+		onEvent("airhop", hull.Position)
+	end
 	info.charge, info.level, info.drifting = out.charge, out.level, out.drifting
 	info.grounded = out.grounded == true
 	info.airborne = out.wet == 0 and not out.grounded
@@ -348,6 +432,8 @@ RunService.Heartbeat:Connect(function()
 			end
 		end
 	end
+	local clock = os.clock()
+	local camera = workspace.CurrentCamera
 	for hull, wake in pairs(wakes) do
 		local velocity = hull.AssemblyLinearVelocity
 		local flat = Vector3.new(velocity.X, 0, velocity.Z)
@@ -357,6 +443,31 @@ RunService.Heartbeat:Connect(function()
 		local slip = speed > 8 and (1 - math.abs(flat.Unit:Dot(Vector3.new(look.X, 0, look.Z)))) or 0
 		wake.foam.Rate = (afloat and speed > 10) and math.min(90, speed * 0.7) or 0
 		wake.spray.Rate = (afloat and speed > 45) and math.min(120, (speed - 45) * 1.1 + slip * 220) or 0
+		-- V13: a Wraith at speed leaves fading afterimages of itself (only near the camera; one every 0.09 s).
+		if
+			speed > 70
+			and clock >= (wake.ghostAt or 0)
+			and hull.Parent
+			and hull.Parent:GetAttribute("BoatType") == "wraith"
+			and (hull.Position - camera.CFrame.Position).Magnitude < 350
+		then
+			wake.ghostAt = clock + 0.09
+			local ghost = Instance.new("Part")
+			ghost.Name = "WraithAfterimage"
+			ghost.Size = hull.Size
+			ghost.CFrame = hull.CFrame
+			ghost.Anchored = true
+			ghost.CanCollide = false
+			ghost.CanQuery = false
+			ghost.CanTouch = false
+			ghost.CastShadow = false
+			ghost.Material = Enum.Material.Neon
+			ghost.Color = Color3.fromRGB(110, 255, 210)
+			ghost.Transparency = 0.7
+			ghost.Parent = workspace
+			TweenService:Create(ghost, TweenInfo.new(0.45), { Transparency = 1, Size = hull.Size * 0.8 }):Play()
+			Debris:AddItem(ghost, 0.5)
+		end
 	end
 end)
 

@@ -34,8 +34,12 @@ function Gear.pet(player)
 	return player:GetAttribute("Pet")
 end
 
-function Gear.petIs(player, id)
-	return player:GetAttribute("Pet") == id
+-- V13: "does this goblin's pet have the ability `ability`?" (Config.PET_ABILITIES: "Crab", "Gull", "Frog",
+-- "Tortoise", "Ghost", "Mender"). Many species share an ability; the V11 pet that first had it gives its name.
+function Gear.petIs(player, ability)
+	local pet = player:GetAttribute("Pet")
+	local def = type(pet) == "string" and Config.PETS[pet]
+	return def ~= nil and def ~= false and def.ability == ability
 end
 
 function Gear.give(player, id, quiet)

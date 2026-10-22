@@ -115,7 +115,7 @@ return function(t)
 			state.phase = state.phase or "raid"
 			return (Objective.line(state))
 		end
-		t.ok(string.find(line({ phase = "intermission" }), "(M)", 1, true), "between raids: the map")
+		t.eq(line({ phase = "port" }), "", "in the Port: no chip (the Port's own screen speaks)")
 		local carry = { name = "Lost Compass", value = 4 }
 		local far = line({ carrying = carry, bonus = 1, hoardDistance = 566 })
 		t.ok(string.find(far, "LOST COMPASS (5g)", 1, true), "value with interest")
@@ -148,5 +148,25 @@ return function(t)
 		t.ok(string.find(heart, "through the tunnel: HOLD E", 1, true), "a treasure under a roof says the way in")
 		local lagoon = line({ swimming = true, nearest = { name = "Skull Chalice", distance = 90, way = "in" } })
 		t.ok(string.find(lagoon, "Skull Chalice", 1, true), "even to a goblin swimming to it")
+	end)
+
+	t.test("V13: after the first raids the chip only speaks when it matters", function()
+		local veteran = Objective.TEACH_RAIDS
+		local function line(state)
+			state.phase = "raid"
+			state.raids = veteran
+			return (Objective.line(state))
+		end
+		t.eq(line({ inBoat = true }), "", "sailing about: nothing to say")
+		t.eq(line({ inWard = true }), "", "at home: nothing to say")
+		t.eq(line({ nearest = { name = "Giant Pearl", distance = 600 } }), "", "a far treasure: the map says it")
+		local carry = line({ carrying = { name = "Lost Compass", value = 4 }, hoardDistance = 566 })
+		t.ok(string.find(carry, "LOST COMPASS", 1, true) and string.find(carry, "B: boat", 1, true), "carrying: short")
+		t.ok(#carry < 48, "carrying is a short chip: " .. carry)
+		t.ok(
+			string.find(line({ nearest = { name = "Giant Pearl", distance = 60 } }), "HOLD E", 1, true),
+			"near: hold E"
+		)
+		t.ok(string.find(line({ swimming = true }), "B: boat", 1, true), "in the water: B")
 	end)
 end

@@ -40,6 +40,9 @@ Net.Deploy = remote("DeployRequest") -- (islandId | nil): choose where to land, 
 Net.Shop = remote("ShopRequest") -- (action, a, b): buy, equip, unequip, outfit presets (V11: server/Progress.lua).
 -- V11:
 Net.Emote = remote("EmoteRequest") -- (emoteId | "stop"): strike a pose you own (server/Emotes.lua).
+-- V13:
+Net.Port = remote("PortRequest") -- (action, a): "join" the running raid; "spectate" start|next|back|stop (server/Port.lua).
+Net.BoatAbility = remote("BoatAbilityRequest") -- (aimPoint): the driver used their boat's ability (server/BoatAbilities.lua).
 Net.GameEvent = remote("GameEvent")
 folder.Parent = ReplicatedStorage
 

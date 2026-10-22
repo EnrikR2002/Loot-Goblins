@@ -155,6 +155,84 @@ return function(t)
 		t.eq(win.total, math.min(P.PARTICIPATION + P.GOLD_CAP + P.WIN, P.RAID_CAP), "winner total")
 	end)
 
+	t.test("V13: deeds pay once a raid each, tricks up to their limit, and the raid cap still holds", function()
+		local D = P.DEEDS
+		local all = { steal = true, escape = true, snatch = true, tricks = 99 }
+		local deeds = Economy.payout(0, false, 0, P, all)
+		t.eq(deeds.deeds, D.steal + D.escape + D.snatch + D.tricksMax * D.trick, "every deed, tricks capped")
+		t.eq(deeds.total, P.PARTICIPATION + deeds.deeds, "participation plus deeds")
+		t.eq(Economy.payout(0, false, 0, P, {}).deeds, 0, "no deeds, nothing extra")
+		t.eq(Economy.payout(0, false, 0, P, nil).total, P.PARTICIPATION, "deeds are optional")
+		local best = Economy.payout(100, true, 10, P, all)
+		t.eq(best.total, P.RAID_CAP, "a perfect raid is capped")
+		t.ok(best.capped > 0, "the cap is reported")
+	end)
+
+	t.test("V13: the economy model: a typical goblin earns a boat in a few hours, and nothing takes weeks", function()
+		-- The model in docs/economy (and Config.PROGRESS): about 8 raids an hour (60 s Port + 20 s launch + 360 s raid).
+		local raidsPerHour = 3600 / (Config.PORT.DURATION + Config.SKYSHIP.WINDOW + Config.RAID_DURATION)
+		t.ok(raidsPerHour > 7 and raidsPerHour < 9, "about eight raids an hour: " .. raidsPerHour)
+		-- A typical raid: banks one middling treasure (10 gold), one steal, one clean trick; below the median.
+		local typical = Economy.payout(10, false, 12, P, { steal = true, tricks = 1 }).total
+		local perHour = typical * raidsPerHour
+		t.ok(perHour >= 120 and perHour <= 260, "a typical goblin's Shinies an hour: " .. perHour)
+		local fleet, dearest = 0, 0
+		for _, item in ipairs(Catalog.bySlot.boat) do
+			if item.price then
+				fleet += item.price
+				dearest = math.max(dearest, item.price)
+			end
+		end
+		t.ok(dearest / perHour <= 6, "the dearest boat in at most six hours of typical play")
+		t.ok(fleet / perHour <= 20, "every boat in at most twenty hours of typical play")
+		for _, item in ipairs(Catalog.bySlot.pet) do
+			if item.price then
+				t.ok(item.price / perHour <= 5, item.id .. ": a pet in at most five hours")
+			end
+		end
+	end)
+
+	t.test("V13: boats are bought and sailed like any item; the Skiff is everyone's", function()
+		local profile = fresh(400)
+		t.eq(Economy.look(profile).boat, "boat_skiff", "the default boat")
+		t.ok(Economy.equip(profile, "boat", "boat_cutter").ok, "the Cutter is free")
+		t.eq(Economy.equip(profile, "boat", "boat_wraith").code, "notowned", "not owned")
+		t.ok(Economy.buy(profile, "boat_reefhopper", 1).ok, "buy the Reefhopper")
+		t.eq(profile.shinies, 400 - Catalog.get("boat_reefhopper").price, "charged")
+		t.ok(Economy.equip(profile, "boat", "boat_reefhopper").ok, "sail it")
+		t.eq(Economy.look(profile).boat, "boat_reefhopper", "chosen")
+		t.eq(Economy.equip(profile, "boat", "hat_tricorn").code, "wrongslot", "a hat is not a boat")
+	end)
+
+	t.test("V13: escapes unlock their island's pet, and four classes of boat make an admiral", function()
+		local profile = fresh(0)
+		Economy.record(profile, "escape", "Bone")
+		Economy.checkAchievements(profile, 1)
+		t.ok(profile.owned.Levi, "the Little Leviathan for outrunning the Leviathan")
+		t.ok(profile.achievements.leviathan_friend, "achievement")
+		for _, entry in ipairs({
+			{ "Temple", "Sunny" },
+			{ "Crystal", "Echo" },
+			{ "Windmill", "Lamb" },
+			{ "Skull", "Bones" },
+			{ "Tide", "Zap" },
+			{ "Cross", "Peek" },
+		}) do
+			Economy.record(profile, "escape", entry[1])
+			Economy.checkAchievements(profile, 2)
+			t.ok(profile.owned[entry[2]], entry[2] .. " for escaping from " .. entry[1])
+		end
+		t.eq(Economy.statValue(profile, "escapes"), 7, "escapes counted")
+		for _, class in ipairs({ "skiff", "cutter", "wraith" }) do
+			Economy.record(profile, "bank", "Idol", 5, class)
+		end
+		Economy.checkAchievements(profile, 3)
+		t.eq(profile.achievements.fleet_admiral, nil, "three classes is not four")
+		Economy.record(profile, "bank", "Idol", 5, "ironbelly")
+		Economy.checkAchievements(profile, 4)
+		t.ok(profile.achievements.fleet_admiral, "four classes")
+	end)
+
 	t.test("stats and achievements unlock once, pay once and grant their trophy", function()
 		local profile = fresh(0)
 		Economy.record(profile, "bank", "Idol", 17)

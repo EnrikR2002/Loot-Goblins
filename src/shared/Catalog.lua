@@ -34,6 +34,8 @@ Catalog.RARITIES = {
 -- Where things go. `default` is worn when nothing else is chosen (and is always owned); `optional` slots can be
 -- empty. `group` is the shop's top-level tab.
 Catalog.SLOTS = {
+	-- V13: the boat CLASS a goblin sails (what B calls). Not a cosmetic: each class plays differently, none is better.
+	{ id = "boat", group = "fleet", name = "Boats", default = "boat_skiff" },
 	{ id = "hat", group = "goblin", name = "Hats", optional = true },
 	{ id = "eyes", group = "goblin", name = "Eyewear", optional = true },
 	{ id = "face", group = "goblin", name = "Face", optional = true },
@@ -58,13 +60,92 @@ Catalog.SLOTS = {
 }
 
 Catalog.GROUPS = {
+	{ id = "fleet", name = "Boats" }, -- V13: the showroom
 	{ id = "goblin", name = "Goblin" },
-	{ id = "boat", name = "Boat" },
+	{ id = "boat", name = "Paint" }, -- V13: was "Boat" (paint, flags, trails: how any boat looks)
 	{ id = "style", name = "Style" },
 	{ id = "pets", name = "Pets & Kits" },
 }
 
 local ITEMS = {
+	-- Boats (V13): the class B calls. `class` is a key of Config.BOAT_TYPES. Two are free for ever; the other five are
+	-- earned with Shinies (Robux is only ever a second way to the same boat). A sidegrade, never an upgrade: see
+	-- Config.BOAT_CLASSES for what each is best and worst at.
+	{
+		id = "boat_skiff",
+		slot = "boat",
+		class = "skiff",
+		name = "Skiff",
+		blurb = "The fastest thing on the water, with a Nitro afterburner. Two bad crashes and it is driftwood.",
+		rarity = "common",
+		free = true,
+		vibe = "speedy",
+	},
+	{
+		id = "boat_cutter",
+		slot = "boat",
+		class = "cutter",
+		name = "Cutter",
+		blurb = "Steady, tough and roomy: three friends aboard, a cannon for one of them and a bow gun for you.",
+		rarity = "common",
+		free = true,
+		vibe = "dependable",
+	},
+	{
+		id = "boat_reefhopper",
+		slot = "boat",
+		class = "reefhopper",
+		name = "Reefhopper",
+		blurb = "A stunt boat on twin pontoons with a giant spring: it leaps off flat water and hops again mid-air.",
+		rarity = "rare",
+		price = 350,
+		premium = "boat_reefhopper",
+		vibe = "acrobatic",
+	},
+	{
+		id = "boat_wraith",
+		slot = "boat",
+		class = "wraith",
+		name = "Wraith",
+		blurb = "A low ghost boat that turns on a doubloon, slips sideways and leaves a phantom for monsters to chase.",
+		rarity = "rare",
+		price = 500,
+		premium = "boat_wraith",
+		vibe = "spooky",
+	},
+	{
+		id = "boat_stormrunner",
+		slot = "boat",
+		class = "stormrunner",
+		name = "Stormrunner",
+		blurb = "Lightning on its sail. Faster in storms and by tornadoes, and it can whip up a tornado of its own.",
+		rarity = "rare",
+		price = 550,
+		premium = "boat_stormrunner",
+		vibe = "stormy",
+	},
+	{
+		id = "boat_ironbelly",
+		slot = "boat",
+		class = "ironbelly",
+		name = "Ironbelly",
+		blurb = "A riveted iron tug with a ram. Shrugs off monsters, plows rivals aside, pulls swimmers aboard.",
+		rarity = "rare",
+		price = 600,
+		premium = "boat_ironbelly",
+		vibe = "sturdy",
+	},
+	{
+		id = "boat_broadside",
+		slot = "boat",
+		class = "broadside",
+		name = "Broadside",
+		blurb = "A slow, proud gunboat: a three-gun volley from either side, and a cannon seat for each of two friends.",
+		rarity = "rare",
+		price = 700,
+		premium = "boat_broadside",
+		vibe = "booming",
+	},
 	-- Hats ---------------------------------------------------------------------------------------------------------
 	{
 		id = "hat_bandana",
@@ -1008,6 +1089,7 @@ local ITEMS = {
 	{
 		id = "Crab",
 		slot = "pet",
+		theme = "ocean",
 		name = "Tug Crab",
 		blurb = "A loyal, busy little crab who loves boats. Scuttles sideways, snaps at gulls.",
 		rarity = "uncommon",
@@ -1019,6 +1101,7 @@ local ITEMS = {
 	{
 		id = "Frog",
 		slot = "pet",
+		theme = "island",
 		name = "Spring Frog",
 		blurb = "Bounces everywhere, never sits still, catches flies mid-air.",
 		rarity = "uncommon",
@@ -1030,6 +1113,7 @@ local ITEMS = {
 	{
 		id = "Gull",
 		slot = "pet",
+		theme = "pirate",
 		name = "Scout Gull",
 		blurb = "A curious seabird who flies ahead, looks around and squawks about treasure.",
 		rarity = "uncommon",
@@ -1041,6 +1125,7 @@ local ITEMS = {
 	{
 		id = "Ghost",
 		slot = "pet",
+		theme = "magic",
 		name = "Pocket Ghost",
 		blurb = "A tiny mischievous spirit that floats, giggles and does loop-the-loops.",
 		rarity = "rare",
@@ -1052,6 +1137,7 @@ local ITEMS = {
 	{
 		id = "Tortoise",
 		slot = "pet",
+		theme = "ocean",
 		name = "Shell Tortoise",
 		blurb = "Calm, sturdy and unbothered. Plods along and keeps you safe.",
 		rarity = "rare",
@@ -1192,6 +1278,395 @@ local ITEMS = {
 	},
 }
 
+-- V13, THE BESTIARY: thirty-seven more pets, written compactly. Each: id (= Config.PETS and shared/PetLook), name,
+-- rarity, how it is had (a Shinies price, "unlock:<achievement>" for the seven island escape pets, or "premium"),
+-- vibe, theme (the shop's filter and the Port's pens), blurb. Rarity is prestige, never power: every pet with an
+-- ability has one of the same six (Config.PET_ABILITIES), and the one premium pet has none.
+local BESTIARY = {
+	-- Ocean
+	{
+		"Inky",
+		"Inky",
+		"uncommon",
+		160,
+		"silly",
+		"ocean",
+		"A little octopus with eight busy arms, all of them helping. Puffs a cloud of ink when startled.",
+	},
+	{
+		"Puffle",
+		"Puffle",
+		"uncommon",
+		140,
+		"silly",
+		"ocean",
+		"A round pufferfish that swims through the air, and puffs up into a spiky ball when something big is near.",
+	},
+	{
+		"Nibs",
+		"Nibs the Shark",
+		"rare",
+		260,
+		"mischievous",
+		"ocean",
+		"A pocket-sized shark that circles you excitedly. All teeth, no bite.",
+	},
+	{
+		"Bubbles",
+		"Bubbles",
+		"common",
+		120,
+		"elegant",
+		"ocean",
+		"A curly seahorse that bobs along upright, blowing bubbles at nothing in particular.",
+	},
+	{
+		"Wobble",
+		"Wobble",
+		"uncommon",
+		180,
+		"spooky",
+		"ocean",
+		"A glowing jellyfish that drifts at your shoulder, its soft bell pulsing.",
+	},
+	{
+		"Twinkle",
+		"Twinkle",
+		"common",
+		90,
+		"silly",
+		"ocean",
+		"A starfish that walks on two of its arms and cartwheels to keep up.",
+	},
+	{
+		"Nudi",
+		"Nudi",
+		"common",
+		80,
+		"silly",
+		"ocean",
+		"A frilly rainbow sea slug. Slow on the ground, but it always arrives.",
+	},
+	{
+		"Tusk",
+		"Tusk the Narwhal",
+		"rare",
+		320,
+		"adventurous",
+		"ocean",
+		"A baby narwhal with a stubby spiral horn and a very big heart.",
+	},
+	{
+		"Lumo",
+		"Lumo",
+		"rare",
+		240,
+		"spooky",
+		"ocean",
+		"A grumpy anglerfish whose glowing lure lights the way to treasure.",
+	},
+	{
+		"Otter",
+		"Kelp the Otter",
+		"uncommon",
+		150,
+		"nautical",
+		"ocean",
+		"A sea otter who carries a favourite shell everywhere and floats on its back for naps.",
+	},
+	-- Pirate
+	{
+		"Parrot",
+		"Captain Squawk",
+		"uncommon",
+		200,
+		"nautical",
+		"pirate",
+		"A loud, proud parrot in every colour at once. Has opinions about your sailing.",
+	},
+	{
+		"Rat",
+		"Scuttlebutt",
+		"common",
+		70,
+		"goblin",
+		"pirate",
+		"A ship's rat in a tiny red bandana. Sniffs out trouble and eats the biscuits.",
+	},
+	{
+		"Bat",
+		"Flittermouse",
+		"common",
+		110,
+		"spooky",
+		"pirate",
+		"A sleepy little bat that hangs upside down whenever you stop.",
+	},
+	{
+		"Monkey",
+		"Rascal",
+		"uncommon",
+		190,
+		"mischievous",
+		"pirate",
+		"A cheeky monkey with a curly tail who claps when you steal something.",
+	},
+	{
+		"Ferret",
+		"Noodle",
+		"uncommon",
+		130,
+		"silly",
+		"pirate",
+		"A long, wiggly ferret in a bandit mask who never, ever stops moving.",
+	},
+	{
+		"Fuse",
+		"Fuse",
+		"uncommon",
+		210,
+		"mischievous",
+		"pirate",
+		"A walking cannonball with a fizzing fuse. Perfectly safe. Probably.",
+	},
+	{
+		"Chompers",
+		"Chompers",
+		"rare",
+		300,
+		"mischievous",
+		"pirate",
+		"A treasure chest with legs, teeth and a tongue. Snaps its lid at anything shiny.",
+	},
+	-- Magic
+	{
+		"Shard",
+		"Shard",
+		"rare",
+		280,
+		"elegant",
+		"magic",
+		"A floating crystal sprite with three little shards orbiting it like moons.",
+	},
+	{
+		"Flurry",
+		"Flurry",
+		"uncommon",
+		220,
+		"elegant",
+		"magic",
+		"A snowflake spirit from Frost Spire, its six arms always slowly turning.",
+	},
+	{
+		"Glimmer",
+		"Glimmer",
+		"common",
+		100,
+		"elegant",
+		"magic",
+		"A will-o'-the-wisp: a bright little light with a shy face and a tail of sparks.",
+	},
+	{
+		"Dubloon",
+		"Dubloon",
+		"legendary",
+		550,
+		"prestigious",
+		"magic",
+		"A living gold coin that rolls along on its edge. Prestige you can hear jingling.",
+	},
+	{
+		"Rubble",
+		"Rubble",
+		"uncommon",
+		160,
+		"goblin",
+		"magic",
+		"A pebble golem that stomps along beside you. The ground shakes (a very little).",
+	},
+	{ "Spore", "Spore", "common", 120, "silly", "magic", "A hopping toadstool from Tangle Isle's deepest woods." },
+	{
+		"Moth",
+		"Lantern Moth",
+		"rare",
+		260,
+		"elegant",
+		"magic",
+		"A fuzzy moth with a glowing lantern belly, drawn to anything that glitters.",
+	},
+	{
+		"Whelp",
+		"Gilded Whelp",
+		"premium",
+		"premium",
+		"prestigious",
+		"magic",
+		"A tiny golden sea dragon with ruby eyes. A show pet: no ability at all, pure glamour.",
+	},
+	-- Island: the escape pets (earned by getting away from that island's creature, all the way to the sanctuary)
+	{
+		"Levi",
+		"Little Leviathan",
+		"trophy",
+		"unlock:leviathan_friend",
+		"prestigious",
+		"island",
+		"A tiny Leviathan that weaves through the air beside you. Earned by outrunning the real one.",
+	},
+	{
+		"Sunny",
+		"Sunny",
+		"trophy",
+		"unlock:guardian_dodger",
+		"prestigious",
+		"island",
+		"A tiny Sun Temple Guardian with a turning sun halo. Earned by escaping the Guardian's speedboat.",
+	},
+	{
+		"Echo",
+		"Little Echo",
+		"trophy",
+		"unlock:echo_escape",
+		"spooky",
+		"island",
+		"A tiny crystal imp. Earned by getting away from the Crystal Echo.",
+	},
+	{
+		"Lamb",
+		"Lambkin",
+		"trophy",
+		"unlock:bramble_escape",
+		"silly",
+		"island",
+		"Bramble's woolly baby. Headbutts things. Earned by getting away from Bramble.",
+	},
+	{
+		"Bones",
+		"Bones",
+		"trophy",
+		"unlock:fleet_escape",
+		"spooky",
+		"island",
+		"A little ghost pirate with a cutlass. Earned by escaping the Ghost Fleet.",
+	},
+	{
+		"Zap",
+		"Zap",
+		"trophy",
+		"unlock:warden_escape",
+		"adventurous",
+		"island",
+		"A mini Warden eel crackling with sparks. Earned by getting away from the Warden.",
+	},
+	{
+		"Peek",
+		"Peek",
+		"trophy",
+		"unlock:watcher_escape",
+		"mischievous",
+		"island",
+		"A pocket Watcher statue that only moves when you are not looking. Earned by escaping a Watcher.",
+	},
+	-- Island: sold at the menagerie
+	{
+		"Waddles",
+		"Waddles",
+		"uncommon",
+		170,
+		"silly",
+		"island",
+		"A Frost Spire penguin in a knitted scarf. Slides on its belly to keep up.",
+	},
+	{
+		"Cinderling",
+		"Cinderling",
+		"rare",
+		230,
+		"mischievous",
+		"island",
+		"A little lava sprite from Ember Isle. Warm to the touch, very excitable.",
+	},
+	{
+		"Bonefish",
+		"Bonefish",
+		"uncommon",
+		190,
+		"spooky",
+		"island",
+		"A skeleton fish from Skull Rock that swims through the air, rattling.",
+	},
+	{
+		"Clammy",
+		"Clammy",
+		"common",
+		110,
+		"nautical",
+		"island",
+		"A Coral Atoll clam that hops on its shell and clacks. Sometimes there is a pearl.",
+	},
+	{
+		"Twig",
+		"Twig",
+		"uncommon",
+		140,
+		"mischievous",
+		"island",
+		"A Tangle Isle imp who keeps pretending to steal your things.",
+	},
+}
+for _, row in ipairs(BESTIARY) do
+	local item = {
+		id = row[1],
+		slot = "pet",
+		name = row[2],
+		rarity = row[3],
+		vibe = row[5],
+		theme = row[6],
+		blurb = row[7],
+	}
+	local how = row[4]
+	if type(how) == "number" then
+		item.price = how
+	elseif how == "premium" then
+		item.premium = "pet_" .. row[1]
+	elseif type(how) == "string" and string.sub(how, 1, 7) == "unlock:" then
+		item.unlock = string.sub(how, 8)
+	end
+	item.utility = how ~= "premium"
+	table.insert(ITEMS, item)
+end
+-- V13 pet looks.
+for _, row in ipairs({
+	{ "petskin_inky_glow", "Inky", "Glow Octopus", "uncommon", 90, "spooky", "Your octopus, glowing deep-sea teal." },
+	{
+		"petskin_parrot_macaw",
+		"Parrot",
+		"Blue Macaw",
+		"uncommon",
+		90,
+		"nautical",
+		"Your parrot, in macaw blue and gold.",
+	},
+	{
+		"petskin_wobble_moon",
+		"Wobble",
+		"Moon Jelly",
+		"premium",
+		"premium",
+		"elegant",
+		"Your jellyfish, pale and shining like the moon on the water.",
+	},
+}) do
+	local item =
+		{ id = row[1], slot = "petskin", pet = row[2], name = row[3], rarity = row[4], vibe = row[6], blurb = row[7] }
+	if row[5] == "premium" then
+		item.premium = row[1]
+	else
+		item.price = row[5]
+	end
+	table.insert(ITEMS, item)
+end
+
 -- Achievements: deterministic, one clear deed each, read from a goblin's lasting stats (server/Economy.lua). Each
 -- pays Shinies once and some unlock a trophy item. No daily chores, nothing random.
 Catalog.ACHIEVEMENTS = {
@@ -1293,6 +1768,95 @@ Catalog.ACHIEVEMENTS = {
 		shinies = 150,
 		reward = "skin_gold",
 	},
+	-- V13: deeds and escapes. An "escape" is a creature giving up because you reached the lights of Goblin Cove
+	-- with its treasure still aboard (Pursuit.Escaped). Each escape-pet achievement names whose creature it is.
+	{
+		id = "light_fingers",
+		name = "Light Fingers",
+		how = "Steal a treasure from its island.",
+		stat = "steals",
+		goal = 1,
+		shinies = 20,
+	},
+	{
+		id = "leviathan_friend",
+		name = "Serpent's Friend",
+		how = "Outrun the Leviathan all the way to Goblin Cove.",
+		stat = "escape_Bone",
+		goal = 1,
+		shinies = 60,
+		reward = "Levi",
+	},
+	{
+		id = "guardian_dodger",
+		name = "Sun Dodger",
+		how = "Escape the Sun Temple Guardian's speedboat to Goblin Cove.",
+		stat = "escape_Temple",
+		goal = 1,
+		shinies = 60,
+		reward = "Sunny",
+	},
+	{
+		id = "echo_escape",
+		name = "Echo Chamber",
+		how = "Get away from the Crystal Echo to Goblin Cove.",
+		stat = "escape_Crystal",
+		goal = 1,
+		shinies = 40,
+		reward = "Echo",
+	},
+	{
+		id = "bramble_escape",
+		name = "Wool Over Their Eyes",
+		how = "Get away from Bramble's Tub to Goblin Cove.",
+		stat = "escape_Windmill",
+		goal = 1,
+		shinies = 40,
+		reward = "Lamb",
+	},
+	{
+		id = "fleet_escape",
+		name = "Ghost Runner",
+		how = "Escape the Ghost Fleet to Goblin Cove.",
+		stat = "escape_Skull",
+		goal = 1,
+		shinies = 60,
+		reward = "Bones",
+	},
+	{
+		id = "warden_escape",
+		name = "Live Wire",
+		how = "Get away from the Tide Vault's Warden to Goblin Cove.",
+		stat = "escape_Tide",
+		goal = 1,
+		shinies = 40,
+		reward = "Zap",
+	},
+	{
+		id = "watcher_escape",
+		name = "Don't Blink",
+		how = "Get away from the Watcher on the Waves to Goblin Cove.",
+		stat = "escape_Cross",
+		goal = 1,
+		shinies = 40,
+		reward = "Peek",
+	},
+	{
+		id = "great_escape",
+		name = "The Great Escape",
+		how = "Escape ten pursuers to Goblin Cove.",
+		stat = "escapes",
+		goal = 10,
+		shinies = 80,
+	},
+	{
+		id = "fleet_admiral",
+		name = "Fleet Admiral",
+		how = "Bank treasure from four different classes of boat.",
+		stat = "classes",
+		goal = 4,
+		shinies = 100,
+	},
 }
 
 -- Indexes ------------------------------------------------------------------------------------------------------------
@@ -1345,6 +1909,7 @@ end
 --   "hat=hat_tricorn;eyes=eyes_patch;skin=skin_moss;pet=Crab;petskin=petskin_crab_hermit"
 -- Everyone's client reads it to draw that goblin's boat effects and pet; the server reads it to dress the goblin.
 Catalog.LOOK_SLOTS = {
+	"boat", -- V13
 	"hat",
 	"eyes",
 	"face",

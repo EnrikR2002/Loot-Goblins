@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+local Lobby = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Lobby"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Blast = require(script.Parent.Blast)
@@ -49,6 +50,11 @@ function Kegs.throw(player, aimPoint)
 	end
 	local root = Util.aliveRoot(player)
 	if not root or count(player) <= 0 then
+		return
+	end
+	-- V13: no explosions in the Port.
+	if Lobby.inPort(root.Position) then
+		Net.toast(player, "Save the kegs for the raid!")
 		return
 	end
 	local t = now()

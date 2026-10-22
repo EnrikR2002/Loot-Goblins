@@ -747,6 +747,7 @@ function GhostFleet.tick(dt)
 	if Pursuit.inSanctuary(part.Position) then
 		Net.toast(target, "The ghost pirates wail at the cove lights and fade away.")
 		Pursuit.fx("quit", part.Position, { color = GHOST })
+		Pursuit.Escaped:Fire(target, "Skull") -- V13: an escape from the Ghost Fleet
 		finishFleet("The Ghost Fleet gives up at the lights of Goblin Cove.")
 		return
 	end
@@ -759,6 +760,11 @@ function GhostFleet.tick(dt)
 		velocity = flat(part.AssemblyLinearVelocity),
 		boat = boat,
 	}
+	-- V13: a Wraith's ghost fools the fleet for a moment (its volleys and leaps go to where the ghost runs).
+	local decoy = Pursuit.decoyOf(target)
+	if decoy then
+		info.at, info.velocity = decoy.at, decoy.velocity
+	end
 	info.targetSpeed = info.velocity.Magnitude
 	-- Far enough from Skull Rock: the pirates take to the dinghies.
 	local island = skullIsland()

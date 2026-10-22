@@ -22,11 +22,22 @@
 -- Version 1 (V7 to V10): { v = 1, shinies, pets = { [petId] = true }, kits = { [gearId] = true }, pet, kit, raids,
 -- wins, banked, receipts = { [purchaseId] = true } }. migrate() turns it into version 2 keeping every Shiny, pet,
 -- kit, choice, total and receipt.
+--
+-- Version 3 (V13, the Goblin Port): everything in version 2, plus
+--   stats.steals        treasures taken from their spot
+--   stats.escapes       pursuits that ended with this goblin reaching the sanctuary
+--   stats.escapedFrom   { [islandId] = count } which island's pursuer they got away from ("Bone" the Leviathan,
+--                       "Skull" the Ghost Fleet, "Temple" the Guardian's speedboat ...)
+--   stats.classBanks    { [boatClass] = count } treasure banked having come home in a boat of that class
+-- Boat classes are owned like any other item (owned["boat_wraith"] = true) and the one sailed is equipped.boat, so no
+-- older field changes meaning. A version-2 profile is upgraded in place (nothing is lost); a version-2 server meeting a
+-- version-3 profile refuses to write it ("newer"), which is the safe direction.
 local ProfileSchema = {}
 
-ProfileSchema.VERSION = 2
+ProfileSchema.VERSION = 3
 
-local STAT_KEYS = { "raids", "wins", "banked", "treasures", "snatches", "bestCombo" }
+local STAT_KEYS = { "raids", "wins", "banked", "treasures", "snatches", "bestCombo", "steals", "escapes" }
+local STAT_MAPS = { "bankedFrom", "escapedFrom", "classBanks" }
 
 local function whole(value)
 	if type(value) ~= "number" or value ~= value or value == math.huge or value == -math.huge then
@@ -67,7 +78,19 @@ function ProfileSchema.new(now)
 		equipped = {},
 		petSkins = {},
 		presets = {},
-		stats = { raids = 0, wins = 0, banked = 0, treasures = 0, snatches = 0, bestCombo = 0, bankedFrom = {} },
+		stats = {
+			raids = 0,
+			wins = 0,
+			banked = 0,
+			treasures = 0,
+			snatches = 0,
+			bestCombo = 0,
+			steals = 0,
+			escapes = 0,
+			bankedFrom = {},
+			escapedFrom = {},
+			classBanks = {},
+		},
 		achievements = {},
 		receipts = {},
 		history = {},
@@ -127,15 +150,17 @@ function ProfileSchema.sanitize(profile, limits, now)
 	for _, key in ipairs(STAT_KEYS) do
 		stats[key] = whole(stats[key])
 	end
-	local from = {}
-	if type(stats.bankedFrom) == "table" then
-		for lootId, count in pairs(stats.bankedFrom) do
-			if type(lootId) == "string" and whole(count) > 0 then
-				from[lootId] = whole(count)
+	for _, key in ipairs(STAT_MAPS) do
+		local from = {}
+		if type(stats[key]) == "table" then
+			for id, count in pairs(stats[key]) do
+				if type(id) == "string" and #id <= 64 and whole(count) > 0 then
+					from[id] = whole(count)
+				end
 			end
 		end
+		stats[key] = from
 	end
-	stats.bankedFrom = from
 	local achievements = {}
 	for id, at in pairs(profile.achievements) do
 		if type(id) == "string" then
@@ -208,6 +233,11 @@ function ProfileSchema.load(data, limits, now)
 	if version == nil or version == 1 then
 		profile = fromV1(data, now)
 		how = "migrated"
+	elseif version == 2 then
+		-- V13: version 2 -> 3 adds stats (sanitize fills them in, empty); every item, Shiny and receipt stays.
+		profile = data
+		profile.migratedFrom = 2
+		how = "upgraded"
 	else
 		profile = data
 		how = "loaded"

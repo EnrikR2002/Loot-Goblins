@@ -138,6 +138,82 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### Roblox takes L1, R1, R3 and Select from a controller before a script sees them
+
+**ID:** roblox-claims-some-gamepad-buttons | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** Logging UserInputService.InputBegan in a game that gives players a Tool showed ButtonL1 and ButtonR1 arriving already processed (the hotbar's RBXHotbarEquip), ButtonR3 processed (the camera's RbxCameraGamepadZoom) and ButtonSelect processed (GUI navigation while GuiService.AutoSelectGuiEnabled is on). A handler that returned on processed input never ran for them: a boat trick bound to R1 had never worked on a controller. A ContextActionService binding above Roblox's priority received L1, R1 and R3 (Select still only showed its release), and the actions then worked while the sword stayed in hand.
+
+**Recommendation:** Bind gamepad shoulder buttons and stick clicks with ContextActionService:BindActionAtPriority above the default priority, leave Select to Roblox, and test each binding by sending its key code and logging whether InputBegan reports it as processed.
+
+**Applies when:** Adding controller bindings; The game gives players a Tool (the hotbar is active)
+
+**Limits:** Key codes were sent through Studio MCP as keyboard input, not from a real controller; Observed with Roblox's default PlayerModule and backpack in October 2026
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md): Section C, H9: the processed-input log and the behaviour after the ContextActionService binding.
+
+### A RemoteEvent and an attribute set together can arrive in either order
+
+**ID:** remote-and-attribute-order-can-differ | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** The server set a player attribute (Diving) and then fired a RemoteEvent (DiveStart) in the same frame. The client started the flight on the event and cancelled it on any frame where the attribute was missing. Once in about forty launches the character dropped straight down off the ship under ordinary gravity, consistent with the event arriving before the attribute. Giving the attribute one second to arrive after the event (the end of a flight is still the attribute clearing) closed the window; the fault was not reproducible on demand.
+
+**Recommendation:** Do not let a client cancel state started by a remote because a related attribute is missing on the first frames; treat a change of the attribute (set, then cleared) as the signal, or carry the needed state in the remote itself.
+
+**Applies when:** A server sets attributes and fires remotes for the same event; A client cross-checks one against the other
+
+**Limits:** The ordering was inferred from one failure (the fall matched world gravity) and the code path, not captured in a network trace
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md): Section F, the dropped throw, with its screenshot in section E.
+
+### Choose landing spots with rays from the open sky, and measure every site
+
+**ID:** probe-landing-spots-from-open-sky-and-check-every-site | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** Automatic landing spots near each island's treasure were chosen by downward raycasts. Probing from just above the treasure's height accepted ground under a cave roof (Crystal Isle's treasure is inside a spire), and the throw hit the hillside. Probing from 900 studs up rejected anything under a roof or overhang. A fix checked on three islands passed; measuring all sixteen found two more islands that needed their own handling (a cave and a crater rim), and treasures under a roof needed a designer-given hint for where to aim.
+
+**Recommendation:** Start placement rays from above the highest geometry so covered ground is rejected, require clear ground all round the spot, and measure the real path on every site rather than a sample.
+
+**Applies when:** Generating spawn, landing or drop points from raycasts; Validating a placement rule across many hand-built sites
+
+**Limits:** One archipelago of 16 islands, measured on one Studio client
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md): Section C1 and its 16-island table.
+- [source-review](https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/GAME_DESIGN.md): The V12 chapter, Landing where you picked: the rule as built.
+
+### A server latency allowance can turn a near miss into a miss
+
+**ID:** latency-allowance-must-check-what-is-below | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** The server ended a flight with a water splash when the character was within an allowance above the water level (3.2 studs plus 6% of the fall speed, to cover latency). Over a beach this counted a splash up to 21 studs early, before the character reached dry land, so throws aimed at beaches were scored as sea landings about 20 studs short. Counting the early splash only when a downward ray from the point the character was heading for hit water removed the shortfall.
+
+**Recommendation:** When a server forgives latency by deciding an outcome early, check that the outcome is true of where the object is actually going (a ray from its projected point), not only of the height it has reached.
+
+**Applies when:** The server resolves landings, hits or zone entries ahead of time to hide latency
+
+**Limits:** One game's splash rule, measured on one client in Studio without added latency
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md): Section C1, cause (3), and the landing table after the change.
+
+### Roblox gravity still pulls a body whose velocity a script sets every frame
+
+**ID:** cancel-world-gravity-under-scripted-flight | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-18
+**Related checks:** General
+
+**Observed / proposed:** A client flew its own character by setting AssemblyLinearVelocity every frame from its own flight model (its own gravity). Workspace gravity still acted inside each physics step, so every throw sank below the arc the aim ring promised: 25 studs low after 7 s and about 40 at touchdown, enough to put throws aimed at beaches into the sea. A VectorForce equal to the body's weight, enabled only while flying, made the real flight match the model: throws at 16 islands then landed 2 to 22 studs from their aim points. The limbs hung on ball sockets while tumbling, so they were separate assemblies and their mass had to be counted too.
+
+**Recommendation:** When a script drives a body's velocity with its own gravity model, cancel workspace gravity on it (a world-space VectorForce of total mass times workspace.Gravity, counting every assembly that hangs from it) for the duration, and measure where it lands against where the model says it will.
+
+**Applies when:** A script sets a part's or character's velocity every frame; A projectile or flight model has its own gravity and an aim preview
+
+**Limits:** Measured on one Studio client with a client-owned character; Server-owned bodies and other frame rates were not measured
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/266029d832bcd260b2d7eb4e863a7f2cf479d0bd/docs/reports/2026-10-18-v12-cohesion-pass.md): Section C1: the three causes of sea landings, the anti-gravity force and the 16-island landing table.
+
 ### Studio's Edit mode keeps old module code after a script is changed
 
 **ID:** studio-edit-mode-require-caches-modules | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-17

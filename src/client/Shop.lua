@@ -26,7 +26,6 @@ local StyleFx = require(Shared:WaitForChild("StyleFx"))
 local EmoteMoves = require(Shared:WaitForChild("EmoteMoves"))
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
-local Pets = require(script.Parent.Pets)
 
 local Shop = {}
 
@@ -61,6 +60,7 @@ local stageView, overlay, previewChip
 local tab = "shop" -- "shop" | "locker"
 local section = "slot" -- "slot" | "presets" | "trophies"
 local slotId = "hat"
+local petTheme = nil -- V13: the pet grid's theme filter (nil: all)
 local selected = nil -- item id
 local preview = {} -- slot -> item id tried on (local only)
 local previewPreset = nil
@@ -197,6 +197,7 @@ end
 
 -- What the stage shows for a slot.
 local STAGE_FOR = {
+	boat = "boat", -- V13: the showroom
 	hat = "goblin",
 	eyes = "goblin",
 	face = "goblin",
@@ -242,6 +243,7 @@ local function clearStage()
 		stage.subject:Destroy()
 	end
 	stage.subject, stage.skeleton, stage.attached, stage.pet, stage.emote = nil, nil, nil, nil, nil
+	stage.boatClass = nil
 	if overlay then
 		for _, child in ipairs(overlay:GetChildren()) do
 			child:Destroy()
@@ -407,12 +409,24 @@ local function stageGoblin(look)
 	end
 end
 
+-- V13: the boat class a look sails (its "boat" slot), and the still copy of it the server made for previews.
+local function boatClassOf(look)
+	local item = Catalog.get(look and look.boat)
+	return item and item.class or "skiff"
+end
+
+local function boatTemplate(class)
+	local folder = ReplicatedStorage:FindFirstChild("LootGoblinsPreview")
+	return folder and (folder:FindFirstChild(class) or folder:FindFirstChild("skiff"))
+end
+
 local function stageBoat(look)
-	if stage.kind ~= "boat" or not stage.subject then
+	local class = boatClassOf(look)
+	if stage.kind ~= "boat" or not stage.subject or stage.boatClass ~= class then
 		clearStage()
 		stage.kind = "boat"
-		local folder = ReplicatedStorage:FindFirstChild("LootGoblinsPreview")
-		local template = folder and folder:FindFirstChild("skiff")
+		stage.boatClass = class
+		local template = boatTemplate(class)
 		if template then
 			stage.subject = template:Clone()
 			stage.subject.Parent = stageView.world
@@ -435,9 +449,43 @@ local function stagePet(look)
 	if rig then
 		rig.model.Parent = stageView.world
 		stage.subject = rig.model
-		stage.pet = { rig = rig, sig = sig, entry = { rig = rig, phase = 0, quirk = nil, quirkAt = 0, owner = player } }
+		if rig.glow then
+			rig.glow.Transparency = 1 -- the shell's "ready" glow is a game state, not part of the look
+		end
+		local cf, size = rig.model:GetBoundingBox()
+		stage.pet = {
+			rig = rig,
+			sig = sig,
+			box = size,
+			center = cf.Position.Y,
+			entry = { rig = rig, phase = 0, quirk = nil, quirkAt = 0, idleAt = time() + 1.5, owner = player },
+		}
 	end
 end
+
+-- V13: the showroom's rows (Config.BOAT_CLASSES) and abilities (Config.BOAT_ABILITIES) by class.
+local function classRow(class)
+	for _, row in ipairs(Config.BOAT_CLASSES) do
+		if row.id == class then
+			return row
+		end
+	end
+	return nil
+end
+
+local function boatAbility(class)
+	local spec = Config.BOAT_TYPES[class]
+	return spec and spec.ability and Config.BOAT_ABILITIES[spec.ability]
+end
+
+local BOAT_STATS = {
+	{ "speed", "SPEED", Color3.fromRGB(255, 196, 70) },
+	{ "handling", "HANDLING", Color3.fromRGB(120, 210, 255) },
+	{ "toughness", "TOUGHNESS", Color3.fromRGB(150, 230, 120) },
+	{ "air", "AIR", Color3.fromRGB(220, 160, 255) },
+	{ "firepower", "FIREPOWER", Color3.fromRGB(255, 120, 96) },
+}
+local ABILITY_KEYS = "At the wheel: R on the water (R1 on a controller, the stunt button on touch)."
 
 -- Flat effects drawn over the stage (a trail's colours, a callout's style, a kit's icon).
 local function overlayLabel(props)
@@ -449,6 +497,71 @@ local function stageOverlay(item)
 		child:Destroy()
 	end
 	if not item then
+		return
+	end
+	if item.slot == "boat" then
+		-- V13, the showroom card: what this class is for, five stats as pips, and its ability.
+		local class = classRow(item.class)
+		local ability = boatAbility(item.class)
+		if not class then
+			return
+		end
+		local panel = Ui.make("Frame", {
+			Name = "BoatStats",
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -24),
+			Size = UDim2.new(1, -16, 0, 92),
+			BackgroundColor3 = C.night,
+			BackgroundTransparency = 0.25,
+		}, overlay)
+		Ui.corner(panel, 10)
+		Ui.label(panel, {
+			Position = UDim2.fromOffset(10, 4),
+			Size = UDim2.new(0.5, -10, 0, 16),
+			Text = class.role,
+			Font = Ui.TITLE,
+			TextSize = 13,
+			TextColor3 = C.goldPale,
+		})
+		for i, stat in ipairs(BOAT_STATS) do
+			local value = class.pips[stat[1]] or 0
+			Ui.label(panel, {
+				Position = UDim2.fromOffset(10, 6 + i * 14),
+				Size = UDim2.fromOffset(74, 14),
+				Text = stat[2],
+				Font = Ui.BOLD,
+				TextSize = 11,
+				TextColor3 = C.parchmentDark,
+			})
+			Ui.label(panel, {
+				Position = UDim2.fromOffset(80, 6 + i * 14),
+				Size = UDim2.fromOffset(80, 14),
+				Text = string.rep("●", value) .. string.rep("○", 5 - value),
+				Font = Ui.BOLD,
+				TextSize = 12,
+				TextColor3 = stat[3],
+			})
+		end
+		if ability then
+			Ui.label(panel, {
+				Position = UDim2.new(0.5, 4, 0, 4),
+				Size = UDim2.new(0.5, -12, 0, 30),
+				Text = ability.glyph .. " " .. ability.name,
+				Font = Ui.TITLE,
+				TextSize = 16,
+				TextColor3 = C.white,
+			})
+			Ui.label(panel, {
+				Position = UDim2.new(0.5, 4, 0, 32),
+				Size = UDim2.new(0.5, -12, 0, 56),
+				Text = ability.verb .. string.format(" (every %d s). %s", ability.cooldown, ABILITY_KEYS),
+				Font = Ui.BODY,
+				TextSize = 11,
+				TextColor3 = C.parchment,
+				TextWrapped = true,
+				TextYAlignment = Enum.TextYAlignment.Top,
+			})
+		end
 		return
 	end
 	if item.slot == "trail" or item.slot == "wake" then
@@ -550,6 +663,15 @@ local function showStage(forSlot, item)
 	local look = previewLook()
 	local kind = STAGE_FOR[forSlot] or "goblin"
 	stage.ribbon = nil
+	-- V13: the chosen pet or boat stays on the stage after it is bought (buying clears the try-on, and the stage used
+	-- to fall back to what is worn: a Crab, or the Skiff).
+	if item and item.slot == "pet" then
+		if look.pet ~= item.id then
+			look.pet, look.petskin = item.id, nil
+		end
+	elseif item and item.slot == "boat" then
+		look.boat = item.id
+	end
 	if kind == "goblin" then
 		stageGoblin(look)
 		stage.focus = HEAD_SLOTS[forSlot] and "head" or "body"
@@ -618,7 +740,7 @@ local function stageCamera()
 		elseif hull and stage.focus == "bow" then
 			Ui.frameBox(
 				camera,
-				(hull.CFrame * CFrame.new(0, 2.5, -12)).Position,
+				(hull.CFrame * CFrame.new(0, 2.5, -hull.Size.Z * 0.42)).Position,
 				Vector3.new(9, 9, 9),
 				stage.yaw,
 				8,
@@ -629,8 +751,18 @@ local function stageCamera()
 			Ui.frameBox(camera, cf.Position, size, stage.yaw, 14, 0.95)
 		end
 	elseif stage.kind == "pet" then
-		local flier = stage.pet and (stage.pet.rig.kind == "flier" or stage.pet.rig.kind == "floater")
-		Ui.frameBox(camera, Vector3.new(0, flier and 1.5 or 0.8, 0), Vector3.new(3.8, 3.8, 3.8), stage.yaw, 12, 1.05)
+		local pet = stage.pet
+		local lift = pet and PetLook.FLYING[pet.rig.kind] and 1.2 or 0
+		local box = pet and pet.box or Vector3.new(3, 3, 3)
+		local span = math.max(3.4, box.X, box.Y, box.Z) * 1.2
+		Ui.frameBox(
+			camera,
+			Vector3.new(0, lift + (pet and pet.center or 0.8), 0),
+			Vector3.new(span, span, span),
+			stage.yaw,
+			12,
+			1.05
+		)
 	end
 end
 
@@ -652,25 +784,12 @@ local function animateStage(dt)
 	elseif stage.kind == "pet" and stage.pet then
 		local rig, entry = stage.pet.rig, stage.pet.entry
 		entry.phase += dt
-		if not entry.quirk and math.random() < dt * 0.15 then
-			entry.quirk = ({ walker = "snap", hopper = "tongue", plodder = "yawn", flier = "look", floater = "loop" })[rig.kind]
-			entry.quirkAt = t
-		elseif entry.quirk and t - entry.quirkAt > 1.8 then
-			entry.quirk = nil
-		end
-		local poses, bounce = Pets.POSES[rig.kind](entry, t, 0, { speed = 0, chased = false, diving = false })
-		local lift = (rig.kind == "flier" or rig.kind == "floater") and 1.2 or 0
-		local origin = CFrame.new(0, lift + (bounce or 0), 0)
-		for i, part in ipairs(rig.parts) do
-			local group = rig.groups[i]
-			local p = poses[group]
-			local g = CFrame.new()
-			if p then
-				local pivot = rig.pivots[group] or Vector3.zero
-				g = CFrame.new(pivot) * p * CFrame.new(-pivot)
-			end
-			part.CFrame = origin * g * rig.rest[i]
-		end
+		-- Its idle quirk every few seconds, so the shop shows what it does (shared/PetLook.lua).
+		entry.idleAt = math.min(entry.idleAt or 0, (entry.quirkAt or 0) + 4.5)
+		PetLook.updateQuirk(entry, t, true)
+		local poses, bounce, extra = PetLook.pose(entry, t, 0, { speed = 0, chased = false, diving = false })
+		local lift = PetLook.FLYING[rig.kind] and 1.2 or 0
+		PetLook.apply(rig, CFrame.new(0, lift + (bounce or 0), 0), poses, extra)
 	elseif stage.kind == "boat" and stage.subject and selected then
 		local item = Catalog.get(selected)
 		if item and item.slot == "trickfx" then
@@ -725,7 +844,7 @@ local GLYPHS = {
 	kit_FrostClaws = "❄",
 }
 
-local mannequinTemplate, boatTemplate
+local mannequinTemplate, skiffTemplate
 local function mannequin()
 	if not mannequinTemplate then
 		mannequinTemplate = Wardrobe.mannequin()
@@ -762,12 +881,23 @@ local function thumbnail(item, holder)
 		end
 		return
 	end
-	if kind == "boat" and (slot == "livery" or slot == "flag" or slot == "figurehead") then
-		local folder = ReplicatedStorage:FindFirstChild("LootGoblinsPreview")
-		boatTemplate = boatTemplate or (folder and folder:FindFirstChild("skiff"))
-		if boatTemplate then
+	if slot == "boat" then
+		-- V13: the class itself, a three-quarter view from the bow.
+		local template = boatTemplate(item.class)
+		if template then
 			local view = Ui.viewport(holder, { fov = 30 })
-			local copy = boatTemplate:Clone()
+			local copy = template:Clone()
+			copy.Parent = view.world
+			local cf, size = copy:GetBoundingBox()
+			Ui.frameBox(view.camera, cf.Position, size, 235, 16, 0.8)
+		end
+		return
+	end
+	if kind == "boat" and (slot == "livery" or slot == "flag" or slot == "figurehead") then
+		skiffTemplate = skiffTemplate or boatTemplate("skiff")
+		if skiffTemplate then
+			local view = Ui.viewport(holder, { fov = 30 })
+			local copy = skiffTemplate:Clone()
 			BoatLook.apply(copy, { [slot] = item.id })
 			copy.Parent = view.world
 			local hull = copy:FindFirstChild("Hull")
@@ -798,9 +928,10 @@ local function thumbnail(item, holder)
 			if rig.glow then
 				rig.glow.Transparency = 1 -- the shell's "ready" glow is a game state, not part of the look
 			end
-			rig.model:PivotTo(CFrame.new())
 			rig.model.Parent = view.world
-			Ui.frameBox(view.camera, Vector3.new(0, 0.8, 0), Vector3.new(3, 3, 3), 215, 14, 1)
+			local cf, size = rig.model:GetBoundingBox()
+			local span = math.max(2.6, size.X, size.Y, size.Z)
+			Ui.frameBox(view.camera, cf.Position, Vector3.new(span, span, span), 215, 14, 1)
 		end
 		return
 	end
@@ -909,11 +1040,27 @@ local function setMessage(text, color)
 end
 
 local function describe(item)
-	if item.slot == "pet" then
+	if item.slot == "boat" then
+		local class = classRow(item.class)
+		return class
+				and string.format(
+					"Best: %s. Worst: %s. Change boats at the Port or at the Hoard.",
+					class.best,
+					string.lower(string.sub(class.worst, 1, 1)) .. string.sub(class.worst, 2)
+				)
+			or ""
+	elseif item.slot == "pet" then
 		local def = Config.PETS[item.id]
-		return "Ability: "
-			.. (def and def.effect or "")
-			.. " Pets change on the skyship, at the Hoard or between raids."
+		local ability = def and def.ability and Config.PET_ABILITIES[def.ability]
+		if not ability then
+			return "A show pet: no ability, pure glamour. Pets change at the Port or at the Hoard."
+		end
+		return string.format(
+			"%s %s: %s Pets change at the Port or at the Hoard.",
+			ability.glyph,
+			ability.name,
+			ability.effect
+		)
 	elseif item.slot == "kit" then
 		local gear = Config.GEAR[item.gear]
 		return "Start every raid carrying it: "
@@ -990,14 +1137,19 @@ local function refreshInfo()
 		elseif wearing(item, look) then
 			local slotDef = Catalog.slot(item.slot)
 			if slotDef and slotDef.default == item.id then
-				primary.Text = "WEARING"
+				primary.Text = item.slot == "boat" and "SAILING IT" or "WEARING"
 				Ui.setStyle(primary, "ghost")
 			else
 				primary.Text = item.slot == "pet" and "PUT AWAY" or (item.slot == "kit" and "STOP" or "TAKE OFF")
+				if item.slot == "boat" then
+					primary.Text = "SAILING IT"
+					Ui.setStyle(primary, "ghost")
+				end
 				Ui.setStyle(primary, "wood")
 			end
 		else
-			primary.Text = item.slot == "pet" and "BRING OUT" or (item.slot == "kit" and "START WITH IT" or "WEAR IT")
+			primary.Text = item.slot == "pet" and "BRING OUT"
+				or (item.slot == "kit" and "START WITH IT" or (item.slot == "boat" and "SAIL IT" or "WEAR IT"))
 			Ui.setStyle(primary, "good")
 		end
 	elseif Catalog.forSale(item) then
@@ -1076,7 +1228,7 @@ local function primaryPressed()
 		pending[item.id] = time()
 		if wearing(item, look) then
 			local slotDef = Catalog.slot(item.slot)
-			if slotDef and slotDef.default == item.id then
+			if (slotDef and slotDef.default == item.id) or item.slot == "boat" then
 				pending[item.id] = nil
 				return
 			end
@@ -1134,6 +1286,7 @@ end
 
 -- The rail: slots, outfits, trophies ------------------------------------------------------------------------------------------------
 local rebuildGrid
+local showFilters
 
 local function railButton(text, order, onClick)
 	local b = Ui.button(rail, {
@@ -1149,7 +1302,7 @@ local function railButton(text, order, onClick)
 	return b
 end
 
-local GROUP_ICONS = { goblin = "👺", boat = "⛵", style = "✨", pets = "🐾" }
+local GROUP_ICONS = { fleet = "⛵", goblin = "👺", boat = "🎨", style = "✨", pets = "🐾" }
 
 local function rebuildRail()
 	for _, child in ipairs(rail:GetChildren()) do
@@ -1160,10 +1313,10 @@ local function rebuildRail()
 	table.clear(railButtons)
 	local set = ownedSet()
 	local group = (Catalog.slot(slotId) or Catalog.SLOTS[1]).group
-	-- The four groups, always in view: Goblin, Boat, Style, Pets.
+	-- The groups, always in view: Boats, Goblin, Paint, Style, Pets (V13: two to a row).
 	local groups = Ui.make("Frame", {
 		Name = "Groups",
-		Size = UDim2.new(1, -8, 0, 84),
+		Size = UDim2.new(1, -8, 0, math.ceil(#Catalog.GROUPS / 2) * 45 - 6),
 		BackgroundTransparency = 1,
 		LayoutOrder = 0,
 	}, rail)
@@ -1187,6 +1340,7 @@ local function rebuildRail()
 					break
 				end
 			end
+			petTheme = nil
 			selected = nil
 			preview = {}
 			previewPreset = nil
@@ -1489,9 +1643,61 @@ local function buildTrophies()
 	info.detail.Text = "Point at a trophy to see its reward on your goblin, boat or pet."
 end
 
+-- V13: the pet grid's theme chips (All, Ocean, Pirate, Magic, Island), over the grid while Pets is open.
+local filterBar, filterButtons = nil, {}
+local THEME_LABELS = {
+	{ nil, "ALL" },
+	{ "ocean", "🌊 OCEAN" },
+	{ "pirate", "🏴 PIRATE" },
+	{ "magic", "✨ MAGIC" },
+	{ "island", "🏝 ISLAND" },
+}
+showFilters = function(on)
+	if not filterBar then
+		return
+	end
+	filterBar.Visible = on
+	grid.Position = UDim2.fromOffset(548, on and 108 or 70)
+	grid.Size = UDim2.fromOffset(W - 560, H - (on and 154 or 116))
+	for key, b in pairs(filterButtons) do
+		Ui.setStyle(b, key == (petTheme or "all") and "gold" or "wood")
+	end
+end
+
+local function buildFilters()
+	filterBar = Ui.make("Frame", {
+		Name = "PetFilters",
+		Position = UDim2.fromOffset(548, 70),
+		Size = UDim2.fromOffset(W - 560, 32),
+		BackgroundTransparency = 1,
+		Visible = false,
+	}, window)
+	Ui.make("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		Padding = UDim.new(0, 6),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, filterBar)
+	for index, entry in ipairs(THEME_LABELS) do
+		local theme, text = entry[1], entry[2]
+		filterButtons[theme or "all"] = Ui.button(filterBar, {
+			text = text,
+			style = "wood",
+			size = UDim2.fromOffset(index == 1 and 58 or 84, 30),
+			order = index,
+			textSize = 12,
+			name = "theme_" .. (theme or "all"),
+		}, function()
+			petTheme = theme
+			selected = nil
+			rebuildGrid()
+		end)
+	end
+end
+
 rebuildGrid = function()
 	clearGrid()
 	if section ~= "slot" then
+		showFilters(false)
 		gridLayout.Parent = nil
 		rowsLayout.Parent = grid
 		if section == "presets" then
@@ -1506,10 +1712,11 @@ rebuildGrid = function()
 	end
 	rowsLayout.Parent = nil
 	gridLayout.Parent = grid
+	showFilters(slotId == "pet")
 	local set = ownedSet()
 	local order = 0
 	for _, item in ipairs(Catalog.sorted(slotId)) do
-		if listed(item, set) then
+		if listed(item, set) and (slotId ~= "pet" or not petTheme or item.theme == petTheme) then
 			order += 1
 			makeCard(item, order)
 		end
@@ -1678,11 +1885,10 @@ local function build()
 	}, function()
 		setMessage(
 			string.format(
-				"Every raid you play in pays %d Shinies, plus 1 for each gold you bank (up to %d), +%d for winning, +%d for banking something and finishing in the bottom half. Trophies pay extra once. Max %d a raid.",
+				"A raid pays %d Shinies, +1 per gold banked (up to %d), +%d for winning, and a little for deeds (a steal, an escape, a snatch, clean tricks). Trophies pay once. Max %d a raid.",
 				Config.PROGRESS.PARTICIPATION,
 				Config.PROGRESS.GOLD_CAP,
 				Config.PROGRESS.WIN,
-				Config.PROGRESS.UNDERDOG,
 				Config.PROGRESS.RAID_CAP
 			),
 			C.ink
@@ -1917,6 +2123,7 @@ local function build()
 		TextColor3 = C.parchmentDark,
 	})
 
+	buildFilters()
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(layout)
 	layout()
 end
@@ -1977,13 +2184,27 @@ local function bindWhileOpen()
 	end, false, Enum.ContextActionPriority.High.Value + 20, Enum.KeyCode.ButtonL1, Enum.KeyCode.ButtonR1)
 end
 
-function Shop.open(which)
+-- V13: `focus` opens it at one counter of the Port: "goblin" (Madame Ragwort's wardrobe), "pet" (the menagerie),
+-- "boat:<class>" (a slipway in the shipyard: that boat chosen, on the stage, its stats showing).
+function Shop.open(which, focus)
 	if not gui then
 		return
 	end
 	welcomeWaiting = nil -- found it on their own: no card needed
 	if which and which ~= tab then
 		tab = which
+	end
+	local focusItem
+	if type(focus) == "string" then
+		section, selected, preview, previewPreset, petTheme = "slot", nil, {}, nil, nil
+		if focus == "pet" then
+			slotId = "pet"
+		elseif string.sub(focus, 1, 5) == "boat:" then
+			slotId = "boat"
+			focusItem = "boat_" .. string.sub(focus, 6)
+		else
+			slotId = "hat"
+		end
 	end
 	visible = true
 	gui.Enabled = true
@@ -2000,6 +2221,9 @@ function Shop.open(which)
 	refreshBalance(false)
 	setMessage("")
 	refreshInfo()
+	if focusItem and Catalog.get(focusItem) then
+		choose(focusItem)
+	end
 	window.Position = UDim2.fromScale(0.5, 0.54)
 	TweenService:Create(window, TweenInfo.new(0.2, Enum.EasingStyle.Back), { Position = UDim2.fromScale(0.5, 0.5) })
 		:Play()
@@ -2101,13 +2325,11 @@ end
 -- V12: the welcome card waits for a calm moment: the goblin standing at home (in the Hoard's ward, nothing in
 -- hand) or between raids. V11 showed it the moment a new goblin joined, on top of the launch window, the map and
 -- the help card: the first twenty seconds became four things to close. Until then the wardrobe button glows.
-local function calmMoment()
+-- V13: or standing about in the Port (not watching a raid).
+local function atHoard()
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if workspace:GetAttribute("RaidPhase") ~= "raid" then
-		return false -- the results card speaks between raids (and opens the wardrobe)
-	end
-	if not root or player:GetAttribute("CarryingLoot") or player:GetAttribute("DeployState") ~= "landed" then
+	if not root or player:GetAttribute("Zone") ~= "raid" or player:GetAttribute("DeployState") ~= "landed" then
 		return false
 	end
 	local generated = workspace:FindFirstChild("LootGoblinsGenerated")
@@ -2117,6 +2339,13 @@ local function calmMoment()
 	return hoard ~= nil
 		and Vector3.new(root.Position.X - hoard.Position.X, 0, root.Position.Z - hoard.Position.Z).Magnitude
 			<= Config.WARD_RADIUS
+end
+
+local function calmMoment()
+	if player:GetAttribute("Zone") ~= "raid" then
+		return not player:GetAttribute("Spectating") and workspace:GetAttribute("RaidPhase") == "port"
+	end
+	return not player:GetAttribute("CarryingLoot") and atHoard()
 end
 
 local showWelcome
@@ -2246,23 +2475,27 @@ function Shop.start()
 			end
 		end)
 	end
-	-- The tailor's stall on the skyship opens the wardrobe.
+	-- V13: the Port's counters (the wardrobe, the menagerie, each slipway in the shipyard) open it at their page.
 	ProximityPromptService.PromptTriggered:Connect(function(prompt, who)
-		if who == player and prompt:GetAttribute("OpensWardrobe") then
-			Shop.open("shop")
+		local focus = who == player and prompt:GetAttribute("OpensWardrobe")
+		if focus then
+			Shop.open("shop", focus)
 		end
 	end)
 	RunService.RenderStepped:Connect(animateStage)
-	-- Until the wardrobe has been opened once, its button glows gently while there is time to look (on the ship).
+	-- V13: the dock (wardrobe and emotes) is a Port thing. In a raid it shows only at the Hoard, where pets and boats can
+	-- change; P opens the wardrobe anywhere. Until it has been opened once, its button glows gently in the Port.
 	task.spawn(function()
-		while not openedOnce do
-			task.wait(0.8)
-			if dockWardrobe and workspace:GetAttribute("RaidPhase") == "intermission" then
-				dockWardrobe.BackgroundColor3 = (math.floor(time() / 0.8) % 2 == 0) and C.goldPale or C.gold
+		while true do
+			task.wait(0.4)
+			if dock then
+				local inPort = player:GetAttribute("Zone") ~= "raid"
+				dock.Visible = (inPort and not player:GetAttribute("Spectating")) or atHoard()
+				if dockWardrobe and not openedOnce then
+					dockWardrobe.BackgroundColor3 = (inPort and math.floor(time() / 0.8) % 2 == 0) and C.goldPale
+						or C.gold
+				end
 			end
-		end
-		if dockWardrobe then
-			dockWardrobe.BackgroundColor3 = C.gold
 		end
 	end)
 end

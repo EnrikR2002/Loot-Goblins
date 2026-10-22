@@ -27,14 +27,19 @@ local Blast = {}
 Blast.Hit = Util.signal() -- (position, radius): something just went bang here (mines listen).
 local generation = 0 -- Bumped on reset, so strikes from an old raid never land.
 
+-- V13: where a goblin cannot be blasted by another goblin's boat gun (Main sets it: the Hoard's ward and the Port).
+Blast.safe = function(_position)
+	return false
+end
+
 -- opts: radius, damage, knockback, hullDamage, boatPush, breakPower, lootReason, owner (Player), sinks,
--- cause (text for the wreck feed), color.
+-- cause (text for the wreck feed), color, wardSafe (V13: goblins standing where Blast.safe says are left alone).
 function Blast.at(position, opts)
 	local radius = opts.radius or 12
 	local owner = opts.owner
 	for _, player in ipairs(Players:GetPlayers()) do
 		local root, humanoid = Util.aliveRoot(player)
-		if root then
+		if root and not (opts.wardSafe and Blast.safe(root.Position)) then
 			local offset = root.Position - position
 			local distance = offset.Magnitude
 			-- A blast with no owner is the world's (a shell, a bolt, a lava bomb, a boulder): it obeys Impact's grace and

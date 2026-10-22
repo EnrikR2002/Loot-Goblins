@@ -517,6 +517,12 @@ local function huntTick(dt, t)
 	local hull = boat.hull
 	local hullAt = flat(hull.Position)
 	local hullV = flat(hull.AssemblyLinearVelocity)
+	-- V13: a Wraith's ghost fools it too, for a moment: it shadows the ghost, and cannot catch it.
+	local decoy = Pursuit.decoyOf(h.target, h.position)
+	local fooled = decoy ~= nil
+	if fooled then
+		hullAt, hullV = decoy.at, decoy.velocity
+	end
 	local boatSpeed = hullV.Magnitude
 	h.avgSpeed += (boatSpeed - h.avgSpeed) * math.min(1, dt * 1.2)
 	-- Reasons to stop.
@@ -525,6 +531,7 @@ local function huntTick(dt, t)
 		Pursuit.fx("roar", h.position)
 		Net.send(h.target, "Toast", { text = "The Leviathan stops at the cove lights, roars... and sinks away." })
 		reason = "The Leviathan turns back at the lights of Goblin Cove."
+		Pursuit.Escaped:Fire(h.target, "Bone") -- V13: an escape from the Leviathan
 	elseif t - h.bornAt > L.HUNT_TIME then
 		reason = "The Leviathan tires of the chase and sinks away."
 	elseif h.flinches >= 3 then
@@ -550,6 +557,9 @@ local function huntTick(dt, t)
 	-- Where the stern is, and how far its snout is from it.
 	local look = flat(hull.CFrame.LookVector)
 	look = look.Magnitude > 0.05 and look.Unit or (boatSpeed > 5 and hullV.Unit or h.heading)
+	if fooled then
+		look = boatSpeed > 5 and hullV.Unit or look
+	end
 	local halfLength = boat.spec.size.Z * 0.5
 	local stern = hullAt - look * halfLength
 	local gap = flat(hullAt - h.position).Magnitude - halfLength
@@ -622,7 +632,7 @@ local function huntTick(dt, t)
 		end
 	end
 	-- The catch.
-	if h.state == "swim" and t >= h.contactReadyAt and gap < L.CONTACT then
+	if h.state == "swim" and t >= h.contactReadyAt and gap < L.CONTACT and not fooled then
 		contact(h, boat, h.target, t)
 	end
 	-- The wake: other boats beside the head are thrown aside.

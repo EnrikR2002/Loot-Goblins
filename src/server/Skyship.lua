@@ -143,7 +143,7 @@ local function buildCannon(index, x, z, outward)
 				setRing()
 			end)
 		end,
-		-- V9: climb in and aim any time you are aboard (the intermission too); it fires from the bell.
+		-- V9: climb in and aim any time you are aboard; it fires from the bell (V13: COUNTDOWN into the raid).
 		ready = function(player)
 			return aboard[player] ~= nil
 		end,
@@ -550,18 +550,8 @@ local function buildWardrobe()
 	signLabel.TextColor3 = TRIM
 	signLabel.TextScaled = true
 	signLabel.Parent = signGui
-	-- The prompt: walk up and press E (or tap it).
-	local promptPart = part("WardrobePrompt", Vector3.new(6, 4, 1), CFrame.new(x, 9.5, z - 3.4), TRIM, nil, false)
-	promptPart.Transparency = 1
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "WardrobePrompt"
-	prompt.ObjectText = "Madame Ragwort's Wardrobe"
-	prompt.ActionText = "Shop and dress up"
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt:SetAttribute("OpensWardrobe", true)
-	prompt.Parent = promptPart
+	-- V13: no prompt any more. Shopping lives in the Port (her real shop is on its south street); the stall stays as
+	-- the ship's dressing, so a raid's deck is about the cannons.
 end
 
 -- V12: where a goblin who picks an island comes down. Through V11 a pick (the map, the ship's own auto-fire)
@@ -926,18 +916,11 @@ function Skyship.board(player, since)
 	player:SetAttribute("DeployState", "aboard")
 end
 
--- `keepAboard` (V9, at the raid's start): leave goblins who are already on the ship where they are (one may
--- be sitting in a cannon, aimed and waiting for the bell).
-function Skyship.boardAll(keepAboard)
-	for _, player in ipairs(Players:GetPlayers()) do
-		if not (keepAboard and aboard[player]) then
-			Skyship.board(player)
-		end
+-- V13: the goblins setting off from the Port (server/Raid.lua decides who), all aboard together.
+function Skyship.boardList(players)
+	for _, player in ipairs(players) do
+		Skyship.board(player)
 	end
-end
-
-local function boardingTime()
-	return workspace:GetAttribute("RaidPhase") == "intermission" or now() < endsAt
 end
 
 -- V11: is this goblin the ship's business (on the deck or in a cannon)? Pets may be changed aboard.
@@ -949,19 +932,13 @@ function Skyship.isDeploying()
 	return now() < endsAt
 end
 
--- A character just spawned (first load, or a respawn): aboard if the ship is still in port.
+-- A character just spawned (first load, or a respawn): it is nobody's flight yet. (V13: where it goes, the skyship,
+-- Goblin Cove or the Port, is server/Raid.lua's call: Raid.placeCharacter.)
 function Skyship.onCharacter(player)
 	Flight.forget(player)
 	aboard[player] = nil
 	player:SetAttribute("Diving", nil)
 	player:SetAttribute("DeployState", nil)
-	if boardingTime() and model then
-		task.defer(function()
-			if player.Parent then
-				Skyship.board(player)
-			end
-		end)
-	end
 end
 
 function Skyship.forget(player)
@@ -993,13 +970,6 @@ function Skyship.reset()
 	opensAt, endsAt = 0, 0
 	workspace:SetAttribute("DeployOpensAt", nil)
 	workspace:SetAttribute("DeployEndsAt", nil)
-end
-
--- V9: during the intermission the bell's time is already known, so a goblin can climb in, aim, and watch the
--- countdown to it.
-function Skyship.preopen(at)
-	opensAt = at
-	workspace:SetAttribute("DeployOpensAt", at)
 end
 
 -- The island a goblin picked on the map is where the ship fires them if they are still aboard at the end, and

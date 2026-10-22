@@ -34,6 +34,8 @@ local Net = require(script.Parent.Net)
 local Sea = require(script.Parent.Sea)
 local SeaNav = require(script.Parent.SeaNav)
 local BoatStyle = require(script.Parent.BoatStyle)
+local BoatModels = require(script.Parent.BoatModels)
+local Gear = require(script.Parent.Gear)
 
 local Boats = {}
 Boats.list = {}
@@ -59,6 +61,21 @@ local lastIndex = 0
 local groundParams = RaycastParams.new()
 groundParams.FilterType = Enum.RaycastFilterType.Include
 groundParams.IgnoreWater = true
+
+local rides = {} -- player -> { class, at }: the last boat they were aboard (V13)
+
+-- V13: the class of boat this goblin was last aboard, if within `within` seconds (for the Hoard: "came home in").
+function Boats.lastRide(player, within)
+	local ride = rides[player]
+	if ride and workspace:GetServerTimeNow() - ride.at <= (within or 25) then
+		return ride.class
+	end
+	return nil
+end
+
+function Boats.forgetRider(player)
+	rides[player] = nil
+end
 
 local IDLE = { throttle = 0, steer = 0, drift = false }
 local seatInput = { throttle = 0, steer = 0, drift = false }
@@ -110,180 +127,19 @@ local function makeSeat(model, hull, class, name, offset)
 	return seat
 end
 
-local function buildVisuals(spec, typeName, model, hull, trim)
-	local size = spec.size
-	local top = size.Y / 2
-	local bow = -size.Z / 2
-	-- A pointed prow made of two angled planks.
-	for _, side in ipairs({ -1, 1 }) do
-		detail(
-			model,
-			hull,
-			"Prow",
-			Vector3.new(size.X * 0.62, size.Y * 0.9, size.Z * 0.3),
-			CFrame.new(side * size.X * 0.2, -0.1, bow - size.Z * 0.08) * CFrame.Angles(0, -side * math.rad(27), 0),
-			WOOD,
-			Enum.Material.WoodPlanks
-		)
-	end
-	detail(
-		model,
-		hull,
-		"Rail",
-		Vector3.new(size.X + 0.4, 0.5, size.Z * 0.8),
-		CFrame.new(0, top + 0.15, size.Z * 0.04),
-		Color3.fromRGB(80, 52, 32),
-		Enum.Material.Wood
-	).Transparency =
-		1
-	-- V10 (docs/ART_DIRECTION.md): a livery that says what the boat is from across the water. Two-tone wood, a
-	-- class stripe down each side (skiff gold, cutter teal, Navy blue), dark cap rails, a transom, a bow
-	-- lantern. Decoration only: welded, massless, non-colliding; the hull part physics uses is unchanged.
-	local look = Palette.BOATS[typeName] or Palette.BOATS.default
-	hull.Color = look.hull
-	for _, side in ipairs({ -1, 1 }) do
-		detail(
-			model,
-			hull,
-			"Strake",
-			Vector3.new(0.35, size.Y * 0.36, size.Z * 0.78),
-			CFrame.new(side * (size.X / 2 + 0.12), top * 0.2, size.Z * 0.05),
-			look.stripe,
-			Enum.Material.SmoothPlastic
-		)
-		detail(
-			model,
-			hull,
-			"CapRail",
-			Vector3.new(0.7, 0.45, size.Z * 0.8),
-			CFrame.new(side * (size.X / 2 - 0.2), top + 0.2, size.Z * 0.04),
-			look.trim,
-			Enum.Material.Wood
-		)
-	end
-	detail(
-		model,
-		hull,
-		"Transom",
-		Vector3.new(size.X + 0.3, size.Y * 0.9, 0.5),
-		CFrame.new(0, 0.05, size.Z / 2 + 0.1),
-		look.trim,
-		Enum.Material.WoodPlanks
-	)
-	local bowLamp = detail(
-		model,
-		hull,
-		"BowLamp",
-		Vector3.new(0.7, 0.7, 0.7),
-		CFrame.new(0, top + 0.9, bow - size.Z * 0.12),
-		Color3.fromRGB(255, 214, 120),
-		Enum.Material.Neon
-	)
-	bowLamp.Shape = Enum.PartType.Ball
-	-- Sail stripes and yards (added after the rigs below by striping every sail they made).
-	model:SetAttribute("Livery", typeName)
-	if typeName == "skiff" then
-		detail(model, hull, "Mast", Vector3.new(0.7, 12, 0.7), CFrame.new(0, top + 6, -2), Color3.fromRGB(88, 58, 36))
-		detail(
-			model,
-			hull,
-			"Sail",
-			Vector3.new(0.25, 8.5, 7),
-			CFrame.new(0, top + 7, 1.2),
-			Color3.fromRGB(240, 235, 215),
-			Enum.Material.Fabric
-		)
-		detail(
-			model,
-			hull,
-			"Flag",
-			Vector3.new(0.3, 2.4, 3.6),
-			CFrame.new(0, top + 12.4, -0.2),
-			trim,
-			Enum.Material.Fabric
-		)
-	elseif typeName == "cutter" then
-		for _, z in ipairs({ -6, 6 }) do
-			detail(
-				model,
-				hull,
-				"Mast",
-				Vector3.new(0.9, 18, 0.9),
-				CFrame.new(0, top + 9, z),
-				Color3.fromRGB(88, 58, 36)
-			)
-			detail(
-				model,
-				hull,
-				"Sail",
-				Vector3.new(0.3, 12, 10),
-				CFrame.new(0, top + 10, z + 0.6),
-				Color3.fromRGB(240, 235, 215),
-				Enum.Material.Fabric
-			)
-		end
-		detail(model, hull, "Flag", Vector3.new(0.3, 3, 5), CFrame.new(0, top + 18.5, -6), trim, Enum.Material.Fabric)
-		detail(
-			model,
-			hull,
-			"Cabin",
-			Vector3.new(8, 3, 7),
-			CFrame.new(0, top + 1.5, size.Z / 2 - 5),
-			WOOD,
-			Enum.Material.WoodPlanks
-		)
-	else
-		-- Patrol ship: dark hull, red sails, a cabin and a lantern.
-		hull.Color = Color3.fromRGB(55, 45, 55)
-		for _, z in ipairs({ -9, 4 }) do
-			detail(
-				model,
-				hull,
-				"Mast",
-				Vector3.new(1.1, 24, 1.1),
-				CFrame.new(0, top + 12, z),
-				Color3.fromRGB(50, 40, 40)
-			)
-			detail(
-				model,
-				hull,
-				"Sail",
-				Vector3.new(0.3, 15, 13),
-				CFrame.new(0, top + 12, z + 0.7),
-				Color3.fromRGB(170, 35, 40),
-				Enum.Material.Fabric
-			)
-		end
-		detail(
-			model,
-			hull,
-			"Cabin",
-			Vector3.new(11, 5, 10),
-			CFrame.new(0, top + 2.5, size.Z / 2 - 7),
-			Color3.fromRGB(70, 55, 60),
-			Enum.Material.WoodPlanks
-		)
-		local lamp = detail(
-			model,
-			hull,
-			"Lantern",
-			Vector3.new(1.4, 1.4, 1.4),
-			CFrame.new(0, top + 6.4, size.Z / 2 - 7),
-			Color3.fromRGB(255, 90, 60),
-			Enum.Material.Neon
-		)
-		local light = Instance.new("PointLight")
-		light.Color = Color3.fromRGB(255, 90, 60)
-		light.Range = 30
-		light.Parent = lamp
-	end
+local function buildVisuals(_spec, typeName, model, hull, trim)
+	-- V10's livery, V13's seven class silhouettes: server/BoatModels.lua. Decoration only (welded, massless,
+	-- non-colliding); the hull part BoatSim drives is exactly what Config.BOAT_TYPES says.
+	BoatModels.dress(typeName, model, hull, hull.Size, trim)
 end
 
--- V10: every sail gets a coloured band across it and a yard along its top; every mast a little cap.
+-- V10: every sail gets a coloured band across it and a yard along its top; every mast a little cap. (V13: only the
+-- square sails; the Reefhopper's, Stormrunner's and Wraith's sails are shaped and dressed by BoatModels.)
+local SQUARE_SAILS = { skiff = true, cutter = true, navy = true, broadside = true }
 local function dressSails(model, hull, typeName)
-	local look = Palette.BOATS[typeName] or Palette.BOATS.default
+	local look = BoatModels.livery(typeName)
 	for _, p in ipairs(model:GetChildren()) do
-		if p:IsA("BasePart") and p.Name == "Sail" then
+		if p:IsA("BasePart") and p.Name == "Sail" and SQUARE_SAILS[typeName] then
 			p.Color = look.sail
 			local offset = hull.CFrame:ToObjectSpace(p.CFrame)
 			detail(
@@ -442,12 +298,7 @@ local function buildBoat(spawn)
 		boat.driver.MaxSpeed = 0
 		boat.driver.Torque = 0
 		table.insert(boat.seats, boat.driver)
-		local spots = {}
-		if typeName == "skiff" then
-			spots = { Vector3.new(0, seatY, 2) }
-		elseif typeName == "cutter" then
-			spots = { Vector3.new(-3.4, seatY, 2), Vector3.new(3.4, seatY, 2), Vector3.new(0, seatY, -3) }
-		end
+		local spots = BoatModels.seats(typeName, size) -- V13: every class's own deck plan
 		for i, spot in ipairs(spots) do
 			table.insert(boat.seats, makeSeat(model, hull, "Seat", "Passenger" .. i, CFrame.new(spot)))
 		end
@@ -460,7 +311,8 @@ local function buildBoat(spawn)
 		board.ObjectText = spec.name
 		board.ActionText = "Board"
 		board.HoldDuration = 0
-		board.MaxActivationDistance = math.max(14, size.Z * 0.5)
+		-- V13: the Ironbelly is a rescue boat: swimmers can climb aboard from much farther off.
+		board.MaxActivationDistance = math.max(spec.boardReach or 14, size.Z * 0.5)
 		board.RequiresLineOfSight = false
 		board.KeyboardKeyCode = Enum.KeyCode.E
 		board.Parent = hull
@@ -492,11 +344,69 @@ local function buildBoat(spawn)
 		end)
 	end
 
+	if spawn.display then
+		return boat -- a still copy for the shipyard or the showroom: never parented into the world, never simulated
+	end
 	model.Parent = refs.folders.structures
 	pcall(function()
 		hull:SetNetworkOwner(nil)
 	end)
 	return boat
+end
+
+-- V13: a still, anchored copy of a class, built by the same code as the real boats (the Port's slipways, the shop's
+-- previews). Gun classes get their cannons drawn on (the working ones are mounted on real boats by Cannons.lua).
+function Boats.displayModel(typeName)
+	local spec = Config.BOAT_TYPES[typeName]
+	if not spec then
+		return nil
+	end
+	local boat = buildBoat({ cf = CFrame.new(), type = typeName, display = true })
+	local model = boat.model
+	local hull = boat.hull
+	local size = spec.size
+	local guns = {}
+	if spec.cannons then
+		table.insert(guns, { CFrame.new(0, size.Y / 2 + 2.4, -size.Z * 0.26), 0 })
+	end
+	if spec.broadside then
+		for _, side in ipairs({ -1, 1 }) do
+			table.insert(guns, { CFrame.new(side * (size.X / 2 - 2.2), size.Y / 2 + 2.4, 2.5), side })
+		end
+	end
+	for _, gun in ipairs(guns) do
+		local at, side = gun[1], gun[2]
+		BoatModels.add(
+			model,
+			hull,
+			"CannonBase",
+			Vector3.new(4.6, 1.4, 5.4),
+			at * CFrame.new(0, -1.7, 0),
+			Palette.WOOD_DARK
+		)
+		local facing = side == 0 and CFrame.new() or CFrame.Angles(0, -side * math.rad(90), 0)
+		BoatModels.add(
+			model,
+			hull,
+			"CannonBarrel",
+			Vector3.new(2.4, 2.4, 7),
+			at * facing * CFrame.new(0, 0, -2) * CFrame.Angles(math.rad(8), 0, 0),
+			Palette.IRON,
+			Enum.Material.Metal
+		)
+	end
+	for _, item in ipairs(model:GetDescendants()) do
+		if item:IsA("ProximityPrompt") or item:IsA("BaseScript") or item:IsA("WeldConstraint") then
+			item:Destroy()
+		elseif item:IsA("BasePart") then
+			item.Anchored = true
+			item.CanCollide = false
+			item.CanQuery = false
+			item.CanTouch = false
+		end
+	end
+	model:SetAttribute("Display", true)
+	return model
 end
 
 -- Occupants ------------------------------------------------------------------------
@@ -582,7 +492,8 @@ function Boats.board(boat, player, reach)
 		return
 	end
 	-- Generous: a boat worth boarding is often moving.
-	if (root.Position - boat.hull.Position).Magnitude > (reach or boat.spec.size.Z * 0.5 + 16) then
+	local beside = math.max(boat.spec.size.Z * 0.5, boat.spec.boardReach or 0) + 16
+	if (root.Position - boat.hull.Position).Magnitude > (reach or beside) then
 		return
 	end
 	for _, seat in ipairs(boat.seats) do
@@ -625,7 +536,7 @@ function Boats.boost(player)
 	if t >= boat.boostReadyAt then
 		boat.impactGraceUntil = math.max(boat.impactGraceUntil, t + 0.3) -- The boost's punch is not a crash.
 		boat.boostUntil = t + Config.BOAT_BOOST_TIME
-		boat.boostReadyAt = t + Config.BOAT_BOOST_COOLDOWN
+		boat.boostReadyAt = t + (boat.spec.boostCooldown or Config.BOAT_BOOST_COOLDOWN)
 		boat.model:SetAttribute("BoostEndsAt", boat.boostUntil)
 		boat.model:SetAttribute("BoostReadyAt", boat.boostReadyAt)
 		Net.broadcast("BoatBoost", { position = boat.hull.Position, userId = player.UserId })
@@ -742,6 +653,15 @@ function Boats.shove(boat, velocity, spin)
 	end
 	-- A push we caused is not a crash, and not cheating.
 	local t = now()
+	-- V13: heavy classes move less (Config shoveTaken), and an Ironbelly in the middle of its Ram Plow hardly at all.
+	local taken = boat.spec.shoveTaken or 1
+	if t < (boat.plowUntil or 0) then
+		taken *= 0.2
+	end
+	if taken ~= 1 then
+		velocity *= taken
+		spin = spin and spin * taken or nil
+	end
 	boat.impactGraceUntil = math.max(boat.impactGraceUntil, t + 0.5)
 	boat.crash = nil
 	local size = velocity.Magnitude
@@ -912,6 +832,10 @@ local function police(boat, dt, t)
 	if t < (boat.shovedUntil or 0) then
 		allowed += boat.shovedBy or 0
 	end
+	-- V13: a class ability the server granted (Nitro, a Phantom slip, a Ram Plow, a Spring) is allowed its speed.
+	if t < (boat.abilityAllowUntil or 0) then
+		allowed += boat.abilityAllow or 0
+	end
 	local broken = position.X ~= position.X or speed ~= speed or math.abs(position.Y) > 5000
 	-- Updates from the driver arrive in bursts on a bad connection, so a jump is judged
 	-- against the time since the hull last moved here, not against one frame.
@@ -1008,6 +932,9 @@ local function respawn(boat)
 	boat.payload = 0
 	boat.scrape = 0
 	boat.reclaimUntil = 0
+	boat.nitroUntil, boat.plowUntil, boat.slipUntil, boat.abilityAllowUntil = 0, 0, 0, 0
+	boat.abilityReadyAt = 0
+	boat.model:SetAttribute("AbilityReadyAt", nil)
 	boat.model:SetAttribute("Health", boat.health)
 	boat.model:SetAttribute("Moored", false)
 	boat.model:SetAttribute("BoostEndsAt", nil)
@@ -1052,35 +979,19 @@ function Boats.build(worldRefs)
 		local entry = typeof(spawn) == "CFrame" and { cf = spawn, type = "skiff" } or spawn
 		table.insert(Boats.list, buildBoat(entry))
 	end
-	-- V11: a still copy of each player boat class for the shop's preview, so it shows the real boat.
+	-- V11: a still copy of each player boat class for the shop's preview, so it shows the real boat. V13: all seven.
 	local preview = ReplicatedStorage:FindFirstChild("LootGoblinsPreview")
 	if preview then
 		preview:Destroy()
 	end
 	preview = Instance.new("Folder")
 	preview.Name = "LootGoblinsPreview"
-	for _, typeName in ipairs({ "skiff", "cutter" }) do
-		for _, boat in ipairs(Boats.list) do
-			if boat.typeName == typeName and not boat.ai then
-				local archivable = boat.model.Archivable
-				boat.model.Archivable = true
-				local copy = boat.model:Clone()
-				boat.model.Archivable = archivable
-				for _, item in ipairs(copy:GetDescendants()) do
-					if item:IsA("ProximityPrompt") or item:IsA("BaseScript") then
-						item:Destroy()
-					elseif item:IsA("BasePart") then
-						item.Anchored = true
-						item.CanCollide = false
-						item.CanQuery = false
-						item.CanTouch = false
-					end
-				end
-				copy.Name = typeName
-				copy:PivotTo(CFrame.new(0, 0, 0))
-				copy.Parent = preview
-				break
-			end
+	for _, entry in ipairs(Config.BOAT_CLASSES) do
+		local copy = Boats.displayModel(entry.id)
+		if copy then
+			copy.Name = entry.id
+			copy:PivotTo(CFrame.new(0, 0, 0))
+			copy.Parent = preview
 		end
 	end
 	preview.Parent = ReplicatedStorage
@@ -1143,6 +1054,12 @@ local function simulate(boat, dt, t)
 		input.throttle, input.steer, input.drift = boat.driver.ThrottleFloat, boat.driver.SteerFloat, boat.driftHeld
 		input.jump = boat.jumpQueued == true
 		boat.jumpQueued = false
+		-- V13: the class ability, when the server is the one simulating (it was granted by BoatAbilities already).
+		input.ability = boat.abilityQueued == true
+		boat.abilityQueued = false
+		if input.ability then
+			boat.abilityReadyAt = 0 -- the server's own cooldown is BoatAbilities'; let the physics play once
+		end
 	else
 		input = IDLE
 	end
@@ -1219,6 +1136,14 @@ function Boats.tick(dt)
 					boat.payload = payload
 					boat.model:SetAttribute("Payload", payload)
 				end
+				-- V13: who rode which class, for "came home in a ..." (Boats.lastRide).
+				if occupied and not boat.ai then
+					for _, entry in ipairs(occupants(boat)) do
+						if entry.player then
+							rides[entry.player] = { class = boat.typeName, at = t }
+						end
+					end
+				end
 			end
 			if not boat.asleep then
 				-- Who simulates this hull right now?
@@ -1252,14 +1177,14 @@ function Boats.tick(dt)
 					})
 				end
 				watchHull(boat, dt, t)
-				-- A hull left alone patches itself.
-				if
-					boat.state == "float"
-					and boat.health < boat.spec.health
-					and t - boat.lastDamageAt > Config.BOAT_REPAIR_DELAY
-				then
+				-- A hull left alone patches itself. V13: a driver with a Mender pet patches sooner and faster.
+				local helm = (not boat.ai and boat.health < boat.spec.health) and driverOf(boat) or nil
+				local mender = helm ~= nil and Gear.petIs(helm, "Mender")
+				local delay = mender and Config.PET_MENDER_DELAY or Config.BOAT_REPAIR_DELAY
+				if boat.state == "float" and boat.health < boat.spec.health and t - boat.lastDamageAt > delay then
 					local before = math.floor(boat.health)
-					boat.health = math.min(boat.spec.health, boat.health + Config.BOAT_REPAIR_RATE * dt)
+					local rate = Config.BOAT_REPAIR_RATE * (mender and Config.PET_MENDER_RATE or 1)
+					boat.health = math.min(boat.spec.health, boat.health + rate * dt)
 					if math.floor(boat.health) ~= before then
 						boat.model:SetAttribute("Health", math.floor(boat.health))
 					end

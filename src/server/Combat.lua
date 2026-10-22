@@ -20,6 +20,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
 
 local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
+local Lobby = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Lobby"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Loot = require(script.Parent.Loot)
@@ -76,16 +77,22 @@ local function swing(player, tool)
 
 	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
 	local hits = {}
+	-- V13: in the Port a sword is a toy: a hit is a harmless bonk (a little hop back), never damage.
+	local inPort = Lobby.inPort(root.Position)
 	for _, other in ipairs(Players:GetPlayers()) do
 		local otherRoot, otherHumanoid = Util.aliveRoot(other)
 		if other ~= player and otherRoot then
 			local offset = otherRoot.Position - root.Position
 			local flat = Vector3.new(offset.X, 0, offset.Z)
 			if offset.Magnitude <= range and flat.Magnitude > 0.01 and flat.Unit:Dot(look) >= Config.SWORD_MIN_DOT then
-				local dealt = Util.damage(otherHumanoid, damage)
-				Poltergoblin.markDamage(player, otherHumanoid, dealt)
-				Loot.knockLoose(other, root.Position, "sword", player)
-				Util.knockback(otherRoot, flat.Unit * knockback + Vector3.new(0, 15, 0))
+				if inPort or Lobby.inPort(otherRoot.Position) then
+					Util.knockback(otherRoot, flat.Unit * 16 + Vector3.new(0, 12, 0))
+				else
+					local dealt = Util.damage(otherHumanoid, damage)
+					Poltergoblin.markDamage(player, otherHumanoid, dealt)
+					Loot.knockLoose(other, root.Position, "sword", player)
+					Util.knockback(otherRoot, flat.Unit * knockback + Vector3.new(0, 15, 0))
+				end
 				table.insert(hits, otherRoot.Position)
 			end
 		end

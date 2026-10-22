@@ -2,7 +2,7 @@
 
 Loot Goblins can sell a few things for Robux, but **nothing is on sale yet**. No product exists, no id is in the code, and `SALES_ENABLED` is `false`. Until a teammate does the steps below, no purchase window can open and players see no Robux prices (in Studio, premium items show as "ROBUX: NOT ON SALE" so the team can preview them).
 
-Everything sold for Robux is either a **pet that is also sold for Shinies** (Robux is only a second way to it) or **cosmetic only**. No Robux item makes a goblin stronger. There are no random rewards of any kind.
+Everything sold for Robux is either **something also earnable with Shinies** (a pet, or since V13 a boat class: Robux is only a shortcut) or **cosmetic only** (since V13 that includes a show pet with no ability at all). No Robux item makes a goblin stronger than what Shinies can buy. There are no random rewards, eggs, loot boxes or trading of any kind.
 
 ## What could be sold
 
@@ -15,6 +15,14 @@ Everything sold for Robux is either a **pet that is also sold for Shinies** (Rob
 | `livery_starlit` | Starlit Galleon (boat paint) | no, premium cosmetic |
 | `trail_aurora` | Aurora Ribbon (boost trail) | no, premium cosmetic |
 | `petskin_crab_gold` | Golden Crab (pet look) | no, premium cosmetic |
+| `boat_reefhopper`, `boat_wraith`, `boat_stormrunner`, `boat_ironbelly`, `boat_broadside` (V13) | that boat class | yes, for Shinies (350 to 700) |
+| `pet_Whelp` (V13) | the Gilded Whelp, a show pet | no, premium cosmetic: **it has no ability** |
+| `petskin_wobble_moon` (V13) | Moon Jelly (pet look for Wobble) | no, premium cosmetic |
+| `bundle_fleet` (V13) | all five unlockable boats | yes, each for Shinies. **No catalogue item points at it, so the shop does not show it**; it is ready for a team that wants a bundle pass |
+
+### What the team should decide (V13)
+
+Commercially sensible, and fair: everything that changes how you play is earnable in a few hours of ordinary raids (see the V13 report's economy model), so a boat pass sells time, not power. If the team wants to sell boats at all, a price that is a convenience next to about two to four hours of play, and a bundle cheaper than the five passes together, would fit. A show pet or a look is pure expression. The AI does not set prices; Roblox gives the real price to the shop once a product exists.
 
 ## Turning one on
 

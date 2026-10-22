@@ -1,19 +1,21 @@
--- Pets that follow goblins about (V11, Goblin Life). Drawn on every client from each goblin's Pet and Look attributes;
--- what a pet DOES (its ability) is decided on the server from the Pet attribute, never from anything here.
+-- Pets that follow goblins about (V11, Goblin Life; V13 forty-two of them). Drawn on every client from each goblin's
+-- Pet and Look attributes; what a pet DOES (its ability) is decided on the server from the Pet attribute, never here.
 --
 -- How a pet keeps up with a goblin who is very fast and very often airborne:
---   * on foot, the walkers (crab, frog, tortoise) walk, hop or plod beside you on the ground (a springy follow);
+--   * on foot, the ground pets (walkers, hoppers, plodders, crawlers, the rolling coin) move beside you on the ground
+--     (a springy follow);
 --   * in a boat they ride on its deck beside the driver; during a launch, a skydive, a tumble or a swim they cling
---     on (the crab to your back, the frog on your head, the tortoise like a backpack), so a pet is never left behind
---     on an island or flung across the sea;
---   * the fliers (gull, ghost) fly at a spot beside you, kept in YOUR frame of reference, so they hold station at any
---     speed; a sudden burst of speed only makes them sway back a little;
+--     on (to your back, your head, or like a backpack), so a pet is never left behind on an island or flung across
+--     the sea;
+--   * the air pets (fliers, floaters, swimmers that swim through the air, the slithering serpents) hold a spot beside
+--     you, kept in YOUR frame of reference, so they keep station at any speed; a burst of speed only makes them sway;
 --   * a pet more than 40 studs from where it should be (a respawn, a teleport) reappears there with a puff.
--- Little characters: idle quirks when you stand still (the crab snaps, the gull looks about, the frog catches a fly,
--- the tortoise yawns, the ghost loops the loop), a cheer when you steal or bank, a tumble when you are launched, a
--- tremble when something big is chasing you, and a dance when you win.
+-- Little characters: idle quirks when you stand still (shared/PetLook.lua: a snap, a loop, a cartwheel, an ink puff,
+-- the bat hangs upside down, the shark circles you, the coin flips), a cheer when you steal or bank, a tumble when
+-- you are launched, a tremble (and a puffed-up pufferfish) when something big is chasing you, a dance when you win.
+-- Peek, the pocket Watcher, only moves while nobody is looking at it.
 -- Performance: anchored parts moved with one BulkMoveTo a frame; no physics, collisions or ray hits; pets beyond
--- Config.PET_DRAW_RANGE are not drawn, and beyond PET_FULL_RATE_RANGE are updated every third frame.
+-- Config.PET_DRAW_RANGE are not drawn, and beyond PET_FULL_RATE_RANGE are updated every second or fourth frame.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -53,7 +55,12 @@ local function now()
 	return workspace:GetServerTimeNow()
 end
 
--- Where each pet walks or flies, relative to its goblin (x right, y up, z back).
+local function A(x, y, z)
+	return CFrame.Angles(math.rad(x or 0), math.rad(y or 0), math.rad(z or 0))
+end
+
+-- Where each pet walks or flies, relative to its goblin (x right, y up, z back): the V11 five keep their own spots,
+-- every other pet takes its kind's (pushed out to the side by its own width, so a big pet does not stand in you).
 local OFFSET = {
 	Crab = Vector3.new(2.6, 0, 2.2),
 	Frog = Vector3.new(-2.8, 0, 2.0),
@@ -61,23 +68,60 @@ local OFFSET = {
 	Gull = Vector3.new(-2.6, 3.8, 1.4),
 	Ghost = Vector3.new(2.3, 2.2, 0.8),
 }
+local KIND_OFFSET = {
+	walker = Vector3.new(2.6, 0, 2.2),
+	hopper = Vector3.new(-2.8, 0, 2.0),
+	plodder = Vector3.new(2.4, 0, 3.4),
+	crawler = Vector3.new(-2.4, 0, 2.8),
+	roller = Vector3.new(2.6, 0, 2.6),
+	flier = Vector3.new(-2.6, 3.8, 1.4),
+	floater = Vector3.new(2.3, 2.2, 0.8),
+	swimmer = Vector3.new(-2.5, 2.6, 1.0),
+	slither = Vector3.new(2.8, 3.4, 1.8),
+}
 -- Riding on a boat, relative to the driver's seat.
 local DECK = {
-	Crab = CFrame.new(2.1, -0.35, -2.2),
-	Frog = CFrame.new(-2.1, -0.35, -2.4),
-	Tortoise = CFrame.new(2.0, -0.35, 2.4) * CFrame.Angles(0, math.pi, 0),
+	walker = CFrame.new(2.1, -0.35, -2.2),
+	crawler = CFrame.new(2.1, -0.35, -2.2),
+	roller = CFrame.new(2.1, -0.35, -2.2),
+	hopper = CFrame.new(-2.1, -0.35, -2.4),
+	plodder = CFrame.new(2.0, -0.35, 2.4) * CFrame.Angles(0, math.pi, 0),
 }
 -- Clinging on in the air or the water, relative to the goblin's torso or head.
 local CLING = {
-	Crab = {
+	walker = {
 		part = "UpperTorso",
 		cf = CFrame.new(0, 0.2, 0.95) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.rad(-70), 0, 0),
 	},
-	Frog = { part = "Head", cf = CFrame.new(0, 0.55, 0.05) },
-	Tortoise = {
+	hopper = { part = "Head", cf = CFrame.new(0, 0.55, 0.05) },
+	plodder = {
 		part = "UpperTorso",
 		cf = CFrame.new(0, -0.6, 1.3) * CFrame.Angles(math.rad(-90), 0, 0) * CFrame.new(0, -0.5, 0),
 	},
+}
+CLING.crawler = CLING.walker
+CLING.roller = CLING.plodder
+
+-- One-off puffs when a quirk starts.
+local QUIRK_FX = {
+	ink = function(position)
+		Effects.ball(position + Vector3.new(0, 0.6, 0.6), Color3.fromRGB(40, 28, 60), 3.4, 0.9)
+	end,
+	bubble = function(position)
+		Effects.burst(position + Vector3.new(0, 0.6, 0), Color3.fromRGB(190, 236, 255), 8, 4)
+	end,
+	spores = function(position)
+		Effects.burst(position + Vector3.new(0, 1.2, 0), Color3.fromRGB(255, 240, 200), 10, 5)
+	end,
+	sparkle = function(position)
+		Effects.burst(position + Vector3.new(0, 2.1, 0), Color3.fromRGB(255, 190, 70), 8, 9)
+	end,
+	flare = function(position)
+		Effects.burst(position + Vector3.new(0, 1.2, 0), Color3.fromRGB(255, 120, 30), 10, 8)
+	end,
+	rattle = function(position)
+		Effects.burst(position, Color3.fromRGB(236, 228, 206), 5, 4)
+	end,
 }
 
 local function lookOf(other)
@@ -104,9 +148,24 @@ local function build(other, petId, look, lookText)
 		return nil
 	end
 	rig.model.Parent = folder
+	local kind = rig.kind
+	local offset = OFFSET[petId] or KIND_OFFSET[kind] or KIND_OFFSET.walker
+	if not OFFSET[petId] then
+		local _, size = rig.model:GetBoundingBox()
+		local half = math.max(size.X, size.Z) / 2
+		local side = offset.X >= 0 and 1 or -1
+		offset = Vector3.new(side * math.max(math.abs(offset.X), 1.7 + half), offset.Y, math.max(offset.Z, half))
+	end
+	local def = Config.PETS[petId]
 	local entry = {
 		rig = rig,
 		petId = petId,
+		kind = kind,
+		flying = PetLook.FLYING[kind] == true,
+		offset = offset,
+		deck = DECK[kind],
+		cling = CLING[kind] or CLING.walker,
+		shell = def and def.ability == "Tortoise",
 		sig = petId .. "|" .. tostring(look.petskin) .. "|" .. tostring(look.pethat),
 		look = look,
 		lookText = lookText,
@@ -177,93 +236,6 @@ local function situation(other, character, root, dt, entry)
 	return s
 end
 
--- Poses -------------------------------------------------------------------------------------------------------------------
-local function A(x, y, z)
-	return CFrame.Angles(math.rad(x or 0), math.rad(y or 0), math.rad(z or 0))
-end
-
--- Each kind of pet: group poses for this moment. `move` is how fast the pet itself is going.
-local POSES = {}
-
-POSES.walker = function(entry, t, move, s)
-	local phase = entry.phase
-	local walking = move > 1.5
-	local stride = walking and math.sin(phase * 14) or 0
-	local snap = 0
-	if entry.quirk == "snap" or (s.chased and math.sin(t * 9) > 0.6) then
-		snap = math.max(0, math.sin(t * 18))
-	end
-	return {
-		legA = CFrame.new(0, 0.06 * math.max(0, stride), 0) * A(0, 0, 14 * stride),
-		legB = CFrame.new(0, 0.06 * math.max(0, -stride), 0) * A(0, 0, -14 * stride),
-		clawL = A(0, 6 * math.sin(t * 2.2), 0),
-		clawR = A(0, -6 * math.sin(t * 2.2 + 1), 0),
-		pinchL = A(-28 * snap, 0, 0),
-		pinchR = A(-28 * snap, 0, 0),
-		eyes = CFrame.new(0, 0.05 * math.sin(t * 3), 0),
-	},
-		walking and 0.06 * math.abs(math.sin(phase * 14)) or 0
-end
-
-POSES.hopper = function(entry, t, move, s)
-	local hopping = move > 1.5 or s.chased
-	local p = (entry.phase * 2.2) % 1
-	local lift = hopping and math.sin(p * math.pi) or 0
-	local tongue = entry.quirk == "tongue"
-	if entry.rig.tongue then
-		entry.rig.tongue.Transparency = tongue and 0 or 1
-	end
-	return {
-		legBack = A(hopping and (p < 0.5 and -35 or 10) or 0, 0, 0),
-		legFront = A(hopping and -20 * lift or 0, 0, 0),
-		throat = CFrame.new(0, 0, -0.06 * (0.5 + 0.5 * math.sin(t * 7))),
-		head = A(tongue and 8 or 0, 0, 0),
-	},
-		1.3 * lift
-end
-
-POSES.plodder = function(entry, t, move, s)
-	local walking = move > 1
-	local step = walking and math.sin(entry.phase * 7) or 0
-	local yawn = entry.quirk == "yawn" and math.sin(math.clamp((t - entry.quirkAt) / 1.6, 0, 1) * math.pi) or 0
-	local glow = entry.rig.glow
-	if glow then
-		local ready = time() > 0 and now() >= (entry.owner:GetAttribute("ShellReadyAt") or 0)
-		glow.Transparency = ready and (0.6 + 0.12 * math.sin(t * 3)) or 1
-	end
-	return {
-		legA = CFrame.new(0, 0.12 * math.max(0, step), 0),
-		legB = CFrame.new(0, 0.12 * math.max(0, -step), 0),
-		head = CFrame.new(0, 0.04 * step, (s.chased and 0.35 or 0) - 0.08 * yawn) * A(18 * yawn, 0, 0),
-	},
-		0
-end
-
-POSES.flier = function(entry, t, _move, s)
-	local fast = s.speed > 30 or s.diving
-	local flap = math.sin(t * (fast and 22 or 12))
-	local gliding = not fast and math.sin(t * 0.7) > 0.3
-	local wing = gliding and 4 or 34 * flap
-	local look = entry.quirk == "look" and 50 * math.sin((t - entry.quirkAt) * 3) or 12 * math.sin(t * 0.9)
-	return {
-		wingL = A(0, 0, -wing),
-		wingR = A(0, 0, wing),
-		head = A(0, look, 0),
-	}, 0.12 * flap
-end
-
-POSES.floater = function(_entry, t, _move, s)
-	local wave = math.sin(t * 3)
-	return {
-		tail1 = A(8 * math.sin(t * 2.6), 10 * wave, 0),
-		tail2 = A(12 * math.sin(t * 2.6 - 0.8), 16 * math.sin(t * 3 - 0.8), 0),
-		tail3 = A(16 * math.sin(t * 2.6 - 1.6), 22 * math.sin(t * 3 - 1.6), 0),
-		armL = A(0, 0, -20 - 20 * math.sin(t * 4)),
-		armR = A(0, 0, 20 + 20 * math.sin(t * 4 + 1)),
-	},
-		0.25 * math.sin(t * 2.4) + (s.chased and 0.08 * math.sin(t * 40) or 0)
-end
-
 -- Reactions (a cheer, a tumble, a dance) on top of everything else: a hop and a spin.
 local REACT = {
 	cheer = { duration = 1.1, hop = 1.6, spin = 360 },
@@ -287,6 +259,20 @@ local function reactionCFrame(entry, t)
 	return CFrame.new(0, hop, 0) * A(0, (spec.spin or 0) * p, 0) * A((spec.roll or 0) * p, 0, 0)
 end
 
+-- Is this spot in plain view of the camera (for Peek)?
+local function watched(position)
+	local eye = camera.CFrame.Position
+	if (position - eye).Magnitude > 160 then
+		return false
+	end
+	local point, onScreen = camera:WorldToViewportPoint(position)
+	if not onScreen or point.Z <= 0 then
+		return false
+	end
+	local size = camera.ViewportSize
+	return point.X > size.X * 0.06 and point.X < size.X * 0.94 and point.Y > size.Y * 0.06 and point.Y < size.Y * 0.94
+end
+
 -- One pet, one frame -----------------------------------------------------------------------------------------------------
 local function groundAt(entry, position, fallback)
 	if time() >= entry.groundAt then
@@ -300,31 +286,41 @@ end
 local function step(other, entry, character, root, dt, t)
 	entry.owner = other
 	local s = situation(other, character, root, dt, entry)
-	local kind = entry.rig.kind
-	local flier = kind == "flier" or kind == "floater"
 	local facing = root.CFrame.LookVector
 	local ownerYaw = math.atan2(-facing.X, -facing.Z)
 	local ownerFrame = CFrame.new(root.Position) * CFrame.Angles(0, ownerYaw, 0)
 
-	-- Idle quirks when the goblin stands still.
-	if entry.quirk and t - entry.quirkAt > 1.8 then
-		entry.quirk = nil
+	-- Idle quirks when the goblin stands still (and some little puff to go with a few of them).
+	local started = PetLook.updateQuirk(entry, t, s.speed < 1 and not s.seat)
+	if started and QUIRK_FX[started] and entry.pos and (entry.pos - camera.CFrame.Position).Magnitude < 90 then
+		QUIRK_FX[started](entry.pos)
 	end
-	if s.speed < 1 and not s.seat and time() > entry.idleAt then
-		entry.idleAt = time() + 6 + math.random() * 5
-		entry.quirk = ({ walker = "snap", hopper = "tongue", plodder = "yawn", flier = "look", floater = "loop" })[kind]
-		entry.quirkAt = t
+	-- The Shell's glow: lit while that goblin's shell is ready.
+	local glow = entry.shell and entry.rig.glow
+	if glow then
+		local ready = now() >= (other:GetAttribute("ShellReadyAt") or 0)
+		glow.Transparency = ready and (0.6 + 0.12 * math.sin(t * 3)) or 1
 	end
 
 	local target -- the pet's origin this frame (before its own pose)
 	local mode
-	if flier then
+	local frozen = false
+	if entry.flying then
 		mode = "fly"
-		local offset = OFFSET[entry.petId]
+		local offset = entry.offset
 		if s.seat then
 			offset = Vector3.new(offset.X * 1.2, offset.Y + 3.5, offset.Z + 3)
 		end
-		-- The local Scout Gull's scouting flight, toward the treasure it can see.
+		-- Its quirk may take it around you: the shark circles, the echo darts to your other side and back.
+		local q = entry.quirk and (t - entry.quirkAt) or 0
+		if entry.quirk == "circle" then
+			local angle = math.atan2(offset.Z, offset.X) + math.clamp(q / 2.4, 0, 1) * math.pi * 2
+			local r = math.max(3.2, Vector3.new(offset.X, 0, offset.Z).Magnitude)
+			offset = Vector3.new(math.cos(angle) * r, offset.Y, math.sin(angle) * r)
+		elseif entry.quirk == "dart" then
+			offset = Vector3.new(offset.X * math.cos(math.clamp(q / 1.6, 0, 1) * math.pi * 2), offset.Y, offset.Z)
+		end
+		-- A scout's flight, toward the treasure it can see (your own pet, if its ability is the Gull's).
 		if entry.scout and t - entry.scout.at < 2.4 then
 			local p = (t - entry.scout.at) / 2.4
 			local out = math.sin(p * math.pi) * 16
@@ -343,52 +339,65 @@ local function step(other, entry, character, root, dt, t)
 		local yaw = math.atan2(-toward.X, -toward.Z)
 		if s.speed > 6 then
 			yaw = ownerYaw
+		elseif entry.quirk == "circle" then
+			yaw = math.atan2(-toward.Z, toward.X) -- nose along the circle
 		end
 		entry.yaw = entry.yaw + math.atan2(math.sin(yaw - entry.yaw), math.cos(yaw - entry.yaw)) * math.min(1, dt * 6)
 		local pitch = s.diving and -0.6 or 0
-		local loop = entry.quirk == "loop" and A(math.clamp((t - entry.quirkAt) / 1.2, 0, 1) * 360, 0, 0)
-			or CFrame.new()
-		target = target * CFrame.Angles(0, entry.yaw, 0) * CFrame.Angles(pitch, 0, 0) * loop
+		target = target * CFrame.Angles(0, entry.yaw, 0) * CFrame.Angles(pitch, 0, 0)
 		entry.pos = target.Position
+		entry.move = s.speed
+		entry.phase += dt * 1.2
 	else
 		local seat = s.seat
-		if seat and DECK[entry.petId] then
+		if seat and entry.deck then
 			mode = "deck"
-			target = seat.CFrame * DECK[entry.petId]
+			target = seat.CFrame * entry.deck
 		elseif s.airborne or s.diving or s.swimming or s.speed > 60 then
 			mode = "cling"
-			local cling = CLING[entry.petId]
-			local part = character:FindFirstChild(cling.part) or character:FindFirstChild("Torso") or root
-			target = part.CFrame * cling.cf
+			local part = character:FindFirstChild(entry.cling.part) or character:FindFirstChild("Torso") or root
+			target = part.CFrame * entry.cling.cf
 		else
 			mode = "ground"
-			local want = ownerFrame:PointToWorldSpace(OFFSET[entry.petId])
+			local want = ownerFrame:PointToWorldSpace(entry.offset)
 			local pos = entry.pos or want
+			-- Peek: still as a statue while anyone (this camera) is watching it. It catches up while you look away.
+			frozen = entry.rig.species.quirk == "freeze" and entry.mode == "ground" and watched(pos)
 			if (pos - want).Magnitude > 40 then
 				pos = want
 				Effects.burst(want + Vector3.new(0, 1, 0), Color3.fromRGB(255, 255, 255), 12, 10)
 				entry.vel = Vector3.zero
+				frozen = false
 			end
-			-- A spring toward the spot beside the goblin, led a little by the goblin's own speed so a walking or
-			-- sprinting goblin does not leave its pet ten studs behind (measured: a plain spring trailed by 10).
-			local k = kind == "plodder" and 60 or 90
-			local lead = Vector3.new(s.velocity.X, 0, s.velocity.Z) * (2 / math.sqrt(k))
-			local accel = (want + lead - pos) * k - entry.vel * (2 * math.sqrt(k))
-			entry.vel = entry.vel + accel * dt
-			local flatVel = Vector3.new(entry.vel.X, 0, entry.vel.Z)
-			pos = pos + flatVel * dt
-			pos = Vector3.new(pos.X, groundAt(entry, pos, s.feet), pos.Z)
+			if frozen then
+				entry.vel = Vector3.zero
+				entry.move = 0
+				target = CFrame.new(pos) * CFrame.Angles(0, entry.yaw, 0)
+			else
+				-- A spring toward the spot beside the goblin, led a little by the goblin's own speed so a walking or
+				-- sprinting goblin does not leave its pet ten studs behind (measured: a plain spring trailed by 10).
+				local k = (entry.kind == "plodder" or entry.kind == "crawler") and 60 or 90
+				if entry.rig.species.quirk == "freeze" then
+					k = 160 -- it has a lot of catching up to do
+				end
+				local lead = Vector3.new(s.velocity.X, 0, s.velocity.Z) * (2 / math.sqrt(k))
+				local accel = (want + lead - pos) * k - entry.vel * (2 * math.sqrt(k))
+				entry.vel = entry.vel + accel * dt
+				local flatVel = Vector3.new(entry.vel.X, 0, entry.vel.Z)
+				pos = pos + flatVel * dt
+				pos = Vector3.new(pos.X, groundAt(entry, pos, s.feet), pos.Z)
+				local speed = flatVel.Magnitude
+				entry.phase += dt * math.min(speed, 30) * 0.12
+				local yaw = speed > 1.5 and math.atan2(-flatVel.X, -flatVel.Z) or ownerYaw
+				if entry.petId == "Crab" and speed > 1.5 then
+					yaw += math.pi / 2 -- crabs walk sideways
+				end
+				entry.yaw = entry.yaw
+					+ math.atan2(math.sin(yaw - entry.yaw), math.cos(yaw - entry.yaw)) * math.min(1, dt * 8)
+				target = CFrame.new(pos) * CFrame.Angles(0, entry.yaw, 0)
+				entry.move = speed
+			end
 			entry.pos = pos
-			local speed = flatVel.Magnitude
-			entry.phase += dt * math.min(speed, 30) * 0.12
-			local yaw = speed > 1.5 and math.atan2(-flatVel.X, -flatVel.Z) or ownerYaw
-			if kind == "walker" and speed > 1.5 then
-				yaw += math.pi / 2 -- crabs walk sideways
-			end
-			entry.yaw = entry.yaw
-				+ math.atan2(math.sin(yaw - entry.yaw), math.cos(yaw - entry.yaw)) * math.min(1, dt * 8)
-			target = CFrame.new(pos) * CFrame.Angles(0, entry.yaw, 0)
-			entry.move = speed
 		end
 		if mode ~= "ground" then
 			entry.vel = Vector3.zero
@@ -413,13 +422,17 @@ local function step(other, entry, character, root, dt, t)
 			target = entry.blend.from:Lerp(target, e) + Vector3.new(0, math.sin(p * math.pi) * 1.6, 0)
 		end
 	end
-	local poses, bounce = POSES[kind](entry, t, entry.move or 0, s)
-	if s.chased and not flier then
+	if frozen then
+		entry.origin = target
+		return target, {}, nil
+	end
+	local poses, bounce, extra = PetLook.pose(entry, t, entry.move or 0, s)
+	if s.chased and not entry.flying then
 		bounce += 0.04 * math.sin(t * 45) -- trembling
 	end
 	local origin = target * CFrame.new(0, bounce, 0) * reactionCFrame(entry, t)
 	entry.origin = origin
-	return origin, poses
+	return origin, poses, extra
 end
 
 -- Every frame: move every visible pet with one BulkMoveTo.
@@ -492,25 +505,9 @@ local function update(dt)
 		end
 		local stepDt = math.min(entry.accum, 0.1)
 		entry.accum = 0
-		local origin, poses = step(other, entry, character, root, stepDt, t)
+		local origin, poses, extra = step(other, entry, character, root, stepDt, t)
 		local rig = entry.rig
-		local groupCF = {}
-		for i, part in ipairs(rig.parts) do
-			local group = rig.groups[i]
-			local g = groupCF[group]
-			if not g then
-				local pose = poses[group]
-				if pose then
-					local pivot = rig.pivots[group] or Vector3.zero
-					g = CFrame.new(pivot) * pose * CFrame.new(-pivot)
-				else
-					g = CFrame.new()
-				end
-				groupCF[group] = g
-			end
-			table.insert(partsList, part)
-			table.insert(cframeList, origin * g * rig.rest[i])
-		end
+		origin = PetLook.apply(rig, origin, poses, extra, partsList, cframeList)
 		-- Your own pet fades when the camera is pushed right up against it.
 		if entry.local_ then
 			local close = (origin.Position - eye).Magnitude < 4
@@ -544,16 +541,18 @@ function Pets.react(userId, kind)
 	end
 end
 
--- The Scout Gull (yours): every few seconds it flies a little way toward the nearest waiting treasure, and a line under
--- the compass says what and how far.
-local gullLabel
+-- The scout (your pet, if its ability is the Gull's): every few seconds a flier flies a little way toward the nearest
+-- waiting treasure, and a short line under the compass says what and how far.
+local scoutLabel
 local nextScout = 0
-local function updateGull(gui)
+local function updateScout(gui)
 	local entry = entries[player]
-	local mine = player:GetAttribute("Pet") == "Gull"
+	local petId = player:GetAttribute("Pet")
+	local def = petId and Config.PETS[petId]
+	local mine = def ~= nil and def.ability == "Gull" and player:GetAttribute("Zone") ~= "port"
 	if not mine then
-		if gullLabel then
-			gullLabel.Visible = false
+		if scoutLabel then
+			scoutLabel.Visible = false
 		end
 		return
 	end
@@ -565,38 +564,40 @@ local function updateGull(gui)
 		return
 	end
 	local best, bestDistance, bestDirection
-	for _, def in ipairs(Config.LOOT) do
-		if loot:GetAttribute(def.id .. "State") == "spot" then
-			local island = Archipelago.byId[def.island]
+	for _, lootDef in ipairs(Config.LOOT) do
+		if loot:GetAttribute(lootDef.id .. "State") == "spot" then
+			local island = Archipelago.byId[lootDef.island]
 			if island then
 				local offset = Vector3.new(island.x - root.Position.X, 0, island.z - root.Position.Z)
 				local distance = offset.Magnitude
 				if distance <= Config.PET_GULL_RANGE and (not bestDistance or distance < bestDistance) then
-					best, bestDistance, bestDirection = def, distance, distance > 0 and offset.Unit or Vector3.zAxis
+					best, bestDistance, bestDirection = lootDef, distance, distance > 0 and offset.Unit or Vector3.zAxis
 				end
 			end
 		end
 	end
-	if not gullLabel and gui then
-		gullLabel = Instance.new("TextLabel")
-		gullLabel.Name = "GullSees"
-		gullLabel.AnchorPoint = Vector2.new(0.5, 0)
-		gullLabel.Position = UDim2.new(0.5, 0, 0, 176)
-		gullLabel.Size = UDim2.fromOffset(380, 20)
-		gullLabel.BackgroundTransparency = 1
-		gullLabel.Font = Enum.Font.GothamBold
-		gullLabel.TextStrokeTransparency = 0.4
-		gullLabel.TextSize = 14
-		gullLabel.Parent = gui
+	if not scoutLabel and gui then
+		scoutLabel = Instance.new("TextLabel")
+		scoutLabel.Name = "PetSees"
+		scoutLabel.AnchorPoint = Vector2.new(0.5, 0)
+		scoutLabel.Position = UDim2.new(0.5, 0, 0, 150)
+		scoutLabel.Size = UDim2.fromOffset(380, 20)
+		scoutLabel.BackgroundTransparency = 1
+		scoutLabel.Font = Enum.Font.GothamBold
+		scoutLabel.TextStrokeTransparency = 0.4
+		scoutLabel.TextSize = 14
+		scoutLabel.Parent = gui
 	end
-	if gullLabel then
-		gullLabel.Visible = best ~= nil
+	if scoutLabel then
+		scoutLabel.Visible = best ~= nil
 		if best then
-			gullLabel.Text = string.format("Your gull spots the %s: %d studs", best.name, bestDistance)
-			gullLabel.TextColor3 = best.color
+			local item = Catalog.get(petId)
+			scoutLabel.Text =
+				string.format("%s sees the %s · %d", item and item.name or "Your pet", best.name, bestDistance)
+			scoutLabel.TextColor3 = best.color
 		end
 	end
-	if best and entry and time() >= nextScout then
+	if best and entry and entry.flying and time() >= nextScout then
 		nextScout = time() + 9
 		entry.scout = { at = time(), direction = bestDirection }
 	end
@@ -611,12 +612,9 @@ function Pets.start()
 	task.spawn(function()
 		while true do
 			task.wait(0.5)
-			updateGull(gui)
+			updateScout(gui)
 		end
 	end)
 end
-
--- For the shop: how a pet kind poses (used by its preview).
-Pets.POSES = POSES
 
 return Pets

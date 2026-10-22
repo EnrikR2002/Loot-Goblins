@@ -15,7 +15,15 @@ local BUDGET = { hat = 18, eyes = 9, face = 9, outfit = 24, back = 12, ears = 10
 
 local function covered(item)
 	local slot = item.slot
-	if Catalog.slot(slot).group == "goblin" then
+	if slot == "boat" then
+		-- V13: a boat is a class (Config.BOAT_TYPES) with a showroom row and an ability.
+		local spec = Config.BOAT_TYPES[item.class]
+		local row = false
+		for _, entry in ipairs(Config.BOAT_CLASSES) do
+			row = row or entry.id == item.class
+		end
+		return spec ~= nil and spec.class == true and row and Config.BOAT_ABILITIES[spec.ability] ~= nil
+	elseif Catalog.slot(slot).group == "goblin" then
 		return Wardrobe.covers(item)
 	elseif slot == "livery" or slot == "flag" or slot == "figurehead" then
 		return BoatLook.covers(item)
@@ -144,13 +152,43 @@ return function(t)
 		end
 	end)
 
-	t.test("pets match Config.PETS and every utility pet is sold for Shinies", function()
+	t.test("pets match Config.PETS; every pet with an ability is earnable, and a Robux-only pet has none", function()
+		local count = 0
 		for petId, def in pairs(Config.PETS) do
+			count += 1
 			local item = Catalog.get(petId)
 			t.ok(item ~= nil and item.slot == "pet", petId .. ": not in the catalogue")
-			t.eq(item.price, def.price, petId .. ": price differs from Config.PETS")
-			t.ok(Catalog.forSale(item), petId .. ": a pet with an ability must be earnable")
+			t.ok(PetLook.SPECIES[petId] ~= nil, petId .. ": no species (how it moves, its theme)")
+			t.eq(item.theme, PetLook.SPECIES[petId].theme, petId .. ": shop theme differs from its species")
+			if def.ability then
+				t.ok(Config.PET_ABILITIES[def.ability] ~= nil, petId .. ": unknown ability " .. tostring(def.ability))
+				t.ok(Catalog.forSale(item) or item.unlock ~= nil, petId .. ": a pet with an ability must be earnable")
+			else
+				t.eq(item.rarity, "premium", petId .. ": a pet with no ability is a show pet (premium)")
+			end
 		end
+		for _, item in ipairs(Catalog.bySlot.pet) do
+			t.ok(Config.PETS[item.id] ~= nil, item.id .. ": a catalogue pet missing from Config.PETS")
+		end
+		t.ok(count >= 35 and count <= 45, "V13 asks for about forty species, there are " .. count)
+	end)
+
+	t.test("V13: every boat class is in the shop, the free ones free, the rest earnable with Shinies", function()
+		local seen = {}
+		for _, row in ipairs(Config.BOAT_CLASSES) do
+			local item = Catalog.get("boat_" .. row.id)
+			t.ok(item ~= nil and item.slot == "boat" and item.class == row.id, row.id .. ": no shop item")
+			seen[row.id] = true
+			if row.id == "skiff" or row.id == "cutter" then
+				t.ok(Catalog.isFree(item), row.id .. " should be free")
+			else
+				t.ok(Catalog.forSale(item), row.id .. " must be earnable with Shinies, not only Robux")
+			end
+		end
+		for _, item in ipairs(Catalog.bySlot.boat) do
+			t.ok(seen[item.class], item.id .. ": a boat with no showroom row")
+		end
+		t.eq(Catalog.slot("boat").default, "boat_skiff", "everyone starts with the Skiff")
 	end)
 
 	t.test("slot defaults exist, fit their slot and are free", function()

@@ -81,6 +81,10 @@ local function publish(s)
 	player:SetAttribute("Look", encoded)
 	player:SetAttribute("Pet", look.pet)
 	player:SetAttribute("Kit", Economy.kit(profile))
+	-- V13: the boat class this goblin sails (what B calls: server/Recall.lua). Only ever a class they own.
+	local boatItem = look.boat and Catalog.get(look.boat)
+	player:SetAttribute("BoatClass", boatItem and boatItem.class or "skiff")
+	player:SetAttribute("Raids", profile.stats.raids) -- V13: the HUD says less once a goblin knows the game
 	player:SetAttribute("Owned", table.concat(Economy.ownedList(profile), ","))
 	local done = {}
 	for id in pairs(profile.achievements) do
@@ -286,12 +290,12 @@ function Progress.announce(s, entry)
 	Analytics.shinies(s.player, false, entry.shinies, s.profile.shinies, "Gameplay", "achievement:" .. achievement.id)
 end
 
-local function recordAndCheck(player, kind, a, b)
+local function recordAndCheck(player, kind, a, b, c)
 	local s = sessions[player]
 	if not s then
 		return
 	end
-	Economy.record(s.profile, kind, a, b)
+	Economy.record(s.profile, kind, a, b, c)
 	local unlocked = Economy.checkAchievements(s.profile, unix(), P.HISTORY)
 	changed(s, #unlocked > 0)
 	for _, entry in ipairs(unlocked) do
@@ -299,18 +303,46 @@ local function recordAndCheck(player, kind, a, b)
 	end
 end
 
--- A treasure was banked (Main, from Loot.Banked).
-function Progress.onBanked(player, lootId, value)
-	recordAndCheck(player, "bank", lootId, value)
+-- A raid deed (V13): remembered for this raid's payout (Economy.deedsValue).
+local function deed(player, name, add)
+	local s = sessions[player]
+	if not s or not Progress.participating(player) then
+		return
+	end
+	s.deeds = s.deeds or {}
+	if add then
+		s.deeds[name] = (s.deeds[name] or 0) + add
+	else
+		s.deeds[name] = true
+	end
+end
+
+-- A treasure was banked (Main, from Loot.Banked). `class`: the boat class they came home in (V13), or nil.
+function Progress.onBanked(player, lootId, value, class)
+	recordAndCheck(player, "bank", lootId, value, class)
 end
 
 -- A goblin snatched treasure from one they knocked down (Main, from Loot.Taken).
 function Progress.onSnatch(player)
+	deed(player, "snatch")
 	recordAndCheck(player, "snatch")
+end
+
+-- V13: a goblin took a treasure from its spot (Main, from Loot.Taken).
+function Progress.onSteal(player)
+	deed(player, "steal")
+	recordAndCheck(player, "steal")
+end
+
+-- V13: a pursuit of this goblin ended at the sanctuary (Pursuit.Escaped): `islandId` is whose creature it was.
+function Progress.onEscape(player, islandId)
+	deed(player, "escape")
+	recordAndCheck(player, "escape", islandId)
 end
 
 -- A clean landing after `count` tricks, checked by the server (Boats.TrickLanded).
 function Progress.onTrickLanded(player, count)
+	deed(player, "tricks", 1)
 	local s = sessions[player]
 	if s and count > s.profile.stats.bestCombo then
 		recordAndCheck(player, "combo", count)
@@ -334,7 +366,7 @@ function Progress.award(results)
 		if s and s.awardedRaid ~= raidNumber then
 			s.awardedRaid = raidNumber
 			if s.present >= P.MIN_PRESENT then
-				local breakdown = Economy.payout(r.gold, r.won, median, P)
+				local breakdown = Economy.payout(r.gold, r.won, median, P, s.deeds)
 				Economy.addShinies(s.profile, breakdown.total)
 				Economy.record(s.profile, "raid", r.won)
 				local unlocked = Economy.checkAchievements(s.profile, unix(), P.HISTORY)
@@ -376,22 +408,36 @@ function Progress.award(results)
 	return payouts
 end
 
--- The raid has started: hand out the kit each goblin chose (a convenience, not a lock).
-function Progress.onRaidStart()
-	for player, s in pairs(sessions) do
-		local gear = Economy.kit(s.profile)
-		if gear then
-			Gear.give(player, gear, true)
+-- The raid has started (V13: for these goblins; `late` when one joins a raid already running from the Port): hand out
+-- the kit each goblin chose (a convenience, not a lock) and start counting the time they are really in it.
+function Progress.onRaidStart(players, late)
+	for _, player in ipairs(players or {}) do
+		local s = sessions[player]
+		if s then
+			s.present = 0
+			s.deeds = {}
+			local gear = Economy.kit(s.profile)
+			if gear then
+				Gear.give(player, gear, true)
+			end
 		end
 	end
+	local _ = late
+end
+
+-- Who is in the raid (Main sets it to Raid.isParticipant). A goblin waiting in the Port earns no presence.
+Progress.participating = function(_player)
+	return true
 end
 
 function Progress.tick(dt, active)
 	if not active then
 		return
 	end
-	for _, s in pairs(sessions) do
-		s.present += dt
+	for player, s in pairs(sessions) do
+		if Progress.participating(player) then
+			s.present += dt
+		end
 	end
 end
 
@@ -408,9 +454,15 @@ local MESSAGES = {
 	needpet = "Get that pet first.",
 	preset = "No outfit saved there.",
 	unsaved = "Buying waits until your saved progress is open (a few seconds after joining).",
-	petbusy = "Pets can be changed on the skyship, at the Hoard or between raids.",
+	petbusy = "Pets change in the Port, or at the Hoard during a raid.",
+	boatbusy = "Your boat changes in the Port, or at the Hoard during a raid.",
 	busy = "Slow down a little.",
 }
+
+-- Is it safe to change the boat you sail here? (Main sets it: the Port, the Hoard, between raids.)
+Progress.boatSafe = function(_player)
+	return true
+end
 
 local function allowed(s)
 	local t = time()
@@ -438,6 +490,10 @@ WEARABLE.kit = true
 local function wear(s, slot, id)
 	if slot == "pet" and s.profile.equipped.pet ~= id and not Progress.petSafe(s.player) then
 		return { ok = false, code = "petbusy" }
+	end
+	-- V13: the boat you sail changes only in the Port (or at the Hoard): never in the middle of a chase.
+	if slot == "boat" and s.profile.equipped.boat ~= id and not Progress.boatSafe(s.player) then
+		return { ok = false, code = "boatbusy" }
 	end
 	local outcome = Economy.equip(s.profile, slot, id)
 	if outcome.ok then

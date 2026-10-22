@@ -46,7 +46,7 @@ return function(t)
 	t.test("a V7 profile migrates without losing anything", function()
 		local profile, how = ProfileSchema.load(ProfileSchema.copy(V7), LIMITS, 5)
 		t.eq(how, "migrated", "how")
-		t.eq(profile.v, 2, "version")
+		t.eq(profile.v, ProfileSchema.VERSION, "version")
 		t.eq(profile.shinies, 345, "shinies")
 		t.ok(profile.owned.Gull and profile.owned.Tortoise, "pets")
 		t.ok(profile.owned.kit_CinderBoots, "kit")
@@ -57,6 +57,45 @@ return function(t)
 		t.eq(profile.stats.banked, 88, "banked")
 		t.eq(#profile.receipts, 2, "receipts kept")
 		t.eq(profile.welcomed, false, "migrated goblins get the V11 welcome too")
+	end)
+
+	t.test("V13: a version 2 profile upgrades to 3 keeping every item, Shiny, stat and achievement", function()
+		local v2 = {
+			v = 2,
+			shinies = 412,
+			owned = { Gull = true, hat_tricorn = true, livery_starlit = true },
+			equipped = { pet = "Gull", hat = "hat_tricorn", livery = "livery_starlit" },
+			stats = {
+				raids = 30,
+				wins = 4,
+				banked = 300,
+				treasures = 21,
+				snatches = 2,
+				bestCombo = 3,
+				bankedFrom = { Idol = 2 },
+			},
+			achievements = { first_haul = 100, old_salt = 200 },
+			receipts = { "r-1" },
+			presets = {},
+			history = {},
+			welcomed = true,
+		}
+		local profile, how = ProfileSchema.load(v2, LIMITS, 5)
+		t.eq(how, "upgraded", "how")
+		t.eq(profile.v, 3, "version 3")
+		t.eq(profile.shinies, 412, "shinies")
+		t.ok(profile.owned.Gull and profile.owned.hat_tricorn and profile.owned.livery_starlit, "everything owned")
+		t.eq(profile.equipped.pet, "Gull", "pet out")
+		t.eq(profile.equipped.boat, nil, "no boat chosen yet: the Skiff, the default")
+		t.eq(profile.stats.raids, 30, "raids")
+		t.eq(profile.stats.bankedFrom.Idol, 2, "per-island banks")
+		t.eq(profile.stats.steals, 0, "new stat starts at 0")
+		t.eq(profile.stats.escapes, 0, "new stat starts at 0")
+		t.eq(type(profile.stats.escapedFrom), "table", "new map")
+		t.eq(type(profile.stats.classBanks), "table", "new map")
+		t.eq(profile.achievements.old_salt, 200, "achievements kept")
+		t.eq(#profile.receipts, 1, "receipts kept")
+		t.eq(profile.welcomed, true, "not welcomed twice")
 	end)
 
 	t.test("damaged fields are repaired, unknown ids are kept", function()
@@ -73,7 +112,7 @@ return function(t)
 			somethingNew = { kept = true },
 		}
 		local profile, how = ProfileSchema.load(damaged, LIMITS, 5)
-		t.eq(how, "loaded", "how")
+		t.eq(how, "upgraded", "how (a version 2 profile, upgraded to 3)")
 		t.eq(profile.shinies, 0, "bad number to 0")
 		t.ok(profile.owned.hat_tricorn and profile.owned.future_item_v12, "owned kept, including unknown ids")
 		t.eq(profile.owned[5], nil, "a non-string key is dropped")
@@ -96,7 +135,7 @@ return function(t)
 		local profile, how = ProfileSchema.load("garbage", LIMITS, 5)
 		t.eq(how, "repaired", "how")
 		t.eq(profile.shinies, 0, "fresh")
-		local none, why = ProfileSchema.load({ v = 3, shinies = 999 }, LIMITS, 5)
+		local none, why = ProfileSchema.load({ v = ProfileSchema.VERSION + 1, shinies = 999 }, LIMITS, 5)
 		t.eq(none, nil, "not loaded")
 		t.eq(why, "newer", "why")
 	end)
@@ -182,15 +221,16 @@ return function(t)
 
 	t.test("a newer game version's profile is never opened or written", function()
 		local store = ProfileStore.mock()
-		store.data.u1 = { v = 3, shinies = 5000, lock = nil }
+		local newer = ProfileSchema.VERSION + 1
+		store.data.u1 = { v = newer, shinies = 5000, lock = nil }
 		local make = harness(store)
 		local status = make("A"):open("u1", "s1")
 		t.eq(status, "newer", "refused")
 		t.eq(store.data.u1.shinies, 5000, "untouched")
-		t.eq(store.data.u1.v, 3, "still v3")
+		t.eq(store.data.u1.v, newer, "still the newer version")
 	end)
 
-	t.test("a V7 profile in the store is migrated when opened and saved as version 2", function()
+	t.test("a V7 profile in the store is migrated when opened and saved at the current version", function()
 		local store = ProfileStore.mock()
 		store.data.u7 = ProfileSchema.copy(V7)
 		local make = harness(store)
@@ -198,7 +238,7 @@ return function(t)
 		local status, profile, how = a:open("u7", "s1")
 		t.eq(status, "ok", "opened")
 		t.eq(how, "migrated", "migrated")
-		t.eq(store.data.u7.v, 2, "stored as v2 at once")
+		t.eq(store.data.u7.v, ProfileSchema.VERSION, "stored at the current version at once")
 		t.eq(store.data.u7.shinies, 345, "shinies on disk")
 		t.ok(profile.owned.Gull, "pets")
 	end)
