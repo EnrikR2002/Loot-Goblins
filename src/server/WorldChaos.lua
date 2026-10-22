@@ -40,6 +40,20 @@ local Threats = require(script.Parent.Threats)
 local SeaNav = require(script.Parent.SeaNav)
 
 local WorldChaos = {}
+-- V13.3: (player) a goblin the chaos threw about, in a boat or on foot (the chaos quests count it: Main).
+WorldChaos.Tossed = Util.signal()
+
+-- Every boat the chaos throws goes through here: Boats.shove, and everyone aboard is told it happened to them.
+local function shove(boat, ...)
+	Boats.shove(boat, ...)
+	for _, seat in ipairs(boat.seats or {}) do
+		local humanoid = seat.Occupant
+		local player = humanoid and Players:GetPlayerFromCharacter(humanoid.Parent)
+		if player then
+			WorldChaos.Tossed:Fire(player)
+		end
+	end
+end
 
 local X = Config.CHAOS
 local BY_ID = {}
@@ -220,7 +234,7 @@ local function throwBoats(position, radius, out, up, opts)
 						altitude = (up * k) ^ 2 / (2 * workspace.Gravity) + 60,
 						allow = opts.tumble + 3,
 					}
-				Boats.shove(boat, away * out * k + Vector3.new(0, up * k, 0), Vector3.new(0, side * 1.6, 0), tumble)
+				shove(boat, away * out * k + Vector3.new(0, up * k, 0), Vector3.new(0, side * 1.6, 0), tumble)
 				if opts.hull and opts.hull > 0 then
 					local floor = boat.spec.health * Config.IMPACT.HULL_FLOOR
 					Boats.damage(boat, math.min(opts.hull * k, math.max(0, boat.health - floor)), opts.cause)
@@ -242,6 +256,7 @@ local function throwGoblins(position, radius, out, up, damage, direction)
 				local k = math.clamp(1 - offset.Magnitude / radius, 0.35, 1)
 				local away = direction or (offset.Magnitude > 0.5 and offset.Unit or randomDirection())
 				Util.knockback(root, away * out * k + Vector3.new(0, up * k, 0), 0.25)
+				WorldChaos.Tossed:Fire(player)
 				if damage and damage > 0 then
 					Impact.damage(humanoid, damage * k)
 				end
@@ -776,7 +791,7 @@ local function tickWhirls(t, slow)
 						local out = offset.Magnitude > 0.5 and offset.Unit or randomDirection()
 						local tangent = Vector3.new(-out.Z, 0, out.X)
 						local dir = (tangent * 0.8 + out * 0.6).Unit
-						Boats.shove(boat, dir * H.fling + Vector3.new(0, H.flingUp, 0), Vector3.new(0, 2.4, 0), {
+						shove(boat, dir * H.fling + Vector3.new(0, H.flingUp, 0), Vector3.new(0, 2.4, 0), {
 							seconds = 1.3,
 							altitude = 90,
 							allow = 4,
@@ -930,16 +945,11 @@ local function tickHaunted(t)
 						g.rammed[boat] = true
 						local side = Vector3.new(-g.dir.Z, 0, g.dir.X)
 						side *= offset:Dot(side) >= 0 and 1 or -1
-						Boats.shove(
-							boat,
-							side * G.ramPush + g.dir * 40 + Vector3.new(0, 40, 0),
-							Vector3.new(0, 1.8, 0),
-							{
-								seconds = 0.9,
-								altitude = 60,
-								allow = 3,
-							}
-						)
+						shove(boat, side * G.ramPush + g.dir * 40 + Vector3.new(0, 40, 0), Vector3.new(0, 1.8, 0), {
+							seconds = 0.9,
+							altitude = 60,
+							allow = 3,
+						})
 						Boats.damage(
 							boat,
 							math.min(10, math.max(0, boat.health - boat.spec.health * Config.IMPACT.HULL_FLOOR)),
@@ -1030,7 +1040,7 @@ local function strike(center, area)
 			end
 			if nextBoat then
 				tell("chainBolt", { from = from.hull.Position, to = nextBoat.hull.Position }, point)
-				Boats.shove(nextBoat, Vector3.new(0, T.lift, 0), Vector3.new(0, 1.2, 0))
+				shove(nextBoat, Vector3.new(0, T.lift, 0), Vector3.new(0, 1.2, 0))
 				jumps += 1
 			end
 			from = nextBoat
@@ -1073,7 +1083,7 @@ local function tickRings(t)
 						local away = flat(boat.hull.Position - ring.center)
 						away = away.Magnitude > 0.5 and away.Unit or randomDirection()
 						local fade = 1 - k * 0.5
-						Boats.shove(boat, away * T.push * fade + Vector3.new(0, T.lift * fade, 0), Vector3.new(0, 1, 0))
+						shove(boat, away * T.push * fade + Vector3.new(0, T.lift * fade, 0), Vector3.new(0, 1, 0))
 						Boats.damage(
 							boat,
 							math.min(
@@ -1130,7 +1140,7 @@ local function tickSweeps(t)
 				if boat.state == "float" and not s.hit[boat] and not safe(boat.hull.Position) then
 					if nearSegment(boat.hull.Position, boat.spec.size.X * 0.5) then
 						s.hit[boat] = true
-						Boats.shove(
+						shove(
 							boat,
 							tangent * K.swat + Vector3.new(0, K.lift, 0),
 							Vector3.new(0, 2.2 * s.direction, 0),

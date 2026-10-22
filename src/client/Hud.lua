@@ -654,6 +654,10 @@ local PORT_HELP = {
 		{ "E", "Menagerie: adopt a pet" },
 		{ "E", "Madame Ragwort's: dress up" },
 		{ "E", "Spyglass: watch the raid" },
+		{ "E", "seven games round town: walk up to a sign" },
+		{ "E", "Quest Board by the pier: quests, the season" },
+		{ "E", "the balloon lift: your pet sanctuary" },
+		{ "⚔", "the Challenge chip: race a friend" },
 		{ "P", "the wardrobe, from anywhere" },
 		{ "V", "emotes" },
 	},
@@ -994,7 +998,7 @@ function Hud.heatHint(message, color)
 end
 
 local function helpCard()
-	return hudMode == "port" and portHelp or help
+	return (hudMode == "port" or hudMode == "portboat") and portHelp or help
 end
 
 function Hud.showHelp(seconds)
@@ -1413,6 +1417,13 @@ end
 -- panel or the skyship's banner. V13: in the Port the whole raid HUD steps aside (client/PortHud.lua).
 local function modeOf()
 	if player:GetAttribute("Zone") == "port" then
+		-- V13.3: at the wheel of a Racing Tub in the Port, the boat panel comes back (speed, boost, drift).
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local seat = humanoid and humanoid.SeatPart
+		if seat and seat.Parent and seat.Parent:GetAttribute("BoatType") then
+			return "portboat"
+		end
 		return "port"
 	end
 	local state = player:GetAttribute("DeployState")
@@ -1430,19 +1441,23 @@ local function modeOf()
 	return "foot"
 end
 
-local TOAST_Y = { foot = -100, boat = -164, ship = -84, flight = -84, port = -130 }
+local TOAST_Y = { foot = -100, boat = -164, ship = -84, flight = -84, port = -130, portboat = -164 }
 local function applyMode(mode)
 	if mode == hudMode then
 		return
 	end
 	hudMode = mode
-	local foot, boat, port = mode == "foot", mode == "boat", mode == "port"
+	local portBoat = mode == "portboat"
+	local foot, boat, port = mode == "foot", mode == "boat" or portBoat, mode == "port" or portBoat
 	for key, slot in pairs(slots) do
 		local want = (key == "keg" or key == "polter") and foot or (foot or boat)
 		if key == "polter" and not Config.POLTER_ENABLED then
 			want = false -- V13.1: switched off
 		end
-		slot.frame.Parent.Visible = foot or boat
+		if portBoat then
+			want = false -- in the Port's Regatta only the boat panel shows
+		end
+		slot.frame.Parent.Visible = (foot or boat) and not portBoat
 		if not want then
 			slot.shown = false
 			slot.frame.Visible = false
@@ -1451,14 +1466,14 @@ local function applyMode(mode)
 	staminaBar.Visible = foot
 	staminaIcon.Visible = foot
 	dashChip.Visible = foot
-	objectiveWanted = foot or boat
+	objectiveWanted = (foot or boat) and not portBoat
 	objective.Visible = objectiveWanted and objective.Text ~= ""
 	top.Visible = not port
 	feedList.Visible = true
 	if port then
 		board.Visible = false
 		coinChip.Visible = false
-		boatPanel.Visible = false
+		boatPanel.Visible = portBoat
 		help.Visible = false
 	else
 		portHelp.Visible = false
@@ -1584,7 +1599,10 @@ function Hud.update(now)
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	local carrying = player:GetAttribute("CarryingLoot")
 	applyMode(modeOf())
-	if hudMode ~= "port" then
+	if hudMode == "portboat" then
+		updateBoatPanel(now)
+		shoreHint.Visible = false
+	elseif hudMode ~= "port" then
 		updateTop(now, phase, phaseEndsAt)
 		updateBoard(now, lootFolder())
 		updateMoves(now, root, carrying)

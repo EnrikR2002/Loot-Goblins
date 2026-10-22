@@ -33,6 +33,14 @@ local PortHud = require(script.Parent.PortHud)
 local Spectate = require(script.Parent.Spectate)
 local PortLife = require(script.Parent.PortLife)
 local ChaosFx = require(script.Parent.ChaosFx) -- V13.2: the world chaos events, drawn
+-- V13.3, the Living Port: the Port's games, the Quest Board and the Hall of Records, the sanctuaries, the card after a
+-- raid, challenges, and titles over goblins' heads.
+local PlayHud = require(script.Parent.PlayHud)
+local PortBoard = require(script.Parent.PortBoard)
+local SanctuaryView = require(script.Parent.Sanctuary)
+local NextUp = require(script.Parent.NextUp)
+local Challenge = require(script.Parent.Challenge)
+local Titles = require(script.Parent.Titles)
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
@@ -1521,13 +1529,165 @@ Emotes.start(Shop.dock)
 Results.start(function()
 	Shop.open("shop")
 end)
--- V13: the Goblin Port's own screen, watching the raid from it, and its menagerie.
+-- V13.3: a marker pointing the way to a place in the Port for a little while (the card after a raid's SHOW ME).
+local pointer = { token = 0 }
+local function pointAt(position, label)
+	pointer.token += 1
+	local token = pointer.token
+	if not pointer.part then
+		pointer.part = Instance.new("Part")
+		pointer.part.Name = "PortPointer"
+		pointer.part.Anchored = true
+		pointer.part.CanCollide = false
+		pointer.part.CanQuery = false
+		pointer.part.CanTouch = false
+		pointer.part.Transparency = 1
+		pointer.part.Size = Vector3.new(0.2, 0.2, 0.2)
+		pointer.part.Parent = workspace
+		pointer.gui = Instance.new("BillboardGui")
+		pointer.gui.Adornee = pointer.part
+		pointer.gui.Size = UDim2.fromOffset(240, 70)
+		pointer.gui.AlwaysOnTop = true
+		pointer.gui.LightInfluence = 0
+		pointer.gui.MaxDistance = 2000
+		pointer.gui.Parent = player:WaitForChild("PlayerGui")
+		pointer.label = Instance.new("TextLabel")
+		pointer.label.BackgroundTransparency = 1
+		pointer.label.Size = UDim2.fromScale(1, 1)
+		pointer.label.Font = Enum.Font.FredokaOne
+		pointer.label.TextScaled = true
+		pointer.label.TextColor3 = GOLD
+		pointer.label.TextStrokeTransparency = 0.2
+		pointer.label.Parent = pointer.gui
+	end
+	pointer.part.CFrame = CFrame.new(position + Vector3.new(0, 14, 0))
+	pointer.label.Text = "▼ " .. (label or "HERE")
+	pointer.gui.Enabled = true
+	Effects.chime({ 1, 1.5 }, 0.5)
+	task.delay(25, function()
+		if pointer.token == token then
+			pointer.gui.Enabled = false
+		end
+	end)
+end
+
+-- V13: the Goblin Port's own screen, watching the raid from it, and its menagerie. (V13.3: its new chips.)
+local sanctuaryRemote = remotes:WaitForChild("SanctuaryRequest")
+local function questsReady()
+	local text = player:GetAttribute("Quests")
+	local ok, view = pcall(function()
+		return game:GetService("HttpService"):JSONDecode(text or "{}")
+	end)
+	local n = 0
+	if ok and type(view) == "table" then
+		for _, kind in ipairs({ "day", "week" }) do
+			for _, q in ipairs(view[kind] or {}) do
+				if not q.claimed and q.n >= q.goal then
+					n += 1
+				end
+			end
+		end
+	end
+	return n
+end
 PortHud.start(function(focus)
 	Shop.open("shop", focus)
+end, {
+	quests = function()
+		PortBoard.open("quests")
+	end,
+	challenge = function()
+		Challenge.open()
+	end,
+	sanctuary = function()
+		if SanctuaryView.readyCount() > 0 then
+			SanctuaryView.open("expeditions")
+		else
+			sanctuaryRemote:FireServer("home")
+		end
+	end,
+	goal = function()
+		return (NextUp.goalText())
+	end,
+	playing = PlayHud.playing,
+	questReady = questsReady,
+	petsHome = SanctuaryView.readyCount,
+})
+Titles.start()
+PlayHud.start(Hud, PortHud.fadeIn)
+PortBoard.start(Hud)
+SanctuaryView.start(Hud)
+NextUp.start(function()
+	PortBoard.open("quests")
+end, pointAt)
+Challenge.start(Hud, PlayHud)
+-- The Living Port's prompts that open a panel (the Quest Board, an isle's signpost and dock, the lift's VISIT).
+ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	local panel = prompt:GetAttribute("OpensPanel")
+	if not panel then
+		return
+	end
+	if panel == "quests" then
+		PortBoard.open("quests")
+	elseif panel == "visit" then
+		SanctuaryView.open("visit")
+	elseif panel == "sanctuary" or panel == "expeditions" then
+		local owner = prompt:GetAttribute("Owner")
+		if owner == player.UserId then
+			SanctuaryView.open(panel)
+		else
+			Hud.toast("This isn't your sanctuary: yours is up the lift in the Port.")
+		end
+	end
 end)
 Spectate.start(Hud.toast)
 PortLife.start()
 ChaosFx.start(Hud)
+
+-- V13.3: the Living Port.
+function handlers.PlayResult(p)
+	PlayHud.result(p)
+end
+function handlers.PlayFx(p)
+	PlayHud.fx(p)
+	if p.kind == "expeditionhome" then
+		SanctuaryView.expeditionHome(p)
+	end
+end
+function handlers.QuestDone(p)
+	PortBoard.questDone(p)
+end
+function handlers.QuestRollover(p)
+	PortBoard.rollover(p)
+end
+function handlers.QuestClaimed(_p) end
+function handlers.SeasonReward(p)
+	PortBoard.seasonReward(p)
+end
+function handlers.BoardBest(p)
+	PortBoard.best(p)
+end
+function handlers.NextUp(p)
+	NextUp.show(p)
+end
+function handlers.ChallengeInvite(p)
+	Challenge.invited(p)
+end
+function handlers.ChallengeSent(p)
+	Challenge.sent(p)
+end
+function handlers.ChallengeClosed(p)
+	Challenge.closed(p)
+end
+function handlers.ChallengeStart(p)
+	Challenge.started(p)
+end
+function handlers.ChallengeResult(p)
+	Challenge.result(p)
+end
+function handlers.ChallengeRematch(p)
+	Challenge.rematchAsked(p)
+end
 
 -- V13.2: the world's chaos (server/WorldChaos.lua), and coming home early from a raid.
 function handlers.Chaos(p)
@@ -2602,6 +2762,7 @@ end
 
 function handlers.RaidStart()
 	Results.hide()
+	NextUp.hide() -- V13.3
 	if player:GetAttribute("InRaid") then
 		Hud.banner("RAID START! STEAL LOOT, BRING IT HOME", GOLD, 4, 3)
 		Effects.chime(Effects.CHIME_GOOD, 0.9)

@@ -32,11 +32,42 @@
 -- Boat classes are owned like any other item (owned["boat_wraith"] = true) and the one sailed is equipped.boat, so no
 -- older field changes meaning. A version-2 profile is upgraded in place (nothing is lost); a version-2 server meeting a
 -- version-3 profile refuses to write it ("newer"), which is the safe direction.
+--
+-- Version 4 (V13.3, the Living Port): everything in version 3, plus
+--   stats.questsDone, stats.expeditions, stats.challengeWins, stats.derbyWins
+--   games        { day, runs = { [game] = paid runs today }, earned (Shinies from games today), bests (best bonuses
+--                today), best = { [game] = personal best }, plays = { [game] = finished runs }, wins = { [game] = n } }
+--                (shared/PortGames.lua: the daily caps live HERE, in the profile, so rejoining resets nothing)
+--   quests       { day, daily = { { id, n, claimed, seen } }, week, weekly = {...}, bundle (the week whose cosmetic was
+--                given) } (shared/Seasons.lua)
+--   season       { best = { ["board@period"] = stored score }, paid = { ["board@period"] = unix paid },
+--                raids = { key = month, list = best raid hauls }, trophies = { { board, key, tier, rank, score } } }
+--   sanctuary    { theme, owned = { theme_<id> / decor_<id> = true }, levels = { [feature] = level },
+--                decor = { four decoration ids or "" }, residents = { pet ids } } (shared/Habitat.lua)
+--   expeditions  { list = { { id, pet, trip, at, back } }, nextId, day, collected (Shinies collected today) }
+--   milestones   { [name] = unix }: firsts already reported to analytics (server/Analytics.lua)
+--   challenges   { day, paid (paid wins today), pairs = { [userId] = paid wins against them today } }
+-- A version-2 or version-3 profile is upgraded in place: the new tables start empty and nothing old changes meaning;
+-- a version-3 server meeting a version-4 profile refuses to write it ("newer").
 local ProfileSchema = {}
 
-ProfileSchema.VERSION = 3
+ProfileSchema.VERSION = 4
 
-local STAT_KEYS = { "raids", "wins", "banked", "treasures", "snatches", "bestCombo", "steals", "escapes" }
+local STAT_KEYS = {
+	"raids",
+	"wins",
+	"banked",
+	"treasures",
+	"snatches",
+	"bestCombo",
+	"steals",
+	"escapes",
+	"questsDone", -- V13.3
+	"expeditions",
+	"challengeWins",
+	"derbyWins",
+}
+ProfileSchema.STAT_KEYS = STAT_KEYS
 local STAT_MAPS = { "bankedFrom", "escapedFrom", "classBanks" }
 
 local function whole(value)
@@ -70,6 +101,172 @@ local function stringMap(value)
 	return map
 end
 
+local function shortString(value, limit)
+	return type(value) == "string" and #value > 0 and #value <= (limit or 64)
+end
+
+-- { [string] = whole number > 0 } (a count per game, per goblin...).
+local function countMap(value, limit)
+	local out, n = {}, 0
+	if type(value) == "table" then
+		for key, count in pairs(value) do
+			if shortString(key, 80) and whole(count) > 0 and n < (limit or 200) then
+				out[key] = whole(count)
+				n += 1
+			end
+		end
+	end
+	return out
+end
+
+-- { [string] = number } (finite, not negative: a personal best in seconds or points).
+local function numberMap(value)
+	local out = {}
+	if type(value) == "table" then
+		for key, number in pairs(value) do
+			if
+				shortString(key, 80)
+				and type(number) == "number"
+				and number == number
+				and number >= 0
+				and number < 1e9
+			then
+				out[key] = number
+			end
+		end
+	end
+	return out
+end
+
+local function optionalWhole(value)
+	if type(value) ~= "number" or value ~= value or math.abs(value) == math.huge then
+		return nil
+	end
+	return math.floor(value)
+end
+
+local function questList(value)
+	local out = {}
+	if type(value) == "table" then
+		for _, entry in ipairs(value) do
+			if type(entry) == "table" and shortString(entry.id) and #out < 6 then
+				table.insert(out, {
+					id = entry.id,
+					n = whole(entry.n),
+					claimed = entry.claimed == true,
+					seen = (type(entry.seen) == "table") and stringSet(entry.seen) or nil,
+				})
+			end
+		end
+	end
+	return out
+end
+
+local function tableOr(value)
+	return type(value) == "table" and value or {}
+end
+
+-- V13.3: the Living Port's tables, repaired in place (wrong types become empty; nothing is invented).
+local function sanitizePort(profile)
+	local g = tableOr(profile.games)
+	profile.games = {
+		day = whole(g.day),
+		runs = countMap(g.runs),
+		earned = whole(g.earned),
+		bests = whole(g.bests),
+		best = numberMap(g.best),
+		plays = countMap(g.plays),
+		wins = countMap(g.wins),
+	}
+	local q = tableOr(profile.quests)
+	profile.quests = {
+		day = optionalWhole(q.day),
+		daily = questList(q.daily),
+		week = optionalWhole(q.week),
+		weekly = questList(q.weekly),
+		bundle = optionalWhole(q.bundle),
+	}
+	local season = tableOr(profile.season)
+	local raids = tableOr(season.raids)
+	local raidList = {}
+	if type(raids.list) == "table" then
+		for _, gold in ipairs(raids.list) do
+			if whole(gold) > 0 and #raidList < 10 then
+				table.insert(raidList, whole(gold))
+			end
+		end
+	end
+	local trophies = {}
+	if type(season.trophies) == "table" then
+		for _, t in ipairs(season.trophies) do
+			if type(t) == "table" and shortString(t.board) and shortString(t.key) and #trophies < 24 then
+				table.insert(trophies, {
+					board = t.board,
+					key = t.key,
+					tier = shortString(t.tier, 12) and t.tier or nil,
+					rank = optionalWhole(t.rank),
+					score = (type(t.score) == "number" and t.score == t.score) and t.score or 0,
+				})
+			end
+		end
+	end
+	profile.season = {
+		best = countMap(season.best, 400),
+		paid = countMap(season.paid, 800),
+		raids = { key = type(raids.key) == "string" and raids.key or "", list = raidList },
+		trophies = trophies,
+	}
+	local sanctuary = tableOr(profile.sanctuary)
+	local levels = {}
+	if type(sanctuary.levels) == "table" then
+		for key, level in pairs(sanctuary.levels) do
+			if shortString(key, 24) and type(level) == "number" then
+				levels[key] = math.clamp(whole(level), 0, 9)
+			end
+		end
+	end
+	local decor = {}
+	for i = 1, 4 do
+		local id = type(sanctuary.decor) == "table" and sanctuary.decor[i] or nil
+		decor[i] = shortString(id, 32) and id or ""
+	end
+	local residents = {}
+	if type(sanctuary.residents) == "table" then
+		for _, id in ipairs(sanctuary.residents) do
+			if shortString(id) and #residents < 12 then
+				table.insert(residents, id)
+			end
+		end
+	end
+	profile.sanctuary = {
+		theme = shortString(sanctuary.theme, 32) and sanctuary.theme or "meadow",
+		owned = stringSet(sanctuary.owned),
+		levels = levels,
+		decor = decor,
+		residents = residents,
+	}
+	local x = tableOr(profile.expeditions)
+	local list, top = {}, 0
+	if type(x.list) == "table" then
+		for _, e in ipairs(x.list) do
+			if type(e) == "table" and shortString(e.pet) and shortString(e.trip, 24) and #list < 5 then
+				local id = whole(e.id)
+				top = math.max(top, id)
+				table.insert(list, { id = id, pet = e.pet, trip = e.trip, at = whole(e.at), back = whole(e.back) })
+			end
+		end
+	end
+	profile.expeditions = {
+		list = list,
+		nextId = math.max(whole(x.nextId), top + 1, 1),
+		day = whole(x.day),
+		collected = whole(x.collected),
+	}
+	profile.milestones = countMap(profile.milestones)
+	local c = tableOr(profile.challenges)
+	profile.challenges = { day = whole(c.day), paid = whole(c.paid), pairs = countMap(c.pairs) }
+end
+
 function ProfileSchema.new(now)
 	return {
 		v = ProfileSchema.VERSION,
@@ -87,6 +284,10 @@ function ProfileSchema.new(now)
 			bestCombo = 0,
 			steals = 0,
 			escapes = 0,
+			questsDone = 0,
+			expeditions = 0,
+			challengeWins = 0,
+			derbyWins = 0,
 			bankedFrom = {},
 			escapedFrom = {},
 			classBanks = {},
@@ -97,6 +298,14 @@ function ProfileSchema.new(now)
 		welcomed = false,
 		created = now or 0,
 		seen = now or 0,
+		-- V13.3
+		games = { day = 0, runs = {}, earned = 0, bests = 0, best = {}, plays = {}, wins = {} },
+		quests = { daily = {}, weekly = {} },
+		season = { best = {}, paid = {}, raids = { key = "", list = {} }, trophies = {} },
+		sanctuary = { theme = "meadow", owned = {}, levels = {}, decor = { "", "", "", "" }, residents = {} },
+		expeditions = { list = {}, nextId = 1, day = 0, collected = 0 },
+		milestones = {},
+		challenges = { day = 0, paid = 0, pairs = {} },
 	}
 end
 
@@ -205,15 +414,17 @@ function ProfileSchema.sanitize(profile, limits, now)
 	profile.welcomed = profile.welcomed == true
 	profile.created = whole(profile.created)
 	profile.seen = whole(profile.seen)
+	sanitizePort(profile)
 	return profile
 end
 
--- Whatever came out of the store -> a version-2 profile, or nil and a reason when this server must not touch it.
+-- Whatever came out of the store -> a current-version profile, or nil and a reason when this server must not touch it.
 --   nil (no data)        a new profile
 --   not a table           a new profile, flagged `repaired` (a corrupt value is not worth refusing a player over)
 --   v == 1 / missing v    migrated
---   v == 2                repaired where needed
---   v >  2                nil, "newer": written by a newer version of the game. This server would lose what it does
+--   v == 2, 3             upgraded in place (V13, V13.3)
+--   v == 4                repaired where needed
+--   v >  4                nil, "newer": written by a newer version of the game. This server would lose what it does
 --                         not understand, so it plays the goblin unsaved instead of writing over it.
 function ProfileSchema.load(data, limits, now)
 	if data == nil then
@@ -233,10 +444,11 @@ function ProfileSchema.load(data, limits, now)
 	if version == nil or version == 1 then
 		profile = fromV1(data, now)
 		how = "migrated"
-	elseif version == 2 then
-		-- V13: version 2 -> 3 adds stats (sanitize fills them in, empty); every item, Shiny and receipt stays.
+	elseif version == 2 or version == 3 then
+		-- V13: version 2 -> 3 adds stats; V13.3: 3 -> 4 adds the Port's tables (sanitize fills them in, empty). Every
+		-- item, Shiny, stat and receipt stays.
 		profile = data
-		profile.migratedFrom = 2
+		profile.migratedFrom = version
 		how = "upgraded"
 	else
 		profile = data

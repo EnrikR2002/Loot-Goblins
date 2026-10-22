@@ -1056,6 +1056,22 @@ function Boats.spawnPlayerBoat(typeName, cframe)
 	return boat
 end
 
+-- V13.3: a boat for a Port game (the Regatta's Racing Tubs). Like an extra boat, but the raid's resets leave it alone:
+-- the game that made it removes it (Boats.remove) when its race ends, whatever the raid is doing.
+function Boats.spawnPortBoat(typeName, cframe)
+	local boat = buildBoat({ cf = cframe, type = typeName })
+	boat.portGame = true
+	table.insert(Boats.list, boat)
+	return boat
+end
+
+-- V13.3: hold a boat still until server time `untilTime` (a start grid's countdown): the server keeps the hull and
+-- drives it with no throttle, then hands it to its driver's client at once.
+function Boats.hold(boat, untilTime)
+	boat.heldUntil = untilTime
+	boat.reclaimUntil = math.max(boat.reclaimUntil, untilTime)
+end
+
 -- An AI-driven boat (Navy). Returns the boat; set boat.input each frame to steer it.
 function Boats.spawnAI(typeName, cframe)
 	local boat = buildBoat({ cf = cframe, type = typeName, ai = true })
@@ -1079,13 +1095,14 @@ end
 
 -- Runs the physics for a hull the server is simulating, and the map's gates.
 local function simulate(boat, dt, t)
-	local input = boat.input
+	local held = boat.heldUntil ~= nil and t < boat.heldUntil -- V13.3: on a start grid, waiting for GO
+	local input = not held and boat.input or nil
 	if input then
 		if input.boost and t >= boat.boostReadyAt then
 			boat.boostUntil = t + Config.BOAT_BOOST_TIME
 			boat.boostReadyAt = t + Config.BOAT_BOOST_COOLDOWN
 		end
-	elseif boat.driver and boat.driver.Occupant then
+	elseif not held and boat.driver and boat.driver.Occupant then
 		input = seatInput
 		input.throttle, input.steer, input.drift = boat.driver.ThrottleFloat, boat.driver.SteerFloat, boat.driftHeld
 		input.jump = boat.jumpQueued == true
@@ -1240,7 +1257,9 @@ end
 
 function Boats.reset()
 	for _, boat in ipairs(table.clone(Boats.list)) do
-		if boat.ai or boat.extra then
+		if boat.portGame then
+			continue -- V13.3: a Port game's boat is its game's to clear, not the raid's
+		elseif boat.ai or boat.extra then
 			Boats.remove(boat)
 		else
 			eject(boat)

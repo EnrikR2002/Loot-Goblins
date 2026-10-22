@@ -33,10 +33,24 @@ local ProfileSchema = require(script.Parent.ProfileSchema)
 local ProfileStore = require(script.Parent.ProfileStore)
 local Economy = require(script.Parent.Economy)
 local Analytics = require(script.Parent.Analytics)
+local PortGames = require(Shared:WaitForChild("PortGames"))
+local Habitat = require(Shared:WaitForChild("Habitat"))
 
 local Progress = {}
 Progress.LookChanged = Util.signal() -- (player): what they wear changed (goblin, boat or pet)
 Progress.Opened = Util.signal() -- (player): their saved profile is open (Monetization checks game passes)
+-- V13.3, the Living Port. Other modules hang their rules on Progress without Progress requiring them (no cycles):
+--   Deed (player, session, event, amount, detail)   something that counts toward quests happened (server/Quests.lua)
+--   RaidRewarded (player, session, result)           a raid's payout was made (Quests, Leaderboards)
+--   AfterRaid (player, session, result)               ...and after those: the next-up card (server/Prospects.lua)
+--   actions[name] = fn(session, a, b)                 a ShopRequest action someone else owns (quests, the sanctuary)
+--   publishers = { fn(session) }                      set the player's attributes whenever their profile changes
+Progress.Deed = Util.signal()
+Progress.RaidRewarded = Util.signal()
+Progress.AfterRaid = Util.signal()
+Progress.GamePlayed = Util.signal() -- (player, session, gameId, score, run): a Port game's run was paid (Leaderboards)
+Progress.actions = {}
+Progress.publishers = {}
 
 local P = Config.PROGRESS
 local LIMITS = { presets = P.PRESETS, receipts = P.RECEIPTS_KEEP, history = P.HISTORY }
@@ -106,6 +120,12 @@ local function publish(s)
 		s.lookSent = encoded
 		Progress.LookChanged:Fire(player)
 	end
+	for _, fn in ipairs(Progress.publishers) do
+		local ok, err = pcall(fn, s)
+		if not ok then
+			warn("[Progress] publisher: " .. tostring(err))
+		end
+	end
 end
 
 local function reply(s, action, outcome, extra)
@@ -171,6 +191,38 @@ local function saveNow(s, release)
 	return status == "ok"
 end
 
+-- V13.3: another module changed this goblin's profile (a quest claimed, a decoration bought): save it soon (or now)
+-- and tell their client.
+function Progress.markChanged(player, urgent)
+	local s = sessions[player]
+	if s then
+		changed(s, urgent)
+	end
+end
+
+-- V13.3: something that counts toward quests (server/Quests.lua listens). event: a quest event name.
+function Progress.record(player, event, amount, detail)
+	local s = sessions[player]
+	if s then
+		Progress.Deed:Fire(player, s, event, amount or 1, detail)
+	end
+end
+
+-- V13.3: owns(itemId) for this goblin's profile (Seasons and Habitat ask with it).
+function Progress.ownsFn(s)
+	return function(id)
+		return Economy.owns(s.profile, id)
+	end
+end
+
+-- V13.3: a first that matters for retention (server/Analytics.lua), once per goblin ever.
+function Progress.milestone(player, name)
+	local s = sessions[player]
+	if s and Analytics.milestone(player, s.profile, name, unix()) then
+		changed(s, false)
+	end
+end
+
 -- For receipts: save now and say whether it is on disk.
 function Progress.saveNow(player)
 	local s = sessions[player]
@@ -179,7 +231,7 @@ end
 
 -- Opening ------------------------------------------------------------------------------------------------------------
 -- The real profile is open: move in what was earned on the stand-in, give the welcome, check achievements.
-local function adopt(s, profile, how)
+local function adopt(s, profile, how, lastSeen)
 	local standIn = s.profile
 	Economy.mergeEarnings(profile, standIn)
 	s.profile = profile
@@ -203,6 +255,13 @@ local function adopt(s, profile, how)
 	for _, entry in ipairs(unlocked) do
 		Progress.announce(s, entry)
 	end
+	-- V13.3: a goblin coming back after a day or more (the retention question): how long they were away, in days.
+	if type(lastSeen) == "number" and how == "loaded" then
+		local away = unix() - lastSeen
+		if away >= 20 * 3600 then
+			Analytics.event(s.player, "ReturnSession", math.floor(away / 86400 * 10 + 0.5) / 10)
+		end
+	end
 	Progress.Opened:Fire(s.player)
 end
 
@@ -210,7 +269,7 @@ local function open(s)
 	local tries = 0
 	while s.player.Parent and sessions[s.player] == s do
 		tries += 1
-		local status, profile, how = profileStore:open(s.key, s.id)
+		local status, profile, how, lastSeen = profileStore:open(s.key, s.id)
 		if not s.player.Parent or sessions[s.player] ~= s then
 			-- Left while it was opening: give the lock straight back.
 			if status == "ok" then
@@ -219,7 +278,7 @@ local function open(s)
 			return
 		end
 		if status == "ok" then
-			adopt(s, profile, how)
+			adopt(s, profile, how, lastSeen)
 			return
 		elseif status == "newer" then
 			s.status = "newer"
@@ -303,6 +362,84 @@ local function recordAndCheck(player, kind, a, b, c)
 	end
 end
 
+-- V13.3: unlock any achievement whose goal a change outside the raid reached (a quest claimed, an expedition home).
+function Progress.checkAchievements(player)
+	local s = sessions[player]
+	if not s then
+		return
+	end
+	local unlocked = Economy.checkAchievements(s.profile, unix(), P.HISTORY)
+	if #unlocked > 0 then
+		changed(s, true)
+		for _, entry in ipairs(unlocked) do
+			Progress.announce(s, entry)
+		end
+	end
+end
+
+-- V13.3: a finished Port game run (server/Minigames.lua calls this through Minigames.reward). score: the run's score,
+-- or nil if it did not count (did not finish, or scored nothing). place: among the goblins in the heat (the Derby's
+-- counts its bot pets too). Pays within the day's caps (shared/PortGames.lua: the counters live in the profile),
+-- records bests, feeds quests, the boards and achievements. Returns the breakdown the results card shows.
+function Progress.onPortGame(player, gameId, score, place, humans, gameSession)
+	local s = sessions[player]
+	if not s then
+		return nil
+	end
+	local profile = s.profile
+	local run = PortGames.finishRun(profile, gameId, score, place, humans, unix())
+	if score ~= nil then
+		s.gamesPlayed = (s.gamesPlayed or 0) + 1
+		if gameId == "derby" and place == 1 then
+			profile.stats.derbyWins = (profile.stats.derbyWins or 0) + 1
+		end
+	end
+	changed(s, run.shinies > 0)
+	if run.shinies > 0 then
+		Analytics.shinies(player, false, run.shinies, profile.shinies, "Gameplay", "game:" .. gameId)
+	end
+	Analytics.event(player, "PortGamePlayed", score ~= nil and 1 or 0, { game = gameId, medal = run.medal or "none" })
+	if score ~= nil then
+		Progress.milestone(player, "FirstMinigamePlayed")
+		-- Quests: what this run counts toward.
+		Progress.record(player, "game_any")
+		Progress.record(player, "game_" .. gameId)
+		Progress.record(player, "game_distinct", 1, gameId)
+		if run.best then
+			Progress.record(player, "best")
+		end
+		if run.medal == "gold" then
+			Progress.record(player, "medal_gold")
+		end
+		local entry = gameSession and gameSession.entries and gameSession.entries[player]
+		local data = entry and entry.data or {}
+		if gameId == "golf" and (data.greens or 0) > 0 then
+			Progress.record(player, "golf_green", data.greens)
+		elseif gameId == "toss" then
+			Progress.record(player, "toss_points", score)
+		elseif gameId == "crabs" and (data.crabs or 0) > 0 then
+			Progress.record(player, "crabs", data.crabs)
+		elseif gameId == "gallery" and (data.hits or 0) > 0 then
+			Progress.record(player, "gallery_hits", data.hits)
+		end
+		Progress.GamePlayed:Fire(player, s, gameId, score, run)
+	end
+	Progress.checkAchievements(player)
+	return {
+		shinies = run.shinies,
+		parts = run.parts,
+		medal = run.medal,
+		best = run.best,
+		first = score ~= nil and run.previous == nil,
+		previous = run.previous,
+		won = run.won,
+		capped = run.capped,
+		balance = profile.shinies,
+		today = profile.games.earned,
+		cap = Config.PLAYGROUND.DAILY_SHINIES,
+	}
+end
+
 -- A raid deed (V13): remembered for this raid's payout (Economy.deedsValue).
 local function deed(player, name, add)
 	local s = sessions[player]
@@ -320,29 +457,42 @@ end
 -- A treasure was banked (Main, from Loot.Banked). `class`: the boat class they came home in (V13), or nil.
 function Progress.onBanked(player, lootId, value, class)
 	recordAndCheck(player, "bank", lootId, value, class)
+	Progress.record(player, "gold", value) -- V13.3: quests
+	if class then
+		Progress.record(player, "bankclass", 1, class)
+	end
+	local s = sessions[player]
+	if s then
+		s.bankedThisRaid = true
+	end
 end
 
 -- A goblin snatched treasure from one they knocked down (Main, from Loot.Taken).
 function Progress.onSnatch(player)
 	deed(player, "snatch")
 	recordAndCheck(player, "snatch")
+	Progress.record(player, "snatch")
 end
 
 -- V13: a goblin took a treasure from its spot (Main, from Loot.Taken).
 function Progress.onSteal(player)
 	deed(player, "steal")
 	recordAndCheck(player, "steal")
+	Progress.record(player, "steal")
 end
 
 -- V13: a pursuit of this goblin ended at the sanctuary (Pursuit.Escaped): `islandId` is whose creature it was.
 function Progress.onEscape(player, islandId)
 	deed(player, "escape")
 	recordAndCheck(player, "escape", islandId)
+	Progress.record(player, "escape")
+	Progress.record(player, "escapefrom", 1, islandId)
 end
 
 -- A clean landing after `count` tricks, checked by the server (Boats.TrickLanded).
 function Progress.onTrickLanded(player, count)
 	deed(player, "tricks", 1)
+	Progress.record(player, "tricks", count or 1)
 	local s = sessions[player]
 	if s and count > s.profile.stats.bestCombo then
 		recordAndCheck(player, "combo", count)
@@ -396,13 +546,35 @@ function Progress.award(results)
 				Analytics.shinies(player, false, breakdown.total, s.profile.shinies, "Gameplay", "raid")
 				if s.profile.stats.raids == 1 then
 					Analytics.onboarding(player, 2)
+					Progress.milestone(player, "FirstRaidCompleted")
+				elseif s.profile.stats.raids == 2 then
+					Progress.milestone(player, "SecondRaidCompleted")
 				end
+				-- V13.3: the RaidContinuation funnel (does a goblin who finished a raid choose to play another?).
+				s.raidsFinished = (s.raidsFinished or 0) + 1
+				if s.raidsFinished == 1 then
+					Analytics.continuation(player, s.id, 1)
+				elseif s.raidsFinished == 2 then
+					Analytics.continuation(player, s.id, 3)
+				end
+				-- Quests and the leaderboards, then the next-up card.
+				local result = {
+					gold = r.gold,
+					won = r.won,
+					place = r.place,
+					raiders = #results,
+					banked = s.bankedThisRaid == true,
+					breakdown = breakdown,
+				}
+				Progress.RaidRewarded:Fire(player, s, result)
+				Progress.AfterRaid:Fire(player, s, result)
 			else
 				Net.send(player, "RaidReward", { late = true, balance = s.profile.shinies, gold = r.gold })
 			end
 		end
 		if s then
 			s.present = 0
+			s.bankedThisRaid = nil
 		end
 	end
 	return payouts
@@ -416,6 +588,20 @@ function Progress.onRaidStart(players, late)
 		if s then
 			s.present = 0
 			s.deeds = {}
+			s.bankedThisRaid = nil
+			-- V13.3: retention. Every raid since V13.2 is one a goblin chose to join (AUTO-JOIN is a standing choice).
+			s.raidsJoined = (s.raidsJoined or 0) + 1
+			Analytics.event(player, "RaidJoined", s.raidsJoined, {
+				auto = player:GetAttribute("AutoJoin") == true,
+				late = late == true,
+			})
+			if s.profile.stats.raids == 1 then
+				Progress.milestone(player, "SecondRaidStarted")
+			end
+			if (s.raidsFinished or 0) >= 1 and not s.continued then
+				s.continued = true
+				Analytics.continuation(player, s.id, 2)
+			end
 			local gear = Economy.kit(s.profile)
 			if gear then
 				Gear.give(player, gear, true)
@@ -456,6 +642,7 @@ local MESSAGES = {
 	unsaved = "Buying waits until your saved progress is open (a few seconds after joining).",
 	petbusy = "Pets change in the Port, or at the Hoard during a raid.",
 	boatbusy = "Your boat changes in the Port, or at the Hoard during a raid.",
+	away = "That pet is away on an expedition: it comes home at your sanctuary.",
 	busy = "Slow down a little.",
 }
 
@@ -490,6 +677,10 @@ WEARABLE.kit = true
 local function wear(s, slot, id)
 	if slot == "pet" and s.profile.equipped.pet ~= id and not Progress.petSafe(s.player) then
 		return { ok = false, code = "petbusy" }
+	end
+	-- V13.3: a pet out on an expedition cannot follow anyone until it is home.
+	if slot == "pet" and id and Habitat.away(s.profile)[id] then
+		return { ok = false, code = "away" }
 	end
 	-- V13: the boat you sail changes only in the Port (or at the Hoard): never in the middle of a chase.
 	if slot == "boat" and s.profile.equipped.boat ~= id and not Progress.boatSafe(s.player) then
@@ -595,7 +786,15 @@ function Progress.handle(player, action, a, b)
 		reply(s, action, outcome, { index = a, message = message })
 	elseif action == "opened" then
 		Analytics.event(player, "ShopOpened")
+	elseif Progress.actions[action] then
+		-- V13.3: the Quest Board's and the sanctuary's actions (server/Quests.lua, server/Sanctuary.lua).
+		Progress.actions[action](s, a, b)
 	end
+end
+
+-- V13.3: is this session's real profile open (buying, claiming and sending expeditions wait until it is)?
+function Progress.isReady(s)
+	return s ~= nil and s.status == "ready"
 end
 
 -- Used by Monetization and Emotes ---------------------------------------------------------------------------------------
@@ -642,6 +841,8 @@ function Progress.forget(player)
 		return
 	end
 	s.leaving = true
+	-- V13.3: how much of the game this visit used (raids joined and Port games played), for retention.
+	Analytics.event(player, "SessionSummary", s.raidsJoined or 0, { games = s.gamesPlayed or 0 })
 	if s.status == "ready" then
 		saveNow(s, true)
 	end
