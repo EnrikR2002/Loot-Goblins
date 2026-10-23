@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "check-hand-placed-layouts-with-an-overlap-query",
+  "title": "A layout placed by hand-rotated numbers can land on its neighbour; ask the engine what overlaps it",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-23",
+  "topics": [
+    "world-building",
+    "testing",
+    "studio"
+  ],
+  "observation": "An 84-stud-wide stage for leaderboard boards was positioned in a frame turned 45 degrees from the world, with every part placed by offsets from that frame. Nobody looked at it. A review worked out its corners by hand and found its left end on a neighbouring quay; a first script written to check the numbers rotated the frame the wrong way and reported different corners, so the arithmetic itself could not be trusted. The shipped fix (a narrower stage shifted along the frame) was checked two ways that do not depend on anyone's rotation arithmetic: a unit test that maps the stage's corners through one shared function and compares them with the neighbours' rectangles, and, in one Play start, `workspace:GetPartsInPart(stage)` on the built stage, which found only the stage's own braziers.",
+  "recommendation": "For any layout built from rotated offsets, keep its position and size as data in a shared module with the one function that maps them to the world, test the corners against the neighbours' footprints, and after building run one overlap query (`GetPartsInPart` or `GetPartBoundsInBox`) in a Play start. Do not rely on a second hand calculation.",
+  "applies_when": [
+    "A structure is placed through a rotated CFrame frame instead of absolute positions",
+    "Neighbouring structures are built by other code with their own offsets"
+  ],
+  "limits": [
+    "One occurrence in one Roblox game (October 2026)",
+    "An overlap query sees only parts that can be queried; non-colliding decoration is not found by it"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/5598758122916d2de205dae883530e0f3b9bbe68/docs/reports/2026-10-23-v13-4-port-polish.md",
+      "detail": "Section 5, item 4 and section 6: the first layout's left corners were on the quay; after the fix PortGamesSpec passes and the Play-time overlap query found no quay or Wardrobe part."
+    }
+  ]
+}
