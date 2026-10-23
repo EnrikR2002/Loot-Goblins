@@ -11,6 +11,8 @@
 --              The game says when a goblin is DONE and with what score (Minigames.done) or keeps a running score
 --              (Minigames.points); the heat ends when everyone is done, when the game's time runs out, or when
 --              nobody is left in it.
+--              V13.4: START NOW ("ready") in a lobby; once everyone in it has pressed it, it starts at once (no waiting
+--              to retry alone).
 --   LEAVING    LEAVE on the screen, walking off during the lobby, disconnecting, a reset, the goblin's raid setting off
 --              (the raid always wins: Raid.lua calls Minigames.leaveAll first), or the Zone becoming the raid. The game
 --              cleans up that goblin's things (its `drop` hook); a heat with nobody left in it ends.
@@ -43,6 +45,10 @@ local Minigames = {}
 Minigames.Finished = Util.signal() -- (session, standings): a heat is over (Challenges listens)
 -- (player, gameId, score or nil, place, humans, session) -> the run's breakdown (Main sets it: Progress.onPortGame).
 Minigames.reward = function()
+	return nil
+end
+-- (player, gameId) -> the goblin's personal best, or nil (V13.4: Main sets it from the profile; the panel shows it).
+Minigames.bestOf = function()
 	return nil
 end
 
@@ -123,6 +129,8 @@ function Minigames.publish(session)
 			d = entry.done or nil,
 			p = entry.place,
 			l = entry.left or nil,
+			r = entry.ready or nil, -- V13.4: pressed START NOW in the lobby
+			b = entry.best, -- V13.4: their personal best before this heat (the score to beat)
 			x = entry.show, -- a short line the game wants shown (laps, crabs, a checkpoint)
 		})
 	end
@@ -199,12 +207,14 @@ local function create(gameId, private)
 end
 
 local function addPlayer(session, player)
+	local ok, best = pcall(Minigames.bestOf, player, session.game)
 	local entry = {
 		player = player,
 		userId = player.UserId,
 		name = player.DisplayName,
 		joinedAt = now(),
 		data = {},
+		best = ok and type(best) == "number" and best or nil,
 	}
 	session.entries[player] = entry
 	table.insert(session.order, player)
@@ -736,6 +746,24 @@ function Minigames.request(player, action, a, b)
 	table.insert(times, t)
 	if action == "leave" then
 		Minigames.leave(player, "leave")
+		return
+	elseif action == "ready" then
+		-- V13.4: START NOW in a lobby. When every goblin in it has pressed it, the countdown begins at once.
+		local session = playing[player]
+		local entry = session and session.entries[player]
+		if entry and session.state == "lobby" then
+			entry.ready = true
+			local all = true
+			for _, other in pairs(session.entries) do
+				if not other.ready and not other.left then
+					all = false
+				end
+			end
+			if all then
+				session.lobbyEndsAt = math.min(session.lobbyEndsAt or now(), now())
+			end
+			Minigames.publish(session)
+		end
 		return
 	elseif action == "again" then
 		if type(a) == "string" and modules[a] and not playing[player] then

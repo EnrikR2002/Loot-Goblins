@@ -2615,6 +2615,9 @@ Config.PLAYGROUND = {
 	RAID_WARN = 15, -- A goblin signed up for the raid is warned this long before it leaves (it ends their game).
 	INPUT_RATE = 12, -- Game inputs a goblin may send a second (a throw, a cheer, a shot); more are ignored.
 	VENUE_DRAW = 320, -- (client) Studs from the camera within which a venue's moving parts are drawn.
+	-- (V13.4) Treasure Toss and the Target Gallery: hits in a row are a STREAK; from the FROM-th on, each scores BONUS
+	-- more. A miss ends it.
+	STREAK = { FROM = 3, BONUS = 1 },
 
 	-- TINY BOAT REGATTA: one lap of the water round the Port in a Racing Tub (Config.BOAT_TYPES.racer).
 	REGATTA = {
@@ -2626,6 +2629,8 @@ Config.PLAYGROUND = {
 		MIN_TIME = 20, -- A lap faster than this is not believed (no score, no reward).
 		MEDALS = { gold = 36, silver = 43, bronze = 54 }, -- Seconds (first guesses: nobody has raced it yet).
 		REJOIN_AFTER = 2.5, -- Out of your tub this long: back at your last checkpoint, seated, at rest.
+		LAUNCH = 1.1, -- (V13.4) A ROCKET START (throttle right on GO): a boost this long. Too early: nothing.
+		LAUNCH_LATE = 0.6, -- The server takes a launch up to this long after GO (the client sends it on GO).
 		SPLASH_EVERY = 4.5, -- The splash cannons: one shot each this often...
 		SPLASH_WARN = 1.4, -- ...after a ring on the water this long...
 		SPLASH_RADIUS = 20, -- ...throwing every tub inside it...
@@ -2671,6 +2676,13 @@ Config.PLAYGROUND = {
 		EARLY = 0.6, -- A cheer up to this long before the hurdle is clean...
 		LATE = 0.18, -- ...and up to this long after it (the server sees the pet a moment late)...
 		TOO_EARLY = 1.3, -- ...earlier than EARLY but within this: it jumps too soon and trips.
+		-- V13.4: the heart of the clean window is PERFECT (a longer burst), and clean jumps in a row are a STREAK: from
+		-- the STREAK-th on, the pet is ON FIRE (a faster burst). Skill, never money: every pet gets the same.
+		PERFECT_EARLY = 0.28, -- A cheer this long before the hurdle...
+		PERFECT_LATE = 0.08, -- ...to this long after it is perfect.
+		PERFECT_TIME = 1.8, -- A perfect jump's burst lasts this long (a clean one ZOOM_TIME).
+		STREAK = 3,
+		FIRE = 1.7, -- ON FIRE: this much faster during a burst (instead of ZOOM).
 		SNIFF = 0.6, -- Every pet stops once to sniff a flower (the same pause for all; only where differs).
 		BOT_SKILL = 0.62, -- A bot pet's chance of a clean jump.
 		LIMIT = 70,
@@ -2732,12 +2744,15 @@ Config.QUESTS = {
 	BUNDLE_SHINIES = 60, -- All three weekly quests claimed: the week's cosmetic, or this if it is already owned.
 }
 
--- LEADERBOARDS (server/Leaderboards.lua, shared/Seasons.lua). Weekly: the biggest single-raid haul, the fastest
--- Regatta, the best Cannon Golf round. Monthly: the PIRATE CHAMPIONSHIP (the sum of a goblin's best CHAMPION_RAIDS raid
--- hauls of the month: skill, not hours) and the fastest Gauntlet. Every score is the server's own measurement. Rewards
--- are paid to each goblin's own profile after the period ends (whenever they are next in a server), once.
+-- LEADERBOARDS (server/Leaderboards.lua, shared/Seasons.lua). The RAID boards come first (V13.4, the Hall of Legends):
+-- weekly, the BIGGEST HAUL (one raid) and the PIRATE CHAMPIONSHIP (the sum of a goblin's best WEEK_RAIDS hauls of the
+-- week); monthly, PIRATE LEGENDS (the best CHAMPION_RAIDS of the month: skill, not hours). The Port's records: the
+-- fastest Regatta and the best Cannon Golf round (weekly), the fastest Gauntlet (monthly). Every score is the server's
+-- own measurement. Rewards are paid to each goblin's own profile after the period ends (whenever they are next in a
+-- server), once.
 Config.SEASONS = {
-	CHAMPION_RAIDS = 5,
+	CHAMPION_RAIDS = 5, -- PIRATE LEGENDS (monthly): a goblin's best this many raids of the month, added up.
+	WEEK_RAIDS = 3, -- (V13.4) The weekly PIRATE CHAMPIONSHIP: the best this many raids of the week, added up.
 	SETTLE = 900, -- Seconds after a period ends before its final standings are written (late saves land first).
 	REFRESH = 120, -- Seconds between reads of each board's top ten.
 	WRITE_GAP = 20, -- A goblin's improved score is written at most this often per board.

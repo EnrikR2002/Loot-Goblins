@@ -486,19 +486,23 @@ function Economy.mergePort(profile, standIn)
 				sa.best[name] = value
 			end
 		end
-		if sb.raids and sb.raids.key ~= "" then
-			if sa.raids.key == sb.raids.key then
-				for _, gold in ipairs(sb.raids.list or {}) do
-					table.insert(sa.raids.list, gold)
+		-- The month's raids (Pirate Legends) and, since V13.4, the week's (the weekly Pirate Championship).
+		for _, field in ipairs({ "raids", "week" }) do
+			local ra, rb = sa[field], sb[field]
+			if ra and rb and rb.key ~= "" then
+				if ra.key == rb.key then
+					for _, gold in ipairs(rb.list or {}) do
+						table.insert(ra.list, gold)
+					end
+					table.sort(ra.list, function(x, y)
+						return x > y
+					end)
+					while #ra.list > 10 do
+						table.remove(ra.list)
+					end
+				elseif ra.key < rb.key then
+					sa[field] = { key = rb.key, list = table.clone(rb.list or {}) }
 				end
-				table.sort(sa.raids.list, function(x, y)
-					return x > y
-				end)
-				while #sa.raids.list > 10 do
-					table.remove(sa.raids.list)
-				end
-			elseif sa.raids.key < sb.raids.key then
-				sa.raids = { key = sb.raids.key, list = table.clone(sb.raids.list or {}) }
 			end
 		end
 	end

@@ -5,7 +5,8 @@
 --   THE TUBS    real boats (server/Boats.lua: Boats.spawnPortBoat, so the raid's resets leave them alone), driven by
 --               their goblin's own client with the same physics as every boat, dressed in the driver's paint and flag.
 --               Boost, drift, hop, ramps and tricks all work; nothing sinks; the bow gun and abilities are the raid's.
---   THE START   tubs on a grid behind the line, held still by the server (Boats.hold) until GO.
+--   THE START   tubs on a grid behind the line, held still by the server (Boats.hold) until GO. V13.4: throttle down
+--               right on GO (not held through the countdown) is a ROCKET START, a short boost ("launch").
 --   THE LAP     the server watches every hull (10 times a second, swept between looks, so a fast tub cannot slip
 --               past a checkpoint) through 13 checkpoints in order; crossing the line after the last is the finish.
 --               THE TEETH has two ways: the narrow channel through the rocks (the shortcut, with a hoop) or round
@@ -499,6 +500,16 @@ function Regatta.input(session, player, action)
 		local t = now()
 		if t - (entry.data.resetAt or 0) > 3 then
 			putBack(session, entry, t)
+		end
+	elseif action == "launch" and entry and not entry.data.launched then
+		-- V13.4: a ROCKET START. The client sends it the moment GO comes if the throttle went down on time (not
+		-- held through the countdown); the server takes it only once and only just after GO.
+		entry.data.launched = true
+		local t = now()
+		local boat = entry.data.boat
+		if t - session.goAt <= RG.LAUNCH_LATE and boat and boat.state == "float" then
+			boat.boostUntil = math.max(boat.boostUntil or 0, t + RG.LAUNCH)
+			boat.model:SetAttribute("BoostEndsAt", boat.boostUntil)
 		end
 	end
 end

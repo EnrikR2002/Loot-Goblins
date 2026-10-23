@@ -694,6 +694,29 @@ HATS.pethat_laurel = function(rig, at, group)
 		)
 	end
 end
+-- V13.4: the weekly Pirate Championship's gold tier: a big doubloon worn like a badge.
+HATS.pethat_doubloon = function(rig, at, group)
+	add(
+		rig,
+		group,
+		"Coin",
+		"cyl",
+		Vector3.new(0.08, 0.44, 0.44),
+		at * CFrame.new(0, 0.2, -0.1) * deg(0, 90, 0),
+		GOLD,
+		METAL
+	)
+	add(
+		rig,
+		group,
+		"CoinMark",
+		"block",
+		Vector3.new(0.12, 0.04, 0.1),
+		at * CFrame.new(0, 0.2, -0.15),
+		rgb(190, 120, 20),
+		METAL
+	)
+end
 HATS.pethat_medal = function(rig, at, group)
 	local blue = rgb(50, 110, 220)
 	add(

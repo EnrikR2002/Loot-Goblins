@@ -204,6 +204,13 @@ StyleFx.TITLES = {
 		stroke = rgb(70, 20, 10),
 	},
 	title_gauntlet = { text = "Gauntlet Legend", glyph = "✦", color = rgb(255, 150, 110), stroke = rgb(70, 20, 10) },
+	title_weekcaptain = {
+		text = "Captain of the Week",
+		glyph = "♛",
+		color = rgb(220, 170, 255),
+		stroke = rgb(50, 16, 80),
+		gradient = seq(rgb(255, 236, 160), rgb(200, 140, 255)),
+	},
 }
 
 function StyleFx.covers(item)

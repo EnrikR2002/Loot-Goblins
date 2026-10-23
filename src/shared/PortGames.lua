@@ -439,6 +439,17 @@ for _, p in ipairs(gauntlet.platforms) do
 	})
 end
 gauntlet.startBox = { center = gauntlet.start.center + v3(0, 6, 0), half = v3(10, 8, 10) }
+
+-- The furthest checkpoint at or after `from` that `position` is on (its index), or nil. V13.4: reaching a platform
+-- further on counts, so a swing that skips one is a shortcut.
+function PortGames.gauntletReached(position, from)
+	for k = #gauntlet.checkpoints, from, -1 do
+		if PortGames.inBox(position, gauntlet.checkpoints[k].box) then
+			return k
+		end
+	end
+	return nil
+end
 gauntlet.startSpot = CFrame.lookAt(W(-101, 10, -101), W(-109, 10, -113))
 
 -- CANNON GOLF ---------------------------------------------------------------------------------------------------------------
@@ -547,12 +558,15 @@ function PortGames.derbyPoint(f, lane)
 	return derby.center + v3(x, 0, z) + n * offset, t
 end
 -- The judge: a CHEER `timeToHurdle` seconds before the pet reaches its next hurdle (negative: after) is
--- "clean" (in the window), "early" (too soon: it trips on the hurdle) or "none" (no hurdle near: a stumble).
+-- "perfect" (V13.4: the heart of the window), "clean" (in the window), "early" (too soon: it trips on the hurdle) or
+-- "none" (no hurdle near: a stumble).
 function PortGames.derbyJudge(timeToHurdle)
 	if timeToHurdle == nil then
 		return "none"
 	end
-	if timeToHurdle <= DG.EARLY and timeToHurdle >= -DG.LATE then
+	if timeToHurdle <= DG.PERFECT_EARLY and timeToHurdle >= -DG.PERFECT_LATE then
+		return "perfect"
+	elseif timeToHurdle <= DG.EARLY and timeToHurdle >= -DG.LATE then
 		return "clean"
 	elseif timeToHurdle > DG.EARLY and timeToHurdle <= DG.TOO_EARLY then
 		return "early"
@@ -704,6 +718,16 @@ gallery.targets = {
 		end,
 	},
 }
+
+-- V13.4: a range shot landed. `hit` true or false; returns the new streak and the points it scores (the target's
+-- points, plus the streak bonus from the STREAK.FROM-th hit in a row on; a miss scores nothing and ends the streak).
+function PortGames.rangeShot(streak, hit, points)
+	if not hit then
+		return 0, 0
+	end
+	streak = (streak or 0) + 1
+	return streak, points + (streak >= G.STREAK.FROM and G.STREAK.BONUS or 0)
+end
 
 -- Where a range's target is at time t, whether it can be hit now, and its radius and points.
 function PortGames.targetAt(range, index, t)

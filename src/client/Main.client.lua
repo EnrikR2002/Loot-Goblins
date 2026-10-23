@@ -1612,6 +1612,10 @@ end, {
 	playing = PlayHud.playing,
 	questReady = questsReady,
 	petsHome = SanctuaryView.readyCount,
+	legends = function() -- V13.4
+		PortBoard.open("season")
+	end,
+	legendsPlace = PortBoard.bestPlace,
 })
 Titles.start()
 PlayHud.start(Hud, PortHud.fadeIn)
@@ -1660,7 +1664,9 @@ end
 function handlers.QuestRollover(p)
 	PortBoard.rollover(p)
 end
-function handlers.QuestClaimed(_p) end
+function handlers.QuestClaimed(p)
+	PortBoard.claimed(p) -- V13.4
+end
 function handlers.SeasonReward(p)
 	PortBoard.seasonReward(p)
 end

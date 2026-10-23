@@ -612,13 +612,19 @@ end
 -- Leaderboards ----------------------------------------------------------------------------------------------------------
 -- id: stable (it names a DataStore); period: "week" | "month"; order: "desc" (more is better) or "asc" (less is
 -- better: times, stored in hundredths of a second); tiers: the score for each tier; awards: catalogue `award` sources
--- for placements (top1, top10) and the gold tier (gold).
+-- for placements (top1, top10) and the gold tier (gold). raid: a RAID board (V13.4: the Hall of Legends' centrepiece,
+-- listed first everywhere); the others are the Port games' records. icon: its mark on boards and cards.
+--
+-- V13.4 kept every id (they name the DataStores and the saved bests, so standings and unpaid rewards carry over) and
+-- only renamed the monthly "champion" board PIRATE LEGENDS, adding the weekly PIRATE CHAMPIONSHIP ("crown").
 local G = Config.PLAYGROUND
 Seasons.BOARDS = {
 	{
 		id = "haul",
 		period = "week",
 		order = "desc",
+		raid = true,
+		icon = "💰",
 		name = "BIGGEST HAUL",
 		sub = "gold banked in one raid",
 		unit = "gold",
@@ -626,9 +632,34 @@ Seasons.BOARDS = {
 		awards = { top1 = { "haul_top1" }, top10 = { "weekly_top10" } },
 	},
 	{
+		id = "crown",
+		period = "week",
+		order = "desc",
+		raid = true,
+		icon = "👑",
+		name = "PIRATE CHAMPIONSHIP",
+		sub = string.format("your best %d raids of the week added up", Config.SEASONS.WEEK_RAIDS),
+		unit = "gold",
+		tiers = { bronze = 25, silver = 50, gold = 80 },
+		awards = { top1 = { "crown_top1" }, top10 = { "weekly_top10", "crown_top10" }, gold = { "crown_gold" } },
+	},
+	{
+		id = "champion",
+		period = "month",
+		order = "desc",
+		raid = true,
+		icon = "🏆",
+		name = "PIRATE LEGENDS",
+		sub = string.format("your best %d raids of the month added up", Config.SEASONS.CHAMPION_RAIDS),
+		unit = "gold",
+		tiers = { bronze = 40, silver = 80, gold = 130 },
+		awards = { top1 = { "champion_top1" }, top10 = { "champion_top10" }, gold = { "legend_gold" } },
+	},
+	{
 		id = "regatta",
 		period = "week",
 		order = "asc",
+		icon = "⛵",
 		name = "FASTEST REGATTA",
 		sub = "one lap of the Tiny Boat Regatta",
 		unit = "time",
@@ -639,6 +670,7 @@ Seasons.BOARDS = {
 		id = "golf",
 		period = "week",
 		order = "desc",
+		icon = "⛳",
 		name = "CANNON GOLF",
 		sub = "best round of three holes",
 		unit = "points",
@@ -646,19 +678,10 @@ Seasons.BOARDS = {
 		awards = { top1 = { "golf_top1" }, top10 = { "weekly_top10" } },
 	},
 	{
-		id = "champion",
-		period = "month",
-		order = "desc",
-		name = "PIRATE CHAMPIONSHIP",
-		sub = "your best five raids added up",
-		unit = "gold",
-		tiers = { bronze = 40, silver = 80, gold = 130 },
-		awards = { top1 = { "champion_top1" }, top10 = { "champion_top10" } },
-	},
-	{
 		id = "gauntlet",
 		period = "month",
 		order = "asc",
+		icon = "🪝",
 		name = "FASTEST GAUNTLET",
 		sub = "one Grapple Gauntlet run",
 		unit = "time",
@@ -772,21 +795,14 @@ function Seasons.submit(profile, boardId, score, unix)
 	return false, key, old
 end
 
--- The Pirate Championship: a raid's haul goes into the month's best CHAMPION_RAIDS. Returns the month's sum when it
--- went up (to submit to the "champion" board), else nil.
-function Seasons.addRaid(profile, gold, unix)
-	gold = math.floor(gold or 0)
-	if gold <= 0 then
-		return nil
-	end
-	local key = Seasons.key("month", Seasons.period("month", unix))
-	local r = profile.season.raids
+-- A raid's haul into one bounded list of best raids (`r` = { key, list }) for the period `key`: only the best `keep`
+-- count, so playing more never wins by itself. Returns the new sum when it went up, else nil.
+local function addBest(r, key, gold, keep)
 	if r.key ~= key then
 		r.key = key
 		r.list = {}
 	end
 	local list = r.list
-	local keep = Config.SEASONS.CHAMPION_RAIDS
 	local before = 0
 	for _, v in ipairs(list) do
 		before += v
@@ -803,6 +819,34 @@ function Seasons.addRaid(profile, gold, unix)
 		after += v
 	end
 	return after > before and after or nil
+end
+
+-- A raid's banked gold goes into the month's best CHAMPION_RAIDS (PIRATE LEGENDS, board "champion") and the week's
+-- best WEEK_RAIDS (the PIRATE CHAMPIONSHIP, board "crown"). Returns each sum when it went up (to submit), else nil.
+function Seasons.addRaid(profile, gold, unix)
+	gold = math.floor(gold or 0)
+	if gold <= 0 then
+		return nil, nil
+	end
+	local S = Config.SEASONS
+	profile.season.week = profile.season.week or { key = "", list = {} }
+	local month =
+		addBest(profile.season.raids, Seasons.key("month", Seasons.period("month", unix)), gold, S.CHAMPION_RAIDS)
+	local week = addBest(profile.season.week, Seasons.key("week", Seasons.period("week", unix)), gold, S.WEEK_RAIDS)
+	return month, week
+end
+
+-- Where `score` would stand among a board's known top (stored values, best first: { { u, s } }), counting a goblin's
+-- own row only once: the place a fresh score is worth before the next read of the board. nil past the list's end.
+function Seasons.rankAmong(board, list, userId, score)
+	local value = Seasons.encode(board, score)
+	local ahead = 0
+	for _, row in ipairs(list or {}) do
+		if row.u ~= userId and Seasons.better(board, row.s, value) then
+			ahead += 1
+		end
+	end
+	return ahead < Config.SEASONS.HALL and ahead + 1 or nil
 end
 
 -- The placement reward for a rank in a period kind: { shinies, top } or nil (unranked, or below the last step).

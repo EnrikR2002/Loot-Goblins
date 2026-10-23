@@ -156,6 +156,10 @@ BoatAbilities.init(refs)
 Progress.participating = Raid.isParticipant
 -- V13.3 (registered before Progress opens anyone's profile, so their first publish already includes the Port's parts).
 Minigames.reward = Progress.onPortGame
+Minigames.bestOf = function(player, gameId) -- V13.4: shown on the play panel as the score to beat
+	local s = Progress.session(player)
+	return s and s.profile.games.best[gameId] or nil
+end
 Quests.init(Port.kit)
 Leaderboards.init(Port.kit)
 Sanctuary.init(Port.kit)

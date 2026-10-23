@@ -1,7 +1,11 @@
--- THE LEADERBOARDS (V13.3): weekly (the biggest single-raid haul, the fastest Tiny Boat Regatta, the best Cannon Golf
--- round) and monthly (the PIRATE CHAMPIONSHIP: a goblin's best Config.SEASONS.CHAMPION_RAIDS raids of the month added
--- up, and the fastest Grapple Gauntlet), shown on the Hall of Records by the podium. The rules and rewards are
--- shared/Seasons.lua's; this module is the DataStores and the boards.
+-- THE LEADERBOARDS (V13.3, made the Port's centrepiece in V13.4). The RAID boards: the weekly BIGGEST HAUL (one raid)
+-- and PIRATE CHAMPIONSHIP (a goblin's best Config.SEASONS.WEEK_RAIDS raids of the week added up), and the monthly
+-- PIRATE LEGENDS (the best CHAMPION_RAIDS of the month). The Port's records: the fastest Regatta and the best Cannon Golf
+-- round (weekly) and the fastest Gauntlet (monthly). All stand in the HALL OF LEGENDS behind the podium, raid boards in
+-- the middle. The rules and rewards are shared/Seasons.lua's; this module is the DataStores and the boards.
+--
+--   PLACES     a goblin's place is their saved best set among the board's last read (Seasons.rankAmong), so a new best
+--              shows its place at once ("BoardBest" carries it, and the place before), not two minutes later.
 --
 --   SCORES     only the server's own measurements (a raid's banked gold from Raid.finish through Progress, a lap or a
 --              round timed by the server's games). Each goblin's best per board and period lives in their profile
@@ -199,6 +203,17 @@ local function flush(player, force)
 	end
 end
 
+-- Where a goblin stands on a board this period: their saved best placed among the board's last read (so a new best
+-- shows its place at once, before the next read). nil without a score or past the top HALL.
+local function rankFor(player, profile, board)
+	local top = tops[board.id]
+	local best = Seasons.best(profile, board.id, unix())
+	if best == nil or not top or top.key ~= Seasons.boardKey(board, unix()) then
+		return nil
+	end
+	return Seasons.rankAmong(board, top.list, player.UserId, best)
+end
+
 -- A new score for a board, measured by the server. Saved in the profile at once, written to the board soon.
 function Leaderboards.submit(player, boardId, score)
 	local s = Progress.session(player)
@@ -206,11 +221,34 @@ function Leaderboards.submit(player, boardId, score)
 	if not s or not board or type(score) ~= "number" then
 		return false
 	end
+	local before = rankFor(player, s.profile, board)
 	local improved, key, value = Seasons.submit(s.profile, boardId, score, unix())
 	if improved then
 		queueWrite(player, board, key, value)
 		Progress.markChanged(player, false)
-		Net.send(player, "BoardBest", { board = boardId, score = score, key = key })
+		local rank = rankFor(player, s.profile, board)
+		Net.send(player, "BoardBest", {
+			board = boardId,
+			score = score,
+			key = key,
+			rank = rank,
+			was = before,
+		})
+		-- V13.4: climbing into a raid board's top three is news for the whole server, and the Hall cheers.
+		if board.raid and rank and rank <= 3 and (before == nil or rank < before) then
+			Net.feed(
+				string.format("%s %s is #%d on the %s!", board.icon, player.DisplayName, rank, board.name),
+				Palette.GOLD
+			)
+			if Leaderboards.hallSpot then
+				Net.broadcastNear(
+					Leaderboards.hallSpot,
+					600,
+					"PlayFx",
+					{ kind = "hallcheer", position = Leaderboards.hallSpot }
+				)
+			end
+		end
 	end
 	return improved
 end
@@ -372,14 +410,7 @@ local function publish(s)
 	local view = { best = {}, rank = {}, trophies = #s.profile.season.trophies }
 	for _, board in ipairs(Seasons.BOARDS) do
 		view.best[board.id] = Seasons.best(s.profile, board.id, unix())
-		local top = tops[board.id]
-		if top and top.key == Seasons.boardKey(board, unix()) then
-			for i, row in ipairs(top.list) do
-				if row.u == player.UserId then
-					view.rank[board.id] = i
-				end
-			end
-		end
+		view.rank[board.id] = rankFor(player, s.profile, board)
 	end
 	local ok, text = pcall(HttpService.JSONEncode, HttpService, view)
 	if ok and text ~= s.seasonSent then
@@ -390,16 +421,14 @@ end
 
 function Leaderboards.rankOf(player, boardId)
 	local board = Seasons.BOARD_BY_ID[boardId]
-	local top = board and tops[boardId]
-	if not top or top.key ~= Seasons.boardKey(board, unix()) then
-		return nil
-	end
-	for i, row in ipairs(top.list) do
-		if row.u == player.UserId then
-			return i
-		end
-	end
-	return nil
+	local s = Progress.session(player)
+	return board and s and rankFor(player, s.profile, board) or nil
+end
+
+-- What the last raid did to this goblin's places on the raid boards: { { board, from, to } } (the next-up card).
+local moves = setmetatable({}, { __mode = "k" })
+function Leaderboards.lastMoves(player)
+	return moves[player] or {}
 end
 
 -- Refreshing every board: this period's top, last period's champions, the Hall when it is due.
@@ -457,51 +486,94 @@ local function refresh()
 	end
 end
 
--- The Hall of Records: five boards behind the podium (every client writes them: client/PortBoard.lua) -------------------
+-- The Hall of Legends (V13.4; V13.3's Hall of Records): behind the podium, facing the plaza. The three RAID boards stand
+-- in the middle, big and gilded, under a great trophy; PAST CHAMPIONS on the left; the Port games' records, smaller,
+-- on the right. Every client writes the boards itself (client/PortBoard.lua).
 local function build(kit)
 	local base = kit.at(-56, 6, 52) * CFrame.Angles(0, math.rad(-45), 0)
-	for i, board in ipairs(Seasons.BOARDS) do
-		local x = (i - 3) * 13
-		local cf = base * CFrame.new(x, 0, 25) * CFrame.Angles(0, math.rad(-(i - 3) * 9), 0)
-		for _, side in ipairs({ -1, 1 }) do
-			kit.part(
-				"HallPost",
-				Vector3.new(1, 18, 1),
-				cf * CFrame.new(side * 6, 9, 0.4),
-				Palette.WOOD_DARK,
-				Enum.Material.Wood
-			)
-		end
-		local panel = kit.board(
-			"Board_" .. board.id,
-			Vector3.new(11, 14, 0.5),
-			cf * CFrame.new(0, 10, 0),
-			"",
-			Palette.GOLD,
-			rgb(36, 26, 22),
-			kit.core
-		)
-		panel.Name = "Board_" .. board.id
-		panel:SetAttribute("Board", board.id)
-		kit.board(
-			"HallTitle",
-			Vector3.new(12, 2.2, 0.4),
-			cf * CFrame.new(0, 18.4, 0),
-			(board.period == "week" and "THIS WEEK: " or "THIS MONTH: ") .. board.name,
-			board.period == "week" and rgb(150, 230, 255) or rgb(255, 200, 90),
-			rgb(70, 30, 90),
-			kit.core
-		)
+	local hall = base * CFrame.new(0, 0, 25)
+	local GOLD, PURPLE, NIGHT = Palette.GOLD, rgb(110, 44, 150), rgb(36, 26, 22)
+	local METAL, SLATE = Enum.Material.Metal, Enum.Material.Slate
+	-- The stage the boards stand on.
+	kit.floor("HallStage", Vector3.new(84, 1.4, 14), hall * CFrame.new(0, 0.7, 1), Palette.STONE_DARK, SLATE)
+	kit.deco("HallStageTrim", Vector3.new(84.4, 0.4, 14.4), hall * CFrame.new(0, 1.25, 1), GOLD, METAL)
+	local raid, games = {}, {}
+	for _, board in ipairs(Seasons.BOARDS) do
+		table.insert(board.raid and raid or games, board)
 	end
+	local function pillars(cf, w, h, trim)
+		for _, side in ipairs({ -1, 1 }) do
+			local x = side * (w / 2 + 0.7)
+			kit.part("HallPillar", Vector3.new(1.4, h + 4, 1.4), cf * CFrame.new(x, (h + 4) / 2, 0.4), trim, METAL)
+			kit.deco("PillarCap", Vector3.new(2.2, 1, 2.2), cf * CFrame.new(x, h + 4.4, 0.4), trim, METAL)
+		end
+	end
+	local function panel(id, cf, size)
+		local part = kit.board(id, size, cf, "", GOLD, NIGHT, kit.core)
+		part.Name = id
+		return part
+	end
+	local function title(cf, width, text, color)
+		kit.board("HallTitle", Vector3.new(width, 2.4, 0.4), cf, text, color, PURPLE, kit.core)
+	end
+	-- The raid boards: weekly blue titles, monthly gold, a little turned in towards the middle.
+	for i, board in ipairs(raid) do
+		local x = (i - (#raid + 1) / 2) * 17
+		local cf = hall * CFrame.new(x, 1.4, 0) * CFrame.Angles(0, math.rad(-x * 0.5), 0)
+		pillars(cf, 14, 18, GOLD)
+		panel("Board_" .. board.id, cf * CFrame.new(0, 11, 0), Vector3.new(14, 18, 0.5)):SetAttribute("Board", board.id)
+		local color = board.period == "week" and rgb(150, 230, 255) or rgb(255, 214, 90)
+		title(cf * CFrame.new(0, 21.6, 0), 15, board.icon .. " " .. board.name, color)
+	end
+	-- PAST CHAMPIONS (left) and the PORT RECORDS (right: three small boards, one above another).
+	local left = hall * CFrame.new(-34, 1.4, 0) * CFrame.Angles(0, math.rad(22), 0)
+	pillars(left, 11, 16, Palette.WOOD_DARK)
+	panel("PastChampions", left * CFrame.new(0, 10, 0), Vector3.new(11, 16, 0.5))
+	title(left * CFrame.new(0, 19.4, 0), 12, "PAST CHAMPIONS", GOLD)
+	local right = hall * CFrame.new(34, 1.4, 0) * CFrame.Angles(0, math.rad(-22), 0)
+	pillars(right, 11, 16, Palette.WOOD_DARK)
+	for i, board in ipairs(games) do
+		local part = panel("Board_" .. board.id, right * CFrame.new(0, 17.4 - i * 5.3, 0), Vector3.new(11, 5, 0.5))
+		part:SetAttribute("Board", board.id)
+	end
+	title(right * CFrame.new(0, 19.4, 0), 12, "PORT RECORDS", rgb(150, 230, 255))
+	-- The great sign, and over it a trophy the whole plaza can see.
 	kit.board(
 		"HallSign",
-		Vector3.new(26, 3, 0.5),
-		base * CFrame.new(0, 23, 25),
-		"THE HALL OF RECORDS",
-		Palette.GOLD,
-		rgb(110, 44, 150),
+		Vector3.new(34, 4, 0.6),
+		hall * CFrame.new(0, 28, 0.4),
+		"HALL OF LEGENDS",
+		GOLD,
+		PURPLE,
 		kit.core
 	)
+	local cup = hall * CFrame.new(0, 31, 0.4)
+	Leaderboards.hallSpot = (cup * CFrame.new(0, 8, 0)).Position
+	kit.deco("TrophyBase", Vector3.new(5, 1.4, 5), cup * CFrame.new(0, 0.7, 0), Palette.WOOD_DARK, Enum.Material.Wood)
+	kit.deco("TrophyStem", Vector3.new(1.2, 3, 1.2), cup * CFrame.new(0, 2.9, 0), GOLD, METAL)
+	local bowl =
+		kit.deco("TrophyCup", Vector3.new(5.4, 4.4, 5.4), cup * CFrame.new(0, 6.2, 0), GOLD, METAL, { egg = true })
+	for _, side in ipairs({ -1, 1 }) do
+		local handle = cup * CFrame.new(side * 3.3, 6.6, 0) * CFrame.Angles(0, 0, math.rad(side * -18))
+		kit.deco("TrophyHandle", Vector3.new(0.7, 3, 1.6), handle, GOLD, METAL)
+	end
+	kit.light(bowl, rgb(255, 220, 140), 40, 1.2)
+	-- Two braziers at the stage's ends: warm light on the boards at night.
+	for _, side in ipairs({ -1, 1 }) do
+		local at = hall * CFrame.new(side * 43, 0, -6)
+		kit.part("Brazier", Vector3.new(2.6, 5, 2.6), at * CFrame.new(0, 2.5, 0), Palette.STONE_DARK, SLATE)
+		local coals = kit.deco(
+			"BrazierFire",
+			Vector3.new(2.4, 0.8, 2.4),
+			at * CFrame.new(0, 5.2, 0),
+			rgb(255, 140, 40),
+			Enum.Material.Neon
+		)
+		local fire = Instance.new("Fire")
+		fire.Size, fire.Heat = 5, 6
+		fire.Parent = coals
+		kit.light(coals, rgb(255, 170, 90), 36, 1.4)
+	end
 end
 
 function Leaderboards.init(kit)
@@ -531,12 +603,30 @@ function Leaderboards.init(kit)
 	table.insert(Progress.publishers, publish)
 	-- Scores from raids and from the Port's games.
 	Progress.RaidRewarded:Connect(function(player, s, result)
+		moves[player] = nil
 		if (result.gold or 0) > 0 then
-			Leaderboards.submit(player, "haul", result.gold)
-			local sum = Seasons.addRaid(s.profile, result.gold, unix())
-			if sum then
-				Leaderboards.submit(player, "champion", sum)
+			local before = {}
+			for _, board in ipairs(Seasons.BOARDS) do
+				if board.raid then
+					before[board.id] = rankFor(player, s.profile, board)
+				end
 			end
+			Leaderboards.submit(player, "haul", result.gold)
+			local month, week = Seasons.addRaid(s.profile, result.gold, unix())
+			if month then
+				Leaderboards.submit(player, "champion", month)
+			end
+			if week then
+				Leaderboards.submit(player, "crown", week)
+			end
+			local list = {}
+			for _, board in ipairs(Seasons.BOARDS) do
+				local rank = board.raid and rankFor(player, s.profile, board)
+				if rank then
+					table.insert(list, { board = board.id, from = before[board.id], to = rank })
+				end
+			end
+			moves[player] = list
 		end
 	end)
 	Progress.GamePlayed:Connect(function(player, _s, gameId, score)

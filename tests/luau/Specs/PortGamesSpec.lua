@@ -220,6 +220,31 @@ return function(t)
 		t.eq(PortGames.derbyJudge(DG.TOO_EARLY + 1), "none", "no hurdle near")
 		t.eq(PortGames.derbyJudge(-1), "none", "long past")
 		t.eq(PortGames.derbyJudge(nil), "none", "no hurdle left")
+		-- V13.4: the perfect heart sits inside the clean window, never outside it.
+		t.eq(PortGames.derbyJudge(0.1), "perfect", "the heart of the window")
+		t.eq(PortGames.derbyJudge(DG.PERFECT_EARLY + 0.01), "clean", "just early of perfect is clean")
+		t.eq(PortGames.derbyJudge(-DG.PERFECT_LATE - 0.01), "clean", "just late of perfect is clean")
+		t.ok(DG.PERFECT_EARLY < DG.EARLY and DG.PERFECT_LATE < DG.LATE, "perfect is inside clean")
+		t.ok(DG.FIRE > DG.ZOOM and DG.PERFECT_TIME > DG.ZOOM_TIME, "a streak and a perfect jump are worth more")
+	end)
+
+	t.test("V13.4: a Gauntlet shortcut counts, and range streaks pay a little more", function()
+		local GA = PortGames.GAUNTLET
+		local p3 = GA.platforms[3].center + Vector3.new(0, 3, 0)
+		t.eq(PortGames.gauntletReached(p3, 1), 3, "landing on the third platform from the start skips two")
+		t.eq(PortGames.gauntletReached(p3, 4), nil, "a platform already passed does not count again")
+		t.eq(PortGames.gauntletReached(GA.start.center + Vector3.new(0, 3, 0), 1), nil, "the start is not a checkpoint")
+		local finish = GA.platforms[#GA.platforms].center + Vector3.new(0, 3, 0)
+		t.eq(PortGames.gauntletReached(finish, 1), #GA.checkpoints, "the bell is the last")
+		local streak, points = 0, 0
+		local total = 0
+		for _, hit in ipairs({ true, true, true, true, false, true }) do
+			streak, points = PortGames.rangeShot(streak, hit, 2)
+			total += points
+		end
+		local S = G.STREAK
+		t.eq(streak, 1, "a miss ended the streak; the next hit starts again")
+		t.eq(total, 5 * 2 + (4 - S.FROM + 1) * S.BONUS, "the bonus from the streak's third hit on")
 	end)
 
 	t.test("a throw lands in a basket coming down, not going up; a closed mouth eats nothing", function()

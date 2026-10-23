@@ -4,7 +4,8 @@
 --                  the seven games. Pick one of each, SEND.
 --   AN INVITATION  "⚔ Ninety challenges you to the Tiny Boat Regatta!" with ACCEPT and NO THANKS and the time left
 --                  (a controller starts on ACCEPT). Silence is a no.
---   AFTERWARDS     the result in a banner; REMATCH on the results card (both must press it).
+--   AFTERWARDS     the result in a banner with both scores (V13.4); REMATCH on the results card (both must press
+--                  it), and when the other asks first, an ACCEPT card for the rematch's window (V13.4).
 -- The server decides everything (server/Challenges.lua); this only asks.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,6 +13,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("LootGoblins")
+local Config = require(Shared:WaitForChild("Config"))
 local PortGames = require(Shared:WaitForChild("PortGames"))
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
@@ -200,34 +202,47 @@ function Challenge.result(p)
 	if playHud then
 		playHud.lastChallenge = p.id
 	end
+	-- V13.4: both scores on the line, so the result reads at a glance ("38.21 s vs 40.10 s").
+	local def = PortGames.BY_ID[p.game]
+	local function score(value)
+		if value == nil then
+			return def and def.kind == "time" and "DNF" or "0"
+		end
+		return playHud and playHud.scoreText and playHud.scoreText(def, value) or tostring(value)
+	end
+	local versus = (p.mine ~= nil or p.theirs ~= nil)
+			and string.format("  ·  %s vs %s", score(p.mine), score(p.theirs))
+		or ""
 	local text, color
 	if p.result == "win" then
 		text = string.format(
-			"YOU BEAT %s!%s",
+			"⚔ YOU BEAT %s!%s%s",
 			string.upper(p.opponent or "?"),
+			versus,
 			(p.shinies or 0) > 0 and string.format("  +%d ◆", p.shinies) or ""
 		)
 		color = C.gold
+		Effects.chime({ 1, 1.26, 1.5, 2, 2.5 }, 0.8)
 	elseif p.result == "lose" then
-		text = string.format("%s WINS THIS ONE! REMATCH?", string.upper(p.opponent or "?"))
+		text = string.format("%s WINS THIS ONE%s  ·  REMATCH?", string.upper(p.opponent or "?"), versus)
 		color = rgb(255, 150, 120)
 	elseif p.result == "tie" then
-		text = "A TIE!" .. ((p.shinies or 0) > 0 and string.format("  +%d ◆", p.shinies) or "")
+		text = "DEAD HEAT! A TIE" .. versus .. ((p.shinies or 0) > 0 and string.format("  +%d ◆", p.shinies) or "")
 		color = C.goldPale
 	else
 		text = string.format("%s LEFT: THE WIN IS YOURS (no Shinies for a walkover)", string.upper(p.opponent or "?"))
 		color = C.white
 	end
-	hud.banner(text, color, 4, 3)
+	hud.banner(text, color, 4.5, 3)
 end
 
+-- They want another go: an ACCEPT card (the results card may be closed by now), for as long as a rematch is open.
 function Challenge.rematchAsked(p)
-	hud.banner(
-		string.format("%s WANTS A REMATCH! (REMATCH on your results)", string.upper(p.from or "?")),
-		C.gold,
-		4,
-		3
-	)
+	invite = { id = p.id, rematch = true, expiresAt = now() + Config.CHALLENGES.REMATCH }
+	inviteCard.Visible = true
+	inviteCard.Message.Text = string.format("⚔ %s wants a REMATCH!", p.from or "?")
+	Effects.chime({ 1, 1.5, 1, 1.5 }, 0.7)
+	Ui.focus(inviteCard.Buttons.Accept)
 end
 
 -- Building ---------------------------------------------------------------------------------------------------------------------
@@ -360,7 +375,11 @@ local function build()
 		{ text = "⚔ ACCEPT", size = UDim2.new(0.55, -4, 1, 0), textSize = 18, name = "Accept" },
 		function()
 			if invite then
-				challengeRemote:FireServer("answer", invite.id, true)
+				if invite.rematch then
+					challengeRemote:FireServer("rematch", invite.id) -- V13.4: answering a rematch
+				else
+					challengeRemote:FireServer("answer", invite.id, true)
+				end
 				hideInvite()
 			end
 		end
@@ -374,7 +393,9 @@ local function build()
 		name = "Decline",
 	}, function()
 		if invite then
-			challengeRemote:FireServer("answer", invite.id, false)
+			if not invite.rematch then
+				challengeRemote:FireServer("answer", invite.id, false)
+			end
 			hideInvite()
 		end
 	end)

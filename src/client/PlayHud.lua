@@ -41,7 +41,13 @@ local sessions = {} -- id -> decoded session
 local lives = {} -- id -> decoded live data
 local hud -- client/Hud (toasts, banners)
 local gui, scaler, panel, title, big, sub, roster, buttons, resetButton, warning
+local readyButton, callout -- V13.4: START NOW in a lobby; the flash under the panel (splits, places, a new best)
+local ticker, tickerToken = nil, 0 -- V13.4: the Derby commentator's line
 local resultCard
+-- V13.4: this run as it goes (checkpoint times, place, whether the best is beaten yet), and the checkpoint times of
+-- this visit's best run per time game (so a split says how you are doing against it).
+local run = { session = nil, cp = 0, splits = {}, pos = nil, beaten = false }
+local bestSplits = {} -- gameId -> { [checkpoint] = seconds }
 local venueSigns = {}
 local marker, markerLabel
 local ctx -- what the game parts are given each frame
@@ -200,6 +206,17 @@ local function build()
 		Padding = UDim.new(0, 10),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, buttons)
+	readyButton = Ui.button(buttons, {
+		text = "▶ START NOW",
+		style = "good",
+		size = UDim2.fromOffset(150, 36),
+		textSize = 16,
+		order = 0,
+		name = "StartNow",
+	}, function()
+		playRemote:FireServer("ready")
+		Effects.chime({ 1, 1.5 }, 0.4)
+	end)
 	Ui.button(buttons, {
 		text = "LEAVE",
 		style = "wood",
@@ -235,6 +252,34 @@ local function build()
 		Visible = false,
 	})
 	Ui.corner(warning, 15)
+	callout = Ui.label(root, {
+		Name = "PlayCallout",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 200),
+		Size = UDim2.fromOffset(360, 40),
+		Text = "",
+		Font = Ui.TITLE,
+		TextSize = 30,
+		TextColor3 = C.white,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Visible = false,
+	})
+	Ui.stroke(callout, C.night, 2.5).ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	ticker = Ui.label(root, {
+		Name = "Commentator",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -120),
+		Size = UDim2.fromOffset(520, 34),
+		Text = "",
+		Font = Ui.TITLE,
+		TextSize = 22,
+		TextColor3 = C.goldPale,
+		BackgroundColor3 = C.night,
+		BackgroundTransparency = 0.25,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Visible = false,
+	})
+	Ui.corner(ticker, 17)
 	-- The marker over the next checkpoint or platform.
 	local anchor = Ui.make("Part", {
 		Name = "PlayMarkerAnchor",
@@ -361,6 +406,16 @@ local function progressLine(def, session, row, t)
 		)
 	elseif def.id == "derby" then
 		return PlayCritters.derbyLine(session, t) or "CHEER (SPACE) as your pet reaches a hurdle!"
+	elseif def.id == "crabs" then
+		-- V13.4: the co-op goal in view: how many are still loose.
+		local loose = PlayCritters.crabsLeft(session.id)
+		local place = row and row.p
+		return string.format(
+			"🦀 %s LEFT  ·  %s%s",
+			loose and tostring(loose) or "?",
+			scoreText(def, row and row.s or 0),
+			place and ("  ·  " .. ordinal(place)) or ""
+		)
 	end
 	local place = row and row.p
 	return string.format("%s%s", scoreText(def, row and row.s or 0), place and ("  ·  " .. ordinal(place)) or "")
@@ -397,6 +452,117 @@ local function updateRoster(session)
 	roster.Visible = shown >= 2
 end
 
+-- V13.4: a short flash under the panel (a split, a place gained, a best beaten). The newest replaces the last.
+local flashToken = 0
+local function flash(text, color, seconds)
+	flashToken += 1
+	local mine = flashToken
+	callout.Text = text
+	callout.TextColor3 = color or C.white
+	callout.Visible = true
+	local scale = callout:FindFirstChildOfClass("UIScale") or Ui.make("UIScale", {}, callout)
+	scale.Scale = 1.35
+	TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	task.delay(seconds or 1.4, function()
+		if flashToken == mine then
+			callout.Visible = false
+		end
+	end)
+end
+PlayHud.flash = flash
+
+-- V13.4: what this run is doing, frame to frame: a new checkpoint (a chime and the split against this visit's best
+-- run), a place gained in the Regatta, the moment a points game passes your best.
+local function track(session, def, row, t)
+	if run.session ~= session.id then
+		run = { session = session.id, cp = 0, splits = {}, pos = nil, beaten = false }
+	end
+	local was = run.state
+	run.state = session.state
+	if session.state == "running" and was == "countdown" then
+		if not run.launched then
+			local early = run.early
+			flash(early and "WHEELSPIN! TOO EARLY" or "GO!", early and Color3.fromRGB(255, 140, 110) or GOLD, 0.9)
+		end
+		Effects.chime({ 1.5, 2 }, 0.6)
+	end
+	if def.id == "regatta" and (session.state == "countdown" or session.state == "running") then
+		-- The ROCKET START: throttle down within a moment of GO, not held through the countdown.
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local seat = humanoid and humanoid.SeatPart
+		local throttle = seat and seat:IsA("VehicleSeat") and seat.ThrottleFloat > 0.5
+		local toGo = (session.goAt or t) - t
+		if throttle and toGo > 0.25 and toGo < 1.2 then
+			run.early = true
+		elseif throttle and not run.early and not run.launched and toGo <= 0.25 and toGo >= -0.3 then
+			run.launched = true
+			task.delay(math.max(0, toGo) + 0.05, function()
+				playRemote:FireServer("launch")
+			end)
+			task.delay(math.max(0, toGo), function()
+				flash("🚀 ROCKET START!", GOLD, 1.2)
+				Effects.sound("whoosh", { speed = 1.2, volume = 0.7 })
+			end)
+		end
+	end
+	if session.state ~= "running" or not row then
+		return
+	end
+	local x = type(row.x) == "table" and row.x or nil
+	if x and x.cp and x.cp > run.cp and (def.id == "regatta" or def.id == "gauntlet") then
+		run.cp = x.cp
+		local elapsed = t - (session.goAt or t)
+		run.splits[x.cp] = elapsed
+		local ref = bestSplits[def.id] and bestSplits[def.id][x.cp]
+		if ref and not row.d then
+			local delta = elapsed - ref
+			flash(
+				string.format("%s%.2f", delta <= 0 and "-" or "+", math.abs(delta)),
+				delta <= 0 and Color3.fromRGB(120, 240, 120) or Color3.fromRGB(255, 120, 100),
+				1.3
+			)
+		end
+		Effects.chime({ 1.26, 1.5 }, 0.45)
+	end
+	if def.id == "regatta" and x and x.pos then
+		if run.pos and x.pos < run.pos then
+			flash("▲ " .. string.upper(ordinal(x.pos)), GOLD, 1.2)
+			Effects.chime({ 1.5, 2 }, 0.4)
+		end
+		run.pos = x.pos
+	end
+	if def.id == "crabs" then
+		local loose = PlayCritters.crabsLeft(session.id)
+		if loose and loose <= 3 and loose > 0 and loose ~= run.loose then
+			flash(
+				loose == 1 and "LAST CRAB!" or string.format("%d CRABS LEFT!", loose),
+				Color3.fromRGB(255, 130, 110),
+				1.1
+			)
+		end
+		run.loose = loose
+	end
+	if def.kind ~= "time" and row.b and row.s and row.s > row.b and not run.beaten then
+		run.beaten = true
+		flash("★ NEW BEST!", GOLD, 1.6)
+		Effects.chime(Effects.CHIME_GOOD, 0.6)
+	end
+end
+
+-- A finished time run: if it beat this visit's best, its checkpoint times become the ones to beat.
+local function keepSplits(def, score)
+	if def.kind ~= "time" or score == nil or next(run.splits) == nil then
+		return
+	end
+	local mine = bestSplits[def.id]
+	if not mine or score < (mine.total or math.huge) then
+		local copy = table.clone(run.splits)
+		copy.total = score
+		bestSplits[def.id] = copy
+	end
+end
+
 local lastRosterText
 local function updatePanel(t)
 	local session = mySession()
@@ -410,10 +576,26 @@ local function updatePanel(t)
 	end
 	local def = PortGames.BY_ID[session.game]
 	local row = myRow(session)
+	track(session, def, row, t)
 	panel.Visible = true
 	buttons.Visible = session.state ~= "results"
 	resetButton.Visible = (def.id == "regatta" or def.id == "gauntlet") and session.state == "running"
-	title.Text = def.icon .. "  " .. string.upper(def.name) .. (session.challenge and "  ·  CHALLENGE" or "")
+	readyButton.Visible = session.state == "lobby"
+	if session.state == "lobby" then
+		local ready, count = 0, 0
+		for _, other in ipairs(session.players or {}) do
+			count += 1
+			ready += other.r and 1 or 0
+		end
+		readyButton.Text = (row and row.r) and string.format("✔ READY %d/%d", ready, count) or "▶ START NOW"
+	end
+	-- The score to beat (your best before this heat), beside the game's name.
+	local best = row and row.b
+	title.Text = def.icon
+		.. "  "
+		.. string.upper(def.name)
+		.. (session.challenge and "  ·  CHALLENGE" or "")
+		.. (best and ("  ·  BEST " .. scoreText(def, best)) or "")
 	if session.state == "lobby" or session.state == "waiting" then
 		local left = math.max(0, (session.lobbyEndsAt or t) - t)
 		big.Text = session.state == "waiting" and "WAITING FOR THE VENUE" or ("STARTING IN " .. math.ceil(left))
@@ -421,9 +603,13 @@ local function updatePanel(t)
 		sub.Text = def.hint
 	elseif session.state == "countdown" then
 		local left = (session.goAt or t) - t
-		big.Text = left > 0 and tostring(math.ceil(left)) or "GO!"
+		local shown = left > 0 and tostring(math.ceil(left)) or "GO!"
+		if shown ~= big.Text and left > 0 then
+			Effects.chime({ 1 }, 0.35) -- a tick for 3, 2, 1 (GO is track's)
+		end
+		big.Text = shown
 		big.TextSize = 46
-		sub.Text = def.hint
+		sub.Text = def.id == "regatta" and "🚀 Throttle (W) right on GO: a rocket start!" or def.hint
 	elseif session.state == "running" then
 		big.TextSize = 38
 		if def.kind == "time" then
@@ -483,6 +669,7 @@ local function closeResult()
 		resultCard:Destroy()
 		resultCard = nil
 	end
+	ContextActionService:UnbindAction("LootGoblinsPlayAgain")
 end
 
 local MEDAL = { gold = "🥇", silver = "🥈", bronze = "🥉" }
@@ -540,35 +727,59 @@ function PlayHud.result(p)
 			LayoutOrder = 3,
 		})
 	end
-	if b.best then
+	if p.session == run.session then
+		keepSplits(def, p.counted and p.score or nil)
+	end
+	-- V13.4: how close it came. A best by how much; otherwise how far off, so AGAIN has a target.
+	local gap = (p.counted and p.score and b.previous) and (p.score - b.previous) or nil
+	local versus
+	if b.best and gap then
+		versus = string.format(
+			"★ NEW BEST!  %s",
+			def.kind == "time" and string.format("-%.2f s", math.abs(gap))
+				or string.format("+%d", math.floor(gap + 0.5))
+		)
+	elseif b.first then
+		versus = "First score here: now beat it!"
+	elseif gap then
+		versus = def.kind == "time" and string.format("+%.2f s off your best (%s)", gap, scoreText(def, b.previous))
+			or string.format("%d short of your best (%s)", math.floor(-gap + 0.5), scoreText(def, b.previous))
+		if gap == 0 then
+			versus = "Equal to your best!"
+		end
+	end
+	if versus then
 		Ui.label(card, {
 			Size = UDim2.new(1, 0, 0, 22),
-			Text = "★ NEW PERSONAL BEST!",
-			Font = Ui.TITLE,
-			TextSize = 18,
-			TextColor3 = C.goldDeep,
-			LayoutOrder = 4,
-		})
-	elseif b.first then
-		Ui.label(card, {
-			Size = UDim2.new(1, 0, 0, 20),
-			Text = "Your first score here: now beat it!",
-			Font = Ui.BODY,
-			TextSize = 14,
-			TextColor3 = C.inkSoft,
-			LayoutOrder = 4,
-		})
-	elseif b.previous then
-		Ui.label(card, {
-			Size = UDim2.new(1, 0, 0, 20),
-			Text = "Your best: " .. scoreText(def, b.previous),
-			Font = Ui.BODY,
-			TextSize = 14,
-			TextColor3 = C.inkSoft,
+			Text = versus,
+			Font = b.best and Ui.TITLE or Ui.BOLD,
+			TextSize = b.best and 18 or 14,
+			TextColor3 = b.best and C.goldDeep or C.inkSoft,
 			LayoutOrder = 4,
 		})
 	end
-	local row = Ui.make("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundTransparency = 1, LayoutOrder = 5 }, card)
+	-- The next medal up, when there is one to chase.
+	local ladder = G[string.upper(def.id)] and G[string.upper(def.id)].MEDALS
+	local chase
+	for _, name in ipairs({ "bronze", "silver", "gold" }) do
+		if ladder and ladder[name] and not chase then
+			local has = b.medal and table.find({ "bronze", "silver", "gold" }, b.medal) or 0
+			if table.find({ "bronze", "silver", "gold" }, name) > has then
+				chase = name
+			end
+		end
+	end
+	if chase and def.id ~= "derby" then
+		Ui.label(card, {
+			Size = UDim2.new(1, 0, 0, 18),
+			Text = string.format("%s %s at %s", MEDAL[chase], string.upper(chase), scoreText(def, ladder[chase])),
+			Font = Ui.BOLD,
+			TextSize = 13,
+			TextColor3 = C.inkSoft,
+			LayoutOrder = 5,
+		})
+	end
+	local row = Ui.make("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundTransparency = 1, LayoutOrder = 6 }, card)
 	Ui.gem(row, 14, UDim2.new(0, 6, 0.5, 0))
 	local shinyText
 	if (b.shinies or 0) > 0 then
@@ -589,12 +800,7 @@ function PlayHud.result(p)
 	})
 	local actions =
 		Ui.make("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1, LayoutOrder = 10 }, card)
-	local again = Ui.button(actions, {
-		text = p.challenge and "⚔ REMATCH" or "▶ AGAIN",
-		size = UDim2.new(0.6, -4, 1, 0),
-		textSize = 17,
-		name = "PlayAgain",
-	}, function()
+	local function playAgain()
 		if p.challenge then
 			challengeRemote:FireServer("rematch", PlayHud.lastChallenge)
 			hud.toast("Rematch asked: waiting for them to press it too...")
@@ -602,7 +808,21 @@ function PlayHud.result(p)
 			playRemote:FireServer("again", p.game)
 		end
 		closeResult()
-	end)
+	end
+	local again = Ui.button(actions, {
+		text = p.challenge and "⚔ REMATCH  (R)" or "▶ AGAIN  (R)",
+		size = UDim2.new(0.6, -4, 1, 0),
+		textSize = 17,
+		name = "PlayAgain",
+	}, playAgain)
+	-- V13.4: R (or Y on a controller) plays again without reaching for the mouse.
+	ContextActionService:BindActionAtPriority("LootGoblinsPlayAgain", function(_, state)
+		if state == Enum.UserInputState.Begin and resultCard then
+			playAgain()
+			return Enum.ContextActionResult.Sink
+		end
+		return Enum.ContextActionResult.Pass
+	end, false, 3000, Enum.KeyCode.R, Enum.KeyCode.ButtonY)
 	Ui.button(actions, {
 		text = "CLOSE",
 		style = "ghost",
@@ -648,8 +868,32 @@ function PlayHud.fx(p)
 		if p.userId == player.UserId then
 			hud.banner("DING! RUN COMPLETE!", GOLD, 2.5, 3)
 		end
-	elseif kind == "checkpoint" then
-		Effects.chime({ 1.26, 1.5 }, 0.5)
+	elseif kind == "hallcheer" and p.position then
+		-- V13.4: someone climbed into a raid board's top three: the Hall of Legends celebrates.
+		Effects.firework(p.position, GOLD)
+		Effects.firework(p.position + Vector3.new(10, 4, 0), Color3.fromRGB(200, 140, 255))
+		Effects.firework(p.position + Vector3.new(-10, 4, 0), Color3.fromRGB(150, 230, 255))
+		Effects.sound("rise", { position = p.position, speed = 1.1, volume = 0.8, range = 600 })
+	elseif kind == "streak" and p.n then
+		flash(string.format("🔥 x%d STREAK  +%d", p.n, G.STREAK.BONUS), Color3.fromRGB(255, 160, 70), 1.1)
+		Effects.chime({ 1.26 + math.min(p.n, 8) * 0.08 }, 0.45)
+	elseif kind == "checkpoint" and p.shortcut then
+		flash("⚡ SHORTCUT!", Color3.fromRGB(150, 230, 255), 1.4)
+		Effects.chime({ 1.5, 2, 2.5 }, 0.5)
+	elseif kind == "derbycall" and p.text then
+		-- V13.4: the Derby's commentator, for everyone at the oval.
+		ticker.Text = "📣 " .. p.text
+		ticker.Visible = true
+		tickerToken += 1
+		local mine = tickerToken
+		if p.call == "win" or p.call == "photo" then
+			Effects.chime({ 1, 1.26, 1.5, 2 }, 0.6)
+		end
+		task.delay(2.8, function()
+			if tickerToken == mine then
+				ticker.Visible = false
+			end
+		end)
 	elseif kind == "fall" then
 		hud.toast("Splash! Back to your last platform (the clock runs on).")
 	elseif kind == "reset" then

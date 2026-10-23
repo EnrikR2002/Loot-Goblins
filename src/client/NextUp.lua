@@ -2,6 +2,7 @@
 -- with the few things most worth doing next (server/Prospects.lua chooses them): a quest that moved or finished, the
 -- boat or pet you can afford now or are saving for, a record or a place on a board, the next raid's chaos, and one
 -- thing to try in the Port (SHOW ME points at it). It never blocks anything, slides away by itself, and × closes it.
+-- V13.4: the raid boards as places ("#4 BIGGEST HAUL ▲5"), and RAID AGAIN first, gold and gently pulsing.
 -- Also the Port screen's one-line goal (◆ 188 to the Wraith), worked out here from what the goblin owns.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -143,7 +144,24 @@ function NextUp.show(p)
 		end
 		for _, record in ipairs(p.records or {}) do
 			order += 1
-			line(card, "🏆", record.text, order, rgb(255, 200, 120))
+			if record.kind == "rank" then
+				-- V13.4: a place on a raid board, and whether this raid moved it up.
+				local up = record.from == nil or record.to < record.from
+				line(
+					card,
+					record.icon or "🏆",
+					string.format(
+						"#%d %s%s",
+						record.to,
+						record.name or "",
+						up and (record.from and string.format("  ▲%d", record.from - record.to) or "  NEW!") or ""
+					),
+					order,
+					up and rgb(255, 214, 90) or rgb(255, 200, 120)
+				)
+			else
+				line(card, "🏆", record.text, order, rgb(255, 200, 120))
+			end
 		end
 		local chaos = workspace:GetAttribute("ChaosName")
 		if chaos then
@@ -170,7 +188,7 @@ function NextUp.show(p)
 			)
 			Ui.button(
 				buttons,
-				{ text = "SHOW ME", style = "wood", size = UDim2.fromOffset(92, 32), textSize = 13, order = 1 },
+				{ text = "SHOW ME", style = "wood", size = UDim2.fromOffset(80, 32), textSize = 12, order = 1 },
 				function()
 					if pointAt then
 						pointAt(PortGames.VENUES[def.id].sign, def.icon .. " " .. string.upper(def.name))
@@ -180,7 +198,7 @@ function NextUp.show(p)
 		end
 		Ui.button(
 			buttons,
-			{ text = "📜 QUESTS", style = "wood", size = UDim2.fromOffset(92, 32), textSize = 13, order = 2 },
+			{ text = "📜 QUESTS", style = "wood", size = UDim2.fromOffset(76, 32), textSize = 12, order = 2 },
 			function()
 				if openQuests then
 					openQuests()
@@ -188,16 +206,25 @@ function NextUp.show(p)
 			end
 		)
 		if not player:GetAttribute("RaidOptIn") then
-			Ui.button(buttons, {
+			-- V13.4: the card's main button, first and gold: the reason to begin another.
+			local again = Ui.button(buttons, {
 				text = "⚔ RAID AGAIN",
-				size = UDim2.fromOffset(98, 32),
+				style = "gold",
+				size = UDim2.fromOffset(106, 32),
 				textSize = 13,
-				order = 3,
+				order = 0,
 				name = "RaidAgain",
 			}, function()
 				raidRemote:FireServer("in")
+				Effects.chime({ 1, 1.26, 1.5 }, 0.5)
 				close()
 			end)
+			local pulse = Ui.make("UIScale", {}, again)
+			TweenService:Create(
+				pulse,
+				TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+				{ Scale = 1.06 }
+			):Play()
 		end
 		card.Position = UDim2.fromOffset(-320, 172)
 		TweenService:Create(card, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Position = UDim2.fromOffset(12, 172) })

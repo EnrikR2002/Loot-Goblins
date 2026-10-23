@@ -118,6 +118,17 @@ local function updateIsle(model, isle, dt, t)
 	local bell = (isle.frame * CFrame.new(0, 0, 2)).Position
 	local pond = (isle.frame * CFrame.new(-6, 0, 10)).Position
 	local toy = v3(model:GetAttribute("ToyX") or center.X, center.Y, model:GetAttribute("ToyZ") or center.Z)
+	-- V13.4: the owner stepping onto their own isle: the pets know them and come running to say hello.
+	local character = player.Character
+	local root = owner == player.UserId and character and character:FindFirstChild("HumanoidRootPart")
+	local home = root ~= nil
+		and v3(root.Position.X - center.X, 0, root.Position.Z - center.Z).Magnitude < isle.radius + 2
+		and math.abs(root.Position.Y - center.Y) < 20
+	if home and not isle.ownerHome then
+		isle.greetAt = t
+	end
+	isle.ownerHome = home
+	local greeting = home and isle.greetAt and t - isle.greetAt < 4.5
 	for i, id in ipairs(residents) do
 		local key = owner .. ":" .. id
 		seen[key] = true
@@ -139,7 +150,10 @@ local function updateIsle(model, isle, dt, t)
 			-- What it wants to do now.
 			local goal, speed = nil, 4.5
 			local ring = (i / math.max(1, #residents)) * math.pi * 2
-			if t - bellAt < 5 then
+			if greeting then
+				local at = root.Position
+				goal, speed = v3(at.X + math.cos(ring) * 3.5, center.Y, at.Z + math.sin(ring) * 3.5), 12
+			elseif t - bellAt < 5 then
 				goal, speed = bell + v3(math.cos(ring) * 4, 0, math.sin(ring) * 4), 11
 			elseif t - toyAt < 5 then
 				goal, speed = toy + v3(math.cos(ring) * (1 + i * 0.3), 0, math.sin(ring) * (1 + i * 0.3)), 12 + (i % 3)
@@ -166,8 +180,8 @@ local function updateIsle(model, isle, dt, t)
 				s.yaw += math.atan2(math.sin(want - s.yaw), math.cos(want - s.yaw)) * math.min(1, dt * 7)
 			end
 			local lift, extra = 0, nil
-			if t - bellAt < 5 and not moving then
-				lift = math.abs(math.sin(t * 6 + i)) * 0.8 -- hopping round the bell
+			if (greeting or t - bellAt < 5) and not moving then
+				lift = math.abs(math.sin(t * 6 + i)) * 0.8 -- hopping round the bell (or round their goblin)
 			elseif t - fedAt < 7 and not moving then
 				extra = CFrame.Angles(math.rad(14 + 8 * math.sin(t * 9 + i)), 0, 0) -- head down, eating
 			end
