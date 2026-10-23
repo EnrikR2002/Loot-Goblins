@@ -192,13 +192,28 @@ local function claimable(view)
 	end
 	return list
 end
+
+-- One of this goblin's JSON attributes as a table, decoded again only when its text changes: the Port screen asks for
+-- these every frame. Callers only read it.
+local decoded = {} -- attribute name -> { text, data }
+local function attribute(name)
+	local text = player:GetAttribute(name)
+	local entry = decoded[name]
+	if not entry or entry.text ~= text then
+		entry = { text = text, data = decode(text) }
+		decoded[name] = entry
+	end
+	return entry.data
+end
+
+-- How many finished quests wait to be claimed (the Port screen's 📜 chip).
 function PortBoard.claimableCount()
-	return #claimable(decode(player:GetAttribute("Quests")) or {})
+	return #claimable(attribute("Quests") or {})
 end
 
 -- This goblin's best place on any raid board right now: { rank, icon } or nil (the Port screen's 🏆 chip).
 function PortBoard.bestPlace()
-	local mine = decode(player:GetAttribute("Season"))
+	local mine = attribute("Season")
 	local best
 	for _, board in ipairs(Seasons.BOARDS) do
 		local rank = board.raid and mine and mine.rank and mine.rank[board.id]
@@ -292,7 +307,6 @@ local function prizeLine(board)
 	end
 	return table.concat(parts, "  ·  ")
 end
-PortBoard.prizeLine = prizeLine
 
 -- A raid board's card: its name and time left, your place and score big, the bar to the next tier, its prizes.
 local function raidCard(board, mine, order, t)

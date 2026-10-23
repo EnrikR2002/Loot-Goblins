@@ -154,7 +154,7 @@ return function(t)
 		}
 		local profile, how = ProfileSchema.load(v3, LIMITS, 5)
 		t.eq(how, "upgraded", "how")
-		t.eq(profile.v, 4, "version 4")
+		t.eq(profile.v, ProfileSchema.VERSION, "the current version")
 		t.eq(profile.migratedFrom, 3, "from 3")
 		t.eq(profile.shinies, 640, "shinies")
 		t.ok(profile.owned.boat_wraith and profile.owned.Inky and profile.owned.hat_crown, "owned")
@@ -246,6 +246,27 @@ return function(t)
 		t.eq(profile.milestones.FirstRaid, 12, "milestone kept")
 		t.eq(profile.milestones.bad, nil, "bad milestone dropped")
 		t.eq(type(profile.challenges.pairs), "table", "challenges reset")
+	end)
+
+	t.test("V13.4: a version 4 profile upgrades to 5 keeping its season and quests, with an empty week", function()
+		local v4 = ProfileSchema.new(5)
+		v4.v = 4
+		v4.shinies = 321
+		v4.season.best["haul@w2911"] = 24
+		v4.season.raids = { key = "m2026-10", list = { 30, 22 } }
+		v4.season.week = nil -- a version-4 profile has no week of raids
+		v4.quests.day, v4.quests.week = 20747, 2961
+		local profile, how = ProfileSchema.load(v4, LIMITS, 5)
+		t.eq(how, "upgraded", "how")
+		t.eq(profile.v, ProfileSchema.VERSION, "the current version")
+		t.eq(profile.migratedFrom, 4, "from 4")
+		t.eq(profile.shinies, 321, "shinies")
+		t.eq(profile.season.best["haul@w2911"], 24, "a board best kept")
+		t.eq(#profile.season.raids.list, 2, "the month's raids kept")
+		t.eq(#profile.season.week.list, 0, "an empty week")
+		t.eq(profile.quests.day, 20747, "quests kept")
+		-- A server that only knows version 4 (V13.3) must refuse this one, not write it back without the week.
+		t.ok(ProfileSchema.VERSION > 4, "this version is newer than the V13.3 one")
 	end)
 
 	t.test("a value that is not a table becomes a fresh profile; a newer version is left alone", function()

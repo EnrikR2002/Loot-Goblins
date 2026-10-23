@@ -301,14 +301,15 @@ Minigames.Finished:Connect(function(session, standings)
 		if not player.Parent then
 			return
 		end
+		local mine, theirs = PortGames.sides(player == a, sa, sb)
 		Net.send(player, "ChallengeResult", {
 			id = record.id,
 			game = session.game,
 			result = result,
 			opponent = other.DisplayName,
 			shinies = shinies,
-			mine = player == a and sa or sb,
-			theirs = player == a and sb or sa,
+			mine = mine,
+			theirs = theirs,
 			rematchUntil = record.rematchUntil,
 		})
 	end

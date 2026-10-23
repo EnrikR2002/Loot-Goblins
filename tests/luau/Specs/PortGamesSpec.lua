@@ -228,6 +228,39 @@ return function(t)
 		t.ok(DG.FIRE > DG.ZOOM and DG.PERFECT_TIME > DG.ZOOM_TIME, "a streak and a perfect jump are worth more")
 	end)
 
+	t.test("V13.4: a challenge shows each goblin their own score, even when it is missing", function()
+		local a, b = PortGames.sides(true, nil, 40.1)
+		t.eq(a, nil, "the first goblin did not finish: no score of their own")
+		t.eq(b, 40.1, "they see the other's time as theirs")
+		local c, d = PortGames.sides(true, 30, nil)
+		t.eq(c, 30, "the first goblin finished")
+		t.eq(d, nil, "and the other did not")
+		local e, f = PortGames.sides(false, 30, nil)
+		t.eq(e, nil, "the second goblin has no score")
+		t.eq(f, 30, "their opponent's is 30")
+		local g, h = PortGames.sides(false, 30, 41)
+		t.eq(g, 41, "the second goblin's own")
+		t.eq(h, 30, "the first's")
+	end)
+
+	t.test("V13.4: the Hall of Legends stands clear of the Shipyard's quay and the Wardrobe", function()
+		local H = PortGames.HALL
+		-- Copied from server/Port.lua: the quay is 56 by 228 round (-112, 24); the Wardrobe's floor 34 by 24 round (0, 112).
+		local quay = { x0 = -140, x1 = -84, z0 = -90, z1 = 138 }
+		local shop = { x0 = -17, x1 = 17, z0 = 100, z1 = 124 }
+		for _, sx in ipairs({ -1, 1 }) do
+			for _, sz in ipairs({ -1, 1 }) do
+				local x, z = PortGames.podiumToPort(H.x + sx * H.width / 2, H.z + sz * H.depth / 2)
+				local onQuay = x >= quay.x0 and x <= quay.x1 and z >= quay.z0 and z <= quay.z1
+				local onShop = x >= shop.x0 - 2 and x <= shop.x1 + 2 and z >= shop.z0 and z <= shop.z1
+				t.ok(not onQuay, string.format("corner (%.0f, %.0f) is on the quay", x, z))
+				t.ok(not onShop, string.format("corner (%.0f, %.0f) is on the Wardrobe", x, z))
+			end
+		end
+		-- And behind the podium's statue and banner (the podium frame's z runs back from the podium).
+		t.ok(H.z - H.depth / 2 >= 13, "the stage starts behind the champion's plinth and banner poles")
+	end)
+
 	t.test("V13.4: a Gauntlet shortcut counts, and range streaks pay a little more", function()
 		local GA = PortGames.GAUNTLET
 		local p3 = GA.platforms[3].center + Vector3.new(0, 3, 0)

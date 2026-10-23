@@ -155,6 +155,13 @@ function Prospects.init()
 				})
 			end
 		end
+		-- The card stays short: the two boards this raid moved most (a first place counts as the biggest move).
+		table.sort(records, function(a, b)
+			return (a.from or 1000) - a.to > (b.from or 1000) - b.to
+		end)
+		while #records > 2 do
+			table.remove(records)
+		end
 		if #records == 0 and (result.gold or 0) > 0 then
 			local best = Seasons.best(profile, "haul", os.time())
 			if best and best == result.gold then

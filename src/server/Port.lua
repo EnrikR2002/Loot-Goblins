@@ -1249,7 +1249,10 @@ end
 -- A signpost on the plaza with an arm pointing at every game, the Hall of Legends, the Quest Board, the lift and the
 -- airship, each painted in its place's colour; and over every venue a tall flag in the same colour with its icon, so a
 -- goblin can follow the colour across town instead of reading signs. All decoration: nothing blocks a path.
-local HALL_SPOT = (at(-56, 6, 52) * CFrame.Angles(0, math.rad(-45), 0) * CFrame.new(0, 0, 25)).Position
+local HALL_SPOT = (function() -- the middle of the Hall of Legends' raid boards
+	local x, z = PortGames.podiumToPort(PortGames.HALL.x - 15, PortGames.HALL.z)
+	return PortGames.world(x, 6, z)
+end)()
 local function groundAt(x, z)
 	local hit = workspace:Raycast(Vector3.new(x, 120, z), Vector3.new(0, -160, 0))
 	return hit and hit.Material ~= Enum.Material.Water and hit.Position.Y or 6

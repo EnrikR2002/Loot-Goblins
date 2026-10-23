@@ -53,7 +53,7 @@ PortGames.GAMES = {
 		id = "gauntlet",
 		name = "Grapple Gauntlet",
 		short = "GAUNTLET",
-		icon = "🪝",
+		icon = "🎣",
 		color = Color3.fromRGB(255, 196, 70),
 		kind = "time",
 		unit = "s",
@@ -158,6 +158,18 @@ function PortGames.clearOf(x, z)
 	return true
 end
 
+-- THE HALL OF LEGENDS (V13.4; built by server/Leaderboards.lua) -----------------------------------------------------------
+-- Its stage in the podium's frame (the podium stands at (-56, 52) from the Port's centre, turned -45 degrees; x runs to
+-- its right, z straight back from it): the stage's middle and size. It fits the gap between the Shipyard's quay (its east
+-- edge is 84 studs west of the Port's centre) and the Wardrobe's west wall (17 studs west of it): PortGamesSpec checks it.
+PortGames.HALL = { x = 27, z = 21, width = 77, depth = 10 }
+
+-- A point in the podium's frame -> the Port-relative (x, z) it is at.
+function PortGames.podiumToPort(lx, lz)
+	local c, s = math.cos(rad(-45)), math.sin(rad(-45))
+	return -56 + lx * c + lz * s, 52 - lx * s + lz * c
+end
+
 -- Medals ----------------------------------------------------------------------------------------------------------------
 -- A score's medal ("gold" | "silver" | "bronze" | nil). The Derby's is its place (1st, 2nd, 3rd).
 function PortGames.medal(gameId, score, place)
@@ -189,6 +201,15 @@ function PortGames.better(gameId, a, b)
 		return a < b
 	end
 	return a > b
+end
+
+-- A challenge's two scores as one side sees them: (mine, theirs). A plain if, because `isA and sa or sb` returns the
+-- other score whenever sa is nil (a goblin who did not finish), showing a goblin the opponent's time as their own.
+function PortGames.sides(isA, sa, sb)
+	if isA then
+		return sa, sb
+	end
+	return sb, sa
 end
 
 -- A goblin's daily counters (profile.games), brought up to the UTC day of `unix`.

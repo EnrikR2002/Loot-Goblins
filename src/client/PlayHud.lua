@@ -495,7 +495,7 @@ local function track(session, def, row, t)
 		local toGo = (session.goAt or t) - t
 		if throttle and toGo > 0.25 and toGo < 1.2 then
 			run.early = true
-		elseif throttle and not run.early and not run.launched and toGo <= 0.25 and toGo >= -0.3 then
+		elseif throttle and not run.early and not run.launched and toGo <= 0.25 and toGo >= -0.1 then
 			run.launched = true
 			task.delay(math.max(0, toGo) + 0.05, function()
 				playRemote:FireServer("launch")

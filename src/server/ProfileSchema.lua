@@ -51,9 +51,13 @@
 --   challenges   { day, paid (paid wins today), pairs = { [userId] = paid wins against them today } }
 -- A version-2 or version-3 profile is upgraded in place: the new tables start empty and nothing old changes meaning;
 -- a version-3 server meeting a version-4 profile refuses to write it ("newer").
+--
+-- Version 5 (V13.4, the Living Port polished): version 4 plus season.week (the weekly Pirate Championship's best raids).
+-- It is a version of its own so that a V13.3 server, which would drop season.week when it saved, refuses to touch a
+-- version-5 profile ("newer") instead. A version-4 profile is upgraded in place with an empty week.
 local ProfileSchema = {}
 
-ProfileSchema.VERSION = 4
+ProfileSchema.VERSION = 5
 
 local STAT_KEYS = {
 	"raids",
@@ -434,9 +438,9 @@ end
 --   nil (no data)        a new profile
 --   not a table           a new profile, flagged `repaired` (a corrupt value is not worth refusing a player over)
 --   v == 1 / missing v    migrated
---   v == 2, 3             upgraded in place (V13, V13.3)
---   v == 4                repaired where needed
---   v >  4                nil, "newer": written by a newer version of the game. This server would lose what it does
+--   v == 2, 3, 4          upgraded in place (V13, V13.3, V13.4)
+--   v == 5                repaired where needed
+--   v >  5                nil, "newer": written by a newer version of the game. This server would lose what it does
 --                         not understand, so it plays the goblin unsaved instead of writing over it.
 function ProfileSchema.load(data, limits, now)
 	if data == nil then
@@ -456,9 +460,9 @@ function ProfileSchema.load(data, limits, now)
 	if version == nil or version == 1 then
 		profile = fromV1(data, now)
 		how = "migrated"
-	elseif version == 2 or version == 3 then
-		-- V13: version 2 -> 3 adds stats; V13.3: 3 -> 4 adds the Port's tables (sanitize fills them in, empty). Every
-		-- item, Shiny, stat and receipt stays.
+	elseif version == 2 or version == 3 or version == 4 then
+		-- V13: version 2 -> 3 adds stats; V13.3: 3 -> 4 adds the Port's tables; V13.4: 4 -> 5 adds season.week (sanitize
+		-- fills them in, empty). Every item, Shiny, stat and receipt stays.
 		profile = data
 		profile.migratedFrom = version
 		how = "upgraded"

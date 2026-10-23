@@ -234,23 +234,31 @@ function Leaderboards.submit(player, boardId, score)
 			rank = rank,
 			was = before,
 		})
-		-- V13.4: climbing into a raid board's top three is news for the whole server, and the Hall cheers.
-		if board.raid and rank and rank <= 3 and (before == nil or rank < before) then
-			Net.feed(
-				string.format("%s %s is #%d on the %s!", board.icon, player.DisplayName, rank, board.name),
-				Palette.GOLD
-			)
-			if Leaderboards.hallSpot then
-				Net.broadcastNear(
-					Leaderboards.hallSpot,
-					600,
-					"PlayFx",
-					{ kind = "hallcheer", position = Leaderboards.hallSpot }
-				)
-			end
-		end
 	end
 	return improved
+end
+
+-- V13.4: climbing into a raid board's top three is news for the whole server, and the Hall cheers. Once per raid, for
+-- the best of the places that raid moved (a raid can touch all three raid boards: one line, not three).
+local function announce(player, moved)
+	local best
+	for _, move in ipairs(moved) do
+		if move.to <= 3 and (move.from == nil or move.to < move.from) and (not best or move.to < best.to) then
+			best = move
+		end
+	end
+	local board = best and Seasons.BOARD_BY_ID[best.board]
+	if not board then
+		return
+	end
+	Net.feed(
+		string.format("%s %s is #%d on the %s!", board.icon, player.DisplayName, best.to, board.name),
+		Palette.GOLD
+	)
+	if Leaderboards.hallSpot then
+		local spot = Leaderboards.hallSpot
+		Net.broadcastNear(spot, 600, "PlayFx", { kind = "hallcheer", position = spot })
+	end
 end
 
 -- Reading the boards ----------------------------------------------------------------------------------------------------------
@@ -487,16 +495,35 @@ local function refresh()
 end
 
 -- The Hall of Legends (V13.4; V13.3's Hall of Records): behind the podium, facing the plaza. The three RAID boards stand
--- in the middle, big and gilded, under a great trophy; PAST CHAMPIONS on the left; the Port games' records, smaller,
--- on the right. Every client writes the boards itself (client/PortBoard.lua).
+-- in a row on a stone stage, big and gilded, under a great trophy; PAST CHAMPIONS and the Port games' records stand
+-- beside them. Every client writes the boards itself (client/PortBoard.lua).
+--
+-- WHERE: PortGames.HALL, in the podium's frame: a 77 by 10 stage, which fits between the Shipyard's quay and the
+-- Wardrobe (PortGamesSpec checks its corners against both; a stage further left stands on the quay).
+local HALL = PortGames.HALL
+local RAID_X = { -30, -15, 0 } -- the raid boards' places on the stage, then PAST CHAMPIONS and PORT RECORDS
+local PAST_X, RECORDS_X = 16, 31
+
 local function build(kit)
 	local base = kit.at(-56, 6, 52) * CFrame.Angles(0, math.rad(-45), 0)
-	local hall = base * CFrame.new(0, 0, 25)
+	local hall = base * CFrame.new(HALL.x, 0, HALL.z)
 	local GOLD, PURPLE, NIGHT = Palette.GOLD, rgb(110, 44, 150), rgb(36, 26, 22)
 	local METAL, SLATE = Enum.Material.Metal, Enum.Material.Slate
 	-- The stage the boards stand on.
-	kit.floor("HallStage", Vector3.new(84, 1.4, 14), hall * CFrame.new(0, 0.7, 1), Palette.STONE_DARK, SLATE)
-	kit.deco("HallStageTrim", Vector3.new(84.4, 0.4, 14.4), hall * CFrame.new(0, 1.25, 1), GOLD, METAL)
+	kit.floor(
+		"HallStage",
+		Vector3.new(HALL.width, 1.4, HALL.depth),
+		hall * CFrame.new(0, 0.7, 0),
+		Palette.STONE_DARK,
+		SLATE
+	)
+	kit.deco(
+		"HallStageTrim",
+		Vector3.new(HALL.width + 0.4, 0.4, HALL.depth + 0.4),
+		hall * CFrame.new(0, 1.25, 0),
+		GOLD,
+		METAL
+	)
 	local raid, games = {}, {}
 	for _, board in ipairs(Seasons.BOARDS) do
 		table.insert(board.raid and raid or games, board)
@@ -516,38 +543,38 @@ local function build(kit)
 	local function title(cf, width, text, color)
 		kit.board("HallTitle", Vector3.new(width, 2.4, 0.4), cf, text, color, PURPLE, kit.core)
 	end
-	-- The raid boards: weekly blue titles, monthly gold, a little turned in towards the middle.
+	-- The raid boards: weekly blue titles, monthly gold.
 	for i, board in ipairs(raid) do
-		local x = (i - (#raid + 1) / 2) * 17
-		local cf = hall * CFrame.new(x, 1.4, 0) * CFrame.Angles(0, math.rad(-x * 0.5), 0)
-		pillars(cf, 14, 18, GOLD)
-		panel("Board_" .. board.id, cf * CFrame.new(0, 11, 0), Vector3.new(14, 18, 0.5)):SetAttribute("Board", board.id)
+		local cf = hall * CFrame.new(RAID_X[i], 1.4, 0)
+		pillars(cf, 12, 18, GOLD)
+		panel("Board_" .. board.id, cf * CFrame.new(0, 11, 0), Vector3.new(12, 18, 0.5)):SetAttribute("Board", board.id)
 		local color = board.period == "week" and rgb(150, 230, 255) or rgb(255, 214, 90)
-		title(cf * CFrame.new(0, 21.6, 0), 15, board.icon .. " " .. board.name, color)
+		title(cf * CFrame.new(0, 21.6, 0), 13, board.icon .. " " .. board.name, color)
 	end
-	-- PAST CHAMPIONS (left) and the PORT RECORDS (right: three small boards, one above another).
-	local left = hall * CFrame.new(-34, 1.4, 0) * CFrame.Angles(0, math.rad(22), 0)
-	pillars(left, 11, 16, Palette.WOOD_DARK)
-	panel("PastChampions", left * CFrame.new(0, 10, 0), Vector3.new(11, 16, 0.5))
-	title(left * CFrame.new(0, 19.4, 0), 12, "PAST CHAMPIONS", GOLD)
-	local right = hall * CFrame.new(34, 1.4, 0) * CFrame.Angles(0, math.rad(-22), 0)
-	pillars(right, 11, 16, Palette.WOOD_DARK)
+	-- PAST CHAMPIONS, then the PORT RECORDS (three small boards, one above another).
+	local past = hall * CFrame.new(PAST_X, 1.4, 0)
+	pillars(past, 10, 16, Palette.WOOD_DARK)
+	panel("PastChampions", past * CFrame.new(0, 10, 0), Vector3.new(10, 16, 0.5))
+	title(past * CFrame.new(0, 19.4, 0), 11, "PAST CHAMPIONS", GOLD)
+	local records = hall * CFrame.new(RECORDS_X, 1.4, 0)
+	pillars(records, 10, 16, Palette.WOOD_DARK)
 	for i, board in ipairs(games) do
-		local part = panel("Board_" .. board.id, right * CFrame.new(0, 17.4 - i * 5.3, 0), Vector3.new(11, 5, 0.5))
+		local part = panel("Board_" .. board.id, records * CFrame.new(0, 17.4 - i * 5.3, 0), Vector3.new(10, 5, 0.5))
 		part:SetAttribute("Board", board.id)
 	end
-	title(right * CFrame.new(0, 19.4, 0), 12, "PORT RECORDS", rgb(150, 230, 255))
-	-- The great sign, and over it a trophy the whole plaza can see.
+	title(records * CFrame.new(0, 19.4, 0), 11, "PORT RECORDS", rgb(150, 230, 255))
+	-- The great sign, and over it a trophy the whole plaza can see, both over the raid boards.
+	local middle = hall * CFrame.new(RAID_X[2], 0, 0)
 	kit.board(
 		"HallSign",
-		Vector3.new(34, 4, 0.6),
-		hall * CFrame.new(0, 28, 0.4),
+		Vector3.new(30, 4, 0.6),
+		middle * CFrame.new(0, 28, 0.4),
 		"HALL OF LEGENDS",
 		GOLD,
 		PURPLE,
 		kit.core
 	)
-	local cup = hall * CFrame.new(0, 31, 0.4)
+	local cup = middle * CFrame.new(0, 31, 0.4)
 	Leaderboards.hallSpot = (cup * CFrame.new(0, 8, 0)).Position
 	kit.deco("TrophyBase", Vector3.new(5, 1.4, 5), cup * CFrame.new(0, 0.7, 0), Palette.WOOD_DARK, Enum.Material.Wood)
 	kit.deco("TrophyStem", Vector3.new(1.2, 3, 1.2), cup * CFrame.new(0, 2.9, 0), GOLD, METAL)
@@ -558,9 +585,9 @@ local function build(kit)
 		kit.deco("TrophyHandle", Vector3.new(0.7, 3, 1.6), handle, GOLD, METAL)
 	end
 	kit.light(bowl, rgb(255, 220, 140), 40, 1.2)
-	-- Two braziers at the stage's ends: warm light on the boards at night.
+	-- Two braziers in front of the stage's ends: warm light on the boards at night.
 	for _, side in ipairs({ -1, 1 }) do
-		local at = hall * CFrame.new(side * 43, 0, -6)
+		local at = hall * CFrame.new(side * 37, 0, -7)
 		kit.part("Brazier", Vector3.new(2.6, 5, 2.6), at * CFrame.new(0, 2.5, 0), Palette.STONE_DARK, SLATE)
 		local coals = kit.deco(
 			"BrazierFire",
@@ -627,6 +654,7 @@ function Leaderboards.init(kit)
 				end
 			end
 			moves[player] = list
+			announce(player, list)
 		end
 	end)
 	Progress.GamePlayed:Connect(function(player, _s, gameId, score)
