@@ -235,12 +235,19 @@ function Gauntlet.tick(session, _dt, t)
 			local root = Util.aliveRoot(player)
 			if root then
 				local p = root.Position
-				local cp = course.checkpoints[entry.data.cp]
-				if cp and PortGames.inBox(p, cp.box) then
-					entry.data.cp += 1
-					entry.show = { cp = entry.data.cp - 1, of = #course.checkpoints }
+				-- V13.4: any platform further on counts, so a daring swing that skips one is a SHORTCUT, not a
+				-- wasted jump (the platforms between are counted as passed).
+				local reached = PortGames.gauntletReached(p, entry.data.cp)
+				if reached then
+					local skipped = reached - entry.data.cp
+					entry.data.cp = reached + 1
+					entry.show = { cp = reached, of = #course.checkpoints }
 					session.dirty = true
-					Net.send(player, "PlayFx", { kind = "checkpoint", game = "gauntlet", n = entry.data.cp - 1 })
+					Net.send(
+						player,
+						"PlayFx",
+						{ kind = "checkpoint", game = "gauntlet", n = reached, shortcut = skipped > 0 or nil }
+					)
 					if entry.data.cp > #course.checkpoints then
 						local time = math.floor((t - session.goAt) * 100 + 0.5) / 100
 						if time < GA.MIN_TIME then

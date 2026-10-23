@@ -4,7 +4,8 @@
 --   the Shinies the raid paid and the balance;
 --   up to two QUESTS that moved (finished ones first: claim them at the board);
 --   a GOAL: a boat (or pet) you can afford right now, or the nearest one to save for and about how many raids away;
---   RECORDS: the week's best haul, a place on a board;
+--   RECORDS: (V13.4) the goblin's place on each raid board this raid touched, with where it was before (so the card
+--   can say it went up), or the week's best haul;
 --   one SUGGESTION from the Port: a game a quest wants, one never tried, or one with a best to beat.
 -- The next raid's world chaos is shown by the client itself (it is chosen a moment after this is sent).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -138,24 +139,35 @@ function Prospects.init()
 	Progress.AfterRaid:Connect(function(player, s, result)
 		local profile = s.profile
 		local questList, view = quests(profile)
+		-- V13.4: the raid boards, as places: where this raid put you on each (and from where), compact.
 		local records = {}
-		if (result.gold or 0) > 0 then
+		for _, move in ipairs(Leaderboards.lastMoves(player)) do
+			local board = Seasons.BOARD_BY_ID[move.board]
+			if board and move.to <= Config.SEASONS.HALL then
+				table.insert(records, {
+					kind = "rank",
+					board = board.id,
+					icon = board.icon,
+					name = board.name,
+					from = move.from,
+					to = move.to,
+					score = Seasons.best(profile, board.id, os.time()),
+				})
+			end
+		end
+		-- The card stays short: the two boards this raid moved most (a first place counts as the biggest move).
+		table.sort(records, function(a, b)
+			return (a.from or 1000) - a.to > (b.from or 1000) - b.to
+		end)
+		while #records > 2 do
+			table.remove(records)
+		end
+		if #records == 0 and (result.gold or 0) > 0 then
 			local best = Seasons.best(profile, "haul", os.time())
 			if best and best == result.gold then
 				table.insert(
 					records,
 					{ kind = "haul", text = string.format("Best haul this week: %d gold", result.gold) }
-				)
-			end
-			local rank = Leaderboards.rankOf(player, "haul")
-			if rank and rank <= Config.SEASONS.HALL then
-				table.insert(records, { kind = "rank", text = string.format("#%d on this week's Biggest Haul", rank) })
-			end
-			local champ = Seasons.best(profile, "champion", os.time())
-			if champ and #records < 2 then
-				table.insert(
-					records,
-					{ kind = "champion", text = string.format("Pirate Championship: %d gold so far this month", champ) }
 				)
 			end
 		end

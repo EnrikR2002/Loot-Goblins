@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "studio-tests-from-disk-over-loopback",
+  "title": "Edit-mode Luau tests can load sources straight from disk over a loopback file server",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-23",
+  "topics": [
+    "testing",
+    "studio",
+    "tooling"
+  ],
+  "observation": "The team's launcher opened Studio on a freshly built game place that did not contain the test folder, and connecting the Rojo plugin needs clicks in Studio's UI. Instead, a Python `http.server` bound to 127.0.0.1 served the test and source folders, and a Studio MCP execute_luau call in Edit mode set HttpService.HttpEnabled to true, fetched each file with GetAsync into a new ModuleScript (fresh instances, so no cached require ran), and set HttpEnabled back to its old value in the same call. GetAsync failed with 'HTTP requests are not enabled' until the setting was toggled. Comparing each fetched source with the existing ModuleScript's Source also proved which modules in the open place differed from disk (two did, both just renamed); the full suite then ran from the files on disk.",
+  "recommendation": "To run Edit-mode tests from the files on disk without the Rojo plugin: serve the folders on 127.0.0.1 only, toggle HttpEnabled inside the same execute_luau call and restore it there (even on error, with pcall), replace modules with fresh instances rather than editing Source, report which sources differed, and stop the file server afterwards.",
+  "applies_when": [
+    "Running a Luau test suite in Studio's Edit mode through Studio MCP",
+    "The open place lacks the test folder or may be out of date with the repository"
+  ],
+  "limits": [
+    "One Windows machine, one Studio version and Studio MCP's execute_luau in October 2026",
+    "The toggled setting belongs to the open place; only do this in a disposable built place that nobody will save over real work"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/2a131c467f47f1bece5c498154b0a2d1e7599d42/docs/reports/2026-10-23-v13-4-port-polish.md",
+      "detail": "Section 6: every shared and server module replaced with a fresh copy fetched from disk; only the two renamed files differed; 140 of 140 Luau tests passed."
+    }
+  ]
+}

@@ -41,7 +41,9 @@
 --   quests       { day, daily = { { id, n, claimed, seen } }, week, weekly = {...}, bundle (the week whose cosmetic was
 --                given) } (shared/Seasons.lua)
 --   season       { best = { ["board@period"] = stored score }, paid = { ["board@period"] = unix paid },
---                raids = { key = month, list = best raid hauls }, trophies = { { board, key, tier, rank, score } } }
+--                raids = { key = month, list = best raid hauls }, week = { key = week, list = best raid hauls } (V13.4:
+--                the weekly Pirate Championship; a V13.3 profile without it gets an empty one),
+--                trophies = { { board, key, tier, rank, score } } }
 --   sanctuary    { theme, owned = { theme_<id> / decor_<id> = true }, levels = { [feature] = level },
 --                decor = { four decoration ids or "" }, residents = { pet ids } } (shared/Habitat.lua)
 --   expeditions  { list = { { id, pet, trip, at, back } }, nextId, day, collected (Shinies collected today) }
@@ -49,9 +51,13 @@
 --   challenges   { day, paid (paid wins today), pairs = { [userId] = paid wins against them today } }
 -- A version-2 or version-3 profile is upgraded in place: the new tables start empty and nothing old changes meaning;
 -- a version-3 server meeting a version-4 profile refuses to write it ("newer").
+--
+-- Version 5 (V13.4, the Living Port polished): version 4 plus season.week (the weekly Pirate Championship's best raids).
+-- It is a version of its own so that a V13.3 server, which would drop season.week when it saved, refuses to touch a
+-- version-5 profile ("newer") instead. A version-4 profile is upgraded in place with an empty week.
 local ProfileSchema = {}
 
-ProfileSchema.VERSION = 4
+ProfileSchema.VERSION = 5
 
 local STAT_KEYS = {
 	"raids",
@@ -187,14 +193,17 @@ local function sanitizePort(profile)
 		bundle = optionalWhole(q.bundle),
 	}
 	local season = tableOr(profile.season)
-	local raids = tableOr(season.raids)
-	local raidList = {}
-	if type(raids.list) == "table" then
-		for _, gold in ipairs(raids.list) do
-			if whole(gold) > 0 and #raidList < 10 then
-				table.insert(raidList, whole(gold))
+	local function raidsOf(value)
+		local raids = tableOr(value)
+		local list = {}
+		if type(raids.list) == "table" then
+			for _, gold in ipairs(raids.list) do
+				if whole(gold) > 0 and #list < 10 then
+					table.insert(list, whole(gold))
+				end
 			end
 		end
+		return { key = type(raids.key) == "string" and raids.key or "", list = list }
 	end
 	local trophies = {}
 	if type(season.trophies) == "table" then
@@ -213,7 +222,8 @@ local function sanitizePort(profile)
 	profile.season = {
 		best = countMap(season.best, 400),
 		paid = countMap(season.paid, 800),
-		raids = { key = type(raids.key) == "string" and raids.key or "", list = raidList },
+		raids = raidsOf(season.raids),
+		week = raidsOf(season.week),
 		trophies = trophies,
 	}
 	local sanctuary = tableOr(profile.sanctuary)
@@ -301,7 +311,13 @@ function ProfileSchema.new(now)
 		-- V13.3
 		games = { day = 0, runs = {}, earned = 0, bests = 0, best = {}, plays = {}, wins = {} },
 		quests = { daily = {}, weekly = {} },
-		season = { best = {}, paid = {}, raids = { key = "", list = {} }, trophies = {} },
+		season = {
+			best = {},
+			paid = {},
+			raids = { key = "", list = {} },
+			week = { key = "", list = {} },
+			trophies = {},
+		},
 		sanctuary = { theme = "meadow", owned = {}, levels = {}, decor = { "", "", "", "" }, residents = {} },
 		expeditions = { list = {}, nextId = 1, day = 0, collected = 0 },
 		milestones = {},
@@ -422,9 +438,9 @@ end
 --   nil (no data)        a new profile
 --   not a table           a new profile, flagged `repaired` (a corrupt value is not worth refusing a player over)
 --   v == 1 / missing v    migrated
---   v == 2, 3             upgraded in place (V13, V13.3)
---   v == 4                repaired where needed
---   v >  4                nil, "newer": written by a newer version of the game. This server would lose what it does
+--   v == 2, 3, 4          upgraded in place (V13, V13.3, V13.4)
+--   v == 5                repaired where needed
+--   v >  5                nil, "newer": written by a newer version of the game. This server would lose what it does
 --                         not understand, so it plays the goblin unsaved instead of writing over it.
 function ProfileSchema.load(data, limits, now)
 	if data == nil then
@@ -444,9 +460,9 @@ function ProfileSchema.load(data, limits, now)
 	if version == nil or version == 1 then
 		profile = fromV1(data, now)
 		how = "migrated"
-	elseif version == 2 or version == 3 then
-		-- V13: version 2 -> 3 adds stats; V13.3: 3 -> 4 adds the Port's tables (sanitize fills them in, empty). Every
-		-- item, Shiny, stat and receipt stays.
+	elseif version == 2 or version == 3 or version == 4 then
+		-- V13: version 2 -> 3 adds stats; V13.3: 3 -> 4 adds the Port's tables; V13.4: 4 -> 5 adds season.week (sanitize
+		-- fills them in, empty). Every item, Shiny, stat and receipt stays.
 		profile = data
 		profile.migratedFrom = version
 		how = "upgraded"

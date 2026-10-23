@@ -220,6 +220,64 @@ return function(t)
 		t.eq(PortGames.derbyJudge(DG.TOO_EARLY + 1), "none", "no hurdle near")
 		t.eq(PortGames.derbyJudge(-1), "none", "long past")
 		t.eq(PortGames.derbyJudge(nil), "none", "no hurdle left")
+		-- V13.4: the perfect heart sits inside the clean window, never outside it.
+		t.eq(PortGames.derbyJudge(0.1), "perfect", "the heart of the window")
+		t.eq(PortGames.derbyJudge(DG.PERFECT_EARLY + 0.01), "clean", "just early of perfect is clean")
+		t.eq(PortGames.derbyJudge(-DG.PERFECT_LATE - 0.01), "clean", "just late of perfect is clean")
+		t.ok(DG.PERFECT_EARLY < DG.EARLY and DG.PERFECT_LATE < DG.LATE, "perfect is inside clean")
+		t.ok(DG.FIRE > DG.ZOOM and DG.PERFECT_TIME > DG.ZOOM_TIME, "a streak and a perfect jump are worth more")
+	end)
+
+	t.test("V13.4: a challenge shows each goblin their own score, even when it is missing", function()
+		local a, b = PortGames.sides(true, nil, 40.1)
+		t.eq(a, nil, "the first goblin did not finish: no score of their own")
+		t.eq(b, 40.1, "they see the other's time as theirs")
+		local c, d = PortGames.sides(true, 30, nil)
+		t.eq(c, 30, "the first goblin finished")
+		t.eq(d, nil, "and the other did not")
+		local e, f = PortGames.sides(false, 30, nil)
+		t.eq(e, nil, "the second goblin has no score")
+		t.eq(f, 30, "their opponent's is 30")
+		local g, h = PortGames.sides(false, 30, 41)
+		t.eq(g, 41, "the second goblin's own")
+		t.eq(h, 30, "the first's")
+	end)
+
+	t.test("V13.4: the Hall of Legends stands clear of the Shipyard's quay and the Wardrobe", function()
+		local H = PortGames.HALL
+		-- Copied from server/Port.lua: the quay is 56 by 228 round (-112, 24); the Wardrobe's floor 34 by 24 round (0, 112).
+		local quay = { x0 = -140, x1 = -84, z0 = -90, z1 = 138 }
+		local shop = { x0 = -17, x1 = 17, z0 = 100, z1 = 124 }
+		for _, sx in ipairs({ -1, 1 }) do
+			for _, sz in ipairs({ -1, 1 }) do
+				local x, z = PortGames.podiumToPort(H.x + sx * H.width / 2, H.z + sz * H.depth / 2)
+				local onQuay = x >= quay.x0 and x <= quay.x1 and z >= quay.z0 and z <= quay.z1
+				local onShop = x >= shop.x0 - 2 and x <= shop.x1 + 2 and z >= shop.z0 and z <= shop.z1
+				t.ok(not onQuay, string.format("corner (%.0f, %.0f) is on the quay", x, z))
+				t.ok(not onShop, string.format("corner (%.0f, %.0f) is on the Wardrobe", x, z))
+			end
+		end
+		-- And behind the podium's statue and banner (the podium frame's z runs back from the podium).
+		t.ok(H.z - H.depth / 2 >= 13, "the stage starts behind the champion's plinth and banner poles")
+	end)
+
+	t.test("V13.4: a Gauntlet shortcut counts, and range streaks pay a little more", function()
+		local GA = PortGames.GAUNTLET
+		local p3 = GA.platforms[3].center + Vector3.new(0, 3, 0)
+		t.eq(PortGames.gauntletReached(p3, 1), 3, "landing on the third platform from the start skips two")
+		t.eq(PortGames.gauntletReached(p3, 4), nil, "a platform already passed does not count again")
+		t.eq(PortGames.gauntletReached(GA.start.center + Vector3.new(0, 3, 0), 1), nil, "the start is not a checkpoint")
+		local finish = GA.platforms[#GA.platforms].center + Vector3.new(0, 3, 0)
+		t.eq(PortGames.gauntletReached(finish, 1), #GA.checkpoints, "the bell is the last")
+		local streak, points = 0, 0
+		local total = 0
+		for _, hit in ipairs({ true, true, true, true, false, true }) do
+			streak, points = PortGames.rangeShot(streak, hit, 2)
+			total += points
+		end
+		local S = G.STREAK
+		t.eq(streak, 1, "a miss ended the streak; the next hit starts again")
+		t.eq(total, 5 * 2 + (4 - S.FROM + 1) * S.BONUS, "the bonus from the streak's third hit on")
 	end)
 
 	t.test("a throw lands in a basket coming down, not going up; a closed mouth eats nothing", function()

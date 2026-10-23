@@ -15,6 +15,7 @@
 -- more chips: 📜 QUESTS (how many are ready to claim; opens the Quest Board), ⚔ CHALLENGE (the picker) and 🐾 your
 -- SANCTUARY (up to your isle, or the expeditions when a pet is home). While you play a Port game the sign, the sign-up
 -- row and the next-raid card step aside for the game's own panel (client/PlayHud.lua).
+-- V13.4: a 🏆 LEGENDS chip (your best place on the raid boards; opens the Legends page).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -40,6 +41,7 @@ local C = Ui.C
 local gui, scaler, sign, countdown, subline, buttons, joinButton
 local wallet, shiniesLabel, boatChip, petChip
 local goalLine, questChip, challengeChip, sanctuaryChip -- V13.3
+local legendsChip -- V13.4
 local hooks = {} -- V13.3: set by Main (quests, challenge, sanctuary, goal, playing, questReady, petsHome)
 local fade
 local plankMarker, plankLabel
@@ -332,14 +334,21 @@ local function build()
 		end
 	end)
 	questChip.Name = "QuestChip"
-	challengeChip = chip(wallet, 4, function()
+	-- V13.4: the raid boards, one tap away (your best place on them, when you have one).
+	legendsChip = chip(wallet, 4, function()
+		if hooks.legends then
+			hooks.legends()
+		end
+	end)
+	legendsChip.Name = "LegendsChip"
+	challengeChip = chip(wallet, 5, function()
 		if hooks.challenge then
 			hooks.challenge()
 		end
 	end)
 	challengeChip.Name = "ChallengeChip"
 	challengeChip.Text = "⚔ Challenge a goblin"
-	sanctuaryChip = chip(wallet, 5, function()
+	sanctuaryChip = chip(wallet, 6, function()
 		if hooks.sanctuary then
 			hooks.sanctuary()
 		end
@@ -570,6 +579,8 @@ local function update()
 	local claimable = hooks.questReady and hooks.questReady() or 0
 	questChip.Text = claimable > 0 and string.format("📜 Quests: %d to claim!", claimable) or "📜 Quests"
 	Ui.setStyle(questChip, claimable > 0 and "gold" or "wood")
+	local place = hooks.legendsPlace and hooks.legendsPlace() or nil
+	legendsChip.Text = place and string.format("🏆 Legends  #%d %s", place.rank, place.icon) or "🏆 Raid Legends"
 	local home = hooks.petsHome and hooks.petsHome() or 0
 	sanctuaryChip.Text = home > 0 and string.format("🐾 %d pet%s home: collect!", home, home == 1 and "" or "s")
 		or "🐾 My sanctuary"
