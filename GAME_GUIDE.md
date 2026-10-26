@@ -7,9 +7,9 @@
 This file is a self-contained game description, quality rubric, and dated development history. Use it for coherent ideas and critique without the original chat. The current game description covers this branch; dated reports describe historical revisions and never override it. Mentioned plans are not implemented unless explicitly identified that way. Silence about a feature means undocumented, not confirmed absent. Source review, automated tests, Studio tests, human feedback, and release approval are different evidence levels. To confirm bugs or runtime behavior, inspect the actual code and relevant tests; this description is not runtime proof.
 
 **Game repository:** https://github.com/EnrikR2002/Loot-Goblins
-**Documented gameplay revision:** 0d157d82df248d54a8bf39542b85dff617f1a87e
-**Shared rubric revision:** 38169795ea8361f2144c45cff0be9a70f81a6d54
-**Document freshness fingerprint:** 8d41317d73d5e03e5ed9f728fb574674005e6130d6ae3cde42cfc09acff169b4
+**Documented gameplay revision:** d9bd2f463ffebd0f89de767c263402820385fe2c
+**Shared rubric revision:** 97f027db1174866af89bb40acd9116c2cd7691de
+**Document freshness fingerprint:** 9d083d5f66b5a040fbbf3b6c0cfeaef7444320f7446269941c4a6a19583235a4
 
 Ask an outside AI: 'Read this complete guide, compare the current game with the included rubric, and suggest the highest-value improvements. Separate documented gaps, hypotheses, and ideas. Respect game-specific decisions and current prototype gates.'
 
@@ -23,11 +23,11 @@ This is the single editable source for this game's vision, current mechanics, co
 
 The AI updates affected sections here, records task evidence under docs/reports/, and runs the existing guide export. Generated root GAME_GUIDE.md packages this document, exact tuning, the shared quality rubric and lessons, and full dated reports into one attachment for another AI. Do not edit that generated file. The manifest and freshness files under docs/game-guide/ are export metadata, not additional game descriptions.
 
-## Loot Goblins V13.4: identity, journey, and current scope
+## Loot Goblins V13.5: identity, journey, and current scope
 
 Loot Goblins is a social possession-and-escape game: steal ridiculous treasure from dangerous islands and other players, then somehow get it home. The desired rhythm is explore with awe, take something valuable, feel the world react, improvise an escape, bank the reward, and choose another risk. Fast movement and boat handling should be enjoyable before a reward appears. Danger challenges that power rather than restoring difficulty by making ordinary travel sluggish.
 
-This guide describes **V13.4 (The Living Port, polished)**, on branch `feature/v13-4-port-polish` (a PR stacked on V13.3's branch, not merged), which polishes **V13.3 (The Living Port)** on branch `feature/v13-3-living-port` (PR #28 to main, not merged), on top of the **V13.2 (Sea of Chaos)** code on main. **V13.4 answers Ninety's brief to make V13.3's content feel finished and to put raid competition at the centre of the Port**: a weekly PIRATE CHAMPIONSHIP beside the Biggest Haul and the monthly PIRATE LEGENDS (V13.3's monthly board, renamed, its data kept), all three in a rebuilt Hall of Legends behind the podium with past champions, places that show at once, prizes on every board, a 🏆 chip and LEGENDS page, and raid-board places on the after-raid card; every Port game gets START NOW, the score to beat, splits, retry on `R` and a results card that says how close it came, plus a Regatta rocket start, Gauntlet shortcuts, a Derby with perfect timing, streaks and a commentator, range streaks and a crab counter; a colour-coded signpost and venue flags; CLAIM ALL and a claim pop; clearer challenges; pets that greet you. See **V13.4: The Living Port, polished** below and docs/reports/2026-10-23-v13-4-port-polish.md. **Nobody has played V13.4 either**: it was validated by lint, builds and 143 Luau tests. **V13.3 answers Ninety's brief to give goblins reasons to play another raid and another day**: seven Port games on one framework (the Tiny Boat Regatta, the Grapple Gauntlet, Cannon Golf, the Pet Derby, Treasure Toss, the Target Ship Gallery and Crab Chaos), the Captain's Quest Board (three daily and three weekly quests), weekly and monthly leaderboards with tier and placement rewards in a Hall of Records, a floating pet sanctuary for every goblin with pet expeditions, challenges between goblins, a what's-next card after every raid, titles, and retention analytics; all paid in capped Shinies. See **V13.3: The Living Port** below and docs/reports/2026-10-22-v13-3-living-port.md. **Nobody has played V13.3**: it was validated by lint, builds and 136 automated Luau tests, as the brief asked. V13.2 came through PR #24 (V13, the Goblin Port), PR #25 (V13.1, the playtest fixes) and PR #26 (V13.2, Sea of Chaos), all merged on 2026-10-22, after V11 and V12 merged in PRs #22 and #23. **V13.2 answers Ninety's brief to make encounters more frequent, movement more expressive, boats more balanced and every raid unpredictable**: running builds momentum by itself (no sprint key) and the grapple swings; the fleet shares one speed band (106 to 118) and grows to ten with the Anchorjack, the Wavebreaker and the Corsair; every boat has a bow gun on the click; the skyship flies a route with finite cannon reach and a countdown the server enforces; going on a raid is a choice made in the Port; and every raid has one of eight world-chaos events. See **V13.2: Sea of Chaos** below and docs/reports/2026-10-19-v13-2-sea-of-chaos.md. V13.2 was tested by one AI on one Studio client, and the team has since tested it in play; that feedback is not yet written into this guide. **V13.1 answers Ninety's first V13 playtest, ten points**: a goblin whose health runs out is KNOCKED OUT for 5 s where they fall (no death, no respawn) and drops what they carry; no creature or boss takes treasure any more, they hurt you instead; the Ghost Fleet, the Leviathan, Tangle Isle's new jade frogs and Frost Spire's Chill attack reliably; the Guardian's punch throws a boat sky high, spinning; driving over loose treasure picks it up; E gets you out of a boat; Poltergoblin is switched off; a called boat brakes to a stop beside you, and a big hint says B at the shore. See **V13.1: the playtest fixes** below and docs/reports/2026-10-18-v13-1-playtest-fixes.md. **V13 adds the half of the game that happens between raids**: goblins wait, shop, watch and show off in a harbour town, the Goblin Port, instead of on the skyship's deck; seven boat classes with their own abilities (two free, five earned); 42 pets on one shared animator; an economy with deeds and escape trophies; and a much quieter raid screen. See **V13: the Goblin Port** below and docs/reports/2026-10-18-v13-goblin-port.md. V13 was tested by one AI on one Studio client like the versions before it; **nobody has played it, and spectating and late entry need a second player to be seen for real.** Before V13: V12 was the **Cohesion Pass**, on branch feature/v12-cohesion-pass: V11 (Goblin Life, branch feature/v11-goblin-life: V10, The Living Archipelago, merged into main on 2026-10-17 with V9, plus a customization, pets, progression and monetization pass) with a pass over how the game reads and flows. **V12 makes what the game promises true** (a picked island is where the cannon throws you; the screen names the next step and its key; a banner stays long enough to read) and adds controller and touch input; no treasure value, speed, Heat rule or raid timer changed (a goblin who comes aboard late now gets 12 s on the deck). See **V12: the cohesion pass** below and docs/reports/2026-10-18-v12-cohesion-pass.md. V11 added what a goblin keeps and wears: see **V11: Goblin Life**, docs/reports/2026-10-17-v11-goblin-life.md and docs/MONETIZATION.md. V10 changed only how the world looks (see **V10: the look** and docs/ART_DIRECTION.md); V9 is described in **V9 systems**; where a V8 or V7 paragraph here disagrees with a later section, the later section is what the code does. V7 to V12 have each been tested by one AI on one Studio client; **none of V9, V10, V11 or V12 has been played by a person or with a second player** (V8 had one human multiplayer playtest, which V9 answers). The reports say exactly what was and was not exercised. The portable guide retains historical reports as history, while these current chapters describe the latest code.
+This guide describes **V13.5 (The Curated Port)**, on branch `feature/v13-5-curated-port` (a PR stacked on V13.4's branch, not merged). **V13.5 answers Ninety's brief after the team's multiplayer playtests found the extraction loop essentially finished: fewer, better Port games, and polish, not new systems.** The Pet Derby, Treasure Toss, the Target Ship Gallery and Crab Chaos are removed (what goblins earned in them is kept); the **Tiny Boat Regatta** is a new circuit in the east water (a ramp over a reef, the Flume's current round a hairpin, a shortcut channel through the Teeth, a bumper chicane) where any of the ten boats can be **test-driven** as a loaner, with records kept per boat (the FASTEST REGATTA board is now Racing Tub laps only, beside the week's CLASS RECORDS); **Cannon Golf** is six holes of **water-skipping golf in strokes** (a shallow throw skips off the sea like a stone, a steep one plops; Config.DIVE.SKIM); the Gauntlet's hooks are easier to catch and light up ahead; the freed ground is a lookout, a beach bonfire, a Regatta stand and a promenade; the core actions (banking, crashes, landings, launches, knockouts) hit harder on screen; and world chaos has moods (a flurry, the usual, a big one) and a meteor's blast now rolls on as a shockwave. Raids, boats, guardians, treasure, the knockout and the economy are unchanged. See **V13.5: The Curated Port** below and docs/reports/2026-10-25-v13-5-curated-port.md. **Nobody has played V13.5**: it was validated by lint, builds, 150 Luau tests and two brief starts of Play. V13.4 (The Living Port, polished), on branch `feature/v13-4-port-polish` (a PR stacked on V13.3's branch, not merged), polishes **V13.3 (The Living Port)** on branch `feature/v13-3-living-port` (PR #28 to main, not merged), on top of the **V13.2 (Sea of Chaos)** code on main. **V13.4 answers Ninety's brief to make V13.3's content feel finished and to put raid competition at the centre of the Port**: a weekly PIRATE CHAMPIONSHIP beside the Biggest Haul and the monthly PIRATE LEGENDS (V13.3's monthly board, renamed, its data kept), all three in a rebuilt Hall of Legends behind the podium with past champions, places that show at once, prizes on every board, a 🏆 chip and LEGENDS page, and raid-board places on the after-raid card; every Port game gets START NOW, the score to beat, splits, retry on `R` and a results card that says how close it came, plus a Regatta rocket start, Gauntlet shortcuts, a Derby with perfect timing, streaks and a commentator, range streaks and a crab counter; a colour-coded signpost and venue flags; CLAIM ALL and a claim pop; clearer challenges; pets that greet you. See **V13.4: The Living Port, polished** below and docs/reports/2026-10-23-v13-4-port-polish.md. **Nobody has played V13.4 either**: it was validated by lint, builds and 143 Luau tests. **V13.3 answers Ninety's brief to give goblins reasons to play another raid and another day**: seven Port games on one framework (the Tiny Boat Regatta, the Grapple Gauntlet, Cannon Golf, the Pet Derby, Treasure Toss, the Target Ship Gallery and Crab Chaos), the Captain's Quest Board (three daily and three weekly quests), weekly and monthly leaderboards with tier and placement rewards in a Hall of Records, a floating pet sanctuary for every goblin with pet expeditions, challenges between goblins, a what's-next card after every raid, titles, and retention analytics; all paid in capped Shinies. See **V13.3: The Living Port** below and docs/reports/2026-10-22-v13-3-living-port.md. **Nobody has played V13.3**: it was validated by lint, builds and 136 automated Luau tests, as the brief asked. V13.2 came through PR #24 (V13, the Goblin Port), PR #25 (V13.1, the playtest fixes) and PR #26 (V13.2, Sea of Chaos), all merged on 2026-10-22, after V11 and V12 merged in PRs #22 and #23. **V13.2 answers Ninety's brief to make encounters more frequent, movement more expressive, boats more balanced and every raid unpredictable**: running builds momentum by itself (no sprint key) and the grapple swings; the fleet shares one speed band (106 to 118) and grows to ten with the Anchorjack, the Wavebreaker and the Corsair; every boat has a bow gun on the click; the skyship flies a route with finite cannon reach and a countdown the server enforces; going on a raid is a choice made in the Port; and every raid has one of eight world-chaos events. See **V13.2: Sea of Chaos** below and docs/reports/2026-10-19-v13-2-sea-of-chaos.md. V13.2 was tested by one AI on one Studio client, and the team has since tested it in play; that feedback is not yet written into this guide. **V13.1 answers Ninety's first V13 playtest, ten points**: a goblin whose health runs out is KNOCKED OUT for 5 s where they fall (no death, no respawn) and drops what they carry; no creature or boss takes treasure any more, they hurt you instead; the Ghost Fleet, the Leviathan, Tangle Isle's new jade frogs and Frost Spire's Chill attack reliably; the Guardian's punch throws a boat sky high, spinning; driving over loose treasure picks it up; E gets you out of a boat; Poltergoblin is switched off; a called boat brakes to a stop beside you, and a big hint says B at the shore. See **V13.1: the playtest fixes** below and docs/reports/2026-10-18-v13-1-playtest-fixes.md. **V13 adds the half of the game that happens between raids**: goblins wait, shop, watch and show off in a harbour town, the Goblin Port, instead of on the skyship's deck; seven boat classes with their own abilities (two free, five earned); 42 pets on one shared animator; an economy with deeds and escape trophies; and a much quieter raid screen. See **V13: the Goblin Port** below and docs/reports/2026-10-18-v13-goblin-port.md. V13 was tested by one AI on one Studio client like the versions before it; **nobody has played it, and spectating and late entry need a second player to be seen for real.** Before V13: V12 was the **Cohesion Pass**, on branch feature/v12-cohesion-pass: V11 (Goblin Life, branch feature/v11-goblin-life: V10, The Living Archipelago, merged into main on 2026-10-17 with V9, plus a customization, pets, progression and monetization pass) with a pass over how the game reads and flows. **V12 makes what the game promises true** (a picked island is where the cannon throws you; the screen names the next step and its key; a banner stays long enough to read) and adds controller and touch input; no treasure value, speed, Heat rule or raid timer changed (a goblin who comes aboard late now gets 12 s on the deck). See **V12: the cohesion pass** below and docs/reports/2026-10-18-v12-cohesion-pass.md. V11 added what a goblin keeps and wears: see **V11: Goblin Life**, docs/reports/2026-10-17-v11-goblin-life.md and docs/MONETIZATION.md. V10 changed only how the world looks (see **V10: the look** and docs/ART_DIRECTION.md); V9 is described in **V9 systems**; where a V8 or V7 paragraph here disagrees with a later section, the later section is what the code does. V7 to V12 have each been tested by one AI on one Studio client; **none of V9, V10, V11 or V12 has been played by a person or with a second player** (V8 had one human multiplayer playtest, which V9 answers). The reports say exactly what was and was not exercised. The portable guide retains historical reports as history, while these current chapters describe the latest code.
 
 ### The first raid from a player's perspective
 
@@ -76,6 +76,7 @@ An outside AI should deepen possession and escape, preserve movement agency, com
 | Branch feature/v11-goblin-life (PR to main) | **V11, Goblin Life**: customization, pets, progression and monetization on one ownership system. A 121-item catalogue (`shared/Catalog.lua`) and 11 achievements; saved profile v2 with V7 migration and session-locked `UpdateAsync` saves (`ProfileSchema`, `ProfileStore`, `Progress`); pure ownership rules (`Economy`); goblin cosmetics built by shared code for live goblins and previews (`Wardrobe`); boats wearing their driver's paint, flag, figurehead, trail, wake, trick effect and callout (`BoatLook`, `BoatStyle`, client `Looks`); emotes and victory dances (`EmoteMoves`, `Emotes`); five redesigned pets that walk, ride, cling and react (`PetLook`, client `Pets`); the Goblin Wardrobe shop and locker (client `Shop`), emote wheel and raid results; idempotent Robux receipts and game-pass checks, switched off (`Monetization`, `Receipts`); 46 Luau tests (`tests/luau`). Report: `docs/reports/2026-10-17-v11-goblin-life.md`. Studio-tested by one AI on one client with an in-memory store; **no human playtest, no second player, no live DataStore and no real purchase yet**. |
 | Branch feature/v12-cohesion-pass (PR to feature/v11-goblin-life) | **V12, the Cohesion Pass**: an audit of the game as a new player and fixes for what it found. Map picks and the ship's auto-fire land on a dry **landing spot** near each treasure on all 16 islands (`shared/Landing.lua`, `Skyship.findLandings`), flights no longer sink under Roblox gravity (a client anti-gravity force) or splash early over a beach (`Flight.resolveLanding`), and a dropped-throw race is closed; banners queue by priority (`client/BannerQueue.lua`); an objective line that names the next key (`client/Objective.lua`); a HUD that shows what each moment needs (ship, flight, boat, foot); red arrows for whatever chases you (`client/Danger.lua`); a one-screen controls card that no longer opens by itself; the welcome card waits for a calm moment; one feed line for interest; the bank banner shows what was paid; storm warnings that make sense; an E a step short no longer casts Poltergoblin; 12 s on deck for late arrivals; gamepad grapple, throw, map and keg; touch buttons (`client/TouchControls.lua`); a fainter carried treasure; landings scaled by air time. 53 Luau tests. Report: `docs/reports/2026-10-18-v12-cohesion-pass.md`. Studio-tested by one AI on one client; **no human playtest, no second player, no phone and no real controller yet**. |
 | Merged 2026-10-18: PRs #22 and #23 | **V11, Goblin Life** and **V12, the Cohesion Pass** (above) merged into main. |
+| Branch feature/v13-5-curated-port (PR stacked on feature/v13-4-port-polish, not merged) | **V13.5, The Curated Port**: Ninety's brief after the team's playtests. Four Port games removed (`PetDerby`, `TreasureToss`, `TargetGallery`, `CrabChaos`, client `PlayRange`, `PlayCritters`), their quests replaced and saved ones migrated, the Derby's trophies kept for their owners (`unearnable`); the Regatta rebuilt as a circuit with test drives for all ten boats, per-boat bests, a Racing-Tub-only board (`regatta2`) and the week's class records; Cannon Golf rebuilt as six holes of water-skipping golf in strokes (`Config.DIVE.SKIM`, board `golf2`); the old boards retired but still paid (`Seasons.RETIRED_BOARDS`); Gauntlet hook catches and lit legs; the Port curated (`Port.curate`); feel primitives (`Effects.popText`, `splashColumn`, `debris`, `dustRing`) on the core actions; chaos moods and the meteor's shockwave. 150 Luau tests. Report: `docs/reports/2026-10-25-v13-5-curated-port.md`. **Not played**: lint, builds, Luau tests and two brief starts of Play with an empty console. |
 | Branch feature/v13-4-port-polish (PR stacked on feature/v13-3-living-port, not merged) | **V13.4, The Living Port, polished**: Ninety's follow-up brief. The raid boards made the Port's centrepiece (a weekly PIRATE CHAMPIONSHIP, board `crown`; the monthly board renamed PIRATE LEGENDS with its id `champion` kept; `profile.season.week`; instant places by `Seasons.rankAmong`; the Hall of Legends rebuilt with PAST CHAMPIONS; four new season cosmetics; top-three feed news and fireworks; a 🏆 chip and LEGENDS page; places on the after-raid card), polish for all seven games (START NOW, the best to beat, splits, `R` to retry, results deltas, the Regatta's rocket start, Gauntlet shortcuts, the Derby's perfect window, streaks and commentator, range streaks, a crab counter), a signpost and venue flags, CLAIM ALL, clearer challenges, greeting pets. 143 Luau tests. Report: `docs/reports/2026-10-23-v13-4-port-polish.md`. **Not played**: lint, builds, Luau tests and two brief starts of Play with an empty console. |
 | Branch feature/v13-3-living-port (PR to main, not merged) | **V13.3, The Living Port**: Ninety's brief to make goblins want another raid and another day. One Port games framework (`server/Minigames.lua`, `shared/PortGames.lua`, client `PlayHud`) and seven games (`Regatta`, `Gauntlet`, `CannonGolf`, `PetDerby`, `TreasureToss`, `TargetGallery`, `CrabChaos`); the Captain's Quest Board (`shared/Seasons.lua`, `server/Quests.lua`); weekly and monthly leaderboards on OrderedDataStores with a durable Hall of final standings and once-only season rewards (`server/Leaderboards.lua`); a pet sanctuary isle per goblin and pet expeditions (`shared/Habitat.lua`, `server/Sanctuary.lua`, client `Sanctuary`, `PetCrowd`); challenges (`server/Challenges.lua`); the what's-next card (`server/Prospects.lua`, client `NextUp`); titles (a new slot) and 22 cosmetics; profile v4; retention milestones and a RaidContinuation funnel (`server/Analytics.lua`). 136 Luau tests. Report: `docs/reports/2026-10-22-v13-3-living-port.md`. **Not played**: checked by lint, builds, Luau tests and one start of Play with an empty console. |
 | Merged 2026-10-22: PR #26 (stacked on the V13.1 branch until then) | **V13.2, Sea of Chaos**: Ninety's brief. Momentum instead of sprint and a swinging grapple (`shared/Momentum.lua`, `shared/Swing.lua`); the fleet compressed to one speed band and grown to ten (Anchorjack, Wavebreaker, Corsair; the anchor now only on the Anchorjack); a driver's bow gun on every boat; a skyship that flies one of seven routes with finite reach and a server-locked prep (`shared/SkyRoute.lua`); opt-in raids and leaving early; eight world-chaos events, one a raid (`server/WorldChaos.lua`, client `ChaosFx.lua`, waves and whirlpools in `shared/Sea.lua`). 107 Luau tests. Report: `docs/reports/2026-10-19-v13-2-sea-of-chaos.md`. Studio-tested by one AI on one client; then tested by the team in play (feedback not yet recorded here). |
@@ -87,7 +88,7 @@ The V6 report was subsequently amended after Ninety found the blocked Skull Chal
 
 Enrik explicitly authorized merging the complete latest V6 development line into main on October 12, 2026. PR #14 targets main and includes the ancestor work from PRs #9–13 plus the shared-memory rollout in PR #15. GitHub records the actual integration outcome. This approval does not certify outstanding human, multiplayer, audio-by-ear, or device tests. Historical reports below retain their original checkpoint status.
 
-Everything below describes the V13 code: V9's systems (with the V8, V7 and V6 sections they build on) under V10's look, with V11's customization and progression on top, V12's cohesion pass through all of it, V13's Port, fleet, bestiary and quieter screen, V13.1's fixes, V13.2's Sea of Chaos, V13.3's Living Port and V13.4's polish of it, and their current limitations.
+Everything below describes the V13 code: V9's systems (with the V8, V7 and V6 sections they build on) under V10's look, with V11's customization and progression on top, V12's cohesion pass through all of it, V13's Port, fleet, bestiary and quieter screen, V13.1's fixes, V13.2's Sea of Chaos, V13.3's Living Port, V13.4's polish of it and V13.5's curation, and their current limitations. Where a V13.3 or V13.4 paragraph describes the removed games or the old Regatta and Cannon Golf, the V13.5 chapter is what the code does.
 
 ## Purpose
 
@@ -152,11 +153,11 @@ The long-term vision later in this document is inspiration, not a plan; the team
 | `M` (gamepad: click the right stick, `R3`, V12) | World map: islands, difficulty, who is on guard, your landing choice, the sanctuary, tornadoes | client `Map` |
 | (always shown) | **Minimap** (V9), top right: turns with the camera; islands, the island you are at, the Hoard and sanctuary, tornadoes, whatever is chasing you | client `Minimap` |
 | `E` at a game's sign in the Port | **Play a Port game** (V13.3): join its lobby (8 s) or its queue, or start your own run (Gauntlet, Golf). V13.4: **▶ START NOW** in a lobby starts it as soon as everyone in it has pressed it. The play bar shows a hint, the clock, your best and LEAVE; RESET or `Backspace` puts you back at your last checkpoint (Regatta, Gauntlet). AGAIN on the results (V13.4: or `R`, gamepad `Y`) plays it again | `Minigames`, client `PlayHud` |
-| In a Port game | Regatta: the boat's keys; V13.4: throttle (`W`) right on GO for a **rocket start**. Gauntlet: run, jump, dash, `F` to swing; V13.4: reaching a later platform is a shortcut. **Golf**: aim by looking, **hold** click/`Space`/gamepad `A`/touch HOLD to charge, let go to fire. **Derby**: CHEER (`Space`, `E`, click, gamepad `A`, touch) as your pet reaches a hurdle; V13.4: cheer while the timing bar's marker is in the green (gold: perfect). **Toss**: aim with the camera, click/`Q`/gamepad `R2` or `L1`/touch THROW. **Gallery**: aim with the camera, click/`Space`/gamepad `R2` or `A`/touch FIRE. **Crab Chaos**: run into crabs (dash helps) | client `PlayGolf`, `PlayRange`, `PlayCritters` |
+| In a Port game | **Regatta** (V13.5): pick your boat in the lobby (the Racing Tub races for the board; any class is a free test drive, its `R` ability working on the course), then the boat's keys; throttle (`W`) right on GO for a **rocket start**; or **TEST DRIVE IT** on a boat's showroom card. **Gauntlet**: run, jump, dash, `F` to swing; a later platform is a shortcut; the next leg's hooks glow. **Golf** (V13.5): look left/right to aim, **down for a skimmer** (it skips off the sea), **up for a lob**; **hold** click/`Space`/gamepad `A`/touch HOLD to charge, let go to fire; in the air `A`/`D` curve it, hold `Space` to stop skipping (a glide), `Shift` to drop | client `PlayHud`, `PlayGolf`, `Shop` |
 | `E` at the Quest Board, or the 📜 chip | **The Captain's Quests** (V13.3): today's and this week's quests, CLAIM (V13.4: CLAIM ALL), and the 🏆 LEGENDS page (V13.4; V13.3's SEASON page: the raid boards first) | `Quests`, client `PortBoard` |
 | The 🏆 chip (V13.4) | **Raid Legends**: your best place on the raid boards; opens the LEGENDS page | client `PortHud`, `PortBoard` |
 | `E` at the Sanctuary Lift, or the 🐾 chip | **Your pet sanctuary** (V13.3), or VISIT someone's. On an isle: `E` at the bowl, the ball and the bell; DECORATE and EXPEDITIONS at its signs; the basket goes back down | `Sanctuary`, client `Sanctuary` |
-| The ⚔ chip | **Challenge a goblin** (V13.3) in the Port to any of the seven games; ACCEPT / NO THANKS on an invitation; REMATCH on the result | `Challenges`, client `Challenge` |
+| The ⚔ chip | **Challenge a goblin** (V13.3) in the Port to any of the Port's games (three since V13.5); ACCEPT / NO THANKS on an invitation; REMATCH on the result | `Challenges`, client `Challenge` |
 | `H` | In the Port, **the Port card** (V13: what is where). In a raid, **the controls card** (V12): the goal, the keys on foot, at sea, in the air and for the menus, three rules of the sea and the controller buttons, on one screen. It no longer opens by itself at the start | client `Hud` |
 
 Abilities are keyboard and mouse, with the gamepad buttons above (V12 added `L1` throw, `L2` grapple, `R3` map and D-pad left keg; `L3`, sprint until V13.2, now dashes). **V12 touch buttons** (client `TouchControls.lua`: Roblox's own context-action buttons, bound only on a touch screen and only while they mean something, calling the same functions as the keys): FIRE in a cannon; BOAT, HOOK and THROW (while carrying) on foot; BOOST, HOP and TRICK at the wheel. Prompts and the sword worked on touch before. V13.2 adds GUN at the wheel. Dash, drift and keg still have no touch button. V11's wardrobe, emote wheel and results are built for mouse, touch and gamepad. **None of the controller or touch input has been tried on a phone or with a real controller.**
@@ -314,6 +315,67 @@ All tuning numbers live in `src/shared/Config.lua`. Gameplay modules never hardc
 - `Effects.lua`: sounds from `rbxasset://sounds/*`, neon effects, **markers** (a closing ring on the ground: the one visual language for "this lands here"), the Guardian's shockwave, lightning bolts, flares, shells, tentacles, fireworks, dash and air-jump puffs. The field of view follows speed (`Effects.setSpeed`) and kicks for a dash or a launch (`punchFov`); one writer per frame. **Sound has two kinds**, and `Effects.sound` decides by whether it is given a position: an INTERFACE sound (a chime, an alarm) plays in the player's ears; a WORLD sound plays at its place with `InverseTapered` rolloff, fades to silence at its `range`, and is **not played at all** beyond it or when it would be inaudible. At most `VOICE_LIMIT` of one sound start within `VOICE_WINDOW`, and the world's sound group has a compressor. Thunder is a world sound (`Effects.thunder`). Far-off markers, blasts and bolts are not drawn either. Numbers: `Config.AUDIO`.
 - `Main.client.lua`: input, momentum (V13.2), dash, air jump, the grapple swing and pull (V13.2), the bow gun click, zipline/pad/geyser movement, cannon and keg input, hiding coins the moment you pass them, hiding signs that are out of range, creature sounds and puffs (`CREATURE_FX`), event routing.
 
+## V13.5: The Curated Port
+
+V13.5 answers Ninety's brief after the team's multiplayer playtests: **the core extraction gameplay is essentially feature-complete, so curate and refine instead of expanding.** Remove four Port games that did not work, rebuild the two that did best (the Regatta and Cannon Golf), give the Gauntlet targeted polish, make the Port coherent, and polish the presentation of the core actions and of world chaos, without redesigning raids, boats, guardians, treasure, the knockout, pets or the economy. Built on branch `feature/v13-5-curated-port`, stacked on V13.4's branch (PR #29, itself stacked on V13.3's PR #28; none merged). Report, evidence and the human playtest checklist: `docs/reports/2026-10-25-v13-5-curated-port.md`. **Nobody has played V13.5**: as the brief asked, it was checked by code review, StyLua, Selene, both Rojo builds, **150 Luau tests** in Studio's Edit mode and two brief starts of Play to read the console.
+
+### Removed: the Pet Derby, Treasure Toss, the Target Ship Gallery and Crab Chaos
+
+- **Gone from the game**: their server modules, venues, prompts, signs, venue flags and signpost arms, their client parts (`PlayRange`, `PlayCritters`), their tuning (`Config.PLAYGROUND.DERBY`, `TOSS`, `GALLERY`, `CRABS`, `STREAK`) and shapes (`PortGames.DERBY`, `TOSS`, `GALLERY`, `CRABS`). Everything that lists games reads `PortGames.GAMES` (the signpost, the venue flags, the challenge picker, the what's-next card, the Port help card), so it lists three. The code is in Git history (V13.4's tree).
+- **Kept, never deleted**: a goblin's saved plays and bests for the removed games (`profile.games`), `stats.derbyWins`, and the **Derby Day** achievement and **Derby Laurel** pet hat for whoever earned them. Both are marked `unearnable` (new): owned and worn as before, hidden from the shop and the trophy list unless you have them, and never unlocked again (`Economy.checkAchievements` skips them). This is deliberately not the catalogue's older `retired`, which takes an item off its owners. **Port Regular** now asks for all three games (goal 3; `PortGames.tried` counts only games the Port has); whoever already has it keeps it.
+- **Quests**: the daily Toss, Crabs, Gallery and Derby quests left the pool; two new daily ones show the rebuilt games (`d_testdrive`: race the Regatta in 2 different boats; `d_skip3`: skip 3 times off the sea in one golf shot) and one weekly (`w_fleet4`: race the Regatta in 4 different boats); "Finish 5 different Port games" became "all 3". **A saved quest whose game is gone is replaced** by the quest the board deals for its place that period, at the goblin's next quest check (`Seasons.ensureQuests` → `replaceRetired`); one that was already finished is **paid first**, as if claimed (`Seasons.RETIRED_QUESTS` keeps the old goals), and one already claimed is left alone. No removed game had a leaderboard.
+
+### The Tiny Boat Regatta: a circuit, and a test drive in any boat (`server/Regatta.lua`, `shared/PortGames.lua` REGATTA, client `PlayHud`, `Shop`)
+
+- **The course** is a circuit in the east water right off the dock instead of a ring round the whole island: 20 points on a closed racing line (`PortGames.REGATTA.line`, each with its lane's half-width), about 2,150 studs round (2,000 through the shortcut), clockwise: the **Pier Straight** (two hoops in a chain), the **Lighthouse Bend** (a lighthouse on its rock inside the bend, red chevron boards outside), **the Leap** (a kicker ramp, then a reef of rocks across the middle of the lane with gaps at its edges for the careful, and a gold high hoop over it only a jump reaches), **the Flume** (a hairpin round a rock island, with a curved current, `REGATTA.FLUME` 24 studs/s, that carries a boat round if it rides it: the banked turn; a berm of low rocks on the outside), **Barrel Alley** (twelve staggered barrels), **the Teeth** (a 22-stud channel through two jagged rock walls with a small hoop in it, about 150 studs shorter, or the safe way round to the east), the **Bumper Chicane** (six big bouncy buoys side to side), **Cannon Corner** (a splash cannon on its rock; another watches Barrel Alley) and the **Home Straight**. Ten checkpoints (the Teeth's is the channel or the safe way); a goblin out of their boat is put back at the last one facing on along the lap, never inside the Teeth. **The layout is checked by numbers** (`PortGamesSpec`): every stretch of lane keeps 40 studs off the island's coast and inside the Port, the lane passes the dock's end with room, the rocks sit beside the lane and the barrels and buoys on it, the two ways through the Teeth never cross each other's checkpoint, the grid fits two Ironbellies abreast.
+- **The start**: a grid of three rows of three behind the line, four lamps on the gantry that every client lights from the heat's clock (three red at 3, 2, 1, all green at GO), and V13.4's rocket start.
+- **Test drives**: the lobby shows every boat (the Racing Tub and the ten classes); `PlayRequest("choose", "regatta", class)` picks one (remembered for the next heat), and **TEST DRIVE IT** on a boat's showroom card chooses it and joins (a heat joined from across the Port takes the goblin to the dock first, or its "walked away" check would send them off). The boat is a **loaner**: `Boats.spawnPortBoat(class)` with its guns mounted (`Cannons.mountIfArmed`: the Broadside's volley needs them), removed when the lap ends, the goblin leaves or the heat closes; nothing is granted or bought. It drives exactly as in a raid, and **its `R` ability works on the Regatta's water** (`BoatAbilities.safe`: the Port is a safe harbour except `PortGames.onRegatta`; the Stormrunner's twister uses the same rule). The bow gun stays a raid's ("No cannons in the Port or at home").
+- **Fair records**: a goblin's best is kept **per boat** (`PortGames.recordKey`: `regatta2:<class>`), so a Skiff lap is compared only with Skiff laps. The weekly **FASTEST REGATTA** board is now `regatta2` and takes **Racing Tub laps only** (everyone in the same boat). Every boat's fastest lap of the week is a **CLASS RECORD** (`Leaderboards.classLap`: one DataStore key per week in `LG_RegattaRecords_v1`, kept with `UpdateAsync` so a record is only ever beaten; written at most every `RECORD_GAP` 6 s; published as `workspace.RegattaRecords`), shown on a board at the dock and on the results card, with a feed line and a flash for a new one; prestige only. The old ring course's board (`regatta`) is **retired**, not deleted: it takes no new scores and stands nowhere, but this week's places on it are settled and paid as usual (`Seasons.RETIRED_BOARDS`); a goblin's old `games.best.regatta` is kept but never compared with the new course.
+- **Presentation**: a ring at each gate passed, ⚡ THROUGH THE TEETH!, V13.4's splits and place gains, the boat's name on the panel and in the roster, fireworks and white water over the line with 🏆 FIRST ACROSS THE LINE! for the winner, a results card naming the boat and the week's record in it, and **🛒 SHOWROOM** after a test drive in a boat you do not own (it opens the wardrobe on that boat).
+- **Numbers** (first guesses): medals 23 / 28 / 36 s; `MIN_TIME` 11.5 s (the shortcut's lap at the fastest boat's boosted top speed all the way is slower: the spec checks it); `LIMIT` 75 s. Every boat pays from the Regatta's one daily cap (6 paid runs a day), so switching boats farms nothing.
+
+### Cannon Golf: water-skipping golf in strokes (`server/CannonGolf.lua`, client `PlayGolf.lua`, `shared/Dive.lua`, `Config.DIVE.SKIM`, `PortGames.GOLF`)
+
+| Hole | Par | What it asks |
+| --- | --- | --- |
+| 1 THE PUDDLE JUMP | 2 | a gentle lob onto a big green 170 studs out |
+| 2 THE SKIPPING STONE | 3 | a green 400 studs out: further than any throw flies, so it must be skipped there |
+| 3 THE BEND | 3 | sea stacks on the straight line: skim wide and curve it in (`A`/`D`) |
+| 4 THE LILY PAD | 2 | a 7-stud floating pad 150 studs out, among decoy lily pads: a soft, precise lob |
+| 5 OVER THE TOP | 3 | a 50-stud ridge in front of the green: lob over it (the shortcut) or skip round its end |
+| 6 THE KRAKEN'S CROWN | 3 | a sand islet 430 studs out inside a ring of reef with one gap: skip through it, then glide to stop on the crown |
+
+- **The shot**: aim left and right, **down for a skimmer, up for a lob** (elevation 18 to 62 degrees), and hold to charge. The client sends a direction whose height is the elevation, and a power; the server clamps both (`PortGames.golfVelocity`). The panel says honestly whether this shot will skip at the power charged (SKIPS or LOB: a weak low shot plops).
+- **The skimmer's sea** (`Config.DIVE.SKIM`, `Dive.bounce(..., skim)`): a throw from a launcher marked `skim` (the golf tees) skips like a real stone: an arrival shallower than 38 degrees bounces, keeping 0.74 of its speed across and leaving at 0.62 of the speed it came down at, so each skip is lower, shorter and flatter than the last, until it is too slow or has made six. A steep arrival (a lob, a dive) plops; a glide never skips (hold `Space` to stop). A full skimmer goes about 460 studs and stays inside the Port. Its tumble steers at half the usual (`SKIM.STEER`), so a curve is a skill. The skydiver's sea is unchanged. The server decides every skip (`Flight`), the client draws the rings where it will touch next and counts them.
+- **Strokes**: `Flight.Landed` now says whether a flight ended on something solid and how many times it skipped. Landing **on the hole's target** holes out: in the cup is that stroke (an ace on the first), elsewhere on it one putt more. A splash (or landing anywhere else) costs the stroke and you are back in the cannon in 1.2 s. After par + 1 shots without holing out the caddy picks it up: par + 3. The round is the six holes' strokes (par 16); fewest wins. Medals 14 / 17 / 21 strokes; the round has 330 s.
+- **Boards**: the weekly **CANNON GOLF** board is now `golf2` (fewest strokes; tiers 21 / 17 / 14; the same prizes). The old points board `golf` is retired like the old Regatta's. Bests are kept under `golf2`.
+- **Presentation**: a hole card (name, par, shot, distance, a one-line tip), the elevation and SKIPS/LOB beside the power meter, a **chase camera** through the flight and the skips that holds on the landing for a moment, **SKIP x2!** callouts over the water with a rising chime and a small camera kick for each skip, splashes and columns of white water as big as the arrival, the pin marked from anywhere, landing callouts with the golf name (IN THE CUP! HOLE IN ONE! BIRDIE! PAR, PICKED UP) and the round's card on the results.
+
+### The Grapple Gauntlet (targeted polish; the course is unchanged)
+
+- **Reliable hooks**: each gold hook has an invisible 15-stud catch round it (`HookTarget`); a hook aimed into the catch swings from the ball's middle (client `Main.findHook`).
+- **Readability**: the hooks of the leg ahead glow (client `PlayHud`); a fall puts you back on your last platform **facing the next** (`PortGames.GAUNTLET.checkpoints[i].respawn`), with a ring where you land; the splashes are counted on the panel; a shortcut says how many platforms it skipped.
+
+### The Port, curated (`server/Port.lua` `Port.curate`, `server/Leaderboards.lua`)
+
+- **The freed ground**: **THE LOOKOUT** (the Derby's old lawn, south): benches round a lantern tree and a telescope on the golf water; **THE 19TH HOLE** (Crab Chaos's beach, beside the golf jetty): a bonfire ring with log seats, deck chairs and parasols; the **REGATTA STAND** (three tiers on the shore south of the dock, facing the start line, under bunting); the **PROMENADE** (where the Toss's booths stood): lanterns and benches between the square and the Regatta. **Trail flags** in each game's colour lead from the square to its venue. The Hall of Legends has a **column of gold light** over its trophy, seen from anywhere in town.
+- **How it is placed**: everything stands on what a ray down finds, and a spot whose ray hits a building is skipped (nothing is built inside another building). `Port.curate` runs after every venue, the Hall and the lift exist, and **waits until the terrain answers a ray**: terrain poured in the same frame does not, and the first build skipped everything (see Known bugs). The boot log says how many pieces were placed and how many spots were kept off (31 and 3 in the check).
+
+### Feel: the core actions (client `Effects.lua`, `Main.client.lua`, `Skyship.lua`)
+
+- **New primitives** in `Effects`: `popText` (words that pop out of the world and float away), `splashColumn` (a column of white water), `debris` (a few real, falling, local pieces: planks, rock, clods, coins) and `dustRing` (a ring of dust or spray rolling outward).
+- **Matched to the physical event**: a treasure prised off its spot throws dust off the plinth and jolts the thief's camera; knocked loose it says LOOSE!; **banking** throws a shower of gold coins as big as the haul and "+N GOLD" over the Hoard; a **boat crash** throws planks and thumps as hard as the hit (a scrape only grinds); a cannon or a skyship launch rolls powder smoke; a **head-first landing** throws a dust ring and clods; a fast splash or a first skip throws up a column of white water; the Guardian's smash rolls dust and chips of rock, its launch throws up the sea; a **knockout** thumps, kicks up dust and pops KO!. Nothing was added to the HUD, and every sound is still one of `rbxasset://sounds/` (no uploaded or invented assets).
+
+### World chaos, polished (`server/WorldChaos.lua`, client `ChaosFx.lua`, `Config.CHAOS`)
+
+- **Moods** (`Config.CHAOS.MOODS`): each episode is a FLURRY (30%: 0.65 of its count, a shorter calm after), the usual (50%), or A BIG ONE (20%: 1.35 times as much, a longer calm after, named in the banner and the feed). The counts scaled are the meteors, kraken strikes, rogue waves (at most three), barrels, whirlpools and bolts, and the armada's time. A raid still holds at least four episodes with real calm between (`ChaosSpec`, in the biggest mood).
+- **Meteor Mayhem**: after a meteor's blast a **shockwave** rolls on over the water to 2.4 times its launch radius in 0.9 s (`meteors.shock`): every boat and swimmer it passes is thrown a little (once), pursuers are thrown back and guardians and island creatures staggered as far as it goes, and loose treasure scatters; boats are dented above the world's hull floor, as before. Drawn as a ring racing out, a tall column of white water at sea or dust and basalt on land. The shockwaves are thunder's code, generalised (each ring carries its own numbers; thunder's alone SUPERCHARGES).
+- **The rest, drawn sharper**: the kraken's sea swells into a dome before a tentacle breaks it and throws up water as it rises; a rogue wave's long low roar is heard from where it rises; the armada's shells leave powder smoke, whistle as they drop and throw up a column where they hit the sea; exploding barrels throw staves and water; a boat flung out of a whirlpool rides a spout; a SUPERCHARGED boat crackles with sparks for as long as its free boost lasts. Every new visual is in the chaos folder or under a `Debris` timer, so the raid's reset still clears it all.
+
+### Economy and saving (V13.5)
+
+No new currency and no new reward stream. Test drives pay from the Regatta's existing cap; golf rounds from golf's; class records pay nothing; a finished quest for a removed game is paid once when it is replaced; retired boards pay their periods exactly as before. **No profile version change**: the new bests are new keys in maps the profile already has (`games.best["regatta2:<class>"]`, `games.best.golf2`, season bests `regatta2@w…`, `golf2@w…`), which a V13.4 server keeps untouched (`ProfileSchema` keeps any string key).
+
 ## V13.4: The Living Port, polished
 
 V13.4 answers Ninety's follow-up brief: **make what V13.3 built feel finished and worth returning to, and make the raid leaderboards the Port's centrepiece**, with no new major system and no new game. Built on branch `feature/v13-4-port-polish`, stacked on `feature/v13-3-living-port` (V13.3's PR #28 was still unmerged). Report, evidence and the human playtest checklist: `docs/reports/2026-10-23-v13-4-port-polish.md`. **Nobody has played V13.4**: as the brief asked it was checked by code review, StyLua, Selene, both Rojo builds and the Luau tests in Studio's Edit mode (see the report), not by AI playthroughs. A review of the first build found nine things, all fixed in the same PR (see the report, section 5): a wrong challenge score, the Hall standing on the Shipyard's quay, a top-three announcement that could fire three times a raid, an emoji that does not draw, and a profile version bump among them.
@@ -368,6 +430,8 @@ V13.3 answers Ninety's brief after a playtester enjoyed the raids but was not mo
 - **Rewards** go through `Progress.onPortGame` (`Minigames.reward`): see the reward budget below. Everyone in the heat gets their own result card (`PlayResult`: medal, place, best, Shinies, and AGAIN / REMATCH).
 
 ### The seven games
+
+(V13.5 removed the Derby, the Toss, the Gallery and Crab Chaos, and rebuilt the Regatta and Cannon Golf: see **V13.5: The Curated Port**. This table is V13.3's.)
 
 | Game | Where (from the Port's centre) | How it plays | Score, medals |
 | --- | --- | --- | --- |
@@ -926,11 +990,11 @@ See Boats (B). In the last `FINAL_RUSH` seconds `Raid.onBanked` pays `FINAL_RUSH
 | Repository path | Rojo maps it to | Holds |
 | --- | --- | --- |
 | `src/server/Main.server.lua` | `ServerScriptService.LootGoblinsServer.Main` | Boot, wiring, player lifecycle, the one Heartbeat |
-| `src/server/<Module>.lua` | `...LootGoblinsServer.<Module>` (ModuleScripts) | `Net`, `Util`, `Gear`, `Movement`, `Sea` (forwards to shared), `SeaNav`, `WorldKit`, `Landform`, `World`, `Islands`, `IslandsFar`, `Outlands`, `Seaways`, `Searuns`, `Boats`, `Recall`, `Skyship`, `Loot`, `Heat`, `Poltergoblin`, `Destructibles`, `Blast`, `Cannons`, `Kegs`, `Mechanisms`, `Combat`, `Threats`, `Storms`, `Navy`, `Alerts`, `Troubles`, `Escalation`, `Coins`, `Creatures`, `Leviathan`, `Bestiary`, `BestiaryMinor`, `Progress`, `Monetization`, `Raid`; V8 `Impact`, `Flight`, `Pursuit`, `SeaMobs`; V9 `Tornadoes`, `GhostFleet`; V10 `Art` (island landmarks), `GuardianLook` (the Guardian's design), `GoblinLook` (players' goblin look, V11: dressed from the `Look` attribute); V11 `ProfileSchema`, `ProfileStore`, `Economy`, `Receipts`, `Analytics`, `Emotes`, `BoatStyle`; V13 `Port` (the Goblin Port: build, arrivals, readiness, champion, spectating), `BoatModels` (every class's look and seats), `BoatAbilities` (the stunt-key abilities, validated); V13.1 `Knockout` (health 0 is a knockout, not a death); V13.3 `Minigames` (the Port games' framework), `Regatta`, `Gauntlet`, `CannonGolf`, `PetDerby`, `TreasureToss`, `TargetGallery`, `CrabChaos`, `Quests`, `Leaderboards`, `Sanctuary`, `Challenges`, `Prospects` (the what's-next card) |
+| `src/server/<Module>.lua` | `...LootGoblinsServer.<Module>` (ModuleScripts) | `Net`, `Util`, `Gear`, `Movement`, `Sea` (forwards to shared), `SeaNav`, `WorldKit`, `Landform`, `World`, `Islands`, `IslandsFar`, `Outlands`, `Seaways`, `Searuns`, `Boats`, `Recall`, `Skyship`, `Loot`, `Heat`, `Poltergoblin`, `Destructibles`, `Blast`, `Cannons`, `Kegs`, `Mechanisms`, `Combat`, `Threats`, `Storms`, `Navy`, `Alerts`, `Troubles`, `Escalation`, `Coins`, `Creatures`, `Leviathan`, `Bestiary`, `BestiaryMinor`, `Progress`, `Monetization`, `Raid`; V8 `Impact`, `Flight`, `Pursuit`, `SeaMobs`; V9 `Tornadoes`, `GhostFleet`; V10 `Art` (island landmarks), `GuardianLook` (the Guardian's design), `GoblinLook` (players' goblin look, V11: dressed from the `Look` attribute); V11 `ProfileSchema`, `ProfileStore`, `Economy`, `Receipts`, `Analytics`, `Emotes`, `BoatStyle`; V13 `Port` (the Goblin Port: build, arrivals, readiness, champion, spectating), `BoatModels` (every class's look and seats), `BoatAbilities` (the stunt-key abilities, validated); V13.1 `Knockout` (health 0 is a knockout, not a death); V13.3 `Minigames` (the Port games' framework), `Regatta`, `Gauntlet`, `CannonGolf` (V13.5 removed `PetDerby`, `TreasureToss`, `TargetGallery`, `CrabChaos`), `Quests`, `Leaderboards` (V13.5: also the week's class records), `Sanctuary`, `Challenges`, `Prospects` (the what's-next card) |
 | `src/client/Main.client.lua` | `StarterPlayerScripts.LootGoblinsClient.Main` | Input, client movement, event routing |
-| `src/client/*.lua` | ModuleScripts next to it | `Hud`, `Effects`, `Map`, `Weather`, `BoatDrive`, `Skyship`, `Shop` (V11: the Goblin Wardrobe); V9 `Tricks` (trick callouts), `Twisters` (tornado drawing), `Minimap`; V11 `Ui` (interface kit), `Pets`, `Looks` (boat style, emote poses, celebrations), `Emotes` (the wheel), `Results`; V12 `BannerQueue`, `Objective`, `Danger`, `TouchControls`; V13 `PortHud` (the Port's screen, the departures board, fades), `Spectate` (camera and bar), `PortLife` (the menagerie's pets); V13.3 `PlayHud` (the play bar, venue signs, results), `PlayGolf`, `PlayRange` (Toss and Gallery), `PlayCritters` (Derby and crabs), `PortBoard` (quests, the Hall of Records, season rewards), `Sanctuary` (isles and panels), `PetCrowd` (many pets on one animator), `NextUp`, `Challenge`, `Titles` |
+| `src/client/*.lua` | ModuleScripts next to it | `Hud`, `Effects`, `Map`, `Weather`, `BoatDrive`, `Skyship`, `Shop` (V11: the Goblin Wardrobe); V9 `Tricks` (trick callouts), `Twisters` (tornado drawing), `Minimap`; V11 `Ui` (interface kit), `Pets`, `Looks` (boat style, emote poses, celebrations), `Emotes` (the wheel), `Results`; V12 `BannerQueue`, `Objective`, `Danger`, `TouchControls`; V13 `PortHud` (the Port's screen, the departures board, fades), `Spectate` (camera and bar), `PortLife` (the menagerie's pets); V13.3 `PlayHud` (the play bar, venue signs, results; V13.5: the Regatta's boat picker, start lights and class records board), `PlayGolf` (V13.5: the skimmer's aim and chase camera; `PlayRange` and `PlayCritters` were removed with their games), `PortBoard` (quests, the Hall of Records, season rewards), `Sanctuary` (isles and panels), `PetCrowd` (many pets on one animator), `NextUp`, `Challenge`, `Titles` |
 | `src/shared/*.lua` | `ReplicatedStorage.LootGoblins` | `Config` (tuning), `Archipelago` (the island list), `Sea` (sea math), `BoatSim` (boat physics, V9 tricks and swept hoops), `Dive` (the dive model), V9 `Twister` (tornado maths), V10 `Palette` (the art direction's colours), V11 `Catalog`, `Wardrobe`, `BoatLook`, `PetLook`, `EmoteMoves`, `StyleFx`; V12 `Landing` (where a picked island throws you); V13 `Lobby` (the Port's rules: zone, late entry, countdown, spectating ring), `PetBestiary` (37 pet builders); V13.3 `PortGames` (venues, courses, targets and the rules every machine shares), `Seasons` (calendar, quests, boards, season rewards), `Habitat` (the sanctuary and expeditions) |
-| `tests/luau/` | `ServerStorage.LootGoblinsTests` (only in `test.project.json`) | Luau tests (46 in V11, 53 in V12, 76 in V13: `LobbySpec`, `BoatClassSpec`, `PetSpec` are new; 107 in V13.2; 136 in V13.3: `SeasonsSpec`, `PortGamesSpec`, `HabitatSpec` are new; 143 in V13.4: new cases in `SeasonsSpec`, `PortGamesSpec` and `PersistenceSpec`): `Runner` and `Specs/*`. Run in Studio's Edit mode: `require(game.ServerStorage.LootGoblinsTests.Runner).run().summary` |
+| `tests/luau/` | `ServerStorage.LootGoblinsTests` (only in `test.project.json`) | Luau tests (46 in V11, 53 in V12, 76 in V13: `LobbySpec`, `BoatClassSpec`, `PetSpec` are new; 107 in V13.2; 136 in V13.3: `SeasonsSpec`, `PortGamesSpec`, `HabitatSpec` are new; 143 in V13.4: new cases in `SeasonsSpec`, `PortGamesSpec` and `PersistenceSpec`; 150 in V13.5: `PortGamesSpec` rewritten for the three games, the circuit and the skimmer, new cases in `SeasonsSpec` and `ChaosSpec`): `Runner` and `Specs/*`. Run in Studio's Edit mode: `require(game.ServerStorage.LootGoblinsTests.Runner).run().summary` |
 
 - **Plain modules, no framework.** Direct calls and tiny `Util.signal()` events. Require order has no cycles: `Net`/`Util` → `Movement` → `Sea`/`SeaNav` → `World`/`Boats` → `Loot` → `Heat` → `Poltergoblin` → `Destructibles` → `Blast` → `Cannons`/`Kegs`/`Mechanisms` → `Combat`/`Threats` → `Storms` → `Navy` → `Troubles` → `Escalation` → `Coins` → `Creatures` → `Bestiary`/`BestiaryMinor` → `Raid` → `Main`. (`Main` requires the two bestiary modules only so they register their creatures before `Creatures.build`.) Injections that avoid cycles: `Loot.canBank`, `Destructibles.explode` (set by `Blast`), `Threats.handlers` (filled by `Troubles`), `Blast.Hit` (Navy's mines listen), `Mechanisms.BeaconLit` (Main tells the Navy), `Landform.touch` (set by `World`), `Boats.Sunk` and `Storms.Spent` (Main drops salvage), `Loot.Taken` (Main tells `Creatures.onTaken`).
 - **Remotes** (`ReplicatedStorage.LootGoblinsRemotes`, recreated at boot). Client → server: `ThrowRequest`, `GrappleRequest`, `PoltergoblinRequest`, `MoveRequest("dash" | "airjump")` (V13.2: `SprintRequest` removed), `BoatBoostRequest`, `BoatDriftRequest(held)`, `BoatFxRequest(kind)`, `BoatBoardRequest`, `CannonRequest(basePart, aimPoint)`, `KegRequest(aimPoint)`; V7: `BoatJumpRequest`, `BoatRecallRequest`, `StealRequest(player)`, `DeployRequest(action, a, b)`, `ShopRequest(action, id)`.
@@ -940,6 +1004,7 @@ See Boats (B). In the last `FINAL_RUSH` seconds `Raid.onBanked` pays `FINAL_RUSH
 - **V13 remotes and state.** Client → server: `PortRequest("join")`, `PortRequest("spectate", "start" | "next" | "back" | "stop", userId?)` (a few a second at most), `BoatAbilityRequest(aimPoint)`. Server → client `GameEvent` kinds: `SpectateEnd(why)`, `SpectateSwitch`, `RaidJoined`, `AbilityRefused`, `BoatFx` kind `ability`. Player attributes: `Zone` (`port` | `raid`), `InRaid`, `Ready`, `Spectating` (a userId), `BoatClass`, `Raids`. Workspace: `RaidPhase` is `port` or `raid`, `PortReady`, `PortCount`, `DevPortSeconds` (a Studio-only test hook in `Raid.init`). Boat: `AbilityReadyAt`. `PortCore` (persistent): `Center`, `Slipways` and `Pens` (JSON, for the client), the `Gangplank` and `DepartureBoard` parts. Prompts carry `OpensWardrobe` (`goblin`, `pet`, `boat:<class>`) or `PortAction` (`join`, `spectate`). `ReplicatedStorage.LootGoblinsPreview` holds all seven classes.
 - **V12 added no remote.** Attributes: `LootGoblinsGenerated.Land_<island>` (each island's landing spot), player `LaunchBy` (their own launch deadline). The client's anti-gravity force is a `VectorForce` named `FlightLift` in the goblin's root while diving.
 - **V13.2 remotes and state.** Client → server: `BoatGunRequest(aimPoint)` (the bow gun), `BoatChainRequest(kind)` (your own anchor or hook let go: `sling`, `arrived`, ...), `RaidRequest("in" | "out" | "auto" | "leave")`, `BoatAbilityRequest(aimPoint, { target })` (the anchor and hook name the hull the client chose). Server → client `GameEvent` kinds: `BoatTether` (a chain on the hull you simulate), `BoatChain`/`BoatChainEnd` (draw or drop a chain), `BoatWave`, `Boarded`, `Chaos` (every world-chaos visual), `RaidLeft`. Attributes: workspace `SkyRouteName`, `ChaosNext`/`ChaosName`/`ChaosIcon`/`ChaosLine` (shown in the Port), `ChaosEvent`, `ChaosZone`, `ChaosSea` (rogue waves and whirlpools for every client's sea), `PortSigned`; player `RaidOptIn`, `AutoJoin`, `MoveCap`; boat model `GunReadyAt`, `Chained`, `AbilityReadyAt`.
+- **V13.5 remotes and state.** `PlayRequest` gains `choose` (a game id and its option: the Regatta's boat) and `join` (a game id: the showroom's TEST DRIVE); `golf` and `golfaim` carry a direction whose height is the elevation; the removed games' `toss`, `aim`, `fire` and `cheer` are gone. Server → client: `ClassRecord` (you set the week's record in a boat), `PlayFx` kinds `gate` (a Regatta checkpoint passed) and a richer `golfland` (grade, strokes, par, skips); `DiveStart` and `DiveImpact` carry `skim` (and the impact its `speed`). Workspace `RegattaRecords` (JSON: the week's class records); a session roster row's `o` (its option); the Regatta's `StartLight` parts and `RegattaRecordsBoard`. A launcher may be marked `skim`; `Flight.Landed` passes `{ water, bounces }`.
 - **V13.3 remotes and state.** Client → server: `PlayRequest(action, a, b)` (`leave`, `again` with a game id, `reset`, or a game's own input: `golfaim`, `golf`, `toss`, `aim`, `fire`, `cheer`), `ChallengeRequest` (`ask`, userId, game | `answer`, id, yes | `cancel` | `rematch`, id), `SanctuaryRequest` (`home` | `visit`, userId | `port` | `feed` | `toy` | `bell`); `ShopRequest` gains `questclaim`, `sanctbuy`, `sanctplace`, `sancttheme`, `residents`, `expsend`, `expcollect`, `exprecall` (`Progress.actions`). Server → client `GameEvent` kinds: `PlayResult`, `PlayFx`, `QuestDone`, `QuestRollover`, `QuestClaimed`, `BoardBest`, `SeasonReward`, `NextUp`, `ChallengeInvite`, `ChallengeSent`, `ChallengeClosed`, `ChallengeStart`, `ChallengeResult`, `ChallengeRematch`. `ReplicatedStorage.LootGoblinsPlay`: one JSON `StringValue` per session (`<id>`, and `<id>.live` for fast games), folder attributes `<game>Queue`. Player attributes: `PlayGame`, `PlaySession`, `Quests`, `Season`, `Sanctuary` (JSON). Workspace: `Board_<board>` (JSON). An isle model (`LootGoblinsGenerated.Sanctuaries`): `Owner`, `OwnerName`, `Center`, `Radius`, `Theme`, `Landing`, `Residents`, `Away`, `FedAt`, `ToyAt`, `ToyX`, `ToyZ`, `BellAt`. Prompts carry `PlayGame`, `OpensPanel` (`quests`, `sanctuary`, `expeditions`, `visit`) or `SanctuaryAction`. A golf tee is a Flight launcher with `LaunchKind` `golf`. Signals: `Progress.Deed`, `RaidRewarded`, `AfterRaid`, `GamePlayed`; `Minigames.Finished`; `Flight.Landed`; `WorldChaos.Tossed`; hooks `Raid.onDeparting`, `Minigames.reward`, `Progress.actions`, `Progress.publishers`.
 - **V13.1 remote and attributes.** Client → server `ResetRequest` (the Reset button: a real respawn). Server → client `GameEvent` kinds `KnockedOut` (seconds, cause), `WokeUp`, `RecallParked`; boat pushes may carry `tumble` (seconds). Player: `KnockedOutUntil`, `KnockedOutAt`, `WokeAt`, `LastHitBy`, `LastHitAt`. Boat model: `RecallParked`. The jade frogs' sea form is `Pursuer` "The Jade Frogs".
 - **Replicated state is attributes** (times in `workspace:GetServerTimeNow()` units). Player: `CarryingLoot`, `Kegs`, `Stamina`, `Winded`, `Chilled`, `Coins`, `CoinGold`, grapple/Poltergoblin timers. Boat model: `BoatType`, `Health`, `MaxHealth`, `Pilot` (UserId of the client simulating it), `Moored`, `BoostEndsAt`, `BoostReadyAt`, `BoostRefund`, `Payload`. Coin part: `Value`. `workspace`: `RaidPhase`, `PhaseEndsAt`, `Heat`, `HeatTier`, `GuardianState`, `StormData`, `SeaRough`. `Loot` folder: `<id>State`, `Carrier`, `CarrierId`, `ReturnAt`, `Bonus`. Vent: `GeyserPeriod/Active/Phase`, `Launch`. Launch pad: `Launch`, and `Carry` on a catapult. V7: player `DeployState`, `DeployDest`, `DeployAim`, `Diving`, `DownedUntil`, `CatchImmuneUntil`, `Gear`, `Pet`, `Shinies`, `OwnedPets`, `OwnedKits`, `Kit`, `SaveState`, `RecallReadyAt`; boat `Recalled`; `workspace` `DeployOpensAt`, `DeployEndsAt`, `Alert_<island>`.
@@ -953,11 +1018,13 @@ Integration points new code must respect:
 - **The shared C key:** dash on foot (so is `Shift`, V13.2), drift in a driver's seat. **The click at the wheel** is the bow gun (V13.2): never the sword or the grapple.
 - **The R key (V9; V13):** the boat's ability on the water and a trick in the air (`BoatDrive.stunt`) in a driver's seat; nothing elsewhere since V13.2 (the anchor winch is gone: the anchor is the Anchorjack's ability).
 - **V13:** anything a raid does that could reach the Port asks `Lobby.inPort` first; whether a goblin is in the raid is `Raid.isParticipant` (also injected as `Progress.participating` and `Port.inRaid`); a boat ability's server part goes through `BoatAbilities` and widens the boat's police allowance for its moment; anything that moves a goblin between the Port and the raid goes through `Port.arrive`, `Raid.placeCharacter` or `Skyship.board`.
+- **V13.5:** a Port game's personal best goes under `PortGames.recordKey` (a new course is a new key); a board whose game changed is retired into `Seasons.RETIRED_BOARDS` (never deleted: it must still pay); a catalogue item or achievement whose way to earn is gone is `unearnable`, never `retired` (that one takes it off its owners); a quest whose game is gone goes into `Seasons.RETIRED_QUESTS`; anything in the Port that places itself on the ground waits until the terrain answers a ray.
 - **V13.3:** anything that starts a Port game, moves a goblin for one or ends one goes through `Minigames` (`join`, `place`, `release`, `leave`); a raid departure calls `Raid.onDeparting` first (the raid always wins); Port boats are `Boats.spawnPortBoat` (left alone by the raid's resets) and Port launchers are skipped by `Flight.reset`; anything that pays Shinies for the Port goes through `Progress` (`onPortGame`, quests, season, expeditions, challenges) with its daily cap in the profile; anything a quest should count is a `Progress.record(player, event, amount, detail)` from server code.
 - **V11:** ownership, balances, achievements and Robux grants are decided only by `Progress`/`Economy`/`Monetization` on the server; anything a goblin wears is applied by the server (`GoblinLook`, `BoatStyle`) or drawn by clients from replicated attributes; cosmetics are always massless, non-colliding, not ray-hit and not touched; an emote never moves a character; pets never collide.
 
 ## Who decides what (server vs client)
 
+- **The server owns (V13.5):** which boat a test drive gets (it builds the loaner and takes it back), whether a lap counts for the board (Racing Tub only) and the week's class records, every golf shot's throw from the client's direction and power, every skip, and whether a shot came down on its target. **The client** draws the start lights, the class records board and the chase camera, and sends only intent (a boat choice, an aim, a charge).
 - **The server owns (V13.3):** every Port game's session, clock, standings and scores (times on the server clock, checkpoints and hits judged from its own positions and the shared target functions), the golf aim's and throws' limits, the Derby's race, the crabs, every reward and daily cap, quest progress and claims, leaderboard submissions, final standings and season payments, the isles and what is bought for them, expeditions, and challenge outcomes. **The client** draws the venues' moving targets from the server clock, the pets on isles, the boards and panels, and sends only intent (an aim, a charge, a cheer, a throw). **Known gaps**: the Regatta's tub is driven by its own client like any boat (V3's policing gap), and a goblin's own body moves on its own client (a modified client could cut the Gauntlet's corners: checkpoints must still be passed in order and a run under 14 s is refused).
 - **The server owns (V13):** the round's phase and countdown, who is ready, who is in the raid, late entry, who may be watched and where the world streams for a spectator, every boat ability's cooldown and its server effects (shots, tornadoes, decoys, plow shoves), and when a boat may change. **The client** plays its own boat's ability physics a moment early (it simulates the hull) and draws the Port's screen, the departures board, the menagerie's pets and the spectator camera.
 - **The server owns (V11):** Shinies, everything owned and worn, presets, achievements, payouts and Robux grants, and when a pet may change. **The client draws** pets, trails, wakes, trick effects, emote poses and previews from replicated attributes, and sends only intent.
@@ -1003,6 +1070,7 @@ Integration points new code must respect:
 
 ## Known limitations
 
+- **V13.5**: **nobody has played it.** Never seen by a person: the new circuit at speed (its corners, the Flume's current, the reef and its gaps, the Teeth's channel, the chicane's buoys), any class's handling or ability on it, the lobby's boat picker, the start lights, the class records board, the six golf holes, any skip, the chase camera, the lookout, the beach, the stand, the trail flags, the Hall's beacon, and every new effect (coin showers, planks, dust, columns of water, the meteor's shockwave, the moods). Placement was checked by numbers and by the boot log, never by eye. **First guesses**: the Regatta's medals (23 / 28 / 36 s), the Flume's 24 studs/s, golf's pars, medals (14 / 17 / 21) and the skimmer's numbers (`Config.DIVE.SKIM`), the pickup (par + 3), the moods' chances and scales, the shockwave's reach and push. A test drive's lap trusts its driver's client like any boat (V3's gap); a Stormrunner's twister on the course can catch other racers (by design, untested). The class records' DataStore has only run against Studio's stand-in. The old boards' this-week places are paid at the week's end like any period's; nothing new is written to them.
 - **V13.4**: **nobody has played it either.** Never seen: the Hall of Legends as it looks (its position is checked by a test and an engine overlap query, but nobody has seen it), the signpost's arms and the venue flags (pointed and placed by numbers, never looked at), the timing bar, the rocket start's feel, a commentator line, a streak, a split, the LEGENDS page or the 🏆 chip at different screen sizes. New first guesses: the Championship's tiers (25 / 50 / 80 gold over three raids), the rocket start (from 0.25 s before GO to 0.1 s after, 1.1 s of boost), the Derby's perfect window (0.28 s before to 0.08 s after) and ON FIRE (1.7x), the range streak (+1 from the third hit). A place shown at once is an estimate against the board's last read (up to two minutes old); the next read corrects it. The rocket start and splits trust the client's own timing within the server's checks (once per race, only just after GO), like the tubs themselves. Splits are kept for this visit only. The server-only parts (START NOW, the rocket start's window, the Derby's streaks and commentator, the top-three announcement) have no unit tests, because they need players and boats; they were only started once.
 - **V13.3**: **nobody has played it.** Never seen: any of the seven games with a person, two goblins racing or challenging each other, an isle with someone visiting, a quest or leaderboard reset happening live, a season reward paid from real DataStores (Studio used in-memory stand-ins), touch or controller input for the new games. Every number (medal times, the Regatta course, golf power, Derby timing windows, crab speeds, prices, caps) is a first guess; the course times especially. The Hall of Records' names come from `UserService` and may lag. A goblin's isle is rebuilt whenever its look changes (the theme, a level, a decoration, a trophy, the statue's outfit), which is a short burst of parts. Isles are numbered by arrival; with more than 32 goblins the extras have none. The Regatta's tubs and the Gauntlet's runners move on their own clients (see Who decides what).
 - **V13.2**: one Studio client. Never seen with a second player: boarding a real goblin (their treasure dropping), an anchor or hook on a boat another client simulates (the chain is sent to that client), the bow gun between players, a Rally Horn surging a friend. Never tried: a real controller (`R2` gun, `L2` swing) or phone (GUN). The tuning is a first pass: whether momentum's 2 s build, the swing's 125 cap (it can fly you into a tree), the compressed boats and the chaos's frequency feel right is the playtest's question. Boarding trusts the Corsair's own client a little ("arrived" is believed within both boats' speeds × `A.hook.lag`, 0.35 s, of the boarding reach).
@@ -1026,6 +1094,7 @@ Integration points new code must respect:
 
 ## Known bugs
 
+- **V13.5 has not been played by a person.** Found and fixed before anyone played: the Port's new furniture all came out missing on the first boot (the terrain poured that frame did not answer a ray yet, so every spot looked built on: only the signs appeared; `Port.curate` now waits for the terrain, and the boot log counts what it placed); the Regatta stand's first spot was on the menagerie pens' floor (moved south of the dock); the first circuit's Flume ran its lane past the Port's edge and the Teeth's rock walls clipped the safe way's lane at both ends (the walls now start and stop short of the channel's mouths; all caught by checking the layout in numbers before building); Barrel Alley's last two barrels sat in the Teeth's fork; and a removed achievement marked with the catalogue's existing `retired` flag would have taken the Derby Laurel off its owners (now `unearnable`).
 - **V13.3 has not been played by a person, with a second player, on a phone or with a controller.** Found and fixed by the automated tests before anyone played: the new pet-isle settings were first named `Config.SANCTUARY`, which replaced V9's sanctuary (the safe water round Goblin Cove), so pursuits, the map and the minimap would have broken in every raid (now `Config.PET_ISLES`; `ChaosSpec` caught it); the specialty-boat milestone was never sent.
 - **The team's V13.2 playtest feedback is not yet written down here.** Before that playtest, V13.2 had been tested only by one AI on one Studio client, with no second player. Fixed while testing: the Corsair's boarding never landing (the server's view of the hulls lags; "arrived" is now judged with that lag), a boarded boat being sped up (shoved along the line between hulls; now across), the bow gun's close shots going 15 to 20 studs long (the cannons' 6 degree floor; the bow gun may aim down to 40), the skyship's auto-fire landing 59 studs off (it now throws from a fixed point on the ship), the ship jumping back to its route's start, meteor-thrown boats taking crash damage, the kraken's markers tinting the screen, weak or misoriented rogue waves, whirlpools that never let go, an armada on a beach, left-over tentacles, and the leave button covering the card's last line. Studio's own test mouse leaves the camera Fixed (no game code does).
 - **Fixed in V13:** since V11 the server passed only the first argument of a shop request on (`Main.server.lua`), so **WEAR IT / BRING OUT on anything already owned took that slot off** (only a purchase, which wears the item itself, ever changed a look) and saved outfits lost their names; found in the V13 Studio playtest. Also fixed in V13: after buying a pet the wardrobe's stage fell back to the Crab; a 20-stud neon ready ring bloomed into a blinding yellow deck; the compass strip sat behind the Port's sign; long feed lines were cut off; the hook, throw and coin glyphs did not render in Roblox's font; a controller had no Poltergoblin; touch's TRICK button never used a boat ability.
@@ -1135,7 +1204,7 @@ These notes came from earlier development sessions. Verify present tool capabili
 
 ### Testing expectations
 
-- Every change: `check.ps1` passes. Gameplay changes also need a Studio playtest with an empty console, then play mode stopped. Report anything you could not test. (For V13.3 and V13.4, Ninety's briefs replaced the Studio playtest with code inspection, lint, builds and the Luau tests, with at most one brief start of Play to read the console; see **How V13.3 was validated** and the V13.4 report. This rule still applies to other work.)
+- Every change: `check.ps1` passes. Gameplay changes also need a Studio playtest with an empty console, then play mode stopped. Report anything you could not test. (For V13.3, V13.4 and V13.5, Ninety's briefs replaced the Studio playtest with code inspection, lint, builds and the Luau tests, with brief starts of Play only to read the console (V13.5: two, the second to confirm a fix); see **How V13.3 was validated** and the V13.4 and V13.5 reports. This rule still applies to other work.)
 - **V11 Luau tests**: after any change to the catalogue, economy, saving or receipts, run `tests/luau` in Studio's Edit mode with the test place (`test.project.json`, built by `check.ps1` to `build/LootGoblinsTests.rbxlx`) or with `ServerStorage.LootGoblinsTests` synced in: `require(game.ServerStorage.LootGoblinsTests.Runner).run().summary`. Studio caches `require` in Edit mode: replace the ModuleScripts with fresh clones (or reopen the place) before re-running after an edit, or the old code runs.
 - Timed effects are shorter than MCP round trips: record state in a `task.spawn` loop and read it afterwards.
 - Single-client MCP play cannot test player-vs-player features. Teleporting 1000+ studs under streaming can let a character fall through terrain that has not loaded yet; that is a test artifact, not a game bug.
@@ -3070,6 +3139,21 @@ Config.DIVE = {
 	BOUNCE_MAX_SPEED = 150, -- ...and never more than this: three skips cover at most about 650 studs.
 	BOUNCE_MIN_FALL = 62, -- Arriving slower than this (a glide is 55) is a plain landing in the water.
 	BOUNCE_GRACE = 0.5, -- Seconds after a bounce before the sea can be touched again.
+	-- V13.5: a SKIMMER (a throw from a launcher marked `skim`: Cannon Golf's tees). It skips like a stone: an arrival
+	-- shallower than MAX_ANGLE bounces, keeping KEEP of its speed across and leaving at BOUNCE of the speed it came down
+	-- at, so each skip is lower, shorter and flatter than the last, until it is too slow (MIN_UP up, MIN_SPEED across)
+	-- or has made MAX skips. A steeper arrival (a lob, a dive) plops; a glide never skips. Its tumble steers at STEER of
+	-- the usual, so a curve is a skill, not a free correction. (Shared/Dive.lua: Dive.bounce and Dive.step.)
+	SKIM = {
+		MAX_ANGLE = 38,
+		KEEP = 0.74,
+		BOUNCE = 0.62,
+		MIN_UP = 15,
+		MIN_SPEED = 32,
+		MAX = 6,
+		GRACE = 0.3,
+		STEER = 0.5,
+	},
 	-- The ground.
 	OSTRICH_SPEED = 95, -- Hitting ground this fast goes in head first; braking with a glide lands on your feet.
 	EMBED_TIME = 1.1, -- Seconds stuck in the ground.
@@ -3141,6 +3225,14 @@ Config.CHAOS = {
 	HOME_CLEAR = 650, -- Never centred this close to the Hoard (the sanctuary is 450).
 	FOCUS_JITTER = { 80, 260 }, -- An episode is centred this far off the goblins it is aimed near (not on their heads).
 	ALERT_RANGE = 900, -- Goblins this close to an episode get its warning banner.
+	-- V13.5: each episode has a MOOD, so no two raids feel the same: a quick flurry, the usual, or a big one (more of it,
+	-- and a longer calm after). `scale` multiplies the episode's count (meteors, strikes, waves, barrels, whirlpools,
+	-- bolts) and the armada's time; `calm` the calm that follows. Chances add up to 1.
+	MOODS = {
+		{ id = "usual", chance = 0.5, scale = 1, calm = 1 },
+		{ id = "flurry", name = "A FLURRY", chance = 0.3, scale = 0.65, calm = 0.75 },
+		{ id = "big", name = "A BIG ONE", chance = 0.2, scale = 1.35, calm = 1.3 },
+	},
 	-- Each event's numbers. Ranges { a, b } are drawn afresh for each episode.
 	meteors = {
 		count = { 5, 9 },
@@ -3156,6 +3248,9 @@ Config.CHAOS = {
 		bigChance = 0.3, -- an episode may bring THE BIG ONE first: one meteor, all of it bigger
 		bigScale = 1.8,
 		bigWarn = 3.8,
+		-- V13.5: after the blast a SHOCKWAVE rolls out over the water (reach: this times `launch`), throwing every boat
+		-- and swimmer it passes a little, and rocking pursuers and guardians: one meteor makes a scene, not a hole.
+		shock = { reach = 2.4, time = 0.9, push = 52, lift = 30, hull = 6 },
 	},
 	kraken = {
 		strikes = { 4, 6 },
@@ -4325,7 +4420,8 @@ Config.AUDIO = {
 Config.ZIPLINE_SPEED = 110 -- The long lines are 550 studs: five seconds (V3: 90).
 
 -- V13.3, THE LIVING PORT ----------------------------------------------------------------------------------------------
--- Seven Port games (server/Minigames.lua and one module each), the Captain's Quest Board, weekly and monthly
+-- The Port games (server/Minigames.lua and one module each: since V13.5 the Regatta, the Gauntlet and Cannon Golf; the
+-- Pet Derby, Treasure Toss, the Target Gallery and Crab Chaos were removed), the Captain's Quest Board, weekly and monthly
 -- leaderboards, a pet sanctuary per goblin with pet expeditions, and challenges between goblins. Layouts (where things
 -- stand) are in shared/PortGames.lua and shared/Habitat.lua; every number a playtest might change is here.
 --
@@ -4351,30 +4447,34 @@ Config.PLAYGROUND = {
 	COUNTDOWN = 3, -- 3, 2, 1, GO.
 	RESULTS = 5, -- Seconds the results stay on the venue before it opens again.
 	RAID_WARN = 15, -- A goblin signed up for the raid is warned this long before it leaves (it ends their game).
-	INPUT_RATE = 12, -- Game inputs a goblin may send a second (a throw, a cheer, a shot); more are ignored.
+	INPUT_RATE = 12, -- Game inputs a goblin may send a second (a shot, a reset, a boat choice); more are ignored.
 	VENUE_DRAW = 320, -- (client) Studs from the camera within which a venue's moving parts are drawn.
-	-- (V13.4) Treasure Toss and the Target Gallery: hits in a row are a STREAK; from the FROM-th on, each scores BONUS
-	-- more. A miss ends it.
-	STREAK = { FROM = 3, BONUS = 1 },
 
-	-- TINY BOAT REGATTA: one lap of the water round the Port in a Racing Tub (Config.BOAT_TYPES.racer).
+	-- TINY BOAT REGATTA (V13.5): one lap of a circuit in the east water (shared/PortGames.lua: PortGames.REGATTA), in
+	-- the Racing Tub (Config.BOAT_TYPES.racer: everyone in the same boat, the FASTEST REGATTA board) or on a TEST
+	-- DRIVE in any of the ten classes (a loaner the Port builds for the lap and takes back: nobody owns it). Every
+	-- boat's lap is its own record (a goblin's best per boat, and the week's CLASS RECORDS at the dock).
 	REGATTA = {
 		MAX = 8,
-		RADIUS = 600, -- The course: a ring this far round the island's middle (PortGames.ISLAND).
-		CHECKPOINTS = 12, -- Every 30 degrees; all must be passed, in order.
-		GATE_RADIUS = 70, -- A checkpoint is a stretch of water this wide, not a hoop.
-		LIMIT = 80, -- Seconds after GO; anyone still out does not finish.
-		MIN_TIME = 20, -- A lap faster than this is not believed (no score, no reward).
-		MEDALS = { gold = 36, silver = 43, bronze = 54 }, -- Seconds (first guesses: nobody has raced it yet).
-		REJOIN_AFTER = 2.5, -- Out of your tub this long: back at your last checkpoint, seated, at rest.
+		LIMIT = 75, -- Seconds after GO; anyone still out does not finish.
+		-- A lap faster than this is not believed (no score, no reward): the shortcut's lap at the fastest boat's boosted
+		-- top speed the whole way round (impossible: PortGamesSpec checks it) is still slower.
+		MIN_TIME = 11.5,
+		-- Seconds (first guesses: nobody has raced it; the lap is about 2,000 studs through the Teeth, 2,160 round).
+		-- The fleet shares one speed band (106 to 118; the tub 112), so one ladder serves every boat; the board and the
+		-- class records keep the comparison fair.
+		MEDALS = { gold = 23, silver = 28, bronze = 36 },
+		REJOIN_AFTER = 2.5, -- Out of your boat this long: back at your last checkpoint, seated, at rest.
 		LAUNCH = 1.1, -- (V13.4) A ROCKET START (throttle right on GO): a boost this long. Too early: nothing.
 		LAUNCH_LATE = 0.6, -- The server takes a launch up to this long after GO (the client sends it on GO).
+		FLUME = 24, -- The Flume's current (studs/s) carrying boats round the hairpin: the banked turn.
 		SPLASH_EVERY = 4.5, -- The splash cannons: one shot each this often...
 		SPLASH_WARN = 1.4, -- ...after a ring on the water this long...
-		SPLASH_RADIUS = 20, -- ...throwing every tub inside it...
+		SPLASH_RADIUS = 20, -- ...throwing every boat inside it...
 		SPLASH_LIFT = 72, -- ...this fast upwards...
 		SPLASH_PUSH = 38, -- ...and this fast outwards.
-		SPLASH_LEAD = 1.2, -- They aim this many seconds ahead of the nearest tub.
+		SPLASH_LEAD = 1.2, -- They aim this many seconds ahead of the nearest boat.
+		RECORD_GAP = 6, -- Seconds between writes of the week's class records (they change rarely).
 	},
 	-- GRAPPLE GAUNTLET: a course in the air over the north-west water: swing rings, bounce pads, a beam and a zipline.
 	GAUNTLET = {
@@ -4384,90 +4484,26 @@ Config.PLAYGROUND = {
 		MEDALS = { gold = 40, silver = 55, bronze = 80 },
 		FALL_Y = 3.5, -- A goblin this low over the water has fallen: back to the last checkpoint (the clock runs on).
 	},
-	-- CANNON GOLF: a tee cannon, three floating greens, one shot at each. Aim the way you look; hold to charge.
+	-- CANNON GOLF (V13.5): six holes out over the south-west water, played in STROKES (fewest wins). Aim the way you
+	-- look (up for a lob, down for a skimmer), hold to charge. A shallow arrival SKIPS across the sea like a stone
+	-- (Config.DIVE.SKIM); a steep one plops. Land on the hole's target to hole out: in the cup it is that stroke, on
+	-- the target one putt more. A splash costs a stroke and puts you straight back in the cannon. After par + 1 shots
+	-- without holing out the caddy picks your ball up: par + 3.
 	GOLF = {
 		TEES = 3, -- Three tee cannons side by side: three goblins can play at once.
-		ELEVATION = math.rad(42),
+		ELEVATION = math.rad(42), -- The aim's starting elevation...
+		ELEVATION_MIN = math.rad(18), -- ...from a skimmer...
+		ELEVATION_MAX = math.rad(62), -- ...to a lob.
 		MIN_SPEED = 45,
-		MAX_SPEED = 135, -- About 300 studs on flat water: the far green needs most of it.
+		MAX_SPEED = 125, -- About 270 studs of flight at 45 degrees; a full skimmer skips on to about 460 (inside the Port).
 		POWER_CYCLE = 1.5, -- (client) Seconds for the power meter to go up and down once.
 		YAW_MAX = 70, -- Degrees either side of the tee's own heading.
-		RETURN = 1.8, -- Seconds after landing before you are back in the cannon for the next hole.
-		LIMIT = 150,
-		CUP = 4, -- Studs from the pin: in the cup...
-		NEAR = 8, -- ...so close...
-		GREEN = 15, -- ...on the green...
-		FRINGE = 26, -- ...on the fringe. Farther: a splash.
-		POINTS = { cup = 100, near = 70, green = 45, fringe = 20, miss = 0 },
-		MEDALS = { gold = 200, silver = 120, bronze = 50 }, -- Points out of 300.
-	},
-	-- PET DERBY: your pet (or a loaned crab) races three or more round an oval with hurdles. CHEER as it reaches one.
-	DERBY = {
-		FIELD = 4, -- Bots from the menagerie fill the field to this many.
-		MAX = 6,
-		SPEED = 9.5, -- Every pet, whatever it is: rarity is never speed.
-		ZOOM = 1.5, -- A clean jump: this much faster...
-		ZOOM_TIME = 1.2, -- ...for this long.
-		TRIP = 0.3, -- A missed or mistimed hurdle: this share of speed...
-		TRIP_TIME = 1.0, -- ...for this long (a tumble).
-		STUMBLE = 0.4, -- A cheer with no hurdle near: a little stumble (no mashing).
-		EARLY = 0.6, -- A cheer up to this long before the hurdle is clean...
-		LATE = 0.18, -- ...and up to this long after it (the server sees the pet a moment late)...
-		TOO_EARLY = 1.3, -- ...earlier than EARLY but within this: it jumps too soon and trips.
-		-- V13.4: the heart of the clean window is PERFECT (a longer burst), and clean jumps in a row are a STREAK: from
-		-- the STREAK-th on, the pet is ON FIRE (a faster burst). Skill, never money: every pet gets the same.
-		PERFECT_EARLY = 0.28, -- A cheer this long before the hurdle...
-		PERFECT_LATE = 0.08, -- ...to this long after it is perfect.
-		PERFECT_TIME = 1.8, -- A perfect jump's burst lasts this long (a clean one ZOOM_TIME).
-		STREAK = 3,
-		FIRE = 1.7, -- ON FIRE: this much faster during a burst (instead of ZOOM).
-		SNIFF = 0.6, -- Every pet stops once to sniff a flower (the same pause for all; only where differs).
-		BOT_SKILL = 0.62, -- A bot pet's chance of a clean jump.
-		LIMIT = 70,
-	},
-	-- TREASURE TOSS: throw chests into moving baskets, a rowboat, a parrot's perch and the Goblin King's mouth.
-	TOSS = {
-		ROUND = 40,
-		MAX = 6,
-		SPEED = 74, -- Every throw leaves this fast, the way you look...
-		GRAVITY = 60, -- ...under the dive's readable gravity (the world's 196 makes a throw a lob of 25 studs).
-		RELOAD = 0.55,
-		PITCH_MIN = -10, -- Degrees: a throw is between this and PITCH_MAX above level,
-		PITCH_MAX = 65,
-		YAW_MAX = 80, -- and within this of the booth's facing.
-		CHEST = 1.2, -- The chest's own radius.
-		MEDALS = { gold = 40, silver = 22, bronze = 8 },
-	},
-	-- TARGET SHIP GALLERY: man a shore cannon and sink the cut-out pirate fleet sailing past.
-	GALLERY = {
-		ROUND = 45,
-		STATIONS = 4,
-		SPEED = 220, -- The island cannons' muzzle speed and gravity (Config.CANNON_SPEED, CANNON_GRAVITY).
-		GRAVITY = 95,
-		RELOAD = 1.1,
-		DOWN_TIME = 2.6, -- A hit ship keels over and comes back up after this long.
-		BALL = 1.6,
-		MEDALS = { gold = 36, silver = 20, bronze = 8 },
-	},
-	-- CRAB CHAOS: a crate of crabs bursts on the beach. Catch them (run into them; a dash helps).
-	CRABS = {
-		ROUND = 45,
-		MAX = 8,
-		COUNT = 16,
-		GOLDEN = 2, -- Golden crabs: worth GOLDEN_POINTS, faster, burrow more.
-		GOLDEN_POINTS = 3,
-		CATCH = 3.6, -- Studs from a goblin's middle.
-		WANDER = 5,
-		FLEE = 15, -- Slower than any running goblin (21 to 38), but they turn.
-		GOLD_FLEE = 19,
-		SCARE = 14, -- A goblin this close sends a crab running.
-		JINK = 0.6, -- Seconds between zigzags.
-		BURROW_NEAR = 6, -- Cornered this close, a crab may burrow...
-		BURROW_CHANCE = 0.3,
-		BURROW_TIME = 1.4, -- ...and come up 12 to 20 studs away after this.
-		BURROW_REST = 5,
-		ALL_BONUS = 5, -- Every crab caught before the end: everyone in the round scores this many more.
-		MEDALS = { gold = 8, silver = 5, bronze = 2 },
+		RETURN = 1.2, -- Seconds after a landing before you are back in the cannon.
+		LIMIT = 330, -- Seconds for the whole round (a slow round of six holes is about three minutes).
+		PICKUP = 3, -- A hole not holed out in par + 1 shots scores par + this.
+		NEAR = 1.5, -- Studs of grace round a target's edge (the server sees a landing a moment late).
+		-- Strokes for the six holes (par 16).
+		MEDALS = { gold = 14, silver = 17, bronze = 21 },
 	},
 }
 
@@ -4967,6 +5003,51 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 ## Team learning additions
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
+
+### Edit-mode Luau tests can load sources straight from disk over a loopback file server
+
+**ID:** studio-tests-from-disk-over-loopback | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-23
+**Related checks:** General
+
+**Observed / proposed:** The team's launcher opened Studio on a freshly built game place that did not contain the test folder, and connecting the Rojo plugin needs clicks in Studio's UI. Instead, a Python `http.server` bound to 127.0.0.1 served the test and source folders, and a Studio MCP execute_luau call in Edit mode set HttpService.HttpEnabled to true, fetched each file with GetAsync into a new ModuleScript (fresh instances, so no cached require ran), and set HttpEnabled back to its old value in the same call. GetAsync failed with 'HTTP requests are not enabled' until the setting was toggled. Comparing each fetched source with the existing ModuleScript's Source also proved which modules in the open place differed from disk (two did, both just renamed); the full suite then ran from the files on disk.
+
+**Recommendation:** To run Edit-mode tests from the files on disk without the Rojo plugin: serve the folders on 127.0.0.1 only, toggle HttpEnabled inside the same execute_luau call and restore it there (even on error, with pcall), replace modules with fresh instances rather than editing Source, report which sources differed, and stop the file server afterwards.
+
+**Applies when:** Running a Luau test suite in Studio's Edit mode through Studio MCP; The open place lacks the test folder or may be out of date with the repository
+
+**Limits:** One Windows machine, one Studio version and Studio MCP's execute_luau in October 2026; The toggled setting belongs to the open place; only do this in a disposable built place that nobody will save over real work
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/2a131c467f47f1bece5c498154b0a2d1e7599d42/docs/reports/2026-10-23-v13-4-port-polish.md): Section 6: every shared and server module replaced with a fresh copy fetched from disk; only the two renamed files differed; 140 of 140 Luau tests passed.
+
+### A layout placed by hand-rotated numbers can land on its neighbour; ask the engine what overlaps it
+
+**ID:** check-hand-placed-layouts-with-an-overlap-query | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-23
+**Related checks:** General
+
+**Observed / proposed:** An 84-stud-wide stage for leaderboard boards was positioned in a frame turned 45 degrees from the world, with every part placed by offsets from that frame. Nobody looked at it. A review worked out its corners by hand and found its left end on a neighbouring quay; a first script written to check the numbers rotated the frame the wrong way and reported different corners, so the arithmetic itself could not be trusted. The shipped fix (a narrower stage shifted along the frame) was checked two ways that do not depend on anyone's rotation arithmetic: a unit test that maps the stage's corners through one shared function and compares them with the neighbours' rectangles, and, in one Play start, `workspace:GetPartsInPart(stage)` on the built stage, which found only the stage's own braziers.
+
+**Recommendation:** For any layout built from rotated offsets, keep its position and size as data in a shared module with the one function that maps them to the world, test the corners against the neighbours' footprints, and after building run one overlap query (`GetPartsInPart` or `GetPartBoundsInBox`) in a Play start. Do not rely on a second hand calculation.
+
+**Applies when:** A structure is placed through a rotated CFrame frame instead of absolute positions; Neighbouring structures are built by other code with their own offsets
+
+**Limits:** One occurrence in one Roblox game (October 2026); An overlap query sees only parts that can be queried; non-colliding decoration is not found by it
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/5598758122916d2de205dae883530e0f3b9bbe68/docs/reports/2026-10-23-v13-4-port-polish.md): Section 5, item 4 and section 6: the first layout's left corners were on the quay; after the fix PortGamesSpec passes and the Play-time overlap query found no quay or Wardrobe part.
+
+### `cond and a or b` in Luau returns b when a is nil, so a missing value shows the other side's
+
+**ID:** and-or-ternary-returns-the-other-side-for-nil | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-23
+**Related checks:** General
+
+**Observed / proposed:** A server sent each of two challenge players their own score and their opponent's with `mine = player == a and sa or sb` and `theirs = player == a and sb or sa`. When player a had no score (they did not finish) the first expression fell through to sb, and when b had none the second fell through to sa, so a player who did not finish was shown the opponent's time as their own, and a finisher was shown their own time as the opponent's. Nothing displayed the fields in the first release, so linting, builds and 136 tests all passed; a later screen that printed them made the bug visible, and a code review found it by reading the expression, not by running anything.
+
+**Recommendation:** Where the value in the middle of `cond and a or b` can legitimately be nil or false, write a plain `if` (or a tiny pure function) instead, and give it a test with a missing value on each side. Treat data sent to clients but not yet shown as untested.
+
+**Applies when:** A Luau expression picks between two values with `and ... or ...`; One of the values can be nil or false, for example a score, a time or an optional record
+
+**Limits:** One occurrence in one Roblox game (October 2026); Selene 0.32 and StyLua do not flag the pattern
+
+- [source-review](https://github.com/EnrikR2002/Loot-Goblins/blob/5598758122916d2de205dae883530e0f3b9bbe68/docs/reports/2026-10-23-v13-4-port-polish.md): Section 5, item 1: found by review of src/server/Challenges.lua, replaced with PortGames.sides, and covered by a PortGamesSpec test (143 of 143 Luau tests passed).
 
 ### Windows PowerShell 5.1 stops a script on any stderr line from a program it runs
 
@@ -5695,6 +5776,95 @@ These are attributed observations and hypotheses, not automatic changes to the c
 # Development changelog and historical test reports
 
 Reports below are preserved in full, newest first. A historical test pass applies to that recorded revision and environment. Old priorities, controls, limitations, and status may have been superseded by the current game description above.
+
+---
+
+## Report: 2026-10-25-v13-5-curated-port.md
+
+# V13.5: The Curated Port (2026-10-25)
+
+Ninety's brief, after the team's multiplayer playtests found the extraction loop essentially finished: **remove the four weakest Port games, make the Regatta and Cannon Golf exceptional, give the Gauntlet targeted polish, make the Port coherent, and polish the presentation of the core actions and of world chaos.** No new systems for their own sake; raids, boats, guardians, treasure, the knockout, pets and the economy unchanged. Built by Claude Opus 5.5 on branch `feature/v13-5-curated-port`, cut from `feature/v13-4-port-polish` (V13.4, PR #29, itself stacked on V13.3's PR #28; neither merged, so V13.5 stacks on the latest complete work). **Not merged**, as the brief asked.
+
+**Read this first.** As the brief asked, **nobody played V13.5 to build it**: no AI playthroughs, no screenshots, no simulated input. It was checked by code review, StyLua, Selene, both Rojo builds, **150 automated Luau tests** in Studio's Edit mode, a numeric check of the new layouts, and **two brief starts of Play** to read the console (the second confirmed a fix the first found). Everything about feel is the team's checklist in section 9. Full description: `docs/GAME_DESIGN.md`, **V13.5: The Curated Port**.
+
+## 1. Four games removed, cleanly
+
+- **Gone**: the Pet Derby, Treasure Toss, the Target Ship Gallery and Crab Chaos: server modules, venues, prompts, signs, flags, signpost arms, client parts (`PlayRange`, `PlayCritters`), tuning and shapes. Every list of games (signpost, flags, challenges, the what's-next card, the help card) reads `PortGames.GAMES`, so it shows three. The code stays in Git history.
+- **Kept for goblins**: saved plays and bests for the removed games, `stats.derbyWins`, and the **Derby Day** achievement and **Derby Laurel** pet hat for whoever earned them, now `unearnable` (still owned and worn, hidden from the shop and trophy list unless owned, never unlocked again). **Port Regular** asks for the three games there are; whoever has it keeps it.
+- **Quests**: the four removed games' daily quests left the pool; new ones show off the rebuilt games ("Race the Regatta in 2 different boats", "Skip 3 times off the sea in one Cannon Golf shot", weekly "Race the Regatta in 4 different boats"); "Finish 5 different Port games" became "all 3". **A goblin already holding a removed quest gets today's quest for that slot at their next quest check, and a finished one is paid first.** A claimed one is left as it was.
+
+## 2. The Tiny Boat Regatta
+
+- **A real circuit** in the east water off the dock (about 2,150 studs, 2,000 through the shortcut): the Pier Straight's hoop chain, the Lighthouse Bend, **the Leap** (a ramp, then a reef across the lane's middle with gaps at its edges and a gold hoop only a jump reaches), **the Flume** (a hairpin with a current that carries you round: the banked turn), Barrel Alley, **the Teeth** (a narrow channel through the rocks, or the safe way round), the Bumper Chicane, Cannon Corner and the Home Straight. Ten checkpoints; a fall puts you back facing on.
+- **Test drives**: in the lobby pick the Racing Tub or **any of the ten classes**, owned or not; or press **TEST DRIVE IT** on any boat in the showroom (it takes you to the dock). The boat is a loaner the Port builds for the lap and takes back; it handles as in a raid and **its `R` ability works on the course** (only there in the Port). After a test drive in a boat you do not own, the results card offers **🛒 SHOWROOM**.
+- **Fair records**: bests are kept per boat. The **FASTEST REGATTA** board now takes **Racing Tub laps only** (everyone in the same boat), and every boat has the week's **CLASS RECORD** on a board at the dock. The old ring course's board is retired: this week's places on it are still paid.
+- **Presentation**: start lights (three red, then green), a ring at every gate, ⚡ THROUGH THE TEETH!, splits and places, fireworks and white water at the line, 🏆 FIRST ACROSS THE LINE!.
+
+## 3. Cannon Golf: water skipping
+
+- **Six holes in strokes, par 16**: the Puddle Jump (a lob), the Skipping Stone (too far to fly: skip it), the Bend (stacks in the way: skim wide and curve), the Lily Pad (small and close), Over the Top (lob the ridge or skip round it) and the Kraken's Crown (an islet in a reef: through the gap, then glide to stop on it).
+- **The skimmer** (`Config.DIVE.SKIM`): look **down** for a skimmer and it skips across the sea like a stone, each skip lower and flatter; look **up** for a lob and it drops where it lands; hold `Space` in the air to stop skipping; `A`/`D` curve it (at half the usual steering). The panel says honestly whether this shot will skip. The skydiver's sea is unchanged.
+- **Scoring**: land on the target to hole out (in the cup: that stroke; elsewhere on it: one putt more); a splash costs a stroke and you are back in the cannon at once; after par + 1 shots it is picked up at par + 3. The **CANNON GOLF** board is now fewest strokes (the old points board retired and still paid).
+- **Presentation**: a chase camera through the skips that holds on the landing, SKIP x2! callouts with rising chimes, splashes as big as the arrival, golf names on landing (HOLE IN ONE!, BIRDIE!), the card on the results.
+
+## 4. The Grapple Gauntlet (targeted)
+
+Hooks have a big invisible catch (aim near the gold ball and you swing from its middle); the next leg's hooks glow; a fall faces you at the next platform; splashes are counted; a shortcut says how many platforms it skipped. The course is unchanged.
+
+## 5. The Port
+
+The Derby's lawn is **THE LOOKOUT** (benches, a lantern tree, a telescope), Crab Chaos's beach is **THE 19TH HOLE** by the golf jetty (a bonfire with log seats, deck chairs, parasols), there is a **REGATTA STAND** facing the start line and a lit **PROMENADE** where the Toss stood; **flags in each game's colour** lead from the square to its venue, and the **Hall of Legends** has a column of gold light over it. Everything stands on what a ray down finds and keeps off buildings (the boot log: 31 pieces placed, 3 spots kept off). The Blender overhaul was not started, as the brief asked.
+
+## 6. Feel and world chaos
+
+- **Core actions**: dust and a jolt when you prise treasure off its spot; LOOSE! when it is knocked free; a shower of gold coins and "+N GOLD" when you bank; planks and a thump as hard as a boat crash; powder smoke on cannon and skyship launches; dust and clods on a head-first landing; columns of white water on fast splashes; dust and rock off the Guardian's smash; a thump and KO! on a knockout. Only `rbxasset://sounds/` sounds; no HUD text added.
+- **World chaos**: each episode has a **mood** (a flurry, the usual, or a big one, announced, with a longer calm after), so raids stop feeling the same. A meteor's blast now rolls on as a **shockwave** that throws boats and swimmers, knocks back pursuers and staggers guardians as far as it reaches. Sharper warnings and impacts for the others: the kraken's swelling dome, the rogue wave's roar, the armada's smoke and whistle, barrel staves, whirlpool spouts, crackling SUPERCHARGED boats. Cleanup is unchanged in kind (the chaos folder and `Debris` timers); recovery rules (hull floor, Impact's grace) unchanged.
+
+## 7. Economy, quests and boards
+
+No new currency or reward stream. Test drives pay from the Regatta's one daily cap (six paid runs, whatever the boat); golf from golf's; class records pay nothing; a removed game's finished quest is paid once when replaced; the retired boards pay their periods exactly as before. **No profile version change**: the new bests are new keys in maps the profile already has, which a V13.4 server keeps untouched.
+
+## 8. Tests and checks
+
+- **StyLua** clean, **Selene** 0 errors and 0 warnings, both **Rojo** builds.
+- **Luau tests: 150 passed, 0 failed** (Studio Edit mode, test files loaded over a loopback server, the place freshly built from this branch; re-run after the fixes on fresh module copies). New or rewritten: the removed games gone from every list, their trophies kept and unearnable, Port Regular's goal; per-boat Regatta bests and the old course's best left alone; the one daily cap across eleven boats; the circuit's lane off the coast, inside the Port and clear of the dock, its checkpoints in order, the Teeth's two ways apart and its rocks off the safe lane, the grid for the biggest boats, obstacles placed right, abilities only on the course, `MIN_TIME` only refusing the impossible; the Gauntlet's facing respawns and hook legs; golf's aim and elevation limits, the skimmer's rules (skips flatter each time, steep plops, glides never skip, a skydiver unchanged) and the longest skimmer staying in the Port; the six holes reachable as meant; strokes, putts, pickups and par names; retired boards still paying; removed quests replaced and paid; chaos moods and the shockwave.
+- **Layout by numbers first**: the circuit and the holes were checked in a script before building, which found the Flume's lane past the Port's edge and the Teeth's rocks clipping the safe way (both fixed; the same checks are now in `PortGamesSpec`).
+- **Two boot checks** (Play started, console read, stopped). The first: no errors; every venue, the circuit, the holes, the lights, the records board and the beacon built, no removed venue; **but the Port's new furniture was missing** (section 10). The second, after the fix: 31 pieces placed, 3 spots kept off, 12 barrels, no solid furniture overlapping a building, console free of errors.
+- **Not run**: any game, lap, shot or effect by hand; a second player; a phone or controller; real DataStores (the class records used Studio's stand-in).
+
+## 9. Human playtest checklist (three people, about 30 minutes)
+
+Start: double-click **Play Loot Goblins**, then **Test > Server & Clients > 3 players > Play**.
+
+1. **Find your way**: from the square, follow the coloured flags to the Regatta, the golf jetty and the Gauntlet. Does the Port feel tidier? Can you see the Hall's gold light?
+2. **Regatta, Racing Tub**: race twice. Is the lap fun? Do the Leap, the Flume's current, the Teeth's gap and the chicane feel like choices? Any corner that feels unfair, any long dull bit?
+3. **Regatta, test drives**: each of you pick a different boat (one you don't own). Do the boats feel different? Try every `R` ability on the course. Does 🛒 SHOWROOM make you want the boat?
+4. **TEST DRIVE IT**: from the wardrobe's showroom: does it take you to the race smoothly?
+5. **Records**: is the CLASS RECORDS board at the dock readable? Does a new record feel like a moment?
+6. **Cannon Golf**: play all six holes. Is it clear when a shot will skip (SKIPS / LOB)? Do skips feel spectacular? Is the chase camera good? Too hard, too easy? Which hole is best, which worst?
+7. **Gauntlet**: are the hooks easier to catch? Do the glowing hooks help?
+8. **A raid with chaos**: watch for a meteor's shockwave, a "big one", and the new splashes, planks and coin showers. Too much, too little?
+9. **Quests**: anything odd on the Quest Board after updating (it should show three quests, none for a removed game)?
+
+**How to report**: say what felt bad or confusing, and send a screenshot of any red error (View > Output). Numbers are easy to change: name the game, the hole or corner, and what felt off.
+
+## 10. Bugs found and fixed before anyone played
+
+1. **The Port's new furniture all came out missing on the first boot**: terrain poured in the same frame does not answer a ray yet, so every spot looked "built on" and was skipped (only the signs, which don't ask, appeared). `Port.curate` now runs after every building exists and waits until the terrain answers; the boot log counts what it placed.
+2. The Regatta stand's first spot was on the menagerie pens' floor (moved south of the dock).
+3. The first circuit's Flume lane reached past the Port's edge, and the Teeth's rock walls clipped the safe way's lane at both ends (walls now stop short of the channel's mouths).
+4. Barrel Alley's last two barrels sat in the Teeth's fork (twelve now).
+5. Marking the Derby Laurel with the catalogue's existing `retired` flag would have taken it off its owners: it is `unearnable` instead.
+6. A test's arithmetic: the day's Shiny cap, not the run cap, stopped its laps (the test was fixed, not the game).
+
+## 11. Known limitations
+
+- **Unplayed and unlooked-at**: every lap, shot, ability on the course, effect and piece of furniture; placement was checked by numbers and the boot log only.
+- **First guesses**: the Regatta's medals (23 / 28 / 36 s) and the Flume's 24 studs/s; golf's pars, medals (14 / 17 / 21), the skimmer's numbers and the pickup; the moods and the shockwave.
+- A test drive trusts its driver's client like any boat; a Stormrunner's twister on the course can catch rivals (by design, untested).
+- The class records' DataStore has only run against Studio's stand-in.
+
+Studio was opened once through `./scripts/dev.ps1 -OpenStudio` for the tests and the two boot checks; it is still open in Edit mode (the place in `build/` is disposable). Close it with File > Exit when done.
 
 ---
 

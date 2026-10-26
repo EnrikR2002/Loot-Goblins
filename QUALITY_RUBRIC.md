@@ -138,6 +138,51 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### Edit-mode Luau tests can load sources straight from disk over a loopback file server
+
+**ID:** studio-tests-from-disk-over-loopback | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-23
+**Related checks:** General
+
+**Observed / proposed:** The team's launcher opened Studio on a freshly built game place that did not contain the test folder, and connecting the Rojo plugin needs clicks in Studio's UI. Instead, a Python `http.server` bound to 127.0.0.1 served the test and source folders, and a Studio MCP execute_luau call in Edit mode set HttpService.HttpEnabled to true, fetched each file with GetAsync into a new ModuleScript (fresh instances, so no cached require ran), and set HttpEnabled back to its old value in the same call. GetAsync failed with 'HTTP requests are not enabled' until the setting was toggled. Comparing each fetched source with the existing ModuleScript's Source also proved which modules in the open place differed from disk (two did, both just renamed); the full suite then ran from the files on disk.
+
+**Recommendation:** To run Edit-mode tests from the files on disk without the Rojo plugin: serve the folders on 127.0.0.1 only, toggle HttpEnabled inside the same execute_luau call and restore it there (even on error, with pcall), replace modules with fresh instances rather than editing Source, report which sources differed, and stop the file server afterwards.
+
+**Applies when:** Running a Luau test suite in Studio's Edit mode through Studio MCP; The open place lacks the test folder or may be out of date with the repository
+
+**Limits:** One Windows machine, one Studio version and Studio MCP's execute_luau in October 2026; The toggled setting belongs to the open place; only do this in a disposable built place that nobody will save over real work
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/2a131c467f47f1bece5c498154b0a2d1e7599d42/docs/reports/2026-10-23-v13-4-port-polish.md): Section 6: every shared and server module replaced with a fresh copy fetched from disk; only the two renamed files differed; 140 of 140 Luau tests passed.
+
+### A layout placed by hand-rotated numbers can land on its neighbour; ask the engine what overlaps it
+
+**ID:** check-hand-placed-layouts-with-an-overlap-query | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-23
+**Related checks:** General
+
+**Observed / proposed:** An 84-stud-wide stage for leaderboard boards was positioned in a frame turned 45 degrees from the world, with every part placed by offsets from that frame. Nobody looked at it. A review worked out its corners by hand and found its left end on a neighbouring quay; a first script written to check the numbers rotated the frame the wrong way and reported different corners, so the arithmetic itself could not be trusted. The shipped fix (a narrower stage shifted along the frame) was checked two ways that do not depend on anyone's rotation arithmetic: a unit test that maps the stage's corners through one shared function and compares them with the neighbours' rectangles, and, in one Play start, `workspace:GetPartsInPart(stage)` on the built stage, which found only the stage's own braziers.
+
+**Recommendation:** For any layout built from rotated offsets, keep its position and size as data in a shared module with the one function that maps them to the world, test the corners against the neighbours' footprints, and after building run one overlap query (`GetPartsInPart` or `GetPartBoundsInBox`) in a Play start. Do not rely on a second hand calculation.
+
+**Applies when:** A structure is placed through a rotated CFrame frame instead of absolute positions; Neighbouring structures are built by other code with their own offsets
+
+**Limits:** One occurrence in one Roblox game (October 2026); An overlap query sees only parts that can be queried; non-colliding decoration is not found by it
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/5598758122916d2de205dae883530e0f3b9bbe68/docs/reports/2026-10-23-v13-4-port-polish.md): Section 5, item 4 and section 6: the first layout's left corners were on the quay; after the fix PortGamesSpec passes and the Play-time overlap query found no quay or Wardrobe part.
+
+### `cond and a or b` in Luau returns b when a is nil, so a missing value shows the other side's
+
+**ID:** and-or-ternary-returns-the-other-side-for-nil | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-23
+**Related checks:** General
+
+**Observed / proposed:** A server sent each of two challenge players their own score and their opponent's with `mine = player == a and sa or sb` and `theirs = player == a and sb or sa`. When player a had no score (they did not finish) the first expression fell through to sb, and when b had none the second fell through to sa, so a player who did not finish was shown the opponent's time as their own, and a finisher was shown their own time as the opponent's. Nothing displayed the fields in the first release, so linting, builds and 136 tests all passed; a later screen that printed them made the bug visible, and a code review found it by reading the expression, not by running anything.
+
+**Recommendation:** Where the value in the middle of `cond and a or b` can legitimately be nil or false, write a plain `if` (or a tiny pure function) instead, and give it a test with a missing value on each side. Treat data sent to clients but not yet shown as untested.
+
+**Applies when:** A Luau expression picks between two values with `and ... or ...`; One of the values can be nil or false, for example a score, a time or an optional record
+
+**Limits:** One occurrence in one Roblox game (October 2026); Selene 0.32 and StyLua do not flag the pattern
+
+- [source-review](https://github.com/EnrikR2002/Loot-Goblins/blob/5598758122916d2de205dae883530e0f3b9bbe68/docs/reports/2026-10-23-v13-4-port-polish.md): Section 5, item 1: found by review of src/server/Challenges.lua, replaced with PortGames.sides, and covered by a PortGamesSpec test (143 of 143 Luau tests passed).
+
 ### Windows PowerShell 5.1 stops a script on any stderr line from a program it runs
 
 **ID:** powershell-native-stderr-stops-script | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-22
