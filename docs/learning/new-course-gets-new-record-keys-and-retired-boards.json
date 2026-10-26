@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "new-course-gets-new-record-keys-and-retired-boards",
+  "title": "When a game's course or scoring changes, keep bests and boards under new keys and retire the old boards instead of deleting them",
+  "status": "hypothesis",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-25",
+  "topics": [
+    "leaderboards",
+    "persistence",
+    "live-ops"
+  ],
+  "observation": "Two Port minigames were rebuilt mid-week: a race got a new circuit and a golf game moved from points (more is better) to strokes (fewer is better). Reusing the old record keys would have compared new laps with old-course bests (a bogus 'new best' or an unbeatable one) and inverted the golf board's order. Deleting the old boards would have stopped paying this week's legitimate places, because payouts look a board up by id when the period ends. The change kept personal bests under new keys (per boat for the race), gave each game a new board id, and moved the old boards to a retired list that is still known for payouts and history but takes no new scores and is not displayed. No saved-profile migration was needed, because the profile's maps already accepted any key.",
+  "recommendation": "Version a game's record and leaderboard keys with its rules. Retire the old board (no new scores, not shown, still settled and paid) rather than deleting it, and test that a score already on it this period is still paid after the period ends.",
+  "applies_when": [
+    "A live game's course, scoring direction or rules change while a leaderboard period is running",
+    "Rewards are paid per board id after the period ends"
+  ],
+  "limits": [
+    "One game, Studio tests with in-memory DataStore stand-ins only; not yet seen in a live period"
+  ],
+  "evidence": [
+    {
+      "kind": "automated-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/cb19fd9e964557df10ee63eed95fb0adf27230aa/docs/reports/2026-10-25-v13-5-curated-port.md",
+      "detail": "Sections 2, 3 and 8: SeasonsSpec pays a retired board's period and refuses new scores on it; PortGamesSpec keeps the old course's best untouched (150 of 150 Luau tests passed)."
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "boot-time-ground-rays-can-miss-fresh-terrain",
+  "title": "Rays cast down during a boot that just poured terrain can miss it; place-on-the-ground builders should wait for a probe ray to hit",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-25",
+  "topics": [
+    "world-building",
+    "roblox",
+    "raycast",
+    "testing"
+  ],
+  "observation": "A server builder placed benches, flags and steps by casting a ray straight down at each spot and building only where the ray hit terrain (to keep off buildings). It ran during the synchronous boot, after the town's terrain had been filled with FillCylinder and ReplaceMaterial. On the first start of Play every spot was skipped: only the signs, which do not ask the ground, appeared, and nothing errored. The same rays cast from a test command a few seconds later all hit the terrain. After the builder was moved into a task that first waits (0.1 s steps, 5 s at most) until one probe ray hits the terrain, a second start placed 31 pieces and correctly kept off 3 spots on buildings. The exact cause (terrain collision not ready in the boot frame, or something else present only then) was not isolated.",
+  "recommendation": "Do not rely on rays against terrain written in the same boot step. Run ground-placing builders after a yield and wait until a probe ray at a known spot hits terrain; count what was placed and skipped and print it, so a silent all-skipped run shows in the boot log.",
+  "applies_when": [
+    "A builder decides where to place things with raycasts against terrain it or the boot just generated",
+    "The placement skips spots silently when a ray misses"
+  ],
+  "limits": [
+    "One occurrence in one Roblox game, Studio Play mode (October 2026)",
+    "Cause not isolated; earlier builders in the same boot that raycast right after their own fill appeared to work"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/cb19fd9e964557df10ee63eed95fb0adf27230aa/docs/reports/2026-10-25-v13-5-curated-port.md",
+      "detail": "Sections 8 and 10, item 1: first boot placed none of the Port's new furniture; after Port.curate waited for a probe ray, the boot log read 31 placed, 3 kept off."
+    }
+  ]
+}
