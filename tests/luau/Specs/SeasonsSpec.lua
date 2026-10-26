@@ -90,9 +90,8 @@ return function(t)
 				challenge = true,
 				snatch = true,
 				golf_green = true,
-				toss_points = true,
-				crabs = true,
-				gallery_hits = true,
+				golf_skips = true, -- V13.5
+				regatta_class = true, -- V13.5
 				best = true,
 				medal_gold = true,
 				expedition = true,
@@ -207,17 +206,21 @@ return function(t)
 		t.ok(not Seasons.submit(profile, "haul", 9, WED), "a worse haul does not replace it")
 		t.ok(Seasons.submit(profile, "haul", 19, WED), "a better one does")
 		t.eq(Seasons.best(profile, "haul", WED), 19, "best haul")
-		t.ok(Seasons.submit(profile, "regatta", 44.27, WED), "a lap")
-		t.ok(not Seasons.submit(profile, "regatta", 50, WED), "slower does not count")
-		t.ok(Seasons.submit(profile, "regatta", 39.5, WED), "faster does")
-		t.eq(Seasons.best(profile, "regatta", WED), 39.5, "kept to the hundredth")
+		t.ok(Seasons.submit(profile, "regatta2", 44.27, WED), "a lap")
+		t.ok(not Seasons.submit(profile, "regatta2", 50, WED), "slower does not count")
+		t.ok(Seasons.submit(profile, "regatta2", 39.5, WED), "faster does")
+		t.eq(Seasons.best(profile, "regatta2", WED), 39.5, "kept to the hundredth")
 		t.ok(not Seasons.submit(profile, "nonsense", 5, WED), "unknown board")
+		t.ok(not Seasons.submit(profile, "regatta", 20, WED), "V13.5: a retired board takes no new score")
+		t.ok(Seasons.submit(profile, "golf2", 15, WED), "a golf round in strokes")
+		t.ok(Seasons.submit(profile, "golf2", 13, WED), "fewer strokes are better")
+		t.ok(not Seasons.submit(profile, "golf2", 18, WED), "more are not")
 		t.ok(not Seasons.submit(profile, "haul", 0 / 0, WED), "NaN")
 		local haul = Seasons.BOARD_BY_ID.haul
 		t.eq(Seasons.tier(haul, 9), nil, "no tier")
 		t.eq(Seasons.tier(haul, 10), "bronze", "bronze")
 		t.eq(Seasons.tier(haul, 32), "gold", "gold")
-		local regatta = Seasons.BOARD_BY_ID.regatta
+		local regatta = Seasons.BOARD_BY_ID.regatta2
 		t.eq(Seasons.tier(regatta, Config.PLAYGROUND.REGATTA.MEDALS.gold), "gold", "a gold-medal lap")
 		t.eq(Seasons.tier(regatta, 999), nil, "too slow for a tier")
 		t.eq(Seasons.encode(regatta, 39.5), 3950, "stored in hundredths")
@@ -270,9 +273,17 @@ return function(t)
 			t.ok(not (board.raid and seenGame), board.id .. ": raid boards are listed before the Port's records")
 			t.ok(board.icon ~= nil, board.id .. " has an icon")
 		end
-		for _, id in ipairs({ "haul", "crown", "champion", "regatta", "golf", "gauntlet" }) do
-			t.ok(Seasons.BOARD_BY_ID[id] ~= nil, id .. " is a board")
+		for _, id in ipairs({ "haul", "crown", "champion", "regatta2", "golf2", "gauntlet" }) do
+			t.ok(Seasons.BOARD_BY_ID[id] ~= nil and not Seasons.BOARD_BY_ID[id].retired, id .. " is a board")
 		end
+		-- V13.5: the old Regatta and golf boards are still known (so they pay) but stand nowhere.
+		for _, id in ipairs({ "regatta", "golf" }) do
+			t.ok(Seasons.BOARD_BY_ID[id] and Seasons.BOARD_BY_ID[id].retired, id .. " is retired, not forgotten")
+			for _, board in ipairs(Seasons.BOARDS) do
+				t.ok(board.id ~= id, id .. " is not shown")
+			end
+		end
+		t.eq(Seasons.BOARD_BY_ID.golf2.order, "asc", "golf is fewest strokes")
 		t.eq(Seasons.BOARD_BY_ID.champion.period, "month", "Pirate Legends keeps the monthly championship's id")
 		t.eq(Seasons.BOARD_BY_ID.crown.period, "week", "the Pirate Championship is weekly")
 		local top = Seasons.rewardFor("crown", 85, 1)
@@ -298,14 +309,14 @@ return function(t)
 			table.insert(full, { u = 100 + i, s = 1000 - i })
 		end
 		t.eq(Seasons.rankAmong(haul, full, 9, 1), nil, "past the last place kept")
-		local regatta = Seasons.BOARD_BY_ID.regatta
+		local regatta = Seasons.BOARD_BY_ID.regatta2
 		t.eq(Seasons.rankAmong(regatta, { { u = 1, s = 4000 } }, 9, 39.5), 1, "times: faster is better")
 	end)
 
 	t.test("a finished period pays once: its tier by score, its placement by rank, cosmetics for the top", function()
 		local profile = fresh()
 		Seasons.submit(profile, "haul", 26, WED)
-		Seasons.submit(profile, "regatta", 35, WED)
+		Seasons.submit(profile, "regatta2", Config.PLAYGROUND.REGATTA.MEDALS.gold - 1, WED)
 		t.eq(#Seasons.pending(profile, WED), 0, "nothing while the week runs")
 		local after = WED + 8 * DAY
 		local pending = Seasons.pending(profile, after)
@@ -339,6 +350,61 @@ return function(t)
 		)
 		t.eq(Seasons.rewardFor("champion", 140, 150).shinies, Config.SEASONS.TIER.month.gold, "rank 150: only the tier")
 	end)
+
+	t.test("V13.5: a retired board still pays what was scored on it before it was retired", function()
+		local profile = fresh()
+		local week = Seasons.key("week", Seasons.period("week", WED))
+		profile.season.best["regatta@" .. week] = 3500 -- a 35.00 s lap of the old course, this week
+		profile.season.best["golf@" .. week] = 210 -- a 210-point round of the old golf
+		local after = WED + 8 * DAY
+		local pending = Seasons.pending(profile, after)
+		t.eq(#pending, 2, "both old boards are paid after the week")
+		local paid = 0
+		for _, entry in ipairs(pending) do
+			local reward = Seasons.pay(profile, entry, 1, after)
+			t.eq(reward.tier, "gold", entry.board .. ": its old tiers")
+			paid += reward.shinies
+			if entry.board == "regatta" then
+				t.ok(table.find(reward.items, "title_regatta") ~= nil, "the old board's #1 still takes the Regatta Ace")
+			end
+		end
+		t.ok(paid > 0, "Shinies paid")
+		t.eq(#Seasons.pending(profile, after), 0, "once")
+	end)
+
+	t.test(
+		"V13.5: a saved quest for a removed game is replaced; a finished one is paid first; a claimed one stays",
+		function()
+			local profile = fresh()
+			Seasons.ensureQuests(profile, WED, never)
+			local q = profile.quests
+			local keep1, keep3 = q.daily[1].id, q.daily[3].id
+			q.daily[1].n = 1 -- progress on a quest that still exists is untouched
+			q.daily[2] = { id = "d_toss", n = 30, claimed = false } -- finished (30 of 30), never claimed
+			local before = profile.shinies
+			local rolled = Seasons.ensureQuests(profile, WED, never)
+			t.eq(profile.shinies - before, Config.QUESTS.REWARD.easy, "the finished Toss quest is paid")
+			t.eq(rolled.count, 1, "and reported like a rollover")
+			t.ok(Seasons.QUEST_BY_ID[q.daily[2].id] ~= nil, "the Port slot now has a real quest")
+			t.eq(q.daily[2].n, 0, "a fresh one")
+			t.eq(q.daily[1].id, keep1, "the others are left")
+			t.eq(q.daily[1].n, 1, "with their progress")
+			t.eq(q.daily[3].id, keep3, "all of them")
+			t.eq(#Seasons.questView(profile, WED).day, 3, "the board shows three again")
+			-- Unfinished: replaced, nothing paid. Claimed: left alone (it was paid).
+			q.daily[2] = { id = "d_crabs", n = 2, claimed = false }
+			local mid = profile.shinies
+			Seasons.ensureQuests(profile, WED, never)
+			t.eq(profile.shinies, mid, "an unfinished one pays nothing")
+			t.ok(Seasons.QUEST_BY_ID[q.daily[2].id] ~= nil, "and is replaced")
+			q.daily[2] = { id = "d_gallery", n = 10, claimed = true }
+			Seasons.ensureQuests(profile, WED, never)
+			t.eq(q.daily[2].id, "d_gallery", "a claimed one stays as it was")
+			t.eq(profile.shinies, mid, "and is never paid twice")
+			-- The weekly "every Port game" quest now asks for the three there are.
+			t.eq(Seasons.QUEST_BY_ID.w_variety.goal, 3, "all three")
+		end
+	)
 
 	t.test("every season cosmetic has a way to be earned, and every way grants something real", function()
 		local sources = Seasons.awardSources()

@@ -88,7 +88,8 @@ local function fmt(board, score)
 	if board.unit == "time" then
 		return string.format("%.2f s", score)
 	end
-	return string.format("%d %s", math.floor(score + 0.5), board.unit == "gold" and "gold" or "pts")
+	local unit = board.unit == "gold" and "gold" or (board.unit == "strokes" and "strokes" or "pts") -- (V13.5: golf)
+	return string.format("%d %s", math.floor(score + 0.5), unit)
 end
 
 -- The panel ----------------------------------------------------------------------------------------------------------------

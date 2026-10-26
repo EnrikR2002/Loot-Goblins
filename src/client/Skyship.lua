@@ -76,6 +76,7 @@ local bouncesUsed = 0
 local rotation = CFrame.new()
 local skimUntil, restingSince = nil, nil
 local landing -- where the flight is heading: { position, water, island }
+local skimming = false -- V13.5: a skimmer's flight (Cannon Golf): it skips by its angle (Config.DIVE.SKIM)
 
 local function now()
 	return workspace:GetServerTimeNow()
@@ -410,8 +411,8 @@ end
 
 -- Draws an arc and its touches. The FIRST touch is the mark (it is where you aimed, or where you are
 -- about to come down); the ones after it are where the sea skips you on to. Returns the touches.
-local function drawFlight(origin, v0, flightMode, want, used, color, withDots)
-	local points, touches = Dive.predict(origin, v0, flightMode, groundAt, want, used)
+local function drawFlight(origin, v0, flightMode, want, used, color, withDots, skim)
+	local points, touches = Dive.predict(origin, v0, flightMode, groundAt, want, used, skim)
 	local camera = workspace.CurrentCamera
 	local eye = camera.CFrame.Position
 	local dots = 0
@@ -709,13 +710,14 @@ local function setAntiGravity(root)
 	antiGravity.force.Enabled = true
 end
 
-local function startDive(v)
+local function startDive(v, skim)
 	local _, humanoid, root = character()
 	if not root then
 		return
 	end
 	velocity = v
 	diving = true
+	skimming = skim == true
 	diveClock = 0
 	mode, sentMode = "tumble", "tumble"
 	bouncesUsed = 0
@@ -760,7 +762,7 @@ RunService.PreSimulation:Connect(function(dt)
 			return
 		end
 	else
-		velocity = Dive.step(velocity, want, mode, dt)
+		velocity = Dive.step(velocity, want, mode, dt, skimming)
 		if skimUntil then
 			-- On the water, waiting for the bounce: skim, never sink.
 			velocity = Vector3.new(velocity.X, math.max(velocity.Y, 0), velocity.Z)
@@ -951,7 +953,8 @@ local function update(dt)
 		if os.clock() >= nextLanding and root then
 			nextLanding = os.clock() + 0.15
 			rayParams.FilterDescendantsInstances = ignoreList()
-			local touches = drawFlight(root.Position, velocity, mode, wantDirection(), bouncesUsed, GOLD, false)
+			local touches =
+				drawFlight(root.Position, velocity, mode, wantDirection(), bouncesUsed, GOLD, false, skimming)
 			local first = touches[1]
 			landing = first and { position = first.position, island = islandAt(first.position), skips = #touches - 1 }
 				or nil
@@ -965,6 +968,21 @@ local function update(dt)
 			end
 		end
 		local altitude = root and math.max(0, root.Position.Y - (groundAt(root.Position.X, root.Position.Z))) or 0
+		if skimming then
+			-- V13.5: Cannon Golf. The rings on the water are where it touches next; the skips are counted.
+			local ahead = landing and landing.skips or 0
+			setBanner(
+				mode == "glide" and "STOP! Gliding down: no more skips"
+					or mode == "pencil" and "DROP IT IN!"
+					or string.format("SKIMMING!%s", bouncesUsed > 0 and string.format("   SKIP x%d", bouncesUsed) or ""),
+				string.format(
+					"%s   |   SPACE: stop skipping   SHIFT: drop   A/D: curve",
+					ahead > 0 and string.format("%d more skip%s ahead", ahead, ahead > 1 and "s" or "")
+						or "no more skips: it comes down at the ring"
+				)
+			)
+			return
+		end
 		local title = mode == "glide" and "GLIDING: a soft landing"
 			or mode == "pencil" and "DIVING!"
 			or "TUMBLING!   hold SPACE: glide (brake)   hold SHIFT: dive   WASD: nudge"
@@ -1048,7 +1066,7 @@ function Skyship.handlers.DiveStart(p)
 	if root and typeof(p.start) == "Vector3" then
 		root.CFrame = CFrame.new(p.start) * root.CFrame.Rotation
 	end
-	startDive(p.velocity)
+	startDive(p.velocity, p.skim)
 	Effects.punchFov(100)
 end
 
@@ -1067,6 +1085,7 @@ end
 function Skyship.handlers.DiveFire(p)
 	Effects.burst(p.position + p.direction * 8, Color3.fromRGB(255, 200, 90), 60, 50)
 	Effects.ring(p.position + p.direction * 8, Color3.fromRGB(255, 240, 200), 18, 0.4)
+	Effects.dustRing(p.position + p.direction * 4, 10, Color3.fromRGB(160, 156, 160)) -- V13.5: powder smoke
 	if p.kind == "catapult" then
 		Effects.sound("whoosh", { position = p.position, speed = 0.6, volume = 1, range = 400 })
 		Effects.sound("thud", { position = p.position, speed = 0.9, volume = 0.8, range = 400 })
@@ -1080,16 +1099,35 @@ function Skyship.handlers.DiveImpact(p)
 	if p.kind == "water" then
 		-- Each bounce is a smaller splash than the one before; the last touch is the big one going in.
 		local power = p.bounce == 0 and 1.2 or (1.9 - (p.bounce or 1) * 0.4)
+		if p.skim then
+			-- V13.5: a skimmer's splash is as big as the speed it hit the water at (a stone's first skip is the big one).
+			power = math.clamp((p.speed or 60) / 60, 0.6, 2.2) * (p.bounce == 0 and 0.8 or 1)
+		end
 		Effects.spray(p.position, power)
 		Effects.ring(p.position + Vector3.new(0, 1, 0), Color3.fromRGB(190, 240, 255), 22 + power * 12, 0.8)
 		Effects.burst(p.position + Vector3.new(0, 2, 0), Color3.fromRGB(235, 250, 255), 40 + power * 20, 60)
 		Effects.sound("rise", { position = p.position, speed = 0.6 + (p.bounce or 0) * 0.15, volume = 1, range = 500 })
 		Effects.sound("thud", { position = p.position, speed = 0.6, volume = 0.8, range = 500 })
+		if (p.bounce or 0) <= 1 and (p.speed or 0) > 50 then
+			-- V13.5: the first skip, or the big one going in: a column of white water as tall as the arrival.
+			Effects.splashColumn(p.position, math.clamp((p.speed or 60) * 0.22, 10, 34), 4 + power * 3)
+		end
+		if p.skim and (p.bounce or 0) > 0 then
+			-- A ladder of skips: each one a note higher, a callout over the water and a kick of the camera.
+			Effects.popText(p.position + Vector3.new(0, 7, 0), string.format("SKIP x%d!", p.bounce), SKIP, 1.1)
+			if p.userId == player.UserId then
+				Effects.chime({ 1 + p.bounce * 0.12, 1.26 + p.bounce * 0.12 }, 0.45)
+				Effects.shakeAt(p.position, 0.35 + power * 0.2, 0.2, 120)
+			end
+		end
 	elseif p.kind == "ground" then
 		Effects.burst(p.position + Vector3.new(0, 1, 0), Color3.fromRGB(150, 120, 80), 55, 38)
 		Effects.ring(p.position + Vector3.new(0, 0.5, 0), Color3.fromRGB(190, 160, 110), 22, 0.5)
 		Effects.sound("thud", { position = p.position, speed = 0.5, volume = 1, range = 500 })
 		Effects.shakeAt(p.position, 1.2, 0.4, 120)
+		-- V13.5: head first into the ground: a crater's worth of dust and clods.
+		Effects.dustRing(p.position, 16, Color3.fromRGB(190, 160, 110))
+		Effects.debris(p.position + Vector3.new(0, 1, 0), Color3.fromRGB(120, 92, 60), 6, 22, Enum.Material.Ground)
 	elseif p.kind == "pop" then
 		Effects.burst(p.position + Vector3.new(0, 2, 0), Color3.fromRGB(190, 160, 110), 40, 30)
 		Effects.sound("whoosh", { position = p.position, speed = 1.7, volume = 0.9, range = 400 })

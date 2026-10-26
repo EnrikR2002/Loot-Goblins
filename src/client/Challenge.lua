@@ -1,7 +1,7 @@
 -- Challenges on this client (V13.3): ask a goblin in the Port to a game, answer an invitation, rematch.
 --
 --   THE PICKER     the Port screen's ⚔ CHALLENGE chip: the goblins in the Port, nearest first (friends starred), and
---                  the seven games. Pick one of each, SEND.
+--                  the Port's games (three since V13.5). Pick one of each, SEND.
 --   AN INVITATION  "⚔ Ninety challenges you to the Tiny Boat Regatta!" with ACCEPT and NO THANKS and the time left
 --                  (a controller starts on ACCEPT). Silence is a no.
 --   AFTERWARDS     the result in a banner with both scores (V13.4); REMATCH on the results card (both must press
@@ -206,7 +206,7 @@ function Challenge.result(p)
 	local def = PortGames.BY_ID[p.game]
 	local function score(value)
 		if value == nil then
-			return def and def.kind == "time" and "DNF" or "0"
+			return def and PortGames.lowerWins(def.id) and "DNF" or "0"
 		end
 		return playHud and playHud.scoreText and playHud.scoreText(def, value) or tostring(value)
 	end

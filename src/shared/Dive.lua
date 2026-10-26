@@ -16,6 +16,8 @@
 --           otherwise overshoot.
 -- Water is a second chance: a fast goblin skips off the sea like a stone, up to three times, each
 -- bounce smaller (Dive.bounce). The server decides each one; the preview draws them.
+-- V13.5: a SKIMMER (Cannon Golf's throws: `skim`) skips by its angle instead, like a real stone: shallow arrivals
+-- skip on, lower and flatter each time, steep ones plop (Config.DIVE.SKIM).
 --
 -- Pure functions of numbers and Vector3s: no instances, safe on either machine.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -42,8 +44,9 @@ local function steer(h, want, accel, floor, dt)
 	return after
 end
 
--- One step: the new velocity. mode: "tumble", "glide" or "pencil". want: steering, world space.
-function Dive.step(velocity, want, mode, dt)
+-- One step: the new velocity. mode: "tumble", "glide" or "pencil". want: steering, world space. skim (V13.5): a
+-- skimmer's flight, whose tumble steers at Config.DIVE.SKIM.STEER of the usual.
+function Dive.step(velocity, want, mode, dt, skim)
 	local d = Config.DIVE
 	local h = flat(velocity)
 	local vy = velocity.Y
@@ -65,7 +68,7 @@ function Dive.step(velocity, want, mode, dt)
 		h = steer(h, want, d.PENCIL_STEER, d.PENCIL_FLOOR, dt)
 	else
 		vy -= d.GRAVITY * dt
-		h = steer(h, want, d.TUMBLE_STEER, d.TUMBLE_FLOOR, dt)
+		h = steer(h, want, d.TUMBLE_STEER * (skim and d.SKIM.STEER or 1), d.TUMBLE_FLOOR, dt)
 	end
 	return Vector3.new(h.X, vy, h.Z)
 end
@@ -95,8 +98,25 @@ end
 
 -- The n-th time a flight meets the sea: the velocity it leaves with, or nil if it does not bounce
 -- (all three used, a gentle arrival, or the goblin is braking: a glide lands, it does not skip).
-function Dive.bounce(velocity, n, mode)
+-- skim (V13.5): a skimmer's rule (Config.DIVE.SKIM): by the angle it comes down at, not how hard.
+function Dive.bounce(velocity, n, mode, skim)
 	local d = Config.DIVE
+	if skim then
+		local S = d.SKIM
+		local h = flat(velocity)
+		local fall = -velocity.Y
+		if mode == "glide" or n > S.MAX or fall <= 0 or h.Magnitude < 1 then
+			return nil
+		end
+		if math.deg(math.atan2(fall, h.Magnitude)) > S.MAX_ANGLE then
+			return nil -- too steep: it plops
+		end
+		local across, up = h * S.KEEP, fall * S.BOUNCE
+		if up < S.MIN_UP or across.Magnitude < S.MIN_SPEED then
+			return nil -- run out: it sinks in
+		end
+		return Vector3.new(across.X, up, across.Z)
+	end
 	local up = d.BOUNCE_UP[n]
 	if not up or mode == "glide" then
 		return nil
@@ -114,15 +134,15 @@ end
 -- Where a flight from `origin` at `velocity` goes if `mode` and `want` are held all the way down:
 -- the points of the arc and every place it touches (the last one is where it stops; the ones before
 -- are skips off the sea). groundAt(x, z) gives the height of whatever is below and whether it is
--- water. Stops after 30 seconds of flight.
-function Dive.predict(origin, velocity, mode, groundAt, want, bouncesUsed)
+-- water. Stops after 30 seconds of flight. skim (V13.5): a skimmer's flight (its own bounce and steering).
+function Dive.predict(origin, velocity, mode, groundAt, want, bouncesUsed, skim)
 	local points = { origin }
 	local touches = {}
 	local p, v = origin, velocity
 	local bounces = bouncesUsed or 0
-	local dt = 0.2
-	for _ = 1, 150 do
-		v = Dive.step(v, want or Vector3.zero, mode, dt)
+	local dt = skim and 0.1 or 0.2 -- (a skimmer's skips are short: a coarse step would step over them)
+	for _ = 1, skim and 300 or 150 do
+		v = Dive.step(v, want or Vector3.zero, mode, dt, skim)
 		local to = p + v * dt
 		local ground, water = groundAt(to.X, to.Z)
 		if to.Y <= ground and v.Y < 0 then
@@ -131,7 +151,7 @@ function Dive.predict(origin, velocity, mode, groundAt, want, bouncesUsed)
 			at = Vector3.new(at.X, ground, at.Z)
 			table.insert(points, at)
 			table.insert(touches, { position = at, water = water == true })
-			local away = water and Dive.bounce(v, bounces + 1, mode) or nil
+			local away = water and Dive.bounce(v, bounces + 1, mode, skim) or nil
 			if not away then
 				return points, touches
 			end

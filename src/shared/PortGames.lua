@@ -1,21 +1,21 @@
--- The Port's seven games (V13.3, The Living Port): where every venue stands and the rules that need no server, as
--- data and pure functions. Shared, so the server (server/Minigames.lua and one module per game) judges with exactly
--- the shapes, paths and numbers each client draws (client/PlayHud.lua), and the tests (tests/luau/Specs/
+-- The Port's games (V13.3, The Living Port; V13.5, The Curated Port): where every venue stands and the rules that need
+-- no server, as data and pure functions. Shared, so the server (server/Minigames.lua and one module per game) judges
+-- with exactly the shapes, paths and numbers each client draws (client/PlayHud.lua), and the tests (tests/luau/Specs/
 -- PortGamesSpec.lua) can check them.
 --
---   TINY BOAT REGATTA   one lap of the water round the Port in a Racing Tub, through 13 checkpoints, past barrels,
---                       bumper buoys, splash cannons, a ramp over a reef and THE TEETH (a rock wall with a narrow
---                       channel through it: the shortcut; the safe way round is longer)
---   GRAPPLE GAUNTLET    a course in the air over the north-west water: bounce pads, swing rings, a beam, a zipline
---   CANNON GOLF         a tee cannon on a jetty and three floating greens; one shot at each, scored by the pin
---   PET DERBY           an oval with six hurdles; pets race, you CHEER as yours reaches a hurdle
---   TREASURE TOSS       throw chests into sliding barrels, a rowboat, a parrot's swinging perch, the King's mouth
---   TARGET GALLERY      shore cannons and a cut-out pirate fleet sailing to and fro (and a kraken, and a barge)
---   CRAB CHAOS          a crate of crabs bursts on the beach; catch them
+--   TINY BOAT REGATTA   (V13.5) one lap of a circuit in the east water: the Pier Straight, the Lighthouse Bend, the
+--                       Leap (a ramp and a reef, the high hoop over it), the Flume (a hairpin with a current that
+--                       carries you round: the banked turn), Barrel Alley, the Teeth (a narrow channel through the
+--                       rocks, or the long way round), the Bumper Chicane, Cannon Corner and the Home Straight. In the
+--                       Racing Tub, or on a TEST DRIVE in any of the ten boats.
+--   GRAPPLE GAUNTLET    a course in the air over the north-west water: bounce pads, swing hooks, a beam, a zipline
+--   CANNON GOLF         (V13.5) six holes over the south-west water, in strokes: lob, or skim and skip off the sea
+--
+-- V13.5 removed the Pet Derby, Treasure Toss, the Target Ship Gallery and Crab Chaos (the team's call after playtests;
+-- their code is in Git history). What goblins earned in them is kept: Shinies, cosmetics, achievements, stats.
 --
 -- Places are given relative to the Port's centre (Config.PORT.CENTER; north is -Z, like the sea) and turned into the
--- world by PortGames.world. Moving targets are functions of the server's clock, so every client draws them where the
--- server judges them, with nothing sent over the network but the clock.
+-- world by PortGames.world.
 local Config = require(script.Parent:WaitForChild("Config"))
 local Seasons = require(script.Parent:WaitForChild("Seasons"))
 
@@ -31,11 +31,13 @@ function PortGames.world(x, y, z)
 end
 local W = PortGames.world
 
--- The island's middle (the town is a little south of the Port's centre): the Regatta's ring is round it.
+-- The island's middle (the town is a little south of the Port's centre): the sanctuary's isles ring it.
 PortGames.ISLAND = W(0, 0, 40)
 
--- The games, in the order the Port lists them. kind: "time" (less is better) or "points"; unit: what a score is;
--- concurrent: every goblin (or challenge pair) gets a run of their own at once; board: the leaderboard it feeds.
+-- The games, in the order the Port lists them. kind: "time" (less is better), "strokes" (less is better: golf) or
+-- "points"; unit: what a score is; concurrent: every goblin (or challenge pair) gets a run of their own at once; board:
+-- the leaderboard it feeds; record: the key a goblin's personal best is kept under (V13.5: a new course is a new key,
+-- so a best from the old course is never compared with the new one; the old keys stay in profiles untouched).
 PortGames.GAMES = {
 	{
 		id = "regatta",
@@ -46,8 +48,9 @@ PortGames.GAMES = {
 		kind = "time",
 		unit = "s",
 		max = G.REGATTA.MAX,
-		board = "regatta",
-		hint = "Race a lap round the Port. Through every checkpoint; the Teeth have a gap.",
+		board = "regatta2",
+		record = "regatta2",
+		hint = "Race the lap: the Leap, the Flume, the Teeth's gap. Pick any boat to test-drive it.",
 	},
 	{
 		id = "gauntlet",
@@ -68,56 +71,13 @@ PortGames.GAMES = {
 		short = "GOLF",
 		icon = "⛳",
 		color = Color3.fromRGB(120, 230, 110),
-		kind = "points",
-		unit = "pts",
+		kind = "strokes",
+		unit = "strokes",
 		concurrent = true,
 		max = 2,
-		board = "golf",
-		hint = "Aim the way you look. Hold to charge, let go to fire yourself at the pin.",
-	},
-	{
-		id = "derby",
-		name = "Pet Derby",
-		short = "DERBY",
-		icon = "🐾",
-		color = Color3.fromRGB(255, 150, 190),
-		kind = "time",
-		unit = "s",
-		max = G.DERBY.MAX,
-		hint = "CHEER as your pet reaches a hurdle. Too soon, too late, or mashing: it trips.",
-	},
-	{
-		id = "toss",
-		name = "Treasure Toss",
-		short = "TOSS",
-		icon = "💰",
-		color = Color3.fromRGB(255, 214, 90),
-		kind = "points",
-		unit = "pts",
-		max = G.TOSS.MAX,
-		hint = "Aim with the camera, click or Q to throw. Lob into baskets; the King only eats when his mouth is open.",
-	},
-	{
-		id = "gallery",
-		name = "Target Ship Gallery",
-		short = "GALLERY",
-		icon = "💥",
-		color = Color3.fromRGB(255, 120, 80),
-		kind = "points",
-		unit = "pts",
-		max = G.GALLERY.STATIONS,
-		hint = "Aim with the camera, click to fire. Small, fast ships are worth more.",
-	},
-	{
-		id = "crabs",
-		name = "Crab Chaos",
-		short = "CRABS",
-		icon = "🦀",
-		color = Color3.fromRGB(255, 110, 90),
-		kind = "points",
-		unit = "pts",
-		max = G.CRABS.MAX,
-		hint = "Run into crabs to catch them (dash helps). Golden ones are worth three.",
+		board = "golf2",
+		record = "golf2",
+		hint = "Look up to lob, down to skim: a low shot skips off the sea. Hold to charge, let go to fire.",
 	},
 }
 PortGames.BY_ID = {}
@@ -126,28 +86,39 @@ for index, def in ipairs(PortGames.GAMES) do
 	PortGames.BY_ID[def.id] = def
 end
 
+-- Is less better in this game? (Times and strokes.)
+function PortGames.lowerWins(gameId)
+	local def = PortGames.BY_ID[gameId]
+	return def ~= nil and def.kind ~= "points"
+end
+
+-- The key a personal best is kept under in profile.games.best (V13.5: a Regatta best is kept per boat class).
+function PortGames.recordKey(gameId, class)
+	local def = PortGames.BY_ID[gameId]
+	local key = def and def.record or gameId
+	if gameId == "regatta" then
+		return key .. ":" .. (class or "racer")
+	end
+	return key
+end
+
 -- Where each game is joined (a prompt) and the zone its lobby waits in. (Relative to the Port's centre.)
 PortGames.VENUES = {
 	regatta = { join = W(176, 7.5, 62), zone = W(200, 6, 62), radius = 44, sign = W(176, 18, 52) },
 	gauntlet = { join = W(-100, 8, -100), zone = W(-105, 6, -105), radius = 20, sign = W(-96, 20, -92) },
 	golf = { join = W(-140, 8, 200), zone = W(-152, 6, 214), radius = 30, sign = W(-132, 18, 192) },
-	derby = { join = W(30, 8, 168), zone = W(30, 6, 205), radius = 60, sign = W(30, 22, 160) },
-	toss = { join = W(70, 8, 108), zone = W(78, 6, 118), radius = 28, sign = W(66, 18, 100) },
-	gallery = { join = W(130, 10, -94), zone = W(148, 8, -108), radius = 30, sign = W(126, 22, -88) },
-	crabs = { join = W(-60, 8, 150), zone = W(-85, 6, 175), radius = 40, sign = W(-56, 18, 146) },
 }
 
--- Ground the town's scenery (palms) keeps off: every venue, and the Port's other V13.3 pieces. { x, z, radius }.
+-- Ground the town's scenery (palms) keeps off: every venue, and the Port's other pieces. { x, z, radius }.
 PortGames.KEEP_CLEAR = {
-	{ 110, 122, 52 }, -- Treasure Toss and its targets
-	{ 30, 205, 56 }, -- the Derby's oval
 	{ 205, 62, 40 }, -- the Regatta dock
-	{ -85, 175, 42 }, -- Crab Chaos's beach
 	{ -150, 212, 32 }, -- the golf jetty
 	{ -105, -105, 24 }, -- the Gauntlet's start
-	{ 140, -100, 34 }, -- the Target Gallery's pier
 	{ 52, 76, 16 }, -- the Sanctuary Lift
 	{ -34, -70, 12 }, -- the Captain's Quest Board
+	{ 30, 205, 46 }, -- (V13.5) the Lookout Green
+	{ -85, 175, 34 }, -- (V13.5) the Clubhouse Beach
+	{ 110, 110, 30 }, -- (V13.5) the Regatta Promenade
 }
 function PortGames.clearOf(x, z)
 	for _, c in ipairs(PortGames.KEEP_CLEAR) do
@@ -171,19 +142,17 @@ function PortGames.podiumToPort(lx, lz)
 end
 
 -- Medals ----------------------------------------------------------------------------------------------------------------
--- A score's medal ("gold" | "silver" | "bronze" | nil). The Derby's is its place (1st, 2nd, 3rd).
-function PortGames.medal(gameId, score, place)
-	if gameId == "derby" then
-		return place == 1 and "gold" or (place == 2 and "silver" or (place == 3 and "bronze" or nil))
-	end
+-- A score's medal ("gold" | "silver" | "bronze" | nil).
+function PortGames.medal(gameId, score)
 	local def = PortGames.BY_ID[gameId]
 	local medals = G[string.upper(gameId)] and G[string.upper(gameId)].MEDALS
 	if not def or not medals or type(score) ~= "number" then
 		return nil
 	end
+	local lower = PortGames.lowerWins(gameId)
 	for _, name in ipairs({ "gold", "silver", "bronze" }) do
 		local need = medals[name]
-		if need and ((def.kind == "time" and score <= need) or (def.kind ~= "time" and score >= need)) then
+		if need and ((lower and score <= need) or (not lower and score >= need)) then
 			return name
 		end
 	end
@@ -191,13 +160,12 @@ function PortGames.medal(gameId, score, place)
 end
 
 function PortGames.better(gameId, a, b)
-	local def = PortGames.BY_ID[gameId]
 	if a == nil then
 		return false
 	elseif b == nil then
 		return true
 	end
-	if def and def.kind == "time" then
+	if PortGames.lowerWins(gameId) then
 		return a < b
 	end
 	return a > b
@@ -229,17 +197,19 @@ PortGames.today = today
 -- A finished run (the server measured `score`; `place` among the humans and `humans` how many raced). Records the
 -- best and the play, pays within the daily caps, and returns what happened:
 --   { medal, best (a new personal best), previous, won, shinies, parts = { played, medal, winner, best }, capped }
--- `score` nil means a run that did not finish (no best, no medal: only "played" if it counted at all).
-function PortGames.finishRun(profile, gameId, score, place, humans, unix)
+-- `score` nil means a run that did not finish (no best, no medal: only "played" if it counted at all). recordKey
+-- (V13.5): where the best is kept (PortGames.recordKey); plays, wins and the daily caps are always the game's own.
+function PortGames.finishRun(profile, gameId, score, place, humans, unix, recordKey)
 	local g = today(profile, unix)
 	local R = G.REWARD
+	local key = recordKey or PortGames.recordKey(gameId)
 	local out = { parts = {}, shinies = 0, capped = false }
-	out.medal = score ~= nil and PortGames.medal(gameId, score, place) or nil
+	out.medal = score ~= nil and PortGames.medal(gameId, score) or nil
 	out.won = score ~= nil and place == 1 and (humans or 1) >= 2
-	out.previous = g.best[gameId]
+	out.previous = g.best[key]
 	if score ~= nil and PortGames.better(gameId, score, out.previous) then
 		out.best = out.previous ~= nil -- the very first run is a first score, not a beaten record
-		g.best[gameId] = score
+		g.best[key] = score
 	end
 	if score ~= nil then
 		g.plays[gameId] = (g.plays[gameId] or 0) + 1
@@ -284,7 +254,8 @@ function PortGames.finishRun(profile, gameId, score, place, humans, unix)
 	return out
 end
 
--- How many different games a profile has finished (the Port Regular achievement's stat).
+-- How many different games a profile has finished (the Port Regular achievement's stat). Only the games the Port has
+-- now count, so a goblin is never asked for one that is gone.
 function PortGames.tried(profile)
 	local n = 0
 	for id in pairs(profile.games.plays or {}) do
@@ -319,6 +290,10 @@ local function flatUnit(x, z)
 	return m > 1e-6 and v3(x / m, 0, z / m) or v3(0, 0, -1)
 end
 
+local function flatOf(v)
+	return v3(v.X, 0, v.Z)
+end
+
 -- Turns a flat direction by `degrees` (positive: to the right when looking along it from above, north up).
 local function turn(direction, degrees)
 	local a = rad(degrees)
@@ -327,94 +302,202 @@ local function turn(direction, degrees)
 end
 PortGames.turn = turn
 
--- TINY BOAT REGATTA ------------------------------------------------------------------------------------------------------
--- The lap goes round the island anticlockwise seen from above: east, north, west, south, east. theta in degrees from
--- east (0) towards north (90).
-local RG = G.REGATTA
-function PortGames.ring(theta, r)
-	local a = rad(theta)
-	local I = PortGames.ISLAND
-	return v3(I.X + (r or RG.RADIUS) * math.cos(a), 0, I.Z - (r or RG.RADIUS) * math.sin(a))
+-- The flat distance from p to the segment a-b, and how far along it (0..1) the nearest point is.
+local function toSegment(p, a, b)
+	local dx, dz = b.X - a.X, b.Z - a.Z
+	local length2 = dx * dx + dz * dz
+	local t = length2 > 1e-6 and math.clamp(((p.X - a.X) * dx + (p.Z - a.Z) * dz) / length2, 0, 1) or 0
+	return math.sqrt((a.X + dx * t - p.X) ^ 2 + (a.Z + dz * t - p.Z) ^ 2), t
 end
--- The way the lap goes at theta.
-function PortGames.ringHeading(theta)
-	local a = rad(theta)
-	return flatUnit(-math.sin(a), -math.cos(a))
-end
-local ring, heading = PortGames.ring, PortGames.ringHeading
+PortGames.toSegment = toSegment
 
+-- TINY BOAT REGATTA (V13.5) ------------------------------------------------------------------------------------------------
+-- The racing line: Port-relative x and z and the lane's half-width there, a closed loop starting on the start line and
+-- running clockwise seen from above (north up the Pier Straight, east along the north, round the Flume at the east end,
+-- back west through the Teeth and the Chicane, north up the Home Straight). It takes the SAFE way round the Teeth; the
+-- channel through them (regatta.shortcut) runs straight from point 13 to point 16. Every point is open water: the
+-- spec checks the lane against the island's coast, the dock and the Port's edge.
+local LINE = {
+	{ 320, 40, 55 }, -- 1 the start and finish line
+	{ 320, -200, 50 }, -- 2 the end of the Pier Straight
+	{ 350, -330, 50 }, -- 3 the LIGHTHOUSE BEND
+	{ 430, -400, 50 }, -- 4
+	{ 530, -410, 50 }, -- 5
+	{ 610, -370, 50 }, -- 6 THE LEAP: the ramp is just before here, the reef just after
+	{ 690, -310, 52 }, -- 7
+	{ 715, -215, 55 }, -- 8 THE FLUME: its current carries you round the hairpin
+	{ 735, -110, 55 }, -- 9
+	{ 700, -10, 55 }, -- 10
+	{ 630, 40, 50 }, -- 11
+	{ 560, 90, 46 }, -- 12 BARREL ALLEY
+	{ 520, 150, 46 }, -- 13 THE TEETH: the channel goes straight on to 16; the safe way swings out east
+	{ 590, 225, 48 }, -- 14
+	{ 530, 325, 48 }, -- 15
+	{ 420, 300, 44 }, -- 16
+	{ 360, 370, 40 }, -- 17 the BUMPER CHICANE
+	{ 290, 330, 40 }, -- 18
+	{ 250, 250, 46 }, -- 19 CANNON CORNER
+	{ 300, 150, 52 }, -- 20 the HOME STRAIGHT
+}
+local RG = G.REGATTA
 local regatta = {}
 PortGames.REGATTA = regatta
--- Checkpoints: each is a list of discs, any of which counts (THE TEETH's: the channel, or out round the wall).
-regatta.checkpoints = {}
-for k = 1, RG.CHECKPOINTS do
-	local theta = k * 360 / RG.CHECKPOINTS
-	table.insert(regatta.checkpoints, { theta = theta, discs = { { center = ring(theta), radius = RG.GATE_RADIUS } } })
-	if theta == 180 then
-		-- The Teeth (186 to 206 degrees): the channel through them at 196, or the long way outside.
-		table.insert(regatta.checkpoints, {
-			theta = 196,
-			teeth = true,
-			discs = {
-				{ center = ring(196, 600), radius = 13 },
-				{ center = ring(196, 712), radius = 44 },
-			},
-		})
+regatta.line = {}
+for i, row in ipairs(LINE) do
+	regatta.line[i] = { p = W(row[1], 0, row[2]), w = row[3] }
+end
+local line = regatta.line
+local function linePoint(i)
+	return line[(i - 1) % #line + 1].p
+end
+
+-- The way the lap runs from point i to the next.
+function PortGames.regattaHeading(i)
+	local a, b = linePoint(i), linePoint(i + 1)
+	return flatUnit(b.X - a.X, b.Z - a.Z)
+end
+local heading = PortGames.regattaHeading
+
+-- A point beside the line: `along` studs on from point i towards the next, `side` studs to the right of the way.
+function PortGames.regattaAt(i, along, side)
+	local d = heading(i)
+	local right = v3(-d.Z, 0, d.X)
+	return linePoint(i) + d * (along or 0) + right * (side or 0)
+end
+local at = PortGames.regattaAt
+
+regatta.length = 0 -- the safe lap, along its middle
+for i = 1, #line do
+	regatta.length += flatOf(linePoint(i + 1) - linePoint(i)).Magnitude
+end
+
+-- THE TEETH: the channel through the rocks (half its width) and the rocks either side of it: `near` thick on the side
+-- the safe way goes round (`toward`, a flat unit vector), `far` thick on the infield's. The rocks run from `startAt` to
+-- `endAt` studs along the channel: its mouths are open water where the safe way leaves and rejoins the line.
+do
+	local from, to = line[13].p, line[16].p
+	local along = flatUnit(to.X - from.X, to.Z - from.Z)
+	local toward = v3(along.Z, 0, -along.X)
+	local round = line[14].p - from
+	if toward:Dot(round) < 0 then
+		toward = -toward
 	end
+	local length = flatOf(to - from).Magnitude
+	regatta.shortcut = {
+		from = from,
+		to = to,
+		along = along,
+		toward = toward,
+		half = 11,
+		near = 30,
+		far = 40,
+		startAt = 26,
+		endAt = length - 44,
+	}
+	regatta.shortcutLength = length
 end
-regatta.finish = #regatta.checkpoints -- the last checkpoint (360 degrees) is the start line: crossing it ends the lap
--- The start grid: four rows of two behind the line, facing along the lap.
+
+-- The checkpoints, in order: each a list of discs, any of which counts (the Teeth's: the channel, or the safe way).
+-- `at` is the line point a goblin who falls out after passing it is put back at, facing on along the lap.
+local function gate(name, index)
+	return { name = name, at = index, discs = { { center = line[index].p, radius = line[index].w + 8, line = index } } }
+end
+regatta.checkpoints = {
+	gate("THE PIER STRAIGHT", 2),
+	gate("THE LIGHTHOUSE BEND", 4),
+	gate("THE LEAP", 7),
+	gate("THE FLUME", 9),
+	gate("THE FLUME'S EXIT", 11),
+	gate("BARREL ALLEY", 13),
+	{
+		name = "THE TEETH",
+		teeth = true,
+		at = 16, -- never put back inside the Teeth
+		discs = {
+			{ center = (line[13].p + line[16].p) / 2, radius = regatta.shortcut.half + 1 },
+			{ center = line[15].p, radius = line[15].w + 8, line = 15 },
+		},
+	},
+	gate("THE BUMPER CHICANE", 18),
+	gate("CANNON CORNER", 19),
+	gate("THE FINISH", 1),
+}
+regatta.finish = #regatta.checkpoints -- the last checkpoint is the start line: crossing it ends the lap
+
+-- The start grid: three rows of three behind the line, facing up the Pier Straight, roomy enough for the biggest
+-- classes (an Ironbelly is 18 by 36).
 regatta.grid = {}
-for i = 1, RG.MAX do
-	local row, col = (i - 1) // 2, (i - 1) % 2
-	local theta = -(3 + row * 3.6)
-	local p = ring(theta, RG.RADIUS + (col == 0 and -15 or 15))
-	table.insert(regatta.grid, CFrame.lookAt(p, p + heading(theta)))
+do
+	local start, way = line[1].p, heading(1)
+	local right = v3(-way.Z, 0, way.X)
+	for i = 1, RG.MAX do
+		local row, col = (i - 1) // 3, (i - 1) % 3
+		local p = start - way * (28 + row * 42) + right * ((col - 1) * 26)
+		table.insert(regatta.grid, CFrame.lookAt(p, p + way))
+	end
+	regatta.startLine = { a = start - right * (line[1].w + 6), b = start + right * (line[1].w + 6) }
 end
-regatta.startLine = { a = ring(0, RG.RADIUS - 60), b = ring(0, RG.RADIUS + 60) }
--- What stands on the water (server/Regatta.lua builds it; the boost hoops and ramps are BoatSim gates).
+
+-- What stands on the water (server/Regatta.lua builds it; the hoops and the ramp are BoatSim gates).
 regatta.hoops = {
-	{ theta = 14, r = 600 },
-	{ theta = 34, r = 600 },
-	{ theta = 152, r = 600 },
-	{ theta = 196, r = 600, small = true }, -- inside the Teeth's channel: the shortcut's reward
-	{ theta = 232, r = 600 },
-	{ theta = 338, r = 600 },
+	{ at = at(1, 90), dir = heading(1) }, -- two on the Pier Straight: a chain
+	{ at = at(1, 175), dir = heading(1) },
+	{ at = at(10, 50), dir = heading(10) }, -- out of the Flume
+	{
+		at = (line[13].p + line[16].p) / 2,
+		dir = flatUnit(line[16].p.X - line[13].p.X, line[16].p.Z - line[13].p.Z),
+		small = true,
+	}, -- in the Teeth: the shortcut's reward
+	{ at = at(19, 55), dir = heading(19) }, -- out of Cannon Corner
 }
-regatta.highHoop = { theta = 326, r = 600, y = 30 } -- over the second ramp: only a jump reaches it
-regatta.ramps = {
-	{ theta = 59, r = 600, width = 18 }, -- THE LEAP over the reef
-	{ theta = 320, r = 600, width = 16 }, -- up into the high hoop
-}
-regatta.reef = { from = 63.5, to = 65.5, inner = 548, outer = 652 } -- a low ridge across the lane (crash or jump)
-regatta.teeth = { from = 186, to = 206, channel = { 589, 611 }, inner = 430, outer = 650 }
+regatta.ramp = { at = at(5, flatOf(line[6].p - line[5].p).Magnitude - 22), dir = heading(5), width = 20 }
+-- The reef the Leap jumps: rocks across the middle of the lane just past the ramp (gaps at its edges for the careful).
+do
+	local d = flatUnit(heading(5).X + heading(6).X, heading(5).Z + heading(6).Z)
+	local centre = line[6].p + d * 30
+	regatta.reef = { center = centre, dir = d, half = 30 }
+	regatta.highHoop = { at = centre + v3(0, 27, 0), dir = d } -- only a jump off the ramp reaches it
+end
+regatta.flume = { from = 7, to = 11 } -- line points the current runs between
+regatta.lighthouse = { center = W(425, 0, -295), radius = 18 }
+regatta.flumeRock = { center = W(630, 0, -140), radius = 32 }
 regatta.barrels = {} -- a staggered field to weave through
-for i = 0, 13 do
-	local theta = 97 + i * 1.1
-	local r = 566 + ((i * 37) % 7) * 11
-	table.insert(regatta.barrels, ring(theta, r))
+for i = 0, 11 do -- (twelve: the last stops short of the Teeth's fork)
+	local along = 18 + i * 11
+	local index = along < 86 and 11 or 12
+	local into = index == 11 and along or along - 86
+	table.insert(regatta.barrels, at(index, into, ((i * 37) % 7 - 3) * 10))
 end
-regatta.buoys = {} -- a slalom of big bumper buoys
+regatta.buoys = {} -- the chicane's big bumper buoys, side to side
 for i = 0, 5 do
-	table.insert(regatta.buoys, ring(246 + i * 3.4, i % 2 == 0 and 582 or 618))
+	local index = i < 3 and 16 or 17
+	table.insert(regatta.buoys, at(index, 22 + (i % 3) * 26, (i % 2 == 0) and -18 or 18))
 end
-regatta.cannons = { -- splash cannons on rocks outside the lane
-	{ rock = ring(134, 690), theta = 134 },
-	{ rock = ring(286, 690), theta = 286 },
+regatta.cannons = { -- splash cannons on rocks outside the lane, each watching its stretch
+	{ rock = W(190, 0, 280) },
+	{ rock = W(600, 0, 140) },
 }
 
--- The lap's length along its middle (for the HUD's progress and the server's sanity checks).
-regatta.length = 2 * math.pi * RG.RADIUS
-
--- Where checkpoint `index` of the lap is reached, for a tub put back after falling out.
+-- Where a goblin is put back after passing checkpoint `index`: on the line, facing on along the lap.
 function PortGames.regattaRespawn(index)
 	local cp = regatta.checkpoints[index]
-	local theta = cp and cp.theta or 0
-	if cp and cp.teeth then
-		theta = 210 -- never put a tub back inside the Teeth
+	local i = cp and cp.at or 1
+	local p = linePoint(i)
+	return CFrame.lookAt(p, p + heading(i))
+end
+
+-- Is this on the Regatta's water? (Its boats may use their abilities there: the rest of the Port is a safe harbour.)
+function PortGames.onRegatta(position)
+	if typeof(position) ~= "Vector3" then
+		return false
 	end
-	local p = ring(theta, RG.RADIUS)
-	return CFrame.lookAt(p, p + heading(theta))
+	for i = 1, #line do
+		local d = toSegment(position, linePoint(i), linePoint(i + 1))
+		if d <= line[i].w + 60 then
+			return true
+		end
+	end
+	return false
 end
 
 -- GRAPPLE GAUNTLET -----------------------------------------------------------------------------------------------------------
@@ -437,11 +520,12 @@ gauntlet.platforms = {
 	plat("FINISH", -122, -248, 78, 20),
 }
 gauntlet.beam = { from = W(-165, 38, -182), to = W(-197, 38, -207), width = 3 } -- P2 to P3
+-- V13.5: each hook knows the leg it serves (it leaves from that platform), so the hooks ahead can light up.
 gauntlet.hooks = {
-	W(-142, 62, -157), -- P1 -> P2
-	W(-234, 98, -256), -- P4 -> R3
-	W(-250, 96, -286), -- -> P5
-	W(-168, 66, -288), -- P6 -> P7
+	{ at = W(-142, 62, -157), leg = 1 }, -- P1 -> P2
+	{ at = W(-234, 98, -256), leg = 4 }, -- P4 -> P5
+	{ at = W(-250, 96, -286), leg = 4 },
+	{ at = W(-168, 66, -288), leg = 6 }, -- P6 -> P7
 }
 gauntlet.pads = {
 	{ at = W(-109, 6, -113), launch = v3(0, 118, 0) }, -- start -> P1
@@ -451,12 +535,16 @@ gauntlet.pads = {
 gauntlet.zip = { from = W(-253, 68, -318), to = W(-197, 45, -301) } -- P5 -> P6
 gauntlet.home = { from = W(-118, 82, -244), to = W(-100, 11, -116) } -- FINISH -> the beach
 gauntlet.checkpoints = {}
-for _, p in ipairs(gauntlet.platforms) do
+for i, p in ipairs(gauntlet.platforms) do
 	local half = p.size / 2 + 2
+	-- V13.5: put back facing the next platform (or the bell), so a fall is followed by a clear way on.
+	local nextOne = gauntlet.platforms[i + 1] or p
+	local from = p.center + v3(0, 4, 0)
+	local toward = v3(nextOne.center.X, from.Y, nextOne.center.Z)
 	table.insert(gauntlet.checkpoints, {
 		name = p.name,
 		box = { center = p.center + v3(0, 6, 0), half = v3(half, 8, half) },
-		respawn = CFrame.new(p.center + v3(0, 4, 0)),
+		respawn = (toward - from).Magnitude > 1 and CFrame.lookAt(from, toward) or CFrame.new(from),
 	})
 end
 gauntlet.startBox = { center = gauntlet.start.center + v3(0, 6, 0), half = v3(10, 8, 10) }
@@ -473,7 +561,11 @@ function PortGames.gauntletReached(position, from)
 end
 gauntlet.startSpot = CFrame.lookAt(W(-101, 10, -101), W(-109, 10, -113))
 
--- CANNON GOLF ---------------------------------------------------------------------------------------------------------------
+-- CANNON GOLF (V13.5) -----------------------------------------------------------------------------------------------------------
+-- Six holes from the tee cannons at the end of the south-west jetty, each a different use of the sea. `dir` is degrees
+-- from the tee's heading (positive to the right, towards the west), `far` studs from the tee. kind: "green" (a floating
+-- green), "pad" (a little floating platform: precision), "isle" (a sand islet). Obstacles stand between: `rocks`
+-- (sea stacks), `ridge` (a tall wall of rock to lob over or skip round) and `reef` (a ring of rocks with a gap).
 local GF = G.GOLF
 local golf = {}
 PortGames.GOLF = golf
@@ -483,352 +575,155 @@ golf.jettyRoot = W(-138, 6, 196)
 golf.jettyEnd = golf.jettyRoot + golf.facing * 38
 golf.tees = {}
 for i = 1, GF.TEES do
-	local at = golf.jettyEnd + golf.across * ((i - 2) * 10) + v3(0, 2.2, 0)
-	table.insert(golf.tees, { from = at + golf.facing * 2 + v3(0, 2, 0), cframe = CFrame.lookAt(at, at + golf.facing) })
+	local spot = golf.jettyEnd + golf.across * ((i - 2) * 10) + v3(0, 2.2, 0)
+	table.insert(
+		golf.tees,
+		{ from = spot + golf.facing * 2 + v3(0, 2, 0), cframe = CFrame.lookAt(spot, spot + golf.facing) }
+	)
 end
-local teeMiddle = golf.jettyEnd
-golf.greens = {
-	{ name = "THE PUDDLE", center = teeMiddle + turn(golf.facing, -24) * 110 + v3(0, 1.6, 0), radius = GF.GREEN },
-	{ name = "THE SANDBAR", center = teeMiddle + turn(golf.facing, 21) * 172 + v3(0, 1.6, 0), radius = GF.GREEN },
-	{ name = "THE LONG ONE", center = teeMiddle + turn(golf.facing, -4) * 236 + v3(0, 1.6, 0), radius = GF.GREEN },
+local tee = golf.jettyEnd
+-- A point `far` studs out from the tee, `dir` degrees off its heading, and `side` studs to the right of that line.
+function PortGames.golfAt(dir, far, side)
+	local way = turn(golf.facing, dir)
+	local right = v3(-way.Z, 0, way.X)
+	return tee + way * far + right * (side or 0)
+end
+local out = PortGames.golfAt
+golf.holes = {
+	{
+		name = "THE PUDDLE JUMP",
+		par = 2,
+		kind = "green",
+		center = out(10, 170),
+		radius = 16,
+		cup = 4,
+		tip = "A gentle lob: look up, hold, let go.",
+	},
+	{
+		name = "THE SKIPPING STONE",
+		par = 3,
+		kind = "green",
+		center = out(0, 400),
+		radius = 20,
+		cup = 5,
+		tip = "Too far to fly: aim low and skip it across.",
+	},
+	{
+		name = "THE BEND",
+		par = 3,
+		kind = "green",
+		center = out(-30, 330),
+		radius = 17,
+		cup = 4,
+		rocks = {
+			{ at = out(-30, 200, -18), radius = 9, height = 44 },
+			{ at = out(-30, 200, 0), radius = 11, height = 52 },
+			{ at = out(-30, 202, 18), radius = 9, height = 40 },
+		},
+		tip = "Stacks in the way: skim wide and curve it in (A/D).",
+	},
+	{
+		name = "THE LILY PAD",
+		par = 2,
+		kind = "pad",
+		center = out(-50, 150),
+		radius = 7,
+		cup = 3,
+		tip = "Small and close: a soft lob, right on top.",
+	},
+	{
+		name = "OVER THE TOP",
+		par = 3,
+		kind = "green",
+		center = out(40, 260),
+		radius = 16,
+		cup = 4,
+		ridge = { from = out(40, 157, -32), to = out(40, 157, 32), height = 50, thick = 16 },
+		tip = "Lob it over the ridge, or skip round its end.",
+	},
+	{
+		name = "THE KRAKEN'S CROWN",
+		par = 3,
+		kind = "isle",
+		center = out(22, 430),
+		radius = 12,
+		cup = 3,
+		reef = { center = out(22, 430), radius = 62, gap = 26, height = 14 },
+		tip = "Skip through the reef's gap, then SPACE to stop on the crown.",
+	},
 }
+golf.par = 0
+for _, hole in ipairs(golf.holes) do
+	hole.center += v3(0, hole.kind == "isle" and 3.2 or 1.6, 0) -- the top of the green, the pad or the islet
+	golf.par += hole.par
+end
 
--- The throw for a yaw (a flat direction the goblin chose) and a power (0..1): a fixed elevation, the speed between
--- MIN_SPEED and MAX_SPEED. The direction is pulled inside YAW_MAX of the tee's heading.
+-- The throw for a direction and a power (0..1). The direction's flat part is the aim, pulled inside YAW_MAX of the tee's
+-- heading; its height is the elevation (V13.5: look up for a lob, down for a skimmer), held between ELEVATION_MIN and
+-- ELEVATION_MAX (a flat direction is thrown at the starting ELEVATION). The speed is between MIN_SPEED and MAX_SPEED.
 function PortGames.golfVelocity(direction, power)
-	local d = typeof(direction) == "Vector3" and flatUnit(direction.X, direction.Z) or golf.facing
+	local valid = typeof(direction) == "Vector3" and direction == direction and direction.Magnitude > 1e-3
+	local d = valid and flatUnit(direction.X, direction.Z) or golf.facing
 	local angle = math.deg(math.acos(math.clamp(d:Dot(golf.facing), -1, 1)))
 	if angle > GF.YAW_MAX then
 		local side = (golf.facing:Cross(d).Y >= 0) and 1 or -1
 		d = turn(golf.facing, -side * GF.YAW_MAX)
 		-- (turn's positive is to the right; Cross.Y >= 0 is to the left)
 	end
+	local elevation = GF.ELEVATION
+	if valid and math.abs(direction.Unit.Y) > 1e-3 then
+		elevation = math.clamp(math.asin(math.clamp(direction.Unit.Y, -1, 1)), GF.ELEVATION_MIN, GF.ELEVATION_MAX)
+	end
 	power = math.clamp(tonumber(power) or 0, 0, 1)
 	if power ~= power then
 		power = 0
 	end
 	local speed = GF.MIN_SPEED + (GF.MAX_SPEED - GF.MIN_SPEED) * power
-	return (d * math.cos(GF.ELEVATION) + v3(0, math.sin(GF.ELEVATION), 0)) * speed
+	return (d * math.cos(elevation) + v3(0, math.sin(elevation), 0)) * speed
 end
 
--- Points for a landing `distance` (flat studs) from the pin.
-function PortGames.golfPoints(distance)
-	local P = GF.POINTS
-	if distance <= GF.CUP then
-		return P.cup, "cup"
-	elseif distance <= GF.NEAR then
-		return P.near, "near"
-	elseif distance <= GF.GREEN then
-		return P.green, "green"
-	elseif distance <= GF.FRINGE then
-		return P.fringe, "fringe"
+-- Where a shot came down for good, judged for hole `hole`: "cup" (holed out with this stroke), "green" (on the target:
+-- one putt more), or "miss". `water`: it ended in the sea (a target is something to land ON).
+function PortGames.golfJudge(hole, position, water)
+	if water or not hole or typeof(position) ~= "Vector3" then
+		return "miss", nil
 	end
-	return P.miss, "miss"
+	local distance = flatOf(position - hole.center).Magnitude
+	if distance <= hole.cup then
+		return "cup", distance
+	elseif distance <= hole.radius + GF.NEAR then
+		return "green", distance
+	end
+	return "miss", distance
 end
 
--- PET DERBY ---------------------------------------------------------------------------------------------------------------------
-local DG = G.DERBY
-local derby = {}
-PortGames.DERBY = derby
-derby.center = W(30, 6.2, 205)
-derby.a, derby.b = 45, 22 -- half-axes of the oval (x, z)
-derby.lanes = DG.MAX
-derby.laneWidth = 1.9
-derby.hurdles = { 0.12, 0.27, 0.42, 0.57, 0.72, 0.87 }
--- Arc length along the inner line, sampled once, so a pet at fraction f is f of the way round (all lanes run the
--- same fraction: the outer lanes are drawn wider, never longer).
-local SAMPLES = 240
-local arc = { 0 }
-do
-	local function at(phi)
-		return derby.a * math.cos(phi), derby.b * math.sin(phi)
+-- What a hole is worth after `shots` shots ending in `grade`: the strokes, or nil while it goes on. A pickup (the last
+-- allowed shot missed) is par + PICKUP.
+function PortGames.golfStrokes(hole, shots, grade)
+	if grade == "cup" then
+		return shots
+	elseif grade == "green" then
+		return shots + 1
+	elseif shots >= hole.par + 1 then
+		return hole.par + GF.PICKUP
 	end
-	local total = 0
-	local px, pz = at(-math.pi / 2)
-	for i = 1, SAMPLES do
-		local phi = -math.pi / 2 + i / SAMPLES * math.pi * 2
-		local x, z = at(phi)
-		total += math.sqrt((x - px) ^ 2 + (z - pz) ^ 2)
-		arc[i + 1] = total
-		px, pz = x, z
-	end
-	derby.length = total
-end
--- Where a pet at fraction f (0..1, wrapped) in `lane` (1..) is, and the way it faces.
-function PortGames.derbyPoint(f, lane)
-	f = f % 1
-	local target = f * derby.length
-	local lo, hi = 1, SAMPLES + 1
-	while hi - lo > 1 do
-		local mid = (lo + hi) // 2
-		if arc[mid] <= target then
-			lo = mid
-		else
-			hi = mid
-		end
-	end
-	local span = arc[hi] - arc[lo]
-	local k = span > 0 and (target - arc[lo]) / span or 0
-	local phi = -math.pi / 2 + ((lo - 1) + k) / SAMPLES * math.pi * 2
-	local x, z = derby.a * math.cos(phi), derby.b * math.sin(phi)
-	-- Outward normal of the ellipse, for the lane offset; the tangent is the way round.
-	local nx, nz = x / (derby.a * derby.a), z / (derby.b * derby.b)
-	local n = flatUnit(nx, nz)
-	local t = flatUnit(-derby.a * math.sin(phi), derby.b * math.cos(phi))
-	local offset = ((lane or 1) - 1) * derby.laneWidth + 1.2
-	return derby.center + v3(x, 0, z) + n * offset, t
-end
--- The judge: a CHEER `timeToHurdle` seconds before the pet reaches its next hurdle (negative: after) is
--- "perfect" (V13.4: the heart of the window), "clean" (in the window), "early" (too soon: it trips on the hurdle) or
--- "none" (no hurdle near: a stumble).
-function PortGames.derbyJudge(timeToHurdle)
-	if timeToHurdle == nil then
-		return "none"
-	end
-	if timeToHurdle <= DG.PERFECT_EARLY and timeToHurdle >= -DG.PERFECT_LATE then
-		return "perfect"
-	elseif timeToHurdle <= DG.EARLY and timeToHurdle >= -DG.LATE then
-		return "clean"
-	elseif timeToHurdle > DG.EARLY and timeToHurdle <= DG.TOO_EARLY then
-		return "early"
-	end
-	return "none"
+	return nil
 end
 
--- THE RANGES: TREASURE TOSS and the TARGET SHIP GALLERY ------------------------------------------------------------------------
--- A target is a function of the server's clock: target(t) -> { pos, radius, points, up (it can be hit: the King's
--- mouth is open, a ship is not keeled over is the server's to add), basket (a throw must come down into it) }.
-local function pingpong(t, speed, length, phase)
-	local s = (t * speed + (phase or 0)) % (2 * length)
-	return s <= length and s or 2 * length - s
+-- Strokes against par, the golf way: "E", "+2", "-1".
+function PortGames.toPar(strokes, par)
+	local d = strokes - par
+	return d == 0 and "E" or (d > 0 and ("+" .. d) or tostring(d))
 end
 
-local toss = {}
-PortGames.TOSS = toss
-toss.facing = v3(1, 0, 0)
-toss.spots = {}
-for i = 0, 5 do
-	table.insert(toss.spots, CFrame.lookAt(W(78, 9.5, 103 + i * 6), W(130, 9.5, 103 + i * 6)))
-end
-toss.ground = 5.6 -- a throw that comes down to this height has landed
-toss.targets = {}
-for i = 0, 2 do
-	table.insert(toss.targets, {
-		kind = "barrel",
-		points = 1,
-		radius = 2.7,
-		basket = true,
-		at = function(t)
-			return W(106, 9.2, 100 + pingpong(t, 6, 36, i * 12))
-		end,
-	})
-end
-table.insert(toss.targets, {
-	kind = "rowboat",
-	points = 2,
-	radius = 3.8,
-	basket = true,
-	at = function(t)
-		return W(122, 8.2 + 0.4 * math.sin(t * 2.2), 96 + pingpong(t, 9, 44, 7))
-	end,
-})
-toss.perch = W(137, 6, 118)
-table.insert(toss.targets, {
-	kind = "perch",
-	points = 4,
-	radius = 2.5,
-	basket = true,
-	at = function(t)
-		local a = t * 1.1
-		return toss.perch + v3(math.sin(a) * 3, 15, math.cos(a) * 9)
-	end,
-})
-toss.king = W(154, 6, 118)
-toss.MOUTH_EVERY, toss.MOUTH_OPEN = 4, 1.4
-function PortGames.kingOpen(t)
-	return (t % toss.MOUTH_EVERY) < toss.MOUTH_OPEN
-end
-table.insert(toss.targets, {
-	kind = "king",
-	points = 8,
-	radius = 3.4,
-	at = function(_t)
-		return toss.king + v3(-5, 8, 0) -- the mouth, low on the front of his face
-	end,
-	open = PortGames.kingOpen,
-})
-
-local gallery = {}
-PortGames.GALLERY = gallery
-gallery.deck = W(148, 8, -108)
-gallery.facing = flatUnit(0.6, -0.8)
-gallery.across = flatUnit(0.8, 0.6)
-gallery.stations = {}
-for i = 1, G.GALLERY.STATIONS do
-	local at = gallery.deck + gallery.across * ((i - 2.5) * 10) + v3(0, 1.4, 0)
-	table.insert(gallery.stations, {
-		cframe = CFrame.lookAt(at, at + gallery.facing),
-		muzzle = at + gallery.facing * 3.6 + v3(0, 2.4, 0),
-		seat = at - gallery.facing * 3.2 + v3(0, 2.6, 0),
-	})
-end
-gallery.water = 1
-local function lane(dist, side)
-	return gallery.deck + gallery.facing * dist + gallery.across * side
-end
-gallery.targets = {
-	{
-		kind = "galleon",
-		points = 1,
-		radius = 9,
-		at = function(t)
-			return lane(205, pingpong(t, 8, 120, 0) - 60) + v3(0, 5, 0)
-		end,
-	},
-	{
-		kind = "sloop",
-		points = 2,
-		radius = 6.5,
-		at = function(t)
-			return lane(150, 70 - pingpong(t, 14, 140, 40)) + v3(0, 3.6, 0)
-		end,
-	},
-	{
-		kind = "sloop",
-		points = 2,
-		radius = 6.5,
-		at = function(t)
-			return lane(255, pingpong(t, 12, 130, 90) - 65) + v3(0, 3.6, 0)
-		end,
-	},
-	{
-		kind = "skiff",
-		points = 4,
-		radius = 4.5,
-		at = function(t)
-			return lane(110, pingpong(t, 24, 160, 15) - 80) + v3(0, 2.4, 0)
-		end,
-	},
-	{
-		-- A tentacle up out of the sea for 2.5 s every 7 s, somewhere new each time.
-		kind = "kraken",
-		points = 6,
-		radius = 4,
-		at = function(t)
-			local cycle = t // 7
-			local h = Seasons.mix(cycle, 77)
-			local dist = 130 + (h % 90)
-			local side = ((h // 90) % 120) - 60
-			return lane(dist, side) + v3(0, 6, 0)
-		end,
-		open = function(t)
-			return (t % 7) < 2.5
-		end,
-	},
-	{
-		-- The Goblin King's barge: crosses quickly for 5 s every 15 s, far out. Worth the most.
-		kind = "barge",
-		points = 10,
-		radius = 6,
-		at = function(t)
-			local s = (t % 15) / 5
-			return lane(250, -90 + 180 * math.clamp(s, 0, 1)) + v3(0, 4, 0)
-		end,
-		open = function(t)
-			return (t % 15) < 5
-		end,
-	},
-}
-
--- V13.4: a range shot landed. `hit` true or false; returns the new streak and the points it scores (the target's
--- points, plus the streak bonus from the STREAK.FROM-th hit in a row on; a miss scores nothing and ends the streak).
-function PortGames.rangeShot(streak, hit, points)
-	if not hit then
-		return 0, 0
+-- A hole's name for its strokes against its par ("HOLE IN ONE!", "BIRDIE!", "PAR", "BOGEY"...).
+function PortGames.golfName(strokes, par)
+	if strokes == 1 then
+		return "HOLE IN ONE!"
 	end
-	streak = (streak or 0) + 1
-	return streak, points + (streak >= G.STREAK.FROM and G.STREAK.BONUS or 0)
+	local names =
+		{ [-3] = "ALBATROSS!", [-2] = "EAGLE!", [-1] = "BIRDIE!", [0] = "PAR", [1] = "BOGEY", [2] = "DOUBLE BOGEY" }
+	return names[strokes - par] or ("+" .. (strokes - par))
 end
-
--- Where a range's target is at time t, whether it can be hit now, and its radius and points.
-function PortGames.targetAt(range, index, t)
-	local target = range.targets[index]
-	if not target then
-		return nil
-	end
-	return target.at(t), (target.open == nil or target.open(t)), target
-end
-
--- A projectile from `from` with `velocity` under `gravity` (studs/s^2, down), thrown at server time t0: the first
--- target it reaches, within maxTime, before it comes down to `floor`. `down(index, t)` (optional): true while a target
--- cannot be hit (a keeled-over ship). Returns index, time of the hit (server clock), where; or nil, the time and place
--- it came down.
-function PortGames.shotHit(range, from, velocity, gravity, t0, ballRadius, floor, maxTime, down)
-	local step = 1 / 60
-	local p, v = from, velocity
-	local g = v3(0, -gravity, 0)
-	for i = 1, math.floor((maxTime or 3) / step) do
-		local t = t0 + i * step
-		v += g * step
-		p += v * step
-		for index, target in ipairs(range.targets) do
-			if (target.open == nil or target.open(t)) and not (down and down(index, t)) then
-				if not target.basket or v.Y < 0 then
-					local at = target.at(t)
-					if (p - at).Magnitude <= target.radius + (ballRadius or 1) then
-						return index, t, p
-					end
-				end
-			end
-		end
-		if p.Y <= floor then
-			return nil, t, p
-		end
-	end
-	return nil, t0 + (maxTime or 3), p
-end
-
--- The direction a toss may leave in: the aim, pulled inside the booth's limits (pitch and yaw). nil if it is nonsense.
-function PortGames.tossDirection(aim)
-	if typeof(aim) ~= "Vector3" or aim.Magnitude < 0.5 or aim.X ~= aim.X then
-		return nil
-	end
-	aim = aim.Unit
-	local T = G.TOSS
-	local flat = flatUnit(aim.X, aim.Z)
-	local yaw = math.deg(math.acos(math.clamp(flat:Dot(toss.facing), -1, 1)))
-	if yaw > T.YAW_MAX then
-		local side = toss.facing:Cross(flat).Y >= 0 and 1 or -1
-		flat = turn(toss.facing, -side * T.YAW_MAX)
-	end
-	local pitch = math.deg(math.asin(math.clamp(aim.Y, -1, 1)))
-	pitch = math.clamp(pitch, T.PITCH_MIN, T.PITCH_MAX)
-	local p = rad(pitch)
-	return flat * math.cos(p) + v3(0, math.sin(p), 0)
-end
-
--- The gallery cannon's arc through a point (the island cannons' rule: the low arc that reaches it, or 45 degrees if it
--- is out of reach). Returns a velocity.
-function PortGames.cannonVelocity(from, target)
-	local A = G.GALLERY
-	local g, speed = A.GRAVITY, A.SPEED
-	local delta = target - from
-	local flat = v3(delta.X, 0, delta.Z)
-	local x, y = flat.Magnitude, delta.Y
-	local dir = x > 0.01 and flat.Unit or gallery.facing
-	local s2 = speed * speed
-	local root = s2 * s2 - g * (g * x * x + 2 * y * s2)
-	local angle
-	if root >= 0 and x > 0.01 then
-		angle = math.atan((s2 - math.sqrt(root)) / (g * x))
-	else
-		angle = rad(45)
-	end
-	angle = math.clamp(angle, rad(-20), rad(60))
-	return (dir * math.cos(angle) + v3(0, math.sin(angle), 0)) * speed
-end
-
--- CRAB CHAOS ------------------------------------------------------------------------------------------------------------------------
-PortGames.CRABS = { center = W(-85, 6, 175), radius = 32, fence = 35 }
 
 return PortGames

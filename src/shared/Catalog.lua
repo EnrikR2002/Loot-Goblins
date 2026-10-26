@@ -8,6 +8,7 @@
 --
 -- A row:
 --   id       stable forever (saved in profiles). Never rename or reuse one; retire it with `retired = true`.
+--            (V13.5: `unearnable = true` is gentler: owners keep and wear it; it is only no longer offered.)
 --   slot     where it goes (Catalog.SLOTS). One item per slot, except emotes (every owned emote is in the wheel).
 --   name, blurb   what the shop says.
 --   rarity   common | uncommon | rare | legendary | trophy (unlocked by an achievement) | premium (Robux only).
@@ -1470,6 +1471,7 @@ local ITEMS = {
 		blurb = "A winner's laurel for a pet that won the Pet Derby.",
 		rarity = "trophy",
 		unlock = "derby_winner",
+		unearnable = true, -- V13.5: the Derby is gone; whoever won one keeps and wears it, and it is offered to nobody else
 		vibe = "competitive",
 	},
 	{
@@ -2137,9 +2139,9 @@ Catalog.ACHIEVEMENTS = {
 	{
 		id = "port_regular",
 		name = "Port Regular",
-		how = "Finish all seven Port games at least once.",
+		how = "Finish all three Port games at least once.",
 		stat = "gamesTried",
-		goal = 7,
+		goal = 3, -- V13.5: the Regatta, the Gauntlet and Cannon Golf (it was seven; whoever has it keeps it)
 		shinies = 50,
 		reward = "title_regular",
 	},
@@ -2186,6 +2188,7 @@ Catalog.ACHIEVEMENTS = {
 		goal = 1,
 		shinies = 30,
 		reward = "pethat_laurel",
+		unearnable = true, -- V13.5: shown only to those who earned it; it cannot be unlocked any more
 	},
 }
 

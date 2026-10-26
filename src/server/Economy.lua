@@ -376,6 +376,7 @@ function Economy.checkAchievements(profile, now, historyLimit)
 	for _, achievement in ipairs(Catalog.ACHIEVEMENTS) do
 		if
 			not profile.achievements[achievement.id]
+			and not achievement.unearnable -- V13.5: it stays with whoever earned it, and unlocks for nobody else
 			and Economy.statValue(profile, achievement.stat) >= achievement.goal
 		then
 			profile.achievements[achievement.id] = now or 0

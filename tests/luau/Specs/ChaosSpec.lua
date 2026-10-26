@@ -34,7 +34,12 @@ return function(t)
 	end)
 
 	t.test("a raid holds several episodes with calm between them", function()
-		-- The fewest episodes: the latest first one, the longest calms, episodes as long as they get.
+		-- The fewest episodes: the latest first one, the longest calms, episodes as long as they get (V13.5: in the
+		-- biggest mood, which brings the most and rests the longest after).
+		local scale, calm = 1, 1
+		for _, mood in ipairs(X.MOODS) do
+			scale, calm = math.max(scale, mood.scale), math.max(calm, mood.calm)
+		end
 		local longest = {
 			meteors = 14,
 			kraken = 18,
@@ -49,12 +54,31 @@ return function(t)
 			local at, count = X.FIRST[2], 0
 			while at < Config.RAID_DURATION - X.LAST do
 				count += 1
-				at += length + X.CALM[2]
+				at += length * scale + X.CALM[2] * calm
 			end
 			t.ok(count >= 4, id .. ": at least four episodes (" .. count .. ")")
 			t.ok(X.CALM[1] >= 10, "a real calm between")
 		end
 		t.ok(X.HOME_CLEAR > Config.SANCTUARY.RADIUS + 100, "never in the sanctuary round home")
+	end)
+
+	t.test("V13.5: episodes have moods (a flurry, the usual, a big one) whose chances add up", function()
+		local total, ids = 0, {}
+		for _, mood in ipairs(X.MOODS) do
+			total += mood.chance
+			ids[mood.id] = mood
+			t.ok(mood.scale > 0.4 and mood.scale < 2, mood.id .. ": a sensible scale")
+			t.ok(mood.calm > 0.5 and mood.calm < 2, mood.id .. ": a sensible calm")
+		end
+		t.ok(math.abs(total - 1) < 1e-6, "the chances add up to one")
+		t.ok(ids.flurry.scale < 1 and ids.big.scale > 1, "a flurry brings less, a big one more")
+		t.ok(ids.big.calm > 1, "and a big one is followed by a longer calm")
+		t.ok(ids.big.name and #ids.big.name < 14, "a big one is announced")
+		local S = X.meteors.shock
+		t.ok(
+			S.reach > 1 and S.push < X.meteors.out and S.hull < X.meteors.hull,
+			"a meteor's shockwave reaches further, softer"
+		)
 	end)
 
 	t.test("the world batters, it does not wreck: hits are recoverable", function()

@@ -1,15 +1,19 @@
--- CANNON GOLF (V13.3): fire yourself at three floating greens off the Port's south-west jetty, one shot each, and score
--- by how close to the pin you come to rest. The tee cannons are real launchers (server/Flight.lua), so the throw, the
--- tumble, the glide (Space), the dive (Shift), the skips across the water and the head-first landings are all the
--- game's own: only the aim is different. Instead of looking at where you want to land, you AIM THE WAY YOU LOOK and
--- HOLD to charge the power (client/PlayHud.lua draws the meter); the server turns (direction, power) into the throw
--- (PortGames.golfVelocity: a fixed elevation, the speed between MIN_SPEED and MAX_SPEED), so a client can ask for a
--- direction and a power, never a velocity.
+-- CANNON GOLF (V13.3; V13.5: six holes of water-skipping golf, in strokes): fire yourself off the Port's south-west
+-- jetty at six targets out on the sea. The tee cannons are real launchers (server/Flight.lua) marked `skim`, so the
+-- throw, the tumble, the glide (Space), the dive (Shift) and the head-first landings are all the game's own, and the
+-- sea skips you like a stone (Config.DIVE.SKIM): a SHALLOW arrival bounces on, lower and flatter each time; a steep one
+-- plops. The client says only a direction (its height is the elevation: look up to lob, down to skim) and a power; the
+-- server turns them into the throw (PortGames.golfVelocity).
 --
---   SCORING     Flight.Landed says where a goblin came down for good (after any skips): the flat distance to the
---               pin is points (PortGames.golfPoints): in the cup 100, so close 70, the green 45, the fringe 20,
---               a splash 0. Three holes, 300 at most. A goblin who sits in the cannon too long has that hole skipped.
---   PLAYERS     three tees side by side: three goblins can play at once (each run is its own; a challenge takes two).
+--   THE HOLES   (shared/PortGames.lua: PortGames.GOLF.holes) the Puddle Jump (a lob), the Skipping Stone (too far to
+--               fly), the Bend (stacks in the way: skim wide and curve), the Lily Pad (small and close), Over the Top
+--               (lob the ridge or skip round it) and the Kraken's Crown (an islet in a reef: through the gap, then a
+--               glide to stop on it).
+--   SCORING     Flight.Landed says where a goblin came down for good and whether on something solid. On the hole's
+--               target: in its cup is that stroke (an ace on the first), elsewhere on it one putt more. In the sea it
+--               costs the stroke and you are back in the cannon at once. After par + 1 shots without holing out the
+--               caddy picks your ball up (par + PICKUP). The round is the strokes of all six (par 16): fewest wins.
+--   PLAYERS     three tees side by side: three goblins can play at once (each round is its own; a challenge takes two).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("LootGoblins")
@@ -58,66 +62,187 @@ function CannonGolf.canJoin(_player)
 end
 
 -- Building ------------------------------------------------------------------------------------------------------------------
-local function green(kit, g, index)
-	local c = g.center
-	local disc = kit.part(
-		"Green",
-		v3(1.2, g.radius * 2, g.radius * 2),
-		CFrame.new(c) * CFrame.Angles(0, 0, math.rad(90)),
-		rgb(110, 200, 90),
-		Enum.Material.Grass
+local function disc(kit, name, center, radius, thick, color, material, opts)
+	opts = opts or {}
+	opts.cyl = true
+	local fn = opts.solid and kit.part or kit.deco
+	opts.solid = nil
+	return fn(
+		name,
+		v3(thick, radius * 2, radius * 2),
+		CFrame.new(center) * CFrame.Angles(0, 0, math.rad(90)),
+		color,
+		material,
+		opts
 	)
-	disc.Shape = Enum.PartType.Cylinder
-	local fringe = kit.deco(
-		"Fringe",
-		v3(1, GF.FRINGE * 2, GF.FRINGE * 2),
-		CFrame.new(c - v3(0, 0.4, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-		rgb(150, 220, 120),
-		Enum.Material.SmoothPlastic,
-		{ cyl = true, transparency = 0.55, shadow = false }
-	)
-	local _ = fringe
-	local raft = kit.deco(
-		"Raft",
-		v3(1.6, g.radius * 2 + 2, g.radius * 2 + 2),
-		CFrame.new(c - v3(0, 1, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-		Palette.WOOD,
-		Enum.Material.WoodPlanks,
-		{ cyl = true }
-	)
-	local _r = raft
-	kit.deco(
-		"Cup",
-		v3(0.2, GF.CUP * 2, GF.CUP * 2),
-		CFrame.new(c + v3(0, 0.62, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-		rgb(246, 244, 238),
-		Enum.Material.SmoothPlastic,
-		{ cyl = true, shadow = false }
-	)
-	kit.deco(
-		"Hole",
-		v3(0.25, 1.6, 1.6),
-		CFrame.new(c + v3(0, 0.66, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-		rgb(20, 18, 22),
-		Enum.Material.SmoothPlastic,
-		{ cyl = true, shadow = false }
-	)
-	kit.deco("Pin", v3(0.3, 12, 0.3), CFrame.new(c + v3(0, 6.6, 0)), rgb(246, 244, 238), Enum.Material.SmoothPlastic)
-	local flag = kit.deco(
+end
+
+local function flag(kit, center, index, hole)
+	kit.deco("Pin", v3(0.3, 12, 0.3), CFrame.new(center + v3(0, 6, 0)), rgb(246, 244, 238), Enum.Material.SmoothPlastic)
+	local cloth = kit.deco(
 		"PinFlag",
 		v3(0.15, 2.4, 3.4),
-		CFrame.new(c + v3(0, 11.4, 1.7)),
+		CFrame.new(center + v3(0, 10.8, 1.7)),
 		rgb(230, 50, 46),
 		Enum.Material.Fabric
 	)
-	kit.light(flag, rgb(255, 120, 100), 18, 0.8)
+	kit.light(cloth, rgb(255, 120, 100), 18, 0.8)
 	kit.board(
 		"HoleSign",
-		v3(10, 2.6, 0.3),
-		CFrame.lookAt(c + v3(0, 15.5, 0), c + v3(0, 15.5, 0) - golf.facing),
-		index .. ": " .. g.name,
+		v3(14, 3.4, 0.3),
+		CFrame.lookAt(center + v3(0, 16, 0), center + v3(0, 16, 0) - golf.facing),
+		string.format("%d · %s · PAR %d", index, hole.name, hole.par),
 		Palette.GOLD
 	)
+end
+
+-- The target a hole is played to, and the cup and flag on it.
+local function target(kit, hole, index)
+	local c = hole.center
+	if hole.kind == "isle" then
+		-- A sand islet: a skirt of sand to the water, a crown of grass on top.
+		disc(
+			kit,
+			"IsleSand",
+			c - v3(0, 2.6, 0),
+			hole.radius + 7,
+			5,
+			rgb(232, 210, 160),
+			Enum.Material.Sand,
+			{ solid = true }
+		)
+		disc(
+			kit,
+			"IsleTop",
+			c - v3(0, 0.3, 0),
+			hole.radius,
+			0.8,
+			rgb(110, 200, 90),
+			Enum.Material.Grass,
+			{ solid = true }
+		)
+		for k = 0, 4 do
+			local a = k / 5 * math.pi * 2
+			kit.deco(
+				"CrownSpike",
+				v3(2, 6, 2),
+				CFrame.new(c + v3(math.cos(a) * (hole.radius + 3), 1.5, math.sin(a) * (hole.radius + 3))),
+				Palette.GOLD,
+				Enum.Material.Metal,
+				{ wedge = true }
+			)
+		end
+	elseif hole.kind == "pad" then
+		disc(kit, "Pad", c - v3(0, 0.6, 0), hole.radius, 1.2, rgb(90, 170, 80), Enum.Material.Grass, { solid = true })
+		-- Lily pads round it: pretty, and not the target.
+		for k = 0, 5 do
+			local a = k / 6 * math.pi * 2 + 0.4
+			disc(
+				kit,
+				"LilyPad",
+				c + v3(math.cos(a) * 17, -1.2, math.sin(a) * 17),
+				4 + (k % 3),
+				0.4,
+				rgb(70, 150, 70),
+				Enum.Material.Grass
+			)
+		end
+	else
+		disc(
+			kit,
+			"Green",
+			c - v3(0, 0.6, 0),
+			hole.radius,
+			1.2,
+			rgb(110, 200, 90),
+			Enum.Material.Grass,
+			{ solid = true }
+		)
+		disc(
+			kit,
+			"Raft",
+			c - v3(0, 1.6, 0),
+			hole.radius + 1,
+			1.6,
+			Palette.WOOD,
+			Enum.Material.WoodPlanks,
+			{ solid = true }
+		)
+	end
+	disc(
+		kit,
+		"Cup",
+		c + v3(0, 0.05, 0),
+		hole.cup,
+		0.2,
+		rgb(246, 244, 238),
+		Enum.Material.SmoothPlastic,
+		{ shadow = false }
+	)
+	disc(kit, "Hole", c + v3(0, 0.1, 0), 0.8, 0.25, rgb(20, 18, 22), Enum.Material.SmoothPlastic, { shadow = false })
+	flag(kit, c, index, hole)
+end
+
+local function obstacles(kit, hole)
+	for _, stack in ipairs(hole.rocks or {}) do
+		kit.part(
+			"SeaStack",
+			v3(stack.radius * 2, stack.height + 10, stack.radius * 2),
+			CFrame.new(stack.at + v3(0, stack.height / 2 - 5, 0)),
+			Palette.ROCK or rgb(120, 112, 118),
+			Enum.Material.Slate
+		)
+		kit.deco(
+			"StackCap",
+			v3(stack.radius * 1.4, 3, stack.radius * 1.4),
+			CFrame.new(stack.at + v3(0, stack.height, 0)),
+			rgb(236, 230, 214),
+			Enum.Material.Slate
+		)
+	end
+	local ridge = hole.ridge
+	if ridge then
+		local d = v3(ridge.to.X - ridge.from.X, 0, ridge.to.Z - ridge.from.Z)
+		local mid = (ridge.from + ridge.to) / 2
+		kit.part(
+			"Ridge",
+			v3(ridge.thick, ridge.height + 10, d.Magnitude),
+			CFrame.lookAt(v3(mid.X, ridge.height / 2 - 5, mid.Z), v3(mid.X, ridge.height / 2 - 5, mid.Z) + d),
+			Palette.ROCK or rgb(120, 112, 118),
+			Enum.Material.Slate
+		)
+		kit.deco(
+			"RidgeGrass",
+			v3(ridge.thick * 0.8, 2, d.Magnitude * 0.9),
+			CFrame.lookAt(v3(mid.X, ridge.height, mid.Z), v3(mid.X, ridge.height, mid.Z) + d),
+			rgb(110, 170, 80),
+			Enum.Material.Grass
+		)
+	end
+	local reef = hole.reef
+	if reef then
+		-- A ring of low rocks round the islet, open towards the tee: a gap `gap` studs wide.
+		local toward = v3(golf.jettyEnd.X - reef.center.X, 0, golf.jettyEnd.Z - reef.center.Z).Unit
+		local count = 22
+		for k = 0, count - 1 do
+			local a = k / count * math.pi * 2
+			local dir = v3(math.cos(a), 0, math.sin(a))
+			local p = reef.center + dir * reef.radius
+			local sideways = (p - (reef.center + toward * reef.radius))
+			if v3(sideways.X, 0, sideways.Z).Magnitude > reef.gap then
+				kit.part(
+					"ReefRock",
+					v3(14, reef.height + 6, 10),
+					CFrame.lookAt(
+						v3(p.X, reef.height / 2 - 3, p.Z),
+						v3(reef.center.X, reef.height / 2 - 3, reef.center.Z)
+					),
+					rgb(96, 88, 100),
+					Enum.Material.Slate
+				)
+			end
+		end
+	end
 end
 
 local function tee(kit, entry, index)
@@ -168,21 +293,24 @@ local function tee(kit, entry, index)
 	local launcher = Flight.addLauncher({
 		kind = "golf",
 		port = true, -- the raid's resets leave it alone (Flight.reset)
+		skim = true, -- V13.5: the sea skips a golf shot like a stone (Config.DIVE.SKIM)
 		from = entry.from,
 		speed = GF.MAX_SPEED,
 		elevation = GF.ELEVATION,
-		rest = golf.greens[1].center,
+		rest = golf.holes[1].center,
 		prompt = prompt,
 		exit = (base * CFrame.new(0, 3, 4)).Position,
 		back = "landed",
 		timeout = 40,
-		timeoutText = "The caddy tips you out of the cannon. (Hold, then let go, to fire.)",
+		timeoutText = "The caddy tips you out of the cannon: that shot counts. (Hold, then let go, to fire.)",
 		aim = function(direction)
 			local flat = v3(direction.X, 0, direction.Z)
 			if flat.Magnitude > 0.05 then
-				local at = base.Position + v3(0, 1.4, 0)
-				barrel.CFrame = CFrame.lookAt(at, at + flat.Unit)
-					* CFrame.Angles(math.rad(42), 0, 0)
+				local from = base.Position + v3(0, 1.4, 0)
+				local pitch =
+					math.clamp(math.asin(math.clamp(direction.Unit.Y, -1, 1)), GF.ELEVATION_MIN, GF.ELEVATION_MAX)
+				barrel.CFrame = CFrame.lookAt(from, from + flat.Unit)
+					* CFrame.Angles(pitch, 0, 0)
 					* CFrame.Angles(0, math.rad(90), 0)
 			end
 		end,
@@ -224,8 +352,9 @@ function CannonGolf.build(kit)
 	for i, entry in ipairs(golf.tees) do
 		tee(kit, entry, i)
 	end
-	for i, g in ipairs(golf.greens) do
-		green(kit, g, i)
+	for i, hole in ipairs(golf.holes) do
+		target(kit, hole, i)
+		obstacles(kit, hole)
 	end
 end
 
@@ -239,9 +368,27 @@ local function teeOf(player)
 	return nil
 end
 
+local function holeOf(entry)
+	return golf.holes[entry.data.hole]
+end
+
+local function showOf(entry)
+	local hole = holeOf(entry)
+	return {
+		hole = entry.data.hole,
+		of = #golf.holes,
+		par = hole and hole.par or 0,
+		shot = entry.data.shots + 1,
+		max = hole and hole.par + 1 or 0,
+		card = entry.data.card,
+		total = entry.data.total,
+		played = entry.data.parPlayed, -- the par of the holes finished (for "+2 after 3")
+	}
+end
+
 local function load(entry)
 	local record = entry.data.tee
-	local hole = golf.greens[entry.data.hole]
+	local hole = holeOf(entry)
 	if not record or not hole then
 		return
 	end
@@ -251,7 +398,12 @@ local function load(entry)
 			Flight.load(entry.player, record.launcher, hole.center)
 			entry.data.loadedAt = now()
 			entry.data.state = "aiming"
-			Net.send(entry.player, "PlayFx", { kind = "golfhole", game = "golf", hole = entry.data.hole })
+			Net.send(entry.player, "PlayFx", {
+				kind = "golfhole",
+				game = "golf",
+				hole = entry.data.hole,
+				shot = entry.data.shots + 1,
+			})
 		end
 	end)
 end
@@ -268,9 +420,13 @@ function CannonGolf.prepare(session)
 				end
 			end
 			entry.data.hole = 1
-			entry.data.shots = {}
-			entry.score = 0
-			entry.show = { hole = 1, of = #golf.greens, shots = {} }
+			entry.data.shots = 0
+			entry.data.card = {}
+			entry.data.total = 0
+			entry.data.parPlayed = 0
+			entry.data.greens = 0
+			entry.data.bestSkips = 0
+			entry.show = showOf(entry)
 			if entry.data.tee then
 				load(entry)
 			else
@@ -284,39 +440,78 @@ function CannonGolf.go(session, t)
 	session.endsAt = t + GF.LIMIT
 end
 
-local function nextHole(session, entry)
-	if entry.data.hole >= #golf.greens then
+-- The hole is over with `strokes`: on to the next, or the round is done.
+local function holeDone(session, entry, strokes)
+	local hole = holeOf(entry)
+	table.insert(entry.data.card, strokes)
+	entry.data.total += strokes
+	entry.data.parPlayed += hole.par
+	if entry.data.hole >= #golf.holes then
 		entry.data.state = "done"
-		Minigames.done(session, entry.player, entry.score or 0, entry.show)
-		return
+		entry.show = showOf(entry)
+		Minigames.done(session, entry.player, entry.data.total, entry.show)
+		return false
 	end
 	entry.data.hole += 1
-	entry.show.hole = entry.data.hole
+	entry.data.shots = 0
+	entry.show = showOf(entry)
 	session.dirty = true
-	load(entry)
+	return true
 end
 
-local function scoreShot(session, entry, position)
-	local hole = golf.greens[entry.data.hole]
-	local flat = v3(position.X - hole.center.X, 0, position.Z - hole.center.Z).Magnitude
-	local points, kind = PortGames.golfPoints(flat)
-	entry.data.shots[entry.data.hole] = points
-	table.insert(entry.show.shots, points)
-	Minigames.points(session, entry.player, points, entry.show)
-	Net.broadcastNear(position, 600, "PlayFx", {
+-- A shot came down (or never went: `position` nil). Judges it, says so, and moves the round on after a moment.
+local function shotOver(session, entry, position, water, bounces)
+	local hole = holeOf(entry)
+	entry.data.shots += 1
+	entry.data.bestSkips = math.max(entry.data.bestSkips, bounces or 0)
+	local grade, distance = PortGames.golfJudge(hole, position, water)
+	local strokes = PortGames.golfStrokes(hole, entry.data.shots, grade)
+	if grade ~= "miss" then
+		entry.data.greens += 1
+	end
+	local fx = {
 		kind = "golfland",
 		position = position,
 		userId = entry.player.UserId,
-		points = points,
-		grade = kind,
-		distance = math.floor(flat * 10 + 0.5) / 10,
-	})
-	if points >= GF.POINTS.green then
-		entry.data.greens = (entry.data.greens or 0) + 1
+		grade = strokes and grade == "miss" and "pickup" or grade,
+		distance = distance and math.floor(distance * 10 + 0.5) / 10 or nil,
+		skips = bounces or 0,
+		shot = entry.data.shots,
+		strokes = strokes,
+		par = hole.par,
+		hole = entry.data.hole,
+	}
+	if position then
+		Net.broadcastNear(position, 600, "PlayFx", fx)
 	end
+	if not position or not entry.player.Parent then
+		Net.send(entry.player, "PlayFx", fx)
+	end
+	if strokes then
+		holeDone(session, entry, strokes)
+	else
+		entry.show = showOf(entry)
+	end
+	session.dirty = true
+	if entry.data.state == "done" then
+		return
+	end
+	entry.data.state = "landed"
+	local token = entry.data.hole * 100 + entry.data.shots
+	task.delay(GF.RETURN, function()
+		if
+			session.state == "running"
+			and not entry.left
+			and not entry.done
+			and entry.data.state == "landed"
+			and entry.data.hole * 100 + entry.data.shots == token
+		then
+			load(entry)
+		end
+	end)
 end
 
-Flight.Landed:Connect(function(player, position, launcher)
+Flight.Landed:Connect(function(player, position, launcher, info)
 	if not launcher or launcher.kind ~= "golf" then
 		return
 	end
@@ -324,29 +519,17 @@ Flight.Landed:Connect(function(player, position, launcher)
 	if not entry or not session or session.game ~= "golf" or entry.data.state ~= "flying" then
 		return
 	end
-	entry.data.state = "landed"
-	scoreShot(session, entry, position)
-	local token = entry.data.hole
-	task.delay(GF.RETURN, function()
-		if
-			session.state == "running"
-			and not entry.left
-			and entry.data.hole == token
-			and entry.data.state == "landed"
-		then
-			nextHole(session, entry)
-		end
-	end)
+	shotOver(session, entry, position, info == nil or info.water, info and info.bounces or 0)
 end)
 
--- The client's shot: a flat direction and a power (0..1). The barrel turns as it aims ("golfaim").
+-- The client's shot: a direction (its height is the elevation) and a power (0..1). The barrel turns as it aims.
 function CannonGolf.input(session, player, action, a, b)
 	local entry = session.entries[player]
 	if not entry or entry.data.state ~= "aiming" then
 		return
 	end
 	local record = entry.data.tee
-	if action == "golfaim" and typeof(a) == "Vector3" and record then
+	if action == "golfaim" and typeof(a) == "Vector3" and a == a and record then
 		record.launcher.aim(a)
 	elseif action == "golf" and record and Flight.phaseOf(player) == "loaded" then
 		local velocity = PortGames.golfVelocity(a, b)
@@ -360,28 +543,13 @@ end
 
 function CannonGolf.tick(session, _dt, t)
 	for player, entry in pairs(session.entries) do
-		if not entry.done and not entry.left then
-			-- Tipped out of the cannon (sat too long), or the flight ended without a landing: that hole is skipped.
-			if
-				entry.data.state == "aiming"
-				and Flight.phaseOf(player) == nil
-				and t - (entry.data.loadedAt or t) > 1.5
-			then
-				entry.data.state = "landed"
-				table.insert(entry.show.shots, 0)
-				entry.data.shots[entry.data.hole] = 0
-				Net.send(player, "PlayFx", { kind = "golfskip", game = "golf" })
-				nextHole(session, entry)
-			elseif
-				entry.data.state == "flying"
-				and Flight.phaseOf(player) == nil
-				and t - (entry.data.firedAt or t) > 2
-			then
-				-- (Landed fires first in every ordinary landing; this is the safety net.)
-				entry.data.state = "landed"
-				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-				scoreShot(session, entry, root and root.Position or golf.jettyEnd)
-				nextHole(session, entry)
+		if not entry.done and not entry.left and Flight.phaseOf(player) == nil then
+			-- Tipped out of the cannon (sat too long: that shot counts, as a miss), or a flight that ended without a
+			-- landing (Landed fires first in every ordinary one: this is the safety net).
+			local tipped = entry.data.state == "aiming" and t - (entry.data.loadedAt or t) > 1.5
+			local lost = entry.data.state == "flying" and t - (entry.data.firedAt or t) > 2
+			if tipped or lost then
+				shotOver(session, entry, nil, true, 0)
 			end
 		end
 	end
@@ -409,17 +577,12 @@ function CannonGolf.stop(session)
 end
 
 function CannonGolf.spot(_session, _player)
-	local at = golf.jettyRoot + v3(0, 3.5, 0)
-	return CFrame.lookAt(at, at + golf.facing)
+	local spot = golf.jettyRoot + v3(0, 3.5, 0)
+	return CFrame.lookAt(spot, spot + golf.facing)
 end
 
 function CannonGolf.public(_session)
-	return { holes = #golf.greens }
-end
-
--- For Progress (quests): how many greens a finished round landed on.
-function CannonGolf.greensOf(entry)
-	return entry and entry.data and entry.data.greens or 0
+	return { holes = #golf.holes, par = golf.par }
 end
 
 return CannonGolf

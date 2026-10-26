@@ -48,7 +48,9 @@ Progress.Opened = Util.signal() -- (player): their saved profile is open (Moneti
 Progress.Deed = Util.signal()
 Progress.RaidRewarded = Util.signal()
 Progress.AfterRaid = Util.signal()
-Progress.GamePlayed = Util.signal() -- (player, session, gameId, score, run): a Port game's run was paid (Leaderboards)
+-- (player, session, gameId, score, run, extra): a Port game's run was paid (Leaderboards). extra (V13.5): { board (the
+-- board this score goes on, or nil: a test drive's lap is not a Racing Tub lap), class (the Regatta boat) }.
+Progress.GamePlayed = Util.signal()
 Progress.actions = {}
 Progress.publishers = {}
 
@@ -378,21 +380,22 @@ function Progress.checkAchievements(player)
 end
 
 -- V13.3: a finished Port game run (server/Minigames.lua calls this through Minigames.reward). score: the run's score,
--- or nil if it did not count (did not finish, or scored nothing). place: among the goblins in the heat (the Derby's
--- counts its bot pets too). Pays within the day's caps (shared/PortGames.lua: the counters live in the profile),
--- records bests, feeds quests, the boards and achievements. Returns the breakdown the results card shows.
+-- or nil if it did not count (did not finish, or scored nothing). place: among the goblins in the heat. Pays within the
+-- day's caps (shared/PortGames.lua: the counters live in the profile), records bests, feeds quests, the boards and
+-- achievements. Returns the breakdown the results card shows. V13.5: a Regatta lap's best is kept per boat class, and
+-- only a Racing Tub lap goes on the FASTEST REGATTA board (a test drive is a class record instead).
 function Progress.onPortGame(player, gameId, score, place, humans, gameSession)
 	local s = sessions[player]
 	if not s then
 		return nil
 	end
 	local profile = s.profile
-	local run = PortGames.finishRun(profile, gameId, score, place, humans, unix())
+	local entry = gameSession and gameSession.entries and gameSession.entries[player]
+	local data = entry and entry.data or {}
+	local class = gameId == "regatta" and (data.class or "racer") or nil
+	local run = PortGames.finishRun(profile, gameId, score, place, humans, unix(), PortGames.recordKey(gameId, class))
 	if score ~= nil then
 		s.gamesPlayed = (s.gamesPlayed or 0) + 1
-		if gameId == "derby" and place == 1 then
-			profile.stats.derbyWins = (profile.stats.derbyWins or 0) + 1
-		end
 	end
 	changed(s, run.shinies > 0)
 	if run.shinies > 0 then
@@ -411,18 +414,22 @@ function Progress.onPortGame(player, gameId, score, place, humans, gameSession)
 		if run.medal == "gold" then
 			Progress.record(player, "medal_gold")
 		end
-		local entry = gameSession and gameSession.entries and gameSession.entries[player]
-		local data = entry and entry.data or {}
-		if gameId == "golf" and (data.greens or 0) > 0 then
-			Progress.record(player, "golf_green", data.greens)
-		elseif gameId == "toss" then
-			Progress.record(player, "toss_points", score)
-		elseif gameId == "crabs" and (data.crabs or 0) > 0 then
-			Progress.record(player, "crabs", data.crabs)
-		elseif gameId == "gallery" and (data.hits or 0) > 0 then
-			Progress.record(player, "gallery_hits", data.hits)
+		if gameId == "golf" then
+			if (data.greens or 0) > 0 then
+				Progress.record(player, "golf_green", data.greens)
+			end
+			if (data.bestSkips or 0) >= 3 then
+				Progress.record(player, "golf_skips")
+			end
+		elseif class then
+			Progress.record(player, "regatta_class", 1, class)
 		end
-		Progress.GamePlayed:Fire(player, s, gameId, score, run)
+		local def = PortGames.BY_ID[gameId]
+		local board = def and def.board
+		if gameId == "regatta" and class ~= "racer" then
+			board = nil -- a test drive: fair only against the same boat (its class record)
+		end
+		Progress.GamePlayed:Fire(player, s, gameId, score, run, { board = board, class = class })
 	end
 	Progress.checkAchievements(player)
 	return {
@@ -434,6 +441,7 @@ function Progress.onPortGame(player, gameId, score, place, humans, gameSession)
 		previous = run.previous,
 		won = run.won,
 		capped = run.capped,
+		class = class, -- V13.5: the boat this lap was in (its best is that boat's own)
 		balance = profile.shinies,
 		today = profile.games.earned,
 		cap = Config.PLAYGROUND.DAILY_SHINIES,

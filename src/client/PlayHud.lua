@@ -1,16 +1,19 @@
 -- The Port's games on this client (V13.3). Everything here is drawn from what the server publishes
 -- (ReplicatedStorage.LootGoblinsPlay: one JSON StringValue per session, and a fast `.live` one for games that move a
 -- lot) and from shared/PortGames.lua; this client only ever sends intent (PlayRequest: "leave", "again", a game's
--- own input). The game-specific parts live beside it: client/PlayGolf.lua (the tee's aim and power), PlayRange.lua
--- (Treasure Toss and the Target Gallery: targets, throws, cannons), PlayCritters.lua (the Derby's pets and the crabs).
+-- own input). The golf tee's aim and power and its chase camera live beside it in client/PlayGolf.lua. (V13.5 removed
+-- PlayRange.lua and PlayCritters.lua with the Toss, the Gallery, the Derby and Crab Chaos.)
 --
 --   VENUE SIGNS  over each venue, what it is doing now: E TO PLAY, STARTING IN 5 (2 in), RACE ON, how many are waiting.
---   THE PANEL    while you play: the game, a big 3-2-1-GO, the clock (time games count up, points games count down),
---                your progress (a checkpoint, a hole, your points and place), the leaders, LEAVE and RESET. If you
---                are signed up for the raid, a red warning before it leaves (it ends your game).
---   MARKERS      the next checkpoint (Regatta) or platform (Gauntlet), pointed at from wherever you are.
---   RESULTS      your score, place and medal, a new best, the Shinies (and the day's cap), AGAIN or REMATCH.
--- The raid HUD steps aside in the Port; while you drive a Racing Tub its boat panel comes back (client/Hud.lua).
+--   THE PANEL    while you play: the game, a big 3-2-1-GO, the clock (time games count up; golf shows your score
+--                against par), your progress (a checkpoint, a platform, a hole and its shot), the leaders, LEAVE and
+--                RESET. If you are signed up for the raid, a red warning before it leaves (it ends your game).
+--   THE BOATS    (V13.5) in a Regatta lobby, every boat to race in: the Racing Tub or a test drive in any class.
+--   MARKERS      the next checkpoint (Regatta), platform (Gauntlet) or pin (Golf), pointed at from wherever you are.
+--   RESULTS      your score, place and medal, a new best, the Shinies (and the day's cap), AGAIN or REMATCH; a Regatta
+--                lap's boat and the week's record in it, a golf round's card.
+--   THE DOCK     (V13.5) the start lights over the Regatta's line, and the week's class records board.
+-- The raid HUD steps aside in the Port; at the wheel of a Regatta boat its boat panel comes back (client/Hud.lua).
 local ContextActionService = game:GetService("ContextActionService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -20,12 +23,11 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("LootGoblins")
 local Config = require(Shared:WaitForChild("Config"))
+local Catalog = require(Shared:WaitForChild("Catalog"))
 local PortGames = require(Shared:WaitForChild("PortGames"))
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
 local PlayGolf = require(script.Parent.PlayGolf)
-local PlayRange = require(script.Parent.PlayRange)
-local PlayCritters = require(script.Parent.PlayCritters)
 
 local PlayHud = {}
 
@@ -42,7 +44,8 @@ local lives = {} -- id -> decoded live data
 local hud -- client/Hud (toasts, banners)
 local gui, scaler, panel, title, big, sub, roster, buttons, resetButton, warning
 local readyButton, callout -- V13.4: START NOW in a lobby; the flash under the panel (splits, places, a new best)
-local ticker, tickerToken = nil, 0 -- V13.4: the Derby commentator's line
+local picker, pickerButtons = nil, {} -- V13.5: the Regatta lobby's boats
+local openShop -- V13.5: (focus) opens the wardrobe (the results card's SHOWROOM)
 local resultCard
 -- V13.4: this run as it goes (checkpoint times, place, whether the best is beaten yet), and the checkpoint times of
 -- this visit's best run per time game (so a split says how you are doing against it).
@@ -83,10 +86,40 @@ local function scoreText(def, score)
 	end
 	if def and def.kind == "time" then
 		return string.format("%.2f s", score)
+	elseif def and def.kind == "strokes" then
+		return string.format("%d strokes", math.floor(score + 0.5))
 	end
 	return tostring(math.floor(score + 0.5)) .. " pts"
 end
 PlayHud.scoreText = scoreText
+
+-- V13.5: the boats a Regatta can be raced in (the Racing Tub, then every class), and their names.
+local BOATS = { "racer" }
+for _, row in ipairs(Config.BOAT_CLASSES) do
+	table.insert(BOATS, row.id)
+end
+local function boatName(class)
+	local spec = Config.BOAT_TYPES[class or "racer"]
+	return spec and spec.name or "Racing Tub"
+end
+PlayHud.boatName = boatName
+
+local function ownsBoat(class)
+	if class == "racer" then
+		return true
+	end
+	local item = Catalog.get("boat_" .. class)
+	if item and Catalog.isFree(item) then
+		return true
+	end
+	return string.find("," .. (player:GetAttribute("Owned") or "") .. ",", ",boat_" .. class .. ",", 1, true) ~= nil
+end
+
+-- The week's class records (server/Leaderboards.lua publishes them): class -> { s, n }.
+local function classRecords()
+	local ok, data = pcall(HttpService.JSONDecode, HttpService, workspace:GetAttribute("RegattaRecords") or "{}")
+	return ok and type(data) == "table" and type(data.laps) == "table" and data.laps or {}
+end
 
 -- Watching the server's sessions ----------------------------------------------------------------------------------------
 local folder
@@ -265,21 +298,51 @@ local function build()
 		Visible = false,
 	})
 	Ui.stroke(callout, C.night, 2.5).ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
-	ticker = Ui.label(root, {
-		Name = "Commentator",
+	-- V13.5: the Regatta lobby's boats. The tub is everyone's same boat (the board's race); any class is a test drive.
+	picker = Ui.make("Frame", {
+		Name = "BoatPicker",
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -120),
-		Size = UDim2.fromOffset(520, 34),
-		Text = "",
-		Font = Ui.TITLE,
-		TextSize = 22,
-		TextColor3 = C.goldPale,
+		Position = UDim2.new(0.5, 0, 1, -112),
+		Size = UDim2.fromOffset(724, 108),
 		BackgroundColor3 = C.night,
-		BackgroundTransparency = 0.25,
-		TextXAlignment = Enum.TextXAlignment.Center,
+		BackgroundTransparency = 0.2,
 		Visible = false,
+	}, root)
+	Ui.corner(picker, 14)
+	Ui.stroke(picker, GOLD, 2)
+	Ui.label(picker, {
+		Position = UDim2.fromOffset(12, 4),
+		Size = UDim2.new(1, -24, 0, 20),
+		Text = "YOUR BOAT: the RACING TUB races for the board · any other is a TEST DRIVE (yours or not, free)",
+		Font = Ui.BOLD,
+		TextSize = 13,
+		TextColor3 = C.goldPale,
+		TextXAlignment = Enum.TextXAlignment.Center,
 	})
-	Ui.corner(ticker, 17)
+	local grid = Ui.make("Frame", {
+		Position = UDim2.fromOffset(8, 28),
+		Size = UDim2.new(1, -16, 1, -34),
+		BackgroundTransparency = 1,
+	}, picker)
+	Ui.make("UIGridLayout", {
+		CellSize = UDim2.fromOffset(114, 34),
+		CellPadding = UDim2.fromOffset(4, 4),
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, grid)
+	for i, class in ipairs(BOATS) do
+		pickerButtons[class] = Ui.button(grid, {
+			text = boatName(class),
+			style = class == "racer" and "good" or "wood",
+			size = UDim2.fromOffset(114, 34),
+			textSize = 13,
+			order = i,
+			name = class,
+		}, function()
+			playRemote:FireServer("choose", "regatta", class)
+			Effects.chime({ 1.26 }, 0.35)
+		end)
+	end
 	-- The marker over the next checkpoint or platform.
 	local anchor = Ui.make("Part", {
 		Name = "PlayMarkerAnchor",
@@ -387,34 +450,38 @@ local function updateVenueSigns(t)
 end
 
 -- The panel while playing ---------------------------------------------------------------------------------------------------
-local function progressLine(def, session, row, t)
+local function progressLine(def, _session, row, _t)
 	local x = row and row.x
 	if def.id == "regatta" and type(x) == "table" then
-		return string.format("CHECKPOINT %d/%d%s", x.cp or 0, x.of or 13, x.pos and ("  ·  " .. ordinal(x.pos)) or "")
+		return string.format(
+			"%s  ·  CHECKPOINT %d/%d%s",
+			string.upper(boatName(x.boat)),
+			x.cp or 0,
+			x.of or #PortGames.REGATTA.checkpoints,
+			x.pos and ("  ·  " .. ordinal(x.pos)) or ""
+		)
 	elseif def.id == "gauntlet" and type(x) == "table" then
-		return string.format("PLATFORM %d/%d", x.cp or 0, x.of or 8)
+		local falls = x.falls or 0
+		return string.format(
+			"PLATFORM %d/%d%s",
+			x.cp or 0,
+			x.of or 8,
+			falls > 0 and string.format("  ·  %d splash%s", falls, falls > 1 and "es" or "") or ""
+		)
 	elseif def.id == "golf" and type(x) == "table" then
-		local shots = {}
-		for _, s in ipairs(x.shots or {}) do
-			table.insert(shots, tostring(s))
+		-- V13.5: the hole, its par, the shot, and the card so far.
+		local card = {}
+		for _, strokes in ipairs(x.card or {}) do
+			table.insert(card, tostring(strokes))
 		end
 		return string.format(
-			"HOLE %d/%d  ·  %s",
+			"HOLE %d/%d  ·  PAR %d  ·  SHOT %d/%d%s",
 			x.hole or 1,
-			x.of or 3,
-			#shots > 0 and table.concat(shots, " + ") or "aim and hold to charge"
-		)
-	elseif def.id == "derby" then
-		return PlayCritters.derbyLine(session, t) or "CHEER (SPACE) as your pet reaches a hurdle!"
-	elseif def.id == "crabs" then
-		-- V13.4: the co-op goal in view: how many are still loose.
-		local loose = PlayCritters.crabsLeft(session.id)
-		local place = row and row.p
-		return string.format(
-			"🦀 %s LEFT  ·  %s%s",
-			loose and tostring(loose) or "?",
-			scoreText(def, row and row.s or 0),
-			place and ("  ·  " .. ordinal(place)) or ""
+			x.of or #PortGames.GOLF.holes,
+			x.par or 2,
+			x.shot or 1,
+			x.max or 3,
+			#card > 0 and ("  ·  card " .. table.concat(card, " ")) or ""
 		)
 	end
 	local place = row and row.p
@@ -532,18 +599,7 @@ local function track(session, def, row, t)
 		end
 		run.pos = x.pos
 	end
-	if def.id == "crabs" then
-		local loose = PlayCritters.crabsLeft(session.id)
-		if loose and loose <= 3 and loose > 0 and loose ~= run.loose then
-			flash(
-				loose == 1 and "LAST CRAB!" or string.format("%d CRABS LEFT!", loose),
-				Color3.fromRGB(255, 130, 110),
-				1.1
-			)
-		end
-		run.loose = loose
-	end
-	if def.kind ~= "time" and row.b and row.s and row.s > row.b and not run.beaten then
+	if def.kind == "points" and row.b and row.s and row.s > row.b and not run.beaten then
 		run.beaten = true
 		flash("★ NEW BEST!", GOLD, 1.6)
 		Effects.chime(Effects.CHIME_GOOD, 0.6)
@@ -563,6 +619,37 @@ local function keepSplits(def, score)
 	end
 end
 
+-- V13.5: the Gauntlet's hooks for the leg ahead glow, so the way on reads at a glance (the rest stay gold metal).
+local hookParts, nextHookLook, litLeg = nil, 0, nil
+local function lightHooks(leg)
+	if not hookParts and os.clock() >= nextHookLook then
+		nextHookLook = os.clock() + 2
+		local found = {}
+		local generated = workspace:FindFirstChild("LootGoblinsGenerated")
+		for _, d in ipairs(generated and generated:GetDescendants() or {}) do
+			if d.Name == "GauntletHook" and d:IsA("BasePart") then
+				for i, h in ipairs(PortGames.GAUNTLET.hooks) do
+					if (d.Position - h.at).Magnitude < 1 then
+						found[i] = d
+					end
+				end
+			end
+		end
+		if next(found) then
+			hookParts = found
+		end
+	end
+	if not hookParts or leg == litLeg then
+		return
+	end
+	litLeg = leg
+	for i, part in pairs(hookParts) do
+		local on = PortGames.GAUNTLET.hooks[i].leg == leg
+		part.Material = on and Enum.Material.Neon or Enum.Material.Metal
+		part.Color = on and Color3.fromRGB(255, 240, 150) or Color3.fromRGB(255, 205, 70)
+	end
+end
+
 local lastRosterText
 local function updatePanel(t)
 	local session = mySession()
@@ -572,6 +659,8 @@ local function updatePanel(t)
 		roster.Visible = false
 		warning.Visible = false
 		marker.Enabled = false
+		picker.Visible = false
+		lightHooks(nil)
 		return
 	end
 	local def = PortGames.BY_ID[session.game]
@@ -581,6 +670,19 @@ local function updatePanel(t)
 	buttons.Visible = session.state ~= "results"
 	resetButton.Visible = (def.id == "regatta" or def.id == "gauntlet") and session.state == "running"
 	readyButton.Visible = session.state == "lobby"
+	-- V13.5: the Regatta lobby's boats, the chosen one lit, the ones you do not own marked as a test drive.
+	picker.Visible = def.id == "regatta" and session.state == "lobby"
+	if picker.Visible then
+		local chosen = row and row.o or "racer"
+		for class, button in pairs(pickerButtons) do
+			local mine = class == chosen
+			button.Text = (mine and "✔ " or "")
+				.. boatName(class)
+				.. ((class ~= "racer" and not ownsBoat(class)) and " ·TEST" or "")
+			button.BackgroundColor3 = mine and C.gold or (class == "racer" and C.good or C.woodMid)
+			button.TextColor3 = mine and C.ink or (class == "racer" and C.white or C.parchment)
+		end
+	end
 	if session.state == "lobby" then
 		local ready, count = 0, 0
 		for _, other in ipairs(session.players or {}) do
@@ -612,9 +714,14 @@ local function updatePanel(t)
 		sub.Text = def.id == "regatta" and "🚀 Throttle (W) right on GO: a rocket start!" or def.hint
 	elseif session.state == "running" then
 		big.TextSize = 38
+		local x = row and type(row.x) == "table" and row.x or nil
 		if def.kind == "time" then
 			big.Text = row and row.d and row.s and string.format("%.2f s", row.s)
 				or clock(t - (session.goAt or t), true)
+		elseif def.kind == "strokes" then
+			-- V13.5: golf's score is against the par of the holes played so far.
+			local toPar = x and (x.played or 0) > 0 and PortGames.toPar(x.total or 0, x.played) or "E"
+			big.Text = string.format("%s   %s", toPar, clock((session.endsAt or t) - t))
 		else
 			big.Text = clock((session.endsAt or t) - t) .. "   " .. tostring(math.floor((row and row.s or 0) + 0.5))
 		end
@@ -653,6 +760,11 @@ local function updatePanel(t)
 			local p = PortGames.GAUNTLET.platforms[(x.cp or 0) + 1]
 			target = p and (p.center + Vector3.new(0, 9, 0))
 			markerLabel.Text = p and ("▼ " .. (p.name == "FINISH" and "THE BELL" or "NEXT")) or ""
+			lightHooks(x.cp or 0)
+		elseif def.id == "golf" then
+			local hole = PortGames.GOLF.holes[x.hole or 1]
+			target = hole and (hole.center + Vector3.new(0, 20, 0))
+			markerLabel.Text = hole and string.format("▼ %d · PAR %d", x.hole or 1, hole.par) or ""
 		end
 	end
 	if target then
@@ -717,10 +829,10 @@ function PlayHud.result(p)
 		TextSize = 30,
 		LayoutOrder = 2,
 	})
-	if p.place and (p.players or 1) >= 2 or (def.id == "derby" and p.place) then
+	if p.place and (p.players or 1) >= 2 then
 		Ui.label(card, {
 			Size = UDim2.new(1, 0, 0, 22),
-			Text = ordinal(p.place) .. (def.id == "derby" and " of the field" or (" of " .. tostring(p.players))),
+			Text = ordinal(p.place) .. " of " .. tostring(p.players),
 			Font = Ui.TITLE,
 			TextSize = 18,
 			TextColor3 = p.place == 1 and C.goldDeep or C.ink,
@@ -737,13 +849,19 @@ function PlayHud.result(p)
 		versus = string.format(
 			"★ NEW BEST!  %s",
 			def.kind == "time" and string.format("-%.2f s", math.abs(gap))
+				or def.kind == "strokes" and string.format("-%d", math.floor(math.abs(gap) + 0.5))
 				or string.format("+%d", math.floor(gap + 0.5))
 		)
 	elseif b.first then
 		versus = "First score here: now beat it!"
 	elseif gap then
-		versus = def.kind == "time" and string.format("+%.2f s off your best (%s)", gap, scoreText(def, b.previous))
-			or string.format("%d short of your best (%s)", math.floor(-gap + 0.5), scoreText(def, b.previous))
+		if def.kind == "time" then
+			versus = string.format("+%.2f s off your best (%s)", gap, scoreText(def, b.previous))
+		elseif def.kind == "strokes" then
+			versus = string.format("%d over your best (%s)", math.floor(gap + 0.5), scoreText(def, b.previous))
+		else
+			versus = string.format("%d short of your best (%s)", math.floor(-gap + 0.5), scoreText(def, b.previous))
+		end
 		if gap == 0 then
 			versus = "Equal to your best!"
 		end
@@ -769,13 +887,49 @@ function PlayHud.result(p)
 			end
 		end
 	end
-	if chase and def.id ~= "derby" then
+	if chase then
 		Ui.label(card, {
 			Size = UDim2.new(1, 0, 0, 18),
 			Text = string.format("%s %s at %s", MEDAL[chase], string.upper(chase), scoreText(def, ladder[chase])),
 			Font = Ui.BOLD,
 			TextSize = 13,
 			TextColor3 = C.inkSoft,
+			LayoutOrder = 5,
+		})
+	end
+	-- V13.5: what this run was in, and what it is measured against.
+	local extra
+	local session = sessions[p.session]
+	local mine = session and myRow(session)
+	if def.id == "regatta" then
+		local class = b.class or (mine and mine.o) or "racer"
+		local record = classRecords()[class]
+		extra = string.format(
+			"%s%s",
+			class == "racer" and "Racing Tub (the board's race)" or ("Test drive: " .. boatName(class)),
+			record and string.format("  ·  week's record %.2f s (%s)", record.s, record.n or "?")
+				or "  ·  no record yet this week!"
+		)
+	elseif def.id == "golf" and mine and type(mine.x) == "table" and mine.x.card then
+		local cells = {}
+		for i, strokes in ipairs(mine.x.card) do
+			table.insert(cells, string.format("%d:%d", i, strokes))
+		end
+		extra = string.format(
+			"%s  ·  %s against par %d",
+			table.concat(cells, "  "),
+			PortGames.toPar(mine.x.total or 0, PortGames.GOLF.par),
+			PortGames.GOLF.par
+		)
+	end
+	if extra then
+		Ui.label(card, {
+			Size = UDim2.new(1, 0, 0, 30),
+			Text = extra,
+			Font = Ui.BOLD,
+			TextSize = 13,
+			TextColor3 = C.ink,
+			TextWrapped = true,
 			LayoutOrder = 5,
 		})
 	end
@@ -823,13 +977,29 @@ function PlayHud.result(p)
 		end
 		return Enum.ContextActionResult.Pass
 	end, false, 3000, Enum.KeyCode.R, Enum.KeyCode.ButtonY)
-	Ui.button(actions, {
-		text = "CLOSE",
-		style = "ghost",
-		size = UDim2.new(0.4, -4, 1, 0),
-		position = UDim2.new(0.6, 4, 0, 0),
-		textSize = 17,
-	}, closeResult)
+	-- V13.5: a test drive in a boat you do not own: the showroom is one press away.
+	local tested = def.id == "regatta" and (b.class or (mine and mine.o))
+	if tested and tested ~= "racer" and not ownsBoat(tested) and openShop then
+		Ui.button(actions, {
+			text = "🛒 SHOWROOM",
+			style = "good",
+			size = UDim2.new(0.4, -4, 1, 0),
+			position = UDim2.new(0.6, 4, 0, 0),
+			textSize = 15,
+			name = "Showroom",
+		}, function()
+			closeResult()
+			openShop("boat:" .. tested)
+		end)
+	else
+		Ui.button(actions, {
+			text = "CLOSE",
+			style = "ghost",
+			size = UDim2.new(0.4, -4, 1, 0),
+			position = UDim2.new(0.6, 4, 0, 0),
+			textSize = 17,
+		}, closeResult)
+	end
 	Ui.focus(again)
 	if b.best or b.medal == "gold" then
 		Effects.chime(Effects.CHIME_GOOD, 0.8)
@@ -847,7 +1017,7 @@ end
 -- Effects the server asks for ------------------------------------------------------------------------------------------------
 function PlayHud.fx(p)
 	local kind = p.kind
-	if PlayGolf.fx(p) or PlayRange.fx(p) or PlayCritters.fx(p) then
+	if PlayGolf.fx(p) then
 		return
 	end
 	if kind == "splash" and p.position then
@@ -856,10 +1026,25 @@ function PlayHud.fx(p)
 		Effects.sound("splash", { position = p.position, speed = 0.8, volume = 1, range = 500 })
 		Effects.sound("boom", { position = p.position, speed = 1.4, volume = 0.5, range = 500 })
 	elseif kind == "finish" and p.position then
+		-- V13.5: a finish worth crossing: fireworks over the line, a wash of spray, and the place called.
 		Effects.firework(p.position + Vector3.new(0, 18, 0), GOLD)
+		Effects.firework(p.position + Vector3.new(14, 22, 0), Color3.fromRGB(255, 96, 170))
+		Effects.firework(p.position + Vector3.new(-14, 22, 0), Color3.fromRGB(90, 200, 255))
+		Effects.splashColumn(p.position, 16, 8)
 		Effects.sound("rise", { position = p.position, speed = 1.3, volume = 0.9, range = 600 })
 		if p.userId == player.UserId then
-			hud.banner("FINISHED!", GOLD, 2.5, 3)
+			local session = mySession()
+			local mine = session and myRow(session)
+			local place = mine and type(mine.x) == "table" and mine.x.pos
+			hud.banner(place == 1 and "🏆 FIRST ACROSS THE LINE!" or "FINISHED!", GOLD, 2.5, 3)
+			Effects.chime(place == 1 and { 1, 1.26, 1.5, 2, 2.5 } or Effects.CHIME_GOOD, 0.7)
+		end
+	elseif kind == "gate" and p.position then
+		-- V13.5: a Regatta checkpoint passed (only the racer who passed it is told).
+		Effects.ring(p.position + Vector3.new(0, 1, 0), p.shortcut and Color3.fromRGB(150, 230, 255) or GOLD, 30, 0.6)
+		if p.shortcut then
+			flash("⚡ THROUGH THE TEETH!", Color3.fromRGB(150, 230, 255), 1.4)
+			Effects.chime({ 1.5, 2, 2.5 }, 0.5)
 		end
 	elseif kind == "bell" and p.position then
 		Effects.ring(p.position, GOLD, 18, 0.6)
@@ -874,28 +1059,19 @@ function PlayHud.fx(p)
 		Effects.firework(p.position + Vector3.new(10, 4, 0), Color3.fromRGB(200, 140, 255))
 		Effects.firework(p.position + Vector3.new(-10, 4, 0), Color3.fromRGB(150, 230, 255))
 		Effects.sound("rise", { position = p.position, speed = 1.1, volume = 0.8, range = 600 })
-	elseif kind == "streak" and p.n then
-		flash(string.format("🔥 x%d STREAK  +%d", p.n, G.STREAK.BONUS), Color3.fromRGB(255, 160, 70), 1.1)
-		Effects.chime({ 1.26 + math.min(p.n, 8) * 0.08 }, 0.45)
 	elseif kind == "checkpoint" and p.shortcut then
-		flash("⚡ SHORTCUT!", Color3.fromRGB(150, 230, 255), 1.4)
+		flash(
+			(p.skipped or 1) > 1 and string.format("⚡ SHORTCUT! %d PLATFORMS", p.skipped) or "⚡ SHORTCUT!",
+			Color3.fromRGB(150, 230, 255),
+			1.4
+		)
 		Effects.chime({ 1.5, 2, 2.5 }, 0.5)
-	elseif kind == "derbycall" and p.text then
-		-- V13.4: the Derby's commentator, for everyone at the oval.
-		ticker.Text = "📣 " .. p.text
-		ticker.Visible = true
-		tickerToken += 1
-		local mine = tickerToken
-		if p.call == "win" or p.call == "photo" then
-			Effects.chime({ 1, 1.26, 1.5, 2 }, 0.6)
-		end
-		task.delay(2.8, function()
-			if tickerToken == mine then
-				ticker.Visible = false
-			end
-		end)
 	elseif kind == "fall" then
-		hud.toast("Splash! Back to your last platform (the clock runs on).")
+		hud.toast("Splash! Back on your last platform, facing the next (the clock runs on).")
+		if p.position then
+			Effects.ring(p.position - Vector3.new(0, 3, 0), Color3.fromRGB(255, 205, 70), 8, 0.5)
+			Effects.burst(p.position, Color3.fromRGB(255, 240, 160), 20, 14)
+		end
 	elseif kind == "reset" then
 		hud.toast("Back at your last checkpoint.")
 	elseif kind == "lift" then
@@ -926,8 +1102,76 @@ local function update(dt)
 	ctx.mine = session
 	ctx.myRow = session and myRow(session) or nil
 	PlayGolf.update(dt, ctx)
-	PlayRange.update(dt, ctx)
-	PlayCritters.update(dt, ctx)
+	PlayHud.updateDock(t)
+end
+
+-- V13.5: the Regatta's start lights (three red at 3, 2, 1, all green at GO, from the heat's own clock: every client
+-- lights them the same) and the week's class records board on the dock.
+local lights, recordsBoard, nextLook, recordsText = {}, nil, 0, nil
+local LIGHT_OFF, LIGHT_RED, LIGHT_GREEN =
+	Color3.fromRGB(40, 36, 44), Color3.fromRGB(255, 60, 50), Color3.fromRGB(80, 255, 110)
+function PlayHud.updateDock(t)
+	if os.clock() >= nextLook and (#lights < 4 or not recordsBoard) then
+		nextLook = os.clock() + 2
+		local generated = workspace:FindFirstChild("LootGoblinsGenerated")
+		if generated then
+			for _, d in ipairs(generated:GetDescendants()) do
+				local index = d:GetAttribute("StartLight")
+				if index then
+					lights[index] = d
+				elseif d.Name == "RegattaRecordsBoard" then
+					recordsBoard = d
+				end
+			end
+		end
+	end
+	if #lights == 4 then
+		local heat
+		for _, session in pairs(sessions) do
+			if session.game == "regatta" and (session.state == "countdown" or session.state == "running") then
+				heat = session
+			end
+		end
+		local toGo = heat and heat.goAt and heat.goAt - t
+		for i, lamp in ipairs(lights) do
+			local color, lit = LIGHT_OFF, false
+			if toGo and toGo > 0 and i <= 3 and toGo <= 4 - i then
+				color, lit = LIGHT_RED, true
+			elseif toGo and toGo <= 0 and toGo > -1.5 then
+				color, lit = LIGHT_GREEN, true
+			end
+			if lamp.Parent and lamp.Color ~= color then
+				lamp.Color = color
+				lamp.Material = lit and Enum.Material.Neon or Enum.Material.SmoothPlastic
+			end
+		end
+	end
+	if recordsBoard and recordsBoard.Parent then
+		local laps = classRecords()
+		local lines = { "CLASS RECORDS · THIS WEEK" }
+		for _, class in ipairs(BOATS) do
+			local row = laps[class]
+			table.insert(
+				lines,
+				string.format(
+					"%s  %s",
+					boatName(class),
+					row and string.format("%.2f s  %s", row.s, row.n or "?") or "·  open!"
+				)
+			)
+		end
+		local text = table.concat(lines, "\n")
+		if text ~= recordsText then
+			recordsText = text
+			for _, face in ipairs(recordsBoard:GetChildren()) do
+				local label = face:IsA("SurfaceGui") and face:FindFirstChild("Text")
+				if label then
+					label.Text = text
+					label.TextXAlignment = Enum.TextXAlignment.Left
+				end
+			end
+		end
+	end
 end
 
 -- Keyboard: Backspace resets (Regatta, Gauntlet).
@@ -943,15 +1187,14 @@ local function onReset(_, state)
 	return Enum.ContextActionResult.Pass
 end
 
-function PlayHud.start(hudModule, fade)
+function PlayHud.start(hudModule, fade, shop)
 	hud = hudModule
 	PlayHud.fade = fade
+	openShop = shop
 	build()
 	buildVenueSigns()
 	ctx = { hud = hud, remote = playRemote, sessions = sessions, lives = lives }
 	PlayGolf.start(ctx)
-	PlayRange.start(ctx)
-	PlayCritters.start(ctx)
 	task.spawn(function()
 		folder = ReplicatedStorage:WaitForChild("LootGoblinsPlay", 60)
 		if not folder then
@@ -978,6 +1221,12 @@ function PlayHud.start(hudModule, fade)
 			Effects.chime({ 1, 1.26, 1.5 }, 0.5)
 		end
 	end)
+end
+
+-- V13.5: you set the week's record in a boat (server/Leaderboards.lua).
+function PlayHud.classRecord(p)
+	flash(string.format("🏆 WEEK'S %s RECORD!", string.upper(boatName(p.class))), GOLD, 2.2)
+	Effects.chime({ 1, 1.26, 1.5, 2, 2.5 }, 0.8)
 end
 
 -- For the challenge client: the challenge a rematch is for.

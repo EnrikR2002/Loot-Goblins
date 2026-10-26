@@ -13,6 +13,10 @@
 --   haunted    a pair of ghost portals (sail through one, come out of the other) spitting phantom ships that ram
 --   thunder    giant lightning at the busiest water: a shockwave throws boats, and SUPERCHARGES them (a free boost)
 --
+-- V13.5, polish: every meteor's blast is followed by a rolling SHOCKWAVE (boats, swimmers, pursuers and guardians all
+-- feel it); each episode has a MOOD (Config.CHAOS.MOODS: a flurry, the usual, a big one), so the rhythm of a raid
+-- varies, and a big one is announced; the clients draw sharper warnings and bigger, matching impacts.
+--
 -- Everything hits through the game's own rules: explosions are Blasts (every creature, sea mob, ship and mine already
 -- reacts to those: Blast.Hit), boats are shoved through Boats.shove and dented above the world's hull floor (chaos
 -- batters, it never sinks), goblins through Impact's grace (no juggling) with small damage, pursuers through
@@ -80,6 +84,7 @@ local portals = nil -- { a, b, untilAt, hopAt = { [key] = t } }
 local ghosts = {} -- { from, dir, speed, born, life, rammed = {} }
 local armada = nil -- { center, zone, roll, untilAt, nextShot, ships }
 local flungAt = setmetatable({}, { __mode = "k" }) -- boat -> when a whirlpool last flung it
+local intensity = 1 -- V13.5: this episode's mood's scale (Config.CHAOS.MOODS)
 
 local function now()
 	return workspace:GetServerTimeNow()
@@ -91,6 +96,11 @@ end
 
 local function randInt(range)
 	return math.random(range[1], range[2])
+end
+
+-- V13.5: how many of something this episode brings: its range, scaled by the episode's mood (never none).
+local function howMany(range)
+	return math.max(1, math.floor(randInt(range) * intensity + 0.5))
 end
 
 local function flat(v)
@@ -341,16 +351,35 @@ local function meteor(at, big)
 			cause = "a meteor",
 		})
 		throwGoblins(point, M.radius * scale * 1.3, 80 * scale, 70, M.damage)
-		shake(point, M.launch * scale * 1.4, 130 * scale)
+		local S = M.shock
+		local reach = M.launch * scale * S.reach
+		shake(point, reach, 130 * scale) -- pursuers thrown back and guardians staggered as far as the wave goes
 		throwLoot(point, M.radius * scale * 1.5, 60)
-		tell("meteorHit", { position = point, radius = M.radius * scale, big = big }, point)
+		-- V13.5: the shockwave rolls on from where the blast left off (tickRings).
+		table.insert(rings, {
+			center = point,
+			startedAt = now(),
+			reach = reach,
+			time = S.time,
+			push = S.push * scale,
+			lift = S.lift,
+			hull = S.hull,
+			cause = "a meteor",
+			inner = M.launch * scale, -- the blast itself already threw what is inside this
+			hit = {},
+		})
+		tell(
+			"meteorHit",
+			{ position = point, radius = M.radius * scale, big = big, shock = reach, shockTime = S.time },
+			point
+		)
 	end)
 end
 
 EPISODE.meteors = function(center)
 	local M = X.meteors
 	local spread = rand(M.spread)
-	local count = randInt(M.count)
+	local count = howMany(M.count)
 	local delay = 0
 	local big = math.random() < M.bigChance
 	if big then
@@ -421,7 +450,7 @@ end
 EPISODE.kraken = function(center)
 	local K = X.kraken
 	local area = rand(K.area)
-	local strikes = randInt(K.strikes)
+	local strikes = howMany(K.strikes)
 	local delay = 0
 	for _ = 1, strikes do
 		later(delay, function()
@@ -469,7 +498,7 @@ end
 
 EPISODE.waves = function(center)
 	local W = X.waves
-	local count = randInt(W.count)
+	local count = math.min(3, howMany(W.count))
 	local longest = 0
 	for i = 1, count do
 		local speed, half = rand(W.speed), rand(W.half)
@@ -508,7 +537,7 @@ end
 -- CANNONBALL CROSSFIRE: a rogue armada shells a patch of sea.
 EPISODE.crossfire = function(center)
 	local C = X.crossfire
-	local time = rand(C.time)
+	local time = rand(C.time) * intensity
 	local zoneRadius = rand(C.zone)
 	-- The armada lies off on open water (a few headings are tried: never on an island's beach).
 	local dir, off, across, ships
@@ -616,7 +645,7 @@ end
 EPISODE.barrels = function(center)
 	local B = X.barrels
 	local spread = rand(B.spread)
-	local count = randInt(B.count)
+	local count = howMany(B.count)
 	local alive = 0
 	for _, b in ipairs(barrels) do
 		if b.alive then
@@ -740,7 +769,7 @@ end
 -- WHIRLPOOL OUTBREAK: wandering whirlpools, part of the sea.
 EPISODE.whirls = function(center)
 	local H = X.whirls
-	local count = randInt(H.count)
+	local count = howMany(H.count)
 	local longest = 0
 	local t = now()
 	for i = 1, count do
@@ -1021,7 +1050,19 @@ local function strike(center, area)
 			cause = "a lightning strike",
 			color = Color3.fromRGB(200, 220, 255),
 		})
-		table.insert(rings, { center = point, startedAt = t, hit = {} })
+		table.insert(rings, {
+			center = point,
+			startedAt = t,
+			reach = T.ring,
+			time = T.ringTime,
+			push = T.push,
+			lift = T.lift,
+			hull = T.hull,
+			damage = T.damage,
+			charge = T.charge, -- SUPERCHARGED: a boat the jolt passes gets a free boost
+			cause = "a lightning strike",
+			hit = {},
+		})
 		-- The bolt jumps between boats packed close together.
 		local struck = boatsNear(point, 26, 0)
 		local chain = {}
@@ -1053,7 +1094,7 @@ end
 EPISODE.thunder = function(center)
 	local T = X.thunder
 	local area = rand(T.area)
-	local strikes = randInt(T.strikes)
+	local strikes = howMany(T.strikes)
 	local delay = 0
 	for _ = 1, strikes do
 		later(delay, function()
@@ -1066,36 +1107,50 @@ EPISODE.thunder = function(center)
 	return duration, area
 end
 
+-- Shockwaves racing out (thunder's, and since V13.5 a meteor's): each throws a boat or a swimmer once as it passes,
+-- fading as it spreads; a ring may hand boats a SUPERCHARGE (thunder) and hurt swimmers a little (`damage`).
 local function tickRings(t)
-	local T = X.thunder
 	for i = #rings, 1, -1 do
 		local ring = rings[i]
-		local k = (t - ring.startedAt) / T.ringTime
+		local k = (t - ring.startedAt) / ring.time
 		if k > 1 then
 			table.remove(rings, i)
 		else
-			local radius = T.ring * k
+			local radius = ring.reach * k
+			local inner = ring.inner or 0
 			for _, boat in ipairs(Boats.list) do
 				if boat.state == "float" and not ring.hit[boat] and not safe(boat.hull.Position) then
 					local d = Util.flatDistance(boat.hull.Position, ring.center)
 					if d <= radius + 8 then
 						ring.hit[boat] = true
-						local away = flat(boat.hull.Position - ring.center)
-						away = away.Magnitude > 0.5 and away.Unit or randomDirection()
-						local fade = 1 - k * 0.5
-						shove(boat, away * T.push * fade + Vector3.new(0, T.lift * fade, 0), Vector3.new(0, 1, 0))
-						Boats.damage(
-							boat,
-							math.min(
-								T.hull * fade,
-								math.max(0, boat.health - boat.spec.health * Config.IMPACT.HULL_FLOOR)
-							),
-							"a lightning strike"
-						)
-						-- SUPERCHARGED: the jolt hands the boat a free boost.
-						boat.boostUntil = math.max(boat.boostUntil, t + T.charge)
-						boat.model:SetAttribute("BoostEndsAt", boat.boostUntil)
-						tell("supercharge", { position = boat.hull.Position, hull = boat.hull }, boat.hull.Position)
+						if d >= inner then
+							local away = flat(boat.hull.Position - ring.center)
+							away = away.Magnitude > 0.5 and away.Unit or randomDirection()
+							local fade = 1 - k * 0.5
+							shove(
+								boat,
+								away * ring.push * fade + Vector3.new(0, ring.lift * fade, 0),
+								Vector3.new(0, 1, 0)
+							)
+							Boats.damage(
+								boat,
+								math.min(
+									(ring.hull or 0) * fade,
+									math.max(0, boat.health - boat.spec.health * Config.IMPACT.HULL_FLOOR)
+								),
+								ring.cause
+							)
+							if ring.charge then
+								-- SUPERCHARGED: the jolt hands the boat a free boost.
+								boat.boostUntil = math.max(boat.boostUntil, t + ring.charge)
+								boat.model:SetAttribute("BoostEndsAt", boat.boostUntil)
+								tell(
+									"supercharge",
+									{ position = boat.hull.Position, hull = boat.hull, time = ring.charge },
+									boat.hull.Position
+								)
+							end
+						end
 					end
 				end
 			end
@@ -1105,11 +1160,14 @@ local function tickRings(t)
 					local d = Util.flatDistance(root.Position, ring.center)
 					if d <= radius + 6 and math.abs(root.Position.Y - ring.center.Y) < 40 then
 						ring.hit[player] = true
-						if Impact.open(player) then
+						if d >= inner and Impact.open(player) then
 							local away = flat(root.Position - ring.center)
 							away = away.Magnitude > 0.5 and away.Unit or randomDirection()
 							Util.knockback(root, away * 70 + Vector3.new(0, 40, 0), 0.22)
-							Impact.damage(humanoid, T.damage)
+							WorldChaos.Tossed:Fire(player)
+							if (ring.damage or 0) > 0 then
+								Impact.damage(humanoid, ring.damage)
+							end
 						end
 					end
 				end
@@ -1228,22 +1286,41 @@ local function pruneSea(t)
 end
 
 -- The schedule ------------------------------------------------------------------------------------------------------------
-local function startEpisode(kind, center)
+-- V13.5: a mood for an episode (Config.CHAOS.MOODS), by its chances. `roll` (optional) is the 0..1 draw.
+function WorldChaos.mood(roll)
+	roll = roll or math.random()
+	for _, mood in ipairs(X.MOODS) do
+		if roll < mood.chance then
+			return mood
+		end
+		roll -= mood.chance
+	end
+	return X.MOODS[1]
+end
+
+local function startEpisode(kind, center, mood)
 	local fn = EPISODE[kind]
 	if not fn then
 		return
 	end
 	local t = now()
 	episodes += 1
-	episode = { kind = kind, center = center, startedAt = t }
+	mood = mood or WorldChaos.mood()
+	intensity = mood.scale
+	episode = { kind = kind, center = center, startedAt = t, mood = mood.id }
 	local duration, radius = fn(center)
+	intensity = 1
 	episode.endsAt = t + duration
 	episode.radius = radius
 	zone(kind, center, radius, episode.endsAt)
 	local def = BY_ID[kind]
-	tell("episode", { center = center, radius = radius, untilAt = episode.endsAt, name = def.name, icon = def.icon })
-	Net.feed(string.format("%s %s %s!", def.icon, def.name, placeName(center)), Color3.fromRGB(255, 170, 90))
-	nextEpisodeAt = episode.endsAt + rand(X.CALM)
+	local name = mood.name and (def.name .. ": " .. mood.name) or def.name
+	tell(
+		"episode",
+		{ center = center, radius = radius, untilAt = episode.endsAt, name = name, icon = def.icon, mood = mood.id }
+	)
+	Net.feed(string.format("%s %s %s!", def.icon, name, placeName(center)), Color3.fromRGB(255, 170, 90))
+	nextEpisodeAt = episode.endsAt + rand(X.CALM) * mood.calm
 end
 
 -- In the Port: choose the next raid's event (never the same twice running) and show it.
@@ -1371,7 +1448,8 @@ function WorldChaos.inspect()
 		chosen = chosen,
 		running = running,
 		episodes = episodes,
-		episode = episode and { kind = episode.kind, center = episode.center, endsAt = episode.endsAt },
+		episode = episode
+			and { kind = episode.kind, center = episode.center, endsAt = episode.endsAt, mood = episode.mood },
 		nextAt = nextEpisodeAt,
 		waves = #Sea.chaos.waves,
 		whirls = #Sea.chaos.whirls,

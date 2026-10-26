@@ -1332,6 +1332,21 @@ Config.DIVE = {
 	BOUNCE_MAX_SPEED = 150, -- ...and never more than this: three skips cover at most about 650 studs.
 	BOUNCE_MIN_FALL = 62, -- Arriving slower than this (a glide is 55) is a plain landing in the water.
 	BOUNCE_GRACE = 0.5, -- Seconds after a bounce before the sea can be touched again.
+	-- V13.5: a SKIMMER (a throw from a launcher marked `skim`: Cannon Golf's tees). It skips like a stone: an arrival
+	-- shallower than MAX_ANGLE bounces, keeping KEEP of its speed across and leaving at BOUNCE of the speed it came down
+	-- at, so each skip is lower, shorter and flatter than the last, until it is too slow (MIN_UP up, MIN_SPEED across)
+	-- or has made MAX skips. A steeper arrival (a lob, a dive) plops; a glide never skips. Its tumble steers at STEER of
+	-- the usual, so a curve is a skill, not a free correction. (Shared/Dive.lua: Dive.bounce and Dive.step.)
+	SKIM = {
+		MAX_ANGLE = 38,
+		KEEP = 0.74,
+		BOUNCE = 0.62,
+		MIN_UP = 15,
+		MIN_SPEED = 32,
+		MAX = 6,
+		GRACE = 0.3,
+		STEER = 0.5,
+	},
 	-- The ground.
 	OSTRICH_SPEED = 95, -- Hitting ground this fast goes in head first; braking with a glide lands on your feet.
 	EMBED_TIME = 1.1, -- Seconds stuck in the ground.
@@ -1403,6 +1418,14 @@ Config.CHAOS = {
 	HOME_CLEAR = 650, -- Never centred this close to the Hoard (the sanctuary is 450).
 	FOCUS_JITTER = { 80, 260 }, -- An episode is centred this far off the goblins it is aimed near (not on their heads).
 	ALERT_RANGE = 900, -- Goblins this close to an episode get its warning banner.
+	-- V13.5: each episode has a MOOD, so no two raids feel the same: a quick flurry, the usual, or a big one (more of it,
+	-- and a longer calm after). `scale` multiplies the episode's count (meteors, strikes, waves, barrels, whirlpools,
+	-- bolts) and the armada's time; `calm` the calm that follows. Chances add up to 1.
+	MOODS = {
+		{ id = "usual", chance = 0.5, scale = 1, calm = 1 },
+		{ id = "flurry", name = "A FLURRY", chance = 0.3, scale = 0.65, calm = 0.75 },
+		{ id = "big", name = "A BIG ONE", chance = 0.2, scale = 1.35, calm = 1.3 },
+	},
 	-- Each event's numbers. Ranges { a, b } are drawn afresh for each episode.
 	meteors = {
 		count = { 5, 9 },
@@ -1418,6 +1441,9 @@ Config.CHAOS = {
 		bigChance = 0.3, -- an episode may bring THE BIG ONE first: one meteor, all of it bigger
 		bigScale = 1.8,
 		bigWarn = 3.8,
+		-- V13.5: after the blast a SHOCKWAVE rolls out over the water (reach: this times `launch`), throwing every boat
+		-- and swimmer it passes a little, and rocking pursuers and guardians: one meteor makes a scene, not a hole.
+		shock = { reach = 2.4, time = 0.9, push = 52, lift = 30, hull = 6 },
 	},
 	kraken = {
 		strikes = { 4, 6 },
@@ -2587,7 +2613,8 @@ Config.AUDIO = {
 Config.ZIPLINE_SPEED = 110 -- The long lines are 550 studs: five seconds (V3: 90).
 
 -- V13.3, THE LIVING PORT ----------------------------------------------------------------------------------------------
--- Seven Port games (server/Minigames.lua and one module each), the Captain's Quest Board, weekly and monthly
+-- The Port games (server/Minigames.lua and one module each: since V13.5 the Regatta, the Gauntlet and Cannon Golf; the
+-- Pet Derby, Treasure Toss, the Target Gallery and Crab Chaos were removed), the Captain's Quest Board, weekly and monthly
 -- leaderboards, a pet sanctuary per goblin with pet expeditions, and challenges between goblins. Layouts (where things
 -- stand) are in shared/PortGames.lua and shared/Habitat.lua; every number a playtest might change is here.
 --
@@ -2613,30 +2640,34 @@ Config.PLAYGROUND = {
 	COUNTDOWN = 3, -- 3, 2, 1, GO.
 	RESULTS = 5, -- Seconds the results stay on the venue before it opens again.
 	RAID_WARN = 15, -- A goblin signed up for the raid is warned this long before it leaves (it ends their game).
-	INPUT_RATE = 12, -- Game inputs a goblin may send a second (a throw, a cheer, a shot); more are ignored.
+	INPUT_RATE = 12, -- Game inputs a goblin may send a second (a shot, a reset, a boat choice); more are ignored.
 	VENUE_DRAW = 320, -- (client) Studs from the camera within which a venue's moving parts are drawn.
-	-- (V13.4) Treasure Toss and the Target Gallery: hits in a row are a STREAK; from the FROM-th on, each scores BONUS
-	-- more. A miss ends it.
-	STREAK = { FROM = 3, BONUS = 1 },
 
-	-- TINY BOAT REGATTA: one lap of the water round the Port in a Racing Tub (Config.BOAT_TYPES.racer).
+	-- TINY BOAT REGATTA (V13.5): one lap of a circuit in the east water (shared/PortGames.lua: PortGames.REGATTA), in
+	-- the Racing Tub (Config.BOAT_TYPES.racer: everyone in the same boat, the FASTEST REGATTA board) or on a TEST
+	-- DRIVE in any of the ten classes (a loaner the Port builds for the lap and takes back: nobody owns it). Every
+	-- boat's lap is its own record (a goblin's best per boat, and the week's CLASS RECORDS at the dock).
 	REGATTA = {
 		MAX = 8,
-		RADIUS = 600, -- The course: a ring this far round the island's middle (PortGames.ISLAND).
-		CHECKPOINTS = 12, -- Every 30 degrees; all must be passed, in order.
-		GATE_RADIUS = 70, -- A checkpoint is a stretch of water this wide, not a hoop.
-		LIMIT = 80, -- Seconds after GO; anyone still out does not finish.
-		MIN_TIME = 20, -- A lap faster than this is not believed (no score, no reward).
-		MEDALS = { gold = 36, silver = 43, bronze = 54 }, -- Seconds (first guesses: nobody has raced it yet).
-		REJOIN_AFTER = 2.5, -- Out of your tub this long: back at your last checkpoint, seated, at rest.
+		LIMIT = 75, -- Seconds after GO; anyone still out does not finish.
+		-- A lap faster than this is not believed (no score, no reward): the shortcut's lap at the fastest boat's boosted
+		-- top speed the whole way round (impossible: PortGamesSpec checks it) is still slower.
+		MIN_TIME = 11.5,
+		-- Seconds (first guesses: nobody has raced it; the lap is about 2,000 studs through the Teeth, 2,160 round).
+		-- The fleet shares one speed band (106 to 118; the tub 112), so one ladder serves every boat; the board and the
+		-- class records keep the comparison fair.
+		MEDALS = { gold = 23, silver = 28, bronze = 36 },
+		REJOIN_AFTER = 2.5, -- Out of your boat this long: back at your last checkpoint, seated, at rest.
 		LAUNCH = 1.1, -- (V13.4) A ROCKET START (throttle right on GO): a boost this long. Too early: nothing.
 		LAUNCH_LATE = 0.6, -- The server takes a launch up to this long after GO (the client sends it on GO).
+		FLUME = 24, -- The Flume's current (studs/s) carrying boats round the hairpin: the banked turn.
 		SPLASH_EVERY = 4.5, -- The splash cannons: one shot each this often...
 		SPLASH_WARN = 1.4, -- ...after a ring on the water this long...
-		SPLASH_RADIUS = 20, -- ...throwing every tub inside it...
+		SPLASH_RADIUS = 20, -- ...throwing every boat inside it...
 		SPLASH_LIFT = 72, -- ...this fast upwards...
 		SPLASH_PUSH = 38, -- ...and this fast outwards.
-		SPLASH_LEAD = 1.2, -- They aim this many seconds ahead of the nearest tub.
+		SPLASH_LEAD = 1.2, -- They aim this many seconds ahead of the nearest boat.
+		RECORD_GAP = 6, -- Seconds between writes of the week's class records (they change rarely).
 	},
 	-- GRAPPLE GAUNTLET: a course in the air over the north-west water: swing rings, bounce pads, a beam and a zipline.
 	GAUNTLET = {
@@ -2646,90 +2677,26 @@ Config.PLAYGROUND = {
 		MEDALS = { gold = 40, silver = 55, bronze = 80 },
 		FALL_Y = 3.5, -- A goblin this low over the water has fallen: back to the last checkpoint (the clock runs on).
 	},
-	-- CANNON GOLF: a tee cannon, three floating greens, one shot at each. Aim the way you look; hold to charge.
+	-- CANNON GOLF (V13.5): six holes out over the south-west water, played in STROKES (fewest wins). Aim the way you
+	-- look (up for a lob, down for a skimmer), hold to charge. A shallow arrival SKIPS across the sea like a stone
+	-- (Config.DIVE.SKIM); a steep one plops. Land on the hole's target to hole out: in the cup it is that stroke, on
+	-- the target one putt more. A splash costs a stroke and puts you straight back in the cannon. After par + 1 shots
+	-- without holing out the caddy picks your ball up: par + 3.
 	GOLF = {
 		TEES = 3, -- Three tee cannons side by side: three goblins can play at once.
-		ELEVATION = math.rad(42),
+		ELEVATION = math.rad(42), -- The aim's starting elevation...
+		ELEVATION_MIN = math.rad(18), -- ...from a skimmer...
+		ELEVATION_MAX = math.rad(62), -- ...to a lob.
 		MIN_SPEED = 45,
-		MAX_SPEED = 135, -- About 300 studs on flat water: the far green needs most of it.
+		MAX_SPEED = 125, -- About 270 studs of flight at 45 degrees; a full skimmer skips on to about 460 (inside the Port).
 		POWER_CYCLE = 1.5, -- (client) Seconds for the power meter to go up and down once.
 		YAW_MAX = 70, -- Degrees either side of the tee's own heading.
-		RETURN = 1.8, -- Seconds after landing before you are back in the cannon for the next hole.
-		LIMIT = 150,
-		CUP = 4, -- Studs from the pin: in the cup...
-		NEAR = 8, -- ...so close...
-		GREEN = 15, -- ...on the green...
-		FRINGE = 26, -- ...on the fringe. Farther: a splash.
-		POINTS = { cup = 100, near = 70, green = 45, fringe = 20, miss = 0 },
-		MEDALS = { gold = 200, silver = 120, bronze = 50 }, -- Points out of 300.
-	},
-	-- PET DERBY: your pet (or a loaned crab) races three or more round an oval with hurdles. CHEER as it reaches one.
-	DERBY = {
-		FIELD = 4, -- Bots from the menagerie fill the field to this many.
-		MAX = 6,
-		SPEED = 9.5, -- Every pet, whatever it is: rarity is never speed.
-		ZOOM = 1.5, -- A clean jump: this much faster...
-		ZOOM_TIME = 1.2, -- ...for this long.
-		TRIP = 0.3, -- A missed or mistimed hurdle: this share of speed...
-		TRIP_TIME = 1.0, -- ...for this long (a tumble).
-		STUMBLE = 0.4, -- A cheer with no hurdle near: a little stumble (no mashing).
-		EARLY = 0.6, -- A cheer up to this long before the hurdle is clean...
-		LATE = 0.18, -- ...and up to this long after it (the server sees the pet a moment late)...
-		TOO_EARLY = 1.3, -- ...earlier than EARLY but within this: it jumps too soon and trips.
-		-- V13.4: the heart of the clean window is PERFECT (a longer burst), and clean jumps in a row are a STREAK: from
-		-- the STREAK-th on, the pet is ON FIRE (a faster burst). Skill, never money: every pet gets the same.
-		PERFECT_EARLY = 0.28, -- A cheer this long before the hurdle...
-		PERFECT_LATE = 0.08, -- ...to this long after it is perfect.
-		PERFECT_TIME = 1.8, -- A perfect jump's burst lasts this long (a clean one ZOOM_TIME).
-		STREAK = 3,
-		FIRE = 1.7, -- ON FIRE: this much faster during a burst (instead of ZOOM).
-		SNIFF = 0.6, -- Every pet stops once to sniff a flower (the same pause for all; only where differs).
-		BOT_SKILL = 0.62, -- A bot pet's chance of a clean jump.
-		LIMIT = 70,
-	},
-	-- TREASURE TOSS: throw chests into moving baskets, a rowboat, a parrot's perch and the Goblin King's mouth.
-	TOSS = {
-		ROUND = 40,
-		MAX = 6,
-		SPEED = 74, -- Every throw leaves this fast, the way you look...
-		GRAVITY = 60, -- ...under the dive's readable gravity (the world's 196 makes a throw a lob of 25 studs).
-		RELOAD = 0.55,
-		PITCH_MIN = -10, -- Degrees: a throw is between this and PITCH_MAX above level,
-		PITCH_MAX = 65,
-		YAW_MAX = 80, -- and within this of the booth's facing.
-		CHEST = 1.2, -- The chest's own radius.
-		MEDALS = { gold = 40, silver = 22, bronze = 8 },
-	},
-	-- TARGET SHIP GALLERY: man a shore cannon and sink the cut-out pirate fleet sailing past.
-	GALLERY = {
-		ROUND = 45,
-		STATIONS = 4,
-		SPEED = 220, -- The island cannons' muzzle speed and gravity (Config.CANNON_SPEED, CANNON_GRAVITY).
-		GRAVITY = 95,
-		RELOAD = 1.1,
-		DOWN_TIME = 2.6, -- A hit ship keels over and comes back up after this long.
-		BALL = 1.6,
-		MEDALS = { gold = 36, silver = 20, bronze = 8 },
-	},
-	-- CRAB CHAOS: a crate of crabs bursts on the beach. Catch them (run into them; a dash helps).
-	CRABS = {
-		ROUND = 45,
-		MAX = 8,
-		COUNT = 16,
-		GOLDEN = 2, -- Golden crabs: worth GOLDEN_POINTS, faster, burrow more.
-		GOLDEN_POINTS = 3,
-		CATCH = 3.6, -- Studs from a goblin's middle.
-		WANDER = 5,
-		FLEE = 15, -- Slower than any running goblin (21 to 38), but they turn.
-		GOLD_FLEE = 19,
-		SCARE = 14, -- A goblin this close sends a crab running.
-		JINK = 0.6, -- Seconds between zigzags.
-		BURROW_NEAR = 6, -- Cornered this close, a crab may burrow...
-		BURROW_CHANCE = 0.3,
-		BURROW_TIME = 1.4, -- ...and come up 12 to 20 studs away after this.
-		BURROW_REST = 5,
-		ALL_BONUS = 5, -- Every crab caught before the end: everyone in the round scores this many more.
-		MEDALS = { gold = 8, silver = 5, bronze = 2 },
+		RETURN = 1.2, -- Seconds after a landing before you are back in the cannon.
+		LIMIT = 330, -- Seconds for the whole round (a slow round of six holes is about three minutes).
+		PICKUP = 3, -- A hole not holed out in par + 1 shots scores par + this.
+		NEAR = 1.5, -- Studs of grace round a target's edge (the server sees a landing a moment late).
+		-- Strokes for the six holes (par 16).
+		MEDALS = { gold = 14, silver = 17, bronze = 21 },
 	},
 }
 
