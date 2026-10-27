@@ -1,6 +1,6 @@
 # Loot Goblins: art direction
 
-How Loot Goblins looks, as a working system: what to use, where, and why. The colours below are the ones the code uses (`src/shared/Palette.lua` and `server/World.lua`); change them there and here together. Written for V10 (The Living Archipelago) and extended for V11 (Goblin Life: cosmetics, boat looks, pets, effects and the wardrobe interface) and V12 (the play screen); later passes extend it rather than replace it.
+How Loot Goblins looks, as a working system: what to use, where, and why. The colours below are the ones the code uses (`src/shared/Palette.lua` and `server/World.lua`); change them there and here together. Written for V10 (The Living Archipelago) and extended for V11 (Goblin Life: cosmetics, boat looks, pets, effects and the wardrobe interface) and V12 (the play screen); later passes extend it rather than replace it. **V14 (The Visual Renaissance)** moves from primitives to Blender-made assets: its section below sets the standard for them, and `art/README.md` describes the pipeline.
 
 ## The idea in one line
 
@@ -13,6 +13,65 @@ Three rules follow from it:
 3. **Keep the jokes.** Big things are huge and heavy; the boats they use are tiny. The Guardian is a mountain of stone in a bathtub with a motor. Polish the joke, never fix it.
 
 And one contract that is not negotiable: **art never changes how the game plays.** See "The collision contract" below.
+
+## V14: The Visual Renaissance (from toy pieces to authored storybook)
+
+V10 set the look with Roblox primitives. **V14 keeps every rule above and changes how things are made**: assets are modelled in Blender (by scripts, so they can be rebuilt), painted in vertex colour and placed by composition in the game's own coordinates. The pipeline is `art/README.md`; this section is the look. Three showcases prove it (the Port's Harbour District, the Hero Skiff, Pebble Isle's coast); the rest of the world follows in V14.1. **The team approves the look**: these are standards, not a verdict.
+
+### The target
+
+**A premium stylized pirate adventure**: the warmth and hand-made irregularity of a storybook harbour, the readable silhouettes and saturated-but-harmonious colour of the best stylized sea adventures (Sea of Thieves' crooked timber and painterly light, Wind Waker's clean shapes and bold colour are the principles to study; nothing is copied from them: no shapes, palettes, logos or layouts are taken). What survives from V10 is the joke and the readability: expressive proportions, island silhouettes you can name, small playful boats, comically huge guardians.
+
+- **The Port is warm and lived-in**: plaster and timber, washing-line clutter, lanterns, flowers in window boxes, cargo by every door.
+- **The ocean is inviting**: a clear teal that turns turquoise over sand, foam where it meets land, boats that bob.
+- **Islands are distinctive**: each coast says which island it is (Pebble Isle: grey-blue and tan pebbles, pale dune grass, one stepped rock shelf).
+- **Dangerous places are dramatic, chaos is spectacular** (V14.1: the guardians' islands, the storms).
+- **Avoid noise and realism**: no photographic texture, no clutter for its own sake, no grime. Built-in Roblox materials only where their grain helps (wood, slate, sand, concrete paving), never on small pieces.
+
+### Shape language, made by hand
+
+- **Nothing quite straight.** Posts lean a degree or two, ridges sag, tiles are laid in short runs that do not line up, planks differ in width and tone, a whole tall building may lean (the Net Loft does). `lgkit.jiggle` and per-piece jitter do this deterministically.
+- **Chunky bevels catch the light.** Structural members (corner posts, bressummers, beams, stone footings' tops, boat rails) are bevelled and their bevels painted lighter: the stylized edge highlight. Small or repeated pieces (tiles, shutter boards, planks) are not bevelled: colour variation carries them.
+- **Big, readable roofs.** Steep (35 to 50 degrees), overhanging (1.2 to 1.8 studs), one colour family per house (red tiles for Madame Ragwort, dark slate for the inn, terracotta for the chandlery, red-brown for the Net Loft); the gable faces the street where a sign must be read.
+- **Every opening framed**: windows have sills, headers, mullions, a light streak on dark glass, shutters swung open, flower boxes on the side that faces people.
+- **Silhouette extras at the top**: chimneys, a flag, a cupola with a weather vane, a hoist beam. They are what reads from the sea.
+
+### Composition at three distances (the Harbour District as the example)
+
+- **Long (from the sea, the Regatta, the skyship's approach)**: three distinct roof silhouettes in a row along the shore (a wide slate roof with a fat chimney and a red pennant, a tall narrow blue loft, a low shed with a cupola), palms between them, a boardwalk line and a jetty pointing at the water, Madame Ragwort's red gable behind. Warm colours against the teal sea.
+- **Medium (the promenade, the boardwalk)**: one colour identity per facade (ochre plaster with green shutters; sea-blue boards with white shutters; whitewash with teal timbers; cream plaster with purple), a path that leads the eye (flagstones from the shop to the shore), lanterns on a rhythm, benches facing the view.
+- **Close (where goblins stand)**: cargo by the doors (barrels, crates, sacks, rope coils, lobster pots, an anchor), planters, hanging signs with gold emblems and painted names, rope rails, bollards. Detail goes where people stop, never in the way of a path.
+
+### Modelling standards (budgets per asset; `art/README.md` has the details)
+
+| Kind | Triangles | Rules |
+| --- | --- | --- |
+| Hero building (a shop with an interior seen through glass) | up to about 8,500 | footprint and wall planes on the collision it dresses; interior only what the window shows |
+| Ordinary building | 3,000 to 5,500 | timber frame + infill, a roof of tile runs, one silhouette extra |
+| Boat skin | under 2,000 | on the class's own landmarks (deck height, seats, mast, bow); every paint role tinted in game |
+| Rock / cliff piece | 150 to 1,100 | faceted convex hulls, a lighter weathered cap, moss on top facets; clusters of one big, two medium, a few small |
+| Tree / palm | 800 to 900 | banded curving trunk, folded fronds in two greens (double-sided), coconuts |
+| Prop | 60 to 600 | readable at 30 studs; no bevel on repeated small parts |
+
+### Colour and materials (`art/manifest/materials.json`, `art/textures/LG_MaterialSwatches.png`)
+
+The library extends V10's palette; colours live in vertex colour, so a single Roblox material carries many paints. Timber (178,120,72) and DarkWood (98,64,42) on Wood; Driftwood (176,162,140); PaintedWood (colour per piece) on Wood, so the grain shows through paint; Plaster (244,232,204) on SmoothPlastic with little baked shadow (big panels would go grey); RoofTile (198,92,62) and Canvas on SmoothPlastic; Slate (84,92,112) and CoastRock (140,128,120) on Slate; Sandstone; Flagstone on Concrete (Pavement's brick pattern fought the stones' own shapes); Sand and WetSand on Sand; Foliage in two greens per plant on SmoothPlastic (Roblox's Grass material is too noisy on leaves); Metal and GoldTrim on Metal; Glow on Neon, small; ShopGlass on Glass at 0.72; Foam on SmoothPlastic at 0.45. **Boat paint roles** (BoatPaint, BoatStripe, BoatTrim, BoatMast, Sailcloth, SailStripe) are white in the mesh and take the goblin's livery in game.
+
+### Light and atmosphere (V14 clients)
+
+Warm key light, cool shade: ColorShift top (255,226,188) and bottom (104,136,178), outdoor ambient (166,172,196), brightness 2.9, EnvironmentDiffuseScale 0.7, specular 0.35, shadow softness 0.45, exposure +0.1; atmosphere density 0.17, offset 0.26, colour (206,226,255), decay (110,150,204), glare 0.55, haze 1.1; grade saturation 0.2, contrast 0.1, tint (255,246,232); bloom 0.42 / 28 / 0.9; sun rays 0.07. The sun's angle (`ClockTime` 15.2) is V10's: changing it would reshade the whole world for everyone's gameplay reads. Storms still darken from these values (`Weather.setBase`).
+
+### Water and shoreline
+
+Water (16,108,144), reflectance 0.38, transparency 0.66: a little more teal and clearer than V10, so shallows read turquoise without bleaching (V10's pale-sand rule still holds). Every V14 coast gets **surf** (a soft white band laid on the water along the measured waterline, breathing slowly), **wet sand** (a darker band up the beach) and something on the beach line (pebbles, rocks, driftwood, a beached rowboat). Moored boats bob. Rocks sit on the land side of the waterline.
+
+### The collision contract, V14
+
+Everything above applies: art never changes play. **Replacement art** stands on the old parts' collision (walls on walls, a counter on the counter, planks on the dock, a skiff skin on the hull part) and the old parts are hidden on V14 clients only. **New structures** bring box collision for the client that shows them (a goblin who sees a wall cannot walk through it) and stand where nothing played before. **Coast decoration** is never solid and stays out of the water lanes. `tests/luau/Specs/ArtSpec.lua` checks the replacement rule.
+
+### Performance rules, V14
+
+Budgets per set in vertices (`Config.ART.BUDGET`: Harbor 22,000, Pebble 9,000, Skiff 1,500), checked by `ArtSpec`; a set is built only near the camera and released when left; one EditableMesh per asset group, shared by every copy; lights only on lanterns; motion only near the camera and only on a few things (bobbing boats, the surf). Measure frame time with `K` on and off at the busiest view before and after a change (the V14 report's method).
 
 ## Colour
 
@@ -251,3 +310,5 @@ V10 changed how everything looks and nothing about where you can walk, sail, hoo
 | The wardrobe, emote wheel and results | `client/Ui.lua`, `client/Shop.lua`, `client/Emotes.lua`, `client/Results.lua` |
 | Boats and the skyship | `server/Boats.lua`, `server/Skyship.lua`, `client/Skyship.lua` (propellers) |
 | Treasures | `server/Loot.lua` |
+| V14: the art pipeline (build scripts, `.blend` sources, exports, manifest, materials library, references) | `art/` (see `art/README.md`); `./scripts/art.ps1` rebuilds it |
+| V14: building the assets in game, the art layer, the Hero Skiff, V14's light, the compare key | `client/MeshKit.lua`, `client/Renaissance.lua`, `client/Art14/` (generated), `Config.ART` |
