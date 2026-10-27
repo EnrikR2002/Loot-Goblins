@@ -1,0 +1,3789 @@
+{
+ "version": 1,
+ "assets": {
+  "CO_Driftwood": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_CO_Driftwood",
+   "data": "src/client/Art14/Meshes/CO_Driftwood",
+   "exports": [
+    "art/exports/Harbor/CO_Driftwood.fbx",
+    "art/exports/Harbor/CO_Driftwood.glb"
+   ],
+   "size": [
+    7.05,
+    1.32,
+    2.12
+   ],
+   "tris": 64,
+   "verts": 36,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Driftwood"
+     ],
+     "offset": [
+      0.003,
+      0.716,
+      -0.562
+     ],
+     "size": [
+      7.046,
+      1.325,
+      2.123
+     ],
+     "tris": 64,
+     "verts": 36,
+     "hash": "1eb409a23fa7",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "CO_Rock_A": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_CO_Rock_A",
+   "data": "src/client/Art14/Meshes/CO_Rock_A",
+   "exports": [
+    "art/exports/Harbor/CO_Rock_A.fbx",
+    "art/exports/Harbor/CO_Rock_A.glb"
+   ],
+   "size": [
+    6.13,
+    3.11,
+    5.49
+   ],
+   "tris": 194,
+   "verts": 103,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Slate",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "CoastRock"
+     ],
+     "offset": [
+      0.143,
+      1.432,
+      -0.091
+     ],
+     "size": [
+      6.13,
+      3.051,
+      5.489
+     ],
+     "tris": 174,
+     "verts": 91,
+     "hash": "ffbb2507a6a3",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      -0.864,
+      2.659,
+      -0.391
+     ],
+     "size": [
+      1.977,
+      0.718,
+      2.084
+     ],
+     "tris": 20,
+     "verts": 12,
+     "hash": "b6bc74734fab",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "CO_Rock_B": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_CO_Rock_B",
+   "data": "src/client/Art14/Meshes/CO_Rock_B",
+   "exports": [
+    "art/exports/Harbor/CO_Rock_B.fbx",
+    "art/exports/Harbor/CO_Rock_B.glb"
+   ],
+   "size": [
+    3.96,
+    1.77,
+    3.38
+   ],
+   "tris": 180,
+   "verts": 96,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Slate",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "CoastRock"
+     ],
+     "offset": [
+      0.191,
+      0.851,
+      0.277
+     ],
+     "size": [
+      3.955,
+      1.775,
+      3.376
+     ],
+     "tris": 160,
+     "verts": 84,
+     "hash": "99b5a474f89e",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      -0.508,
+      1.424,
+      -0.39
+     ],
+     "size": [
+      1.325,
+      0.489,
+      1.298
+     ],
+     "tris": 20,
+     "verts": 12,
+     "hash": "dab08b9553a9",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "CO_Rock_C": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_CO_Rock_C",
+   "data": "src/client/Art14/Meshes/CO_Rock_C",
+   "exports": [
+    "art/exports/Harbor/CO_Rock_C.fbx",
+    "art/exports/Harbor/CO_Rock_C.glb"
+   ],
+   "size": [
+    2.15,
+    1.06,
+    2.28
+   ],
+   "tris": 174,
+   "verts": 91,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Slate",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "CoastRock"
+     ],
+     "offset": [
+      -0.146,
+      0.499,
+      0.116
+     ],
+     "size": [
+      2.152,
+      1.062,
+      2.285
+     ],
+     "tris": 174,
+     "verts": 91,
+     "hash": "93378a872aed",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Anchor": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Anchor",
+   "data": "src/client/Art14/Meshes/HD_Anchor",
+   "exports": [
+    "art/exports/Harbor/HD_Anchor.fbx",
+    "art/exports/Harbor/HD_Anchor.glb"
+   ],
+   "size": [
+    3.86,
+    5.32,
+    0.84
+   ],
+   "tris": 272,
+   "verts": 148,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Metal",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Metal"
+     ],
+     "offset": [
+      0.525,
+      2.762,
+      0.0
+     ],
+     "size": [
+      3.367,
+      5.322,
+      0.84
+     ],
+     "tris": 228,
+     "verts": 124,
+     "hash": "b4941713d63d",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "DarkWood"
+     ],
+     "offset": [
+      -0.38,
+      4.082,
+      0.0
+     ],
+     "size": [
+      2.535,
+      1.071,
+      0.32
+     ],
+     "tris": 44,
+     "verts": 24,
+     "hash": "a678fb8a4c07",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Barrel": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Barrel",
+   "data": "src/client/Art14/Meshes/HD_Barrel",
+   "exports": [
+    "art/exports/Harbor/HD_Barrel.fbx",
+    "art/exports/Harbor/HD_Barrel.glb"
+   ],
+   "size": [
+    2.62,
+    3.2,
+    2.63
+   ],
+   "tris": 464,
+   "verts": 328,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Timber",
+      "DarkWood"
+     ],
+     "offset": [
+      0.0,
+      1.6,
+      0.0
+     ],
+     "size": [
+      2.48,
+      3.2,
+      2.48
+     ],
+     "tris": 200,
+     "verts": 192,
+     "hash": "2c707452e386",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Metal",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Metal"
+     ],
+     "offset": [
+      -0.001,
+      1.6,
+      0.0
+     ],
+     "size": [
+      2.624,
+      2.32,
+      2.626
+     ],
+     "tris": 264,
+     "verts": 136,
+     "hash": "721dcb019845",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [
+    {
+     "cf": [
+      0.0,
+      1.600000023841858,
+      -0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "size": [
+      2.5,
+      3.200000047683716,
+      2.5
+     ]
+    }
+   ],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Bench": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Bench",
+   "data": "src/client/Art14/Meshes/HD_Bench",
+   "exports": [
+    "art/exports/Harbor/HD_Bench.fbx",
+    "art/exports/Harbor/HD_Bench.glb"
+   ],
+   "size": [
+    6.21,
+    3.32,
+    1.98
+   ],
+   "tris": 396,
+   "verts": 216,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "DarkWood",
+      "Timber"
+     ],
+     "offset": [
+      0.007,
+      1.652,
+      0.075
+     ],
+     "size": [
+      6.209,
+      3.316,
+      1.98
+     ],
+     "tris": 396,
+     "verts": 216,
+     "hash": "9c87291e6cc4",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Boardwalk": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Boardwalk",
+   "data": "src/client/Art14/Meshes/HD_Boardwalk",
+   "exports": [
+    "art/exports/Harbor/HD_Boardwalk.fbx",
+    "art/exports/Harbor/HD_Boardwalk.glb"
+   ],
+   "size": [
+    12.02,
+    8.91,
+    10.42
+   ],
+   "tris": 468,
+   "verts": 286,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Timber",
+      "Driftwood",
+      "DarkWood"
+     ],
+     "offset": [
+      -0.004,
+      -0.953,
+      -0.194
+     ],
+     "size": [
+      12.017,
+      8.906,
+      10.421
+     ],
+     "tris": 416,
+     "verts": 258,
+     "hash": "c1dadd4374f7",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Rope"
+     ],
+     "offset": [
+      0.0,
+      2.475,
+      -5.05
+     ],
+     "size": [
+      10.822,
+      0.629,
+      0.18
+     ],
+     "tris": 52,
+     "verts": 28,
+     "hash": "8b0b40602783",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Bollard": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Bollard",
+   "data": "src/client/Art14/Meshes/HD_Bollard",
+   "exports": [
+    "art/exports/Harbor/HD_Bollard.fbx",
+    "art/exports/Harbor/HD_Bollard.glb"
+   ],
+   "size": [
+    1.52,
+    2.63,
+    1.52
+   ],
+   "tris": 292,
+   "verts": 152,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Driftwood",
+      "DarkWood"
+     ],
+     "offset": [
+      0.0,
+      1.333,
+      0.0
+     ],
+     "size": [
+      1.373,
+      2.635,
+      1.373
+     ],
+     "tris": 120,
+     "verts": 64,
+     "hash": "623a8cc955ef",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Rope"
+     ],
+     "offset": [
+      0.003,
+      1.514,
+      -0.006
+     ],
+     "size": [
+      1.523,
+      0.848,
+      1.521
+     ],
+     "tris": 172,
+     "verts": 88,
+     "hash": "6756ca165538",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Bush_A": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Bush_A",
+   "data": "src/client/Art14/Meshes/HD_Bush_A",
+   "exports": [
+    "art/exports/Harbor/HD_Bush_A.fbx",
+    "art/exports/Harbor/HD_Bush_A.glb"
+   ],
+   "size": [
+    3.58,
+    2.82,
+    3.69
+   ],
+   "tris": 400,
+   "verts": 210,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      0.052,
+      1.294,
+      0.095
+     ],
+     "size": [
+      3.58,
+      2.822,
+      3.694
+     ],
+     "tris": 400,
+     "verts": 210,
+     "hash": "aed5b7636180",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Bush_B": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Bush_B",
+   "data": "src/client/Art14/Meshes/HD_Bush_B",
+   "exports": [
+    "art/exports/Harbor/HD_Bush_B.fbx",
+    "art/exports/Harbor/HD_Bush_B.glb"
+   ],
+   "size": [
+    4.51,
+    3.99,
+    4.99
+   ],
+   "tris": 400,
+   "verts": 210,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      0.013,
+      1.77,
+      0.07
+     ],
+     "size": [
+      4.513,
+      3.993,
+      4.989
+     ],
+     "tris": 400,
+     "verts": 210,
+     "hash": "81a2a70ec195",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Chandlery": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Chandlery",
+   "data": "src/client/Art14/Meshes/HD_Chandlery",
+   "exports": [
+    "art/exports/Harbor/HD_Chandlery.fbx",
+    "art/exports/Harbor/HD_Chandlery.glb"
+   ],
+   "size": [
+    22.78,
+    24.01,
+    18.72
+   ],
+   "tris": 2830,
+   "verts": 1809,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Sandstone",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Sandstone"
+     ],
+     "offset": [
+      0.012,
+      0.737,
+      -0.241
+     ],
+     "size": [
+      21.414,
+      1.552,
+      14.936
+     ],
+     "tris": 336,
+     "verts": 224,
+     "hash": "f797b0890754",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "DarkWood",
+      "PaintedWood",
+      "Timber"
+     ],
+     "offset": [
+      0.002,
+      10.091,
+      -0.446
+     ],
+     "size": [
+      22.777,
+      19.166,
+      18.719
+     ],
+     "tris": 1424,
+     "verts": 880,
+     "hash": "a9a49b20e0dd",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Plaster",
+      "Glass",
+      "Rope",
+      "RoofTile"
+     ],
+     "offset": [
+      0.002,
+      11.387,
+      0.006
+     ],
+     "size": [
+      22.122,
+      20.774,
+      17.422
+     ],
+     "tris": 718,
+     "verts": 471,
+     "hash": "bc4e229eb6a1",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Metal",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Metal",
+      "GoldTrim"
+     ],
+     "offset": [
+      0.0,
+      13.162,
+      -4.824
+     ],
+     "size": [
+      13.022,
+      21.624,
+      9.975
+     ],
+     "tris": 328,
+     "verts": 218,
+     "hash": "f10ce19f1db8",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Neon",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": true,
+     "library": [
+      "Glow"
+     ],
+     "offset": [
+      0.0,
+      6.0,
+      -8.45
+     ],
+     "size": [
+      12.875,
+      0.88,
+      0.475
+     ],
+     "tris": 24,
+     "verts": 16,
+     "hash": "affb260a3809",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [
+    {
+     "cf": [
+      0.0,
+      6.0,
+      -0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "size": [
+      20.799999237060547,
+      12.0,
+      14.800000190734863
+     ]
+    }
+   ],
+   "lights": [
+    {
+     "pos": [
+      -6.1999969482421875,
+      5.5,
+      -8.45001220703125
+     ],
+     "color": [
+      255,
+      196,
+      120
+     ],
+     "range": 16.0,
+     "brightness": 0.9
+    },
+    {
+     "pos": [
+      6.1999969482421875,
+      5.5,
+      -8.45001220703125
+     ],
+     "color": [
+      255,
+      196,
+      120
+     ],
+     "range": 16.0,
+     "brightness": 0.9
+    }
+   ],
+   "texts": [
+    {
+     "cf": [
+      0.0,
+      9.800000190734863,
+      -7.519989013671875,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "size": [
+      8.6,
+      1.5
+     ],
+     "text": "CHANDLERY",
+     "color": [
+      255,
+      214,
+      120
+     ],
+     "double": false
+    }
+   ]
+  },
+  "HD_Crate": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Crate",
+   "data": "src/client/Art14/Meshes/HD_Crate",
+   "exports": [
+    "art/exports/Harbor/HD_Crate.fbx",
+    "art/exports/Harbor/HD_Crate.glb"
+   ],
+   "size": [
+    3.01,
+    3.01,
+    3.1
+   ],
+   "tris": 1188,
+   "verts": 648,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Timber",
+      "DarkWood"
+     ],
+     "offset": [
+      0.003,
+      1.498,
+      0.0
+     ],
+     "size": [
+      3.006,
+      3.015,
+      3.1
+     ],
+     "tris": 1188,
+     "verts": 648,
+     "hash": "d0c20e9722b0",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [
+    {
+     "cf": [
+      0.0,
+      1.5,
+      -0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "size": [
+      3.0,
+      3.0,
+      3.0
+     ]
+    }
+   ],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Dinghy_Red": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Dinghy_Red",
+   "data": "src/client/Art14/Meshes/HD_Dinghy_Red",
+   "exports": [
+    "art/exports/Harbor/HD_Dinghy_Red.fbx",
+    "art/exports/Harbor/HD_Dinghy_Red.glb"
+   ],
+   "size": [
+    6.31,
+    2.2,
+    9.12
+   ],
+   "tris": 320,
+   "verts": 202,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "PaintedWood",
+      "Timber",
+      "Driftwood"
+     ],
+     "offset": [
+      0.0,
+      1.352,
+      0.001
+     ],
+     "size": [
+      6.312,
+      2.205,
+      9.123
+     ],
+     "tris": 320,
+     "verts": 202,
+     "hash": "55f5fac861b4",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Dinghy_Teal": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Dinghy_Teal",
+   "data": "src/client/Art14/Meshes/HD_Dinghy_Teal",
+   "exports": [
+    "art/exports/Harbor/HD_Dinghy_Teal.fbx",
+    "art/exports/Harbor/HD_Dinghy_Teal.glb"
+   ],
+   "size": [
+    6.31,
+    2.2,
+    9.12
+   ],
+   "tris": 320,
+   "verts": 202,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "PaintedWood",
+      "Timber",
+      "Driftwood"
+     ],
+     "offset": [
+      0.0,
+      1.352,
+      0.001
+     ],
+     "size": [
+      6.312,
+      2.205,
+      9.123
+     ],
+     "tris": 320,
+     "verts": 202,
+     "hash": "3f53087298ea",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_DockModule": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_DockModule",
+   "data": "src/client/Art14/Meshes/HD_DockModule",
+   "exports": [
+    "art/exports/Harbor/HD_DockModule.fbx",
+    "art/exports/Harbor/HD_DockModule.glb"
+   ],
+   "size": [
+    12.09,
+    9.51,
+    15.4
+   ],
+   "tris": 480,
+   "verts": 280,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Timber",
+      "Driftwood",
+      "DarkWood"
+     ],
+     "offset": [
+      0.003,
+      -3.057,
+      -0.047
+     ],
+     "size": [
+      12.058,
+      9.513,
+      15.206
+     ],
+     "tris": 328,
+     "verts": 200,
+     "hash": "3ae664eb5985",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Rope"
+     ],
+     "offset": [
+      -5.073,
+      0.68,
+      -0.006
+     ],
+     "size": [
+      1.972,
+      0.399,
+      15.397
+     ],
+     "tris": 152,
+     "verts": 80,
+     "hash": "71708d3d8d92",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Flagstones": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Flagstones",
+   "data": "src/client/Art14/Meshes/HD_Flagstones",
+   "exports": [
+    "art/exports/Harbor/HD_Flagstones.fbx",
+    "art/exports/Harbor/HD_Flagstones.glb"
+   ],
+   "size": [
+    7.7,
+    0.24,
+    7.71
+   ],
+   "tris": 108,
+   "verts": 72,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Concrete",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Flagstone"
+     ],
+     "offset": [
+      0.005,
+      0.021,
+      -0.006
+     ],
+     "size": [
+      7.702,
+      0.242,
+      7.71
+     ],
+     "tris": 108,
+     "verts": 72,
+     "hash": "9b7c135a7317",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_GrassClump": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_GrassClump",
+   "data": "src/client/Art14/Meshes/HD_GrassClump",
+   "exports": [
+    "art/exports/Harbor/HD_GrassClump.fbx",
+    "art/exports/Harbor/HD_GrassClump.glb"
+   ],
+   "size": [
+    2.3,
+    2.45,
+    2.24
+   ],
+   "tris": 108,
+   "verts": 108,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      0.118,
+      1.215,
+      0.238
+     ],
+     "size": [
+      2.297,
+      2.445,
+      2.238
+     ],
+     "tris": 108,
+     "verts": 108,
+     "hash": "31375258ab2e",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_LanternPost": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_LanternPost",
+   "data": "src/client/Art14/Meshes/HD_LanternPost",
+   "exports": [
+    "art/exports/Harbor/HD_LanternPost.fbx",
+    "art/exports/Harbor/HD_LanternPost.glb"
+   ],
+   "size": [
+    1.76,
+    9.11,
+    3.34
+   ],
+   "tris": 358,
+   "verts": 207,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Sandstone",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Sandstone"
+     ],
+     "offset": [
+      -0.005,
+      0.399,
+      0.015
+     ],
+     "size": [
+      1.759,
+      0.826,
+      1.763
+     ],
+     "tris": 60,
+     "verts": 32,
+     "hash": "f32c272dfc1c",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "DarkWood"
+     ],
+     "offset": [
+      -0.027,
+      4.596,
+      -0.839
+     ],
+     "size": [
+      0.728,
+      8.004,
+      2.627
+     ],
+     "tris": 104,
+     "verts": 56,
+     "hash": "eb41816375ca",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Metal",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Metal",
+      "GoldTrim"
+     ],
+     "offset": [
+      -0.139,
+      7.193,
+      -0.902
+     ],
+     "size": [
+      0.855,
+      3.806,
+      3.083
+     ],
+     "tris": 182,
+     "verts": 111,
+     "hash": "cd17a09814f2",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Neon",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": true,
+     "library": [
+      "Glow"
+     ],
+     "offset": [
+      -0.104,
+      5.955,
+      -2.045
+     ],
+     "size": [
+      0.613,
+      1.125,
+      0.623
+     ],
+     "tris": 12,
+     "verts": 8,
+     "hash": "bbcd5d09a65c",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [
+    {
+     "pos": [
+      -0.09521484375,
+      5.45490837097168,
+      -2.057891845703125
+     ],
+     "color": [
+      255,
+      196,
+      120
+     ],
+     "range": 20.0,
+     "brightness": 1.1
+    }
+   ],
+   "texts": []
+  },
+  "HD_LobsterPot": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_LobsterPot",
+   "data": "src/client/Art14/Meshes/HD_LobsterPot",
+   "exports": [
+    "art/exports/Harbor/HD_LobsterPot.fbx",
+    "art/exports/Harbor/HD_LobsterPot.glb"
+   ],
+   "size": [
+    2.6,
+    1.23,
+    1.59
+   ],
+   "tris": 460,
+   "verts": 258,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "DarkWood",
+      "Timber"
+     ],
+     "offset": [
+      0.0,
+      0.6,
+      0.0
+     ],
+     "size": [
+      2.2,
+      1.2,
+      1.59
+     ],
+     "tris": 384,
+     "verts": 204,
+     "hash": "a7a0dffb10c7",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Rope",
+      "Canvas"
+     ],
+     "offset": [
+      0.25,
+      0.575,
+      0.009
+     ],
+     "size": [
+      2.5,
+      1.21,
+      1.178
+     ],
+     "tris": 76,
+     "verts": 54,
+     "hash": "698281c52ff6",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_NetLoft": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_NetLoft",
+   "data": "src/client/Art14/Meshes/HD_NetLoft",
+   "exports": [
+    "art/exports/Harbor/HD_NetLoft.fbx",
+    "art/exports/Harbor/HD_NetLoft.glb"
+   ],
+   "size": [
+    16.08,
+    28.46,
+    19.6
+   ],
+   "tris": 3784,
+   "verts": 2416,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Sandstone",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Sandstone"
+     ],
+     "offset": [
+      0.15,
+      4.223,
+      -0.849
+     ],
+     "size": [
+      14.917,
+      8.762,
+      14.153
+     ],
+     "tris": 264,
+     "verts": 176,
+     "hash": "91b74e832e15",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "PaintedWood",
+      "DarkWood",
+      "Driftwood"
+     ],
+     "offset": [
+      0.397,
+      14.007,
+      -0.028
+     ],
+     "size": [
+      15.484,
+      28.333,
+      16.044
+     ],
+     "tris": 2200,
+     "verts": 1419,
+     "hash": "8a14d74cf90e",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "PaintedWood",
+      "DarkWood",
+      "Driftwood"
+     ],
+     "offset": [
+      -3.424,
+      12.251,
+      -2.333
+     ],
+     "size": [
+      8.648,
+      24.189,
+      17.315
+     ],
+     "tris": 136,
+     "verts": 89,
+     "hash": "c5869a9f0458",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Metal",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Metal",
+      "GoldTrim"
+     ],
+     "offset": [
+      -1.452,
+      12.618,
+      -8.575
+     ],
+     "size": [
+      4.394,
+      22.009,
+      4.95
+     ],
+     "tris": 112,
+     "verts": 64,
+     "hash": "9949a8d3da7a",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Glass",
+      "Foliage",
+      "Flower",
+      "RoofTile",
+      "Rope",
+      "Canvas"
+     ],
+     "offset": [
+      -0.002,
+      15.139,
+      -1.972
+     ],
+     "size": [
+      15.885,
+      26.314,
+      19.273
+     ],
+     "tris": 1072,
+     "verts": 668,
+     "hash": "6c5c40be4340",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [
+    {
+     "cf": [
+      0.0,
+      10.0,
+      -0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "size": [
+      13.0,
+      20.0,
+      13.0
+     ]
+    }
+   ],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Palm_A": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Palm_A",
+   "data": "src/client/Art14/Meshes/HD_Palm_A",
+   "exports": [
+    "art/exports/Harbor/HD_Palm_A.fbx",
+    "art/exports/Harbor/HD_Palm_A.glb"
+   ],
+   "size": [
+    15.34,
+    17.25,
+    13.19
+   ],
+   "tris": 870,
+   "verts": 621,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Bark"
+     ],
+     "offset": [
+      -1.643,
+      8.318,
+      -0.527
+     ],
+     "size": [
+      4.923,
+      16.694,
+      2.567
+     ],
+     "tris": 422,
+     "verts": 237,
+     "hash": "888a1ff4538f",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      -3.012,
+      15.323,
+      -1.047
+     ],
+     "size": [
+      15.336,
+      3.789,
+      13.186
+     ],
+     "tris": 448,
+     "verts": 384,
+     "hash": "a34682e975f7",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Palm_B": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Palm_B",
+   "data": "src/client/Art14/Meshes/HD_Palm_B",
+   "exports": [
+    "art/exports/Harbor/HD_Palm_B.fbx",
+    "art/exports/Harbor/HD_Palm_B.glb"
+   ],
+   "size": [
+    14.32,
+    13.19,
+    14.01
+   ],
+   "tris": 814,
+   "verts": 573,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Bark"
+     ],
+     "offset": [
+      -1.879,
+      6.309,
+      0.637
+     ],
+     "size": [
+      5.394,
+      12.712,
+      2.954
+     ],
+     "tris": 422,
+     "verts": 237,
+     "hash": "0a539d5c146a",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      -3.103,
+      11.016,
+      1.453
+     ],
+     "size": [
+      14.319,
+      4.26,
+      14.007
+     ],
+     "tris": 392,
+     "verts": 336,
+     "hash": "e0b51d315b74",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Planter": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Planter",
+   "data": "src/client/Art14/Meshes/HD_Planter",
+   "exports": [
+    "art/exports/Harbor/HD_Planter.fbx",
+    "art/exports/Harbor/HD_Planter.glb"
+   ],
+   "size": [
+    4.02,
+    1.92,
+    1.42
+   ],
+   "tris": 568,
+   "verts": 332,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "PaintedWood"
+     ],
+     "offset": [
+      0.002,
+      0.503,
+      -0.003
+     ],
+     "size": [
+      4.016,
+      1.009,
+      1.422
+     ],
+     "tris": 176,
+     "verts": 96,
+     "hash": "2b9aab1b8f03",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Ground",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Soil"
+     ],
+     "offset": [
+      0.0,
+      0.8,
+      0.0
+     ],
+     "size": [
+      3.7,
+      0.3,
+      1.1
+     ],
+     "tris": 12,
+     "verts": 8,
+     "hash": "2bf96397e97e",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage",
+      "Flower"
+     ],
+     "offset": [
+      0.023,
+      1.35,
+      -0.001
+     ],
+     "size": [
+      3.817,
+      1.142,
+      1.056
+     ],
+     "tris": 380,
+     "verts": 228,
+     "hash": "58f4650c0c47",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_RagwortWardrobe": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_RagwortWardrobe",
+   "data": "src/client/Art14/Meshes/HD_RagwortWardrobe",
+   "exports": [
+    "art/exports/Harbor/HD_RagwortWardrobe.fbx",
+    "art/exports/Harbor/HD_RagwortWardrobe.glb"
+   ],
+   "size": [
+    41.82,
+    33.34,
+    32.8
+   ],
+   "tris": 8316,
+   "verts": 5228,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Sandstone",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Sandstone"
+     ],
+     "offset": [
+      -0.431,
+      16.063,
+      0.002
+     ],
+     "size": [
+      36.283,
+      32.202,
+      26.415
+     ],
+     "tris": 580,
+     "verts": 376,
+     "hash": "68cc903cfb31",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Plaster",
+      "Glass",
+      "Foliage",
+      "Flower",
+      "RoofTile",
+      "Canvas"
+     ],
+     "offset": [
+      -0.004,
+      16.651,
+      -2.778
+     ],
+     "size": [
+      37.885,
+      33.303,
+      32.494
+     ],
+     "tris": 2200,
+     "verts": 1416,
+     "hash": "6163ff2dfb00",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Plaster",
+      "Glass",
+      "Foliage",
+      "Flower",
+      "RoofTile",
+      "Canvas"
+     ],
+     "offset": [
+      0.041,
+      6.0,
+      -2.141
+     ],
+     "size": [
+      31.682,
+      12.0,
+      25.882
+     ],
+     "tris": 556,
+     "verts": 356,
+     "hash": "6b406ab7f23f",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "DarkWood",
+      "PaintedWood",
+      "Timber"
+     ],
+     "offset": [
+      -0.01,
+      15.791,
+      -0.585
+     ],
+     "size": [
+      38.212,
+      31.621,
+      28.719
+     ],
+     "tris": 2200,
+     "verts": 1384,
+     "hash": "27e9cef38105",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "DarkWood",
+      "PaintedWood",
+      "Timber"
+     ],
+     "offset": [
+      1.248,
+      15.804,
+      -2.997
+     ],
+     "size": [
+      40.715,
+      31.605,
+      31.583
+     ],
+     "tris": 1274,
+     "verts": 745,
+     "hash": "a0e88aecacd4",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Metal",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Metal",
+      "GoldTrim"
+     ],
+     "offset": [
+      1.969,
+      17.401,
+      -8.565
+     ],
+     "size": [
+      41.461,
+      31.001,
+      20.893
+     ],
+     "tris": 1326,
+     "verts": 831,
+     "hash": "aaf88217664e",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Cobblestone",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Cobble"
+     ],
+     "offset": [
+      10.986,
+      25.822,
+      4.201
+     ],
+     "size": [
+      2.95,
+      11.807,
+      3.413
+     ],
+     "tris": 108,
+     "verts": 72,
+     "hash": "1990fe570b67",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Glass",
+     "tint": "",
+     "alpha": 0.72,
+     "glow": false,
+     "library": [
+      "ShopGlass"
+     ],
+     "offset": [
+      0.0,
+      6.6,
+      -11.1
+     ],
+     "size": [
+      30.0,
+      9.2,
+      0.2
+     ],
+     "tris": 12,
+     "verts": 8,
+     "hash": "fe55df226d99",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Neon",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": true,
+     "library": [
+      "Glow"
+     ],
+     "offset": [
+      0.0,
+      7.405,
+      -6.37
+     ],
+     "size": [
+      37.375,
+      7.29,
+      9.335
+     ],
+     "tris": 60,
+     "verts": 40,
+     "hash": "715888405dc5",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [
+    {
+     "pos": [
+      -18.350000381469727,
+      3.700000047683716,
+      -2.899993896484375
+     ],
+     "color": [
+      255,
+      196,
+      120
+     ],
+     "range": 16.0,
+     "brightness": 0.9
+    },
+    {
+     "pos": [
+      -18.450000762939453,
+      8.5,
+      -10.79998779296875
+     ],
+     "color": [
+      255,
+      196,
+      120
+     ],
+     "range": 16.0,
+     "brightness": 0.9
+    },
+    {
+     "pos": [
+      18.450000762939453,
+      8.5,
+      -10.79998779296875
+     ],
+     "color": [
+      255,
+      196,
+      120
+     ],
+     "range": 16.0,
+     "brightness": 0.9
+    },
+    {
+     "pos": [
+      0.0,
+      9.0,
+      -2.0
+     ],
+     "color": [
+      255,
+      214,
+      160
+     ],
+     "range": 24.0,
+     "brightness": 0.8
+    }
+   ],
+   "texts": []
+  },
+  "HD_RopeCoil": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_RopeCoil",
+   "data": "src/client/Art14/Meshes/HD_RopeCoil",
+   "exports": [
+    "art/exports/Harbor/HD_RopeCoil.fbx",
+    "art/exports/Harbor/HD_RopeCoil.glb"
+   ],
+   "size": [
+    3.36,
+    1.0,
+    2.22
+   ],
+   "tris": 568,
+   "verts": 288,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Rope"
+     ],
+     "offset": [
+      0.544,
+      0.459,
+      -0.017
+     ],
+     "size": [
+      3.365,
+      0.998,
+      2.222
+     ],
+     "tris": 568,
+     "verts": 288,
+     "hash": "ae77715bbfea",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Sack": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Sack",
+   "data": "src/client/Art14/Meshes/HD_Sack",
+   "exports": [
+    "art/exports/Harbor/HD_Sack.fbx",
+    "art/exports/Harbor/HD_Sack.glb"
+   ],
+   "size": [
+    1.78,
+    2.42,
+    1.51
+   ],
+   "tris": 164,
+   "verts": 90,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Canvas",
+      "Rope"
+     ],
+     "offset": [
+      -0.003,
+      1.133,
+      -0.009
+     ],
+     "size": [
+      1.778,
+      2.418,
+      1.512
+     ],
+     "tris": 164,
+     "verts": 90,
+     "hash": "46cc117d4bb3",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Surf": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Surf",
+   "data": "src/client/Art14/Meshes/HD_Surf",
+   "exports": [
+    "art/exports/Harbor/HD_Surf.fbx",
+    "art/exports/Harbor/HD_Surf.glb"
+   ],
+   "size": [
+    131.7,
+    0.06,
+    160.54
+   ],
+   "tris": 208,
+   "verts": 162,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.45,
+     "glow": false,
+     "library": [
+      "Foam"
+     ],
+     "offset": [
+      141.81,
+      0.09,
+      177.071
+     ],
+     "size": [
+      131.703,
+      0.06,
+      160.542
+     ],
+     "tris": 208,
+     "verts": 162,
+     "hash": "c7b3fd1c4a86",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "HD_Tavern": {
+   "set": "Harbor",
+   "source": "art/blender/HD_HarborDistrict.blend",
+   "object": "SM_HD_Tavern",
+   "data": "src/client/Art14/Meshes/HD_Tavern",
+   "exports": [
+    "art/exports/Harbor/HD_Tavern.fbx",
+    "art/exports/Harbor/HD_Tavern.glb"
+   ],
+   "size": [
+    27.7,
+    31.6,
+    28.32
+   ],
+   "tris": 5142,
+   "verts": 3321,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Sandstone",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Sandstone"
+     ],
+     "offset": [
+      0.0,
+      12.565,
+      -0.843
+     ],
+     "size": [
+      26.395,
+      25.208,
+      21.123
+     ],
+     "tris": 584,
+     "verts": 384,
+     "hash": "03f2d92be34f",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Plaster",
+      "Glass",
+      "Foliage",
+      "Flower",
+      "RoofTile",
+      "Canvas"
+     ],
+     "offset": [
+      0.0,
+      16.42,
+      -1.175
+     ],
+     "size": [
+      24.39,
+      30.191,
+      20.35
+     ],
+     "tris": 936,
+     "verts": 624,
+     "hash": "e6865418438e",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "DarkWood",
+      "PaintedWood"
+     ],
+     "offset": [
+      0.155,
+      11.901,
+      0.436
+     ],
+     "size": [
+      27.702,
+      22.775,
+      23.972
+     ],
+     "tris": 2200,
+     "verts": 1392,
+     "hash": "8ff80eae9a2d",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "DarkWood",
+      "PaintedWood"
+     ],
+     "offset": [
+      3.39,
+      18.308,
+      -6.181
+     ],
+     "size": [
+      19.68,
+      25.247,
+      17.241
+     ],
+     "tris": 244,
+     "verts": 152,
+     "hash": "c058232075ed",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Metal",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Metal",
+      "GoldTrim"
+     ],
+     "offset": [
+      5.734,
+      16.928,
+      -7.801
+     ],
+     "size": [
+      11.891,
+      29.107,
+      16.198
+     ],
+     "tris": 430,
+     "verts": 271,
+     "hash": "6979a03e6aa4",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Slate",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Slate"
+     ],
+     "offset": [
+      0.001,
+      15.203,
+      -0.493
+     ],
+     "size": [
+      26.538,
+      16.358,
+      22.863
+     ],
+     "tris": 508,
+     "verts": 338,
+     "hash": "43f4892a7d6f",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Cobblestone",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Cobble"
+     ],
+     "offset": [
+      -10.516,
+      12.348,
+      2.27
+     ],
+     "size": [
+      4.068,
+      24.871,
+      4.336
+     ],
+     "tris": 228,
+     "verts": 152,
+     "hash": "413a32144ed4",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Neon",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": true,
+     "library": [
+      "Glow"
+     ],
+     "offset": [
+      0.1,
+      4.55,
+      -10.35
+     ],
+     "size": [
+      0.475,
+      0.88,
+      0.475
+     ],
+     "tris": 12,
+     "verts": 8,
+     "hash": "bb54459652c9",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [
+    {
+     "cf": [
+      0.0,
+      7.5,
+      -0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "size": [
+      24.799999237060547,
+      15.0,
+      18.799999237060547
+     ]
+    },
+    {
+     "cf": [
+      -6.0,
+      3.5,
+      -10.399993896484375,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "size": [
+      12.399999618530273,
+      7.0,
+      3.0
+     ]
+    }
+   ],
+   "lights": [
+    {
+     "pos": [
+      0.09999847412109375,
+      4.050000190734863,
+      -10.350006103515625
+     ],
+     "color": [
+      255,
+      196,
+      120
+     ],
+     "range": 16.0,
+     "brightness": 0.9
+    },
+    {
+     "pos": [
+      8.0,
+      5.0,
+      -11.0
+     ],
+     "color": [
+      255,
+      200,
+      130
+     ],
+     "range": 18.0,
+     "brightness": 0.9
+    }
+   ],
+   "texts": [
+    {
+     "cf": [
+      11.15999984741211,
+      6.900000095367432,
+      -12.399993896484375,
+      3.7140330277907196e-07,
+      0.0,
+      0.9999999403953552,
+      0.0,
+      1.0,
+      0.0,
+      -0.9999999403953552,
+      0.0,
+      3.7140330277907196e-07
+     ],
+     "size": [
+      4.3,
+      1.8
+     ],
+     "text": "THE SALTY\nBARNACLE",
+     "color": [
+      255,
+      214,
+      120
+     ],
+     "double": false
+    },
+    {
+     "cf": [
+      11.639999389648438,
+      6.900000095367432,
+      -12.399993896484375,
+      2.028159258316009e-07,
+      0.0,
+      -0.9999999403953552,
+      0.0,
+      1.0,
+      0.0,
+      0.9999999403953552,
+      0.0,
+      2.028159258316009e-07
+     ],
+     "size": [
+      4.3,
+      1.8
+     ],
+     "text": "THE SALTY\nBARNACLE",
+     "color": [
+      255,
+      214,
+      120
+     ],
+     "double": false
+    }
+   ]
+  },
+  "PB_Boulder_A": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Boulder_A",
+   "data": "src/client/Art14/Meshes/PB_Boulder_A",
+   "exports": [
+    "art/exports/Pebble/PB_Boulder_A.fbx",
+    "art/exports/Pebble/PB_Boulder_A.glb"
+   ],
+   "size": [
+    5.79,
+    2.95,
+    6.24
+   ],
+   "tris": 174,
+   "verts": 93,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Slate",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "CoastRock"
+     ],
+     "offset": [
+      -0.585,
+      1.388,
+      0.119
+     ],
+     "size": [
+      5.786,
+      2.931,
+      6.245
+     ],
+     "tris": 154,
+     "verts": 81,
+     "hash": "4511add723fa",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      -0.913,
+      2.474,
+      -0.567
+     ],
+     "size": [
+      2.391,
+      0.803,
+      2.169
+     ],
+     "tris": 20,
+     "verts": 12,
+     "hash": "449730ea915e",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_Boulder_B": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Boulder_B",
+   "data": "src/client/Art14/Meshes/PB_Boulder_B",
+   "exports": [
+    "art/exports/Pebble/PB_Boulder_B.fbx",
+    "art/exports/Pebble/PB_Boulder_B.glb"
+   ],
+   "size": [
+    3.03,
+    2.42,
+    3.94
+   ],
+   "tris": 148,
+   "verts": 78,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Slate",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "CoastRock"
+     ],
+     "offset": [
+      -0.118,
+      1.137,
+      -0.126
+     ],
+     "size": [
+      3.025,
+      2.421,
+      3.937
+     ],
+     "tris": 148,
+     "verts": 78,
+     "hash": "84eb138ca56f",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_Bush": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Bush",
+   "data": "src/client/Art14/Meshes/PB_Bush",
+   "exports": [
+    "art/exports/Pebble/PB_Bush.fbx",
+    "art/exports/Pebble/PB_Bush.glb"
+   ],
+   "size": [
+    4.22,
+    3.23,
+    3.84
+   ],
+   "tris": 400,
+   "verts": 210,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      0.027,
+      1.441,
+      -0.089
+     ],
+     "size": [
+      4.225,
+      3.226,
+      3.843
+     ],
+     "tris": 400,
+     "verts": 210,
+     "hash": "8c9b881f0b9c",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_Cliff_A": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Cliff_A",
+   "data": "src/client/Art14/Meshes/PB_Cliff_A",
+   "exports": [
+    "art/exports/Pebble/PB_Cliff_A.fbx",
+    "art/exports/Pebble/PB_Cliff_A.glb"
+   ],
+   "size": [
+    25.76,
+    8.36,
+    9.54
+   ],
+   "tris": 1052,
+   "verts": 558,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Slate",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "CoastRock"
+     ],
+     "offset": [
+      -0.025,
+      4.394,
+      1.141
+     ],
+     "size": [
+      25.757,
+      7.85,
+      9.07
+     ],
+     "tris": 972,
+     "verts": 510,
+     "hash": "9a499071c4d5",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      0.166,
+      7.845,
+      3.724
+     ],
+     "size": [
+      23.03,
+      1.972,
+      4.84
+     ],
+     "tris": 80,
+     "verts": 48,
+     "hash": "809faf8b9482",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_Cliff_B": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Cliff_B",
+   "data": "src/client/Art14/Meshes/PB_Cliff_B",
+   "exports": [
+    "art/exports/Pebble/PB_Cliff_B.fbx",
+    "art/exports/Pebble/PB_Cliff_B.glb"
+   ],
+   "size": [
+    15.5,
+    6.57,
+    7.09
+   ],
+   "tris": 506,
+   "verts": 269,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Slate",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "CoastRock"
+     ],
+     "offset": [
+      0.369,
+      3.275,
+      0.943
+     ],
+     "size": [
+      15.503,
+      5.86,
+      6.068
+     ],
+     "tris": 466,
+     "verts": 245,
+     "hash": "f97c00491c8e",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      0.016,
+      5.964,
+      2.613
+     ],
+     "size": [
+      11.647,
+      1.898,
+      4.778
+     ],
+     "tris": 40,
+     "verts": 24,
+     "hash": "0176ae2546fc",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_Driftwood": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Driftwood",
+   "data": "src/client/Art14/Meshes/PB_Driftwood",
+   "exports": [
+    "art/exports/Pebble/PB_Driftwood.fbx",
+    "art/exports/Pebble/PB_Driftwood.glb"
+   ],
+   "size": [
+    8.06,
+    1.32,
+    2.35
+   ],
+   "tris": 64,
+   "verts": 36,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Driftwood"
+     ],
+     "offset": [
+      -0.003,
+      0.716,
+      -0.445
+     ],
+     "size": [
+      8.06,
+      1.325,
+      2.355
+     ],
+     "tris": 64,
+     "verts": 36,
+     "hash": "2d794294429d",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_DuneGrass": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_DuneGrass",
+   "data": "src/client/Art14/Meshes/PB_DuneGrass",
+   "exports": [
+    "art/exports/Pebble/PB_DuneGrass.fbx",
+    "art/exports/Pebble/PB_DuneGrass.glb"
+   ],
+   "size": [
+    2.65,
+    2.53,
+    1.97
+   ],
+   "tris": 108,
+   "verts": 108,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      0.119,
+      1.258,
+      0.067
+     ],
+     "size": [
+      2.654,
+      2.533,
+      1.968
+     ],
+     "tris": 108,
+     "verts": 108,
+     "hash": "8435fb43e00e",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_Palm_A": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Palm_A",
+   "data": "src/client/Art14/Meshes/PB_Palm_A",
+   "exports": [
+    "art/exports/Pebble/PB_Palm_A.fbx",
+    "art/exports/Pebble/PB_Palm_A.glb"
+   ],
+   "size": [
+    15.03,
+    15.95,
+    13.87
+   ],
+   "tris": 870,
+   "verts": 621,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Bark"
+     ],
+     "offset": [
+      1.865,
+      7.816,
+      -0.495
+     ],
+     "size": [
+      5.367,
+      15.698,
+      2.504
+     ],
+     "tris": 422,
+     "verts": 237,
+     "hash": "f94403d4aed3",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      3.68,
+      13.896,
+      -0.562
+     ],
+     "size": [
+      15.025,
+      4.034,
+      13.866
+     ],
+     "tris": 448,
+     "verts": 384,
+     "hash": "42a223bbe6e1",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_Palm_B": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Palm_B",
+   "data": "src/client/Art14/Meshes/PB_Palm_B",
+   "exports": [
+    "art/exports/Pebble/PB_Palm_B.fbx",
+    "art/exports/Pebble/PB_Palm_B.glb"
+   ],
+   "size": [
+    14.57,
+    13.1,
+    14.85
+   ],
+   "tris": 814,
+   "verts": 573,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Bark"
+     ],
+     "offset": [
+      -1.203,
+      6.307,
+      -1.86
+     ],
+     "size": [
+      4.042,
+      12.715,
+      5.234
+     ],
+     "tris": 422,
+     "verts": 237,
+     "hash": "f5c30d403796",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Foliage"
+     ],
+     "offset": [
+      -2.028,
+      11.366,
+      -3.744
+     ],
+     "size": [
+      14.568,
+      3.371,
+      14.854
+     ],
+     "tris": 392,
+     "verts": 336,
+     "hash": "ebf88997441a",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_Pebbles_A": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Pebbles_A",
+   "data": "src/client/Art14/Meshes/PB_Pebbles_A",
+   "exports": [
+    "art/exports/Pebble/PB_Pebbles_A.fbx",
+    "art/exports/Pebble/PB_Pebbles_A.glb"
+   ],
+   "size": [
+    7.31,
+    2.73,
+    6.68
+   ],
+   "tris": 200,
+   "verts": 114,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Pebble"
+     ],
+     "offset": [
+      0.404,
+      0.951,
+      -0.305
+     ],
+     "size": [
+      7.314,
+      2.73,
+      6.679
+     ],
+     "tris": 200,
+     "verts": 114,
+     "hash": "85ba2a1c54b9",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_Pebbles_B": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Pebbles_B",
+   "data": "src/client/Art14/Meshes/PB_Pebbles_B",
+   "exports": [
+    "art/exports/Pebble/PB_Pebbles_B.fbx",
+    "art/exports/Pebble/PB_Pebbles_B.glb"
+   ],
+   "size": [
+    11.11,
+    3.02,
+    9.28
+   ],
+   "tris": 240,
+   "verts": 138,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Pebble"
+     ],
+     "offset": [
+      0.052,
+      1.041,
+      0.025
+     ],
+     "size": [
+      11.112,
+      3.022,
+      9.279
+     ],
+     "tris": 240,
+     "verts": 138,
+     "hash": "a0deec3613f1",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_Pebbles_C": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Pebbles_C",
+   "data": "src/client/Art14/Meshes/PB_Pebbles_C",
+   "exports": [
+    "art/exports/Pebble/PB_Pebbles_C.fbx",
+    "art/exports/Pebble/PB_Pebbles_C.glb"
+   ],
+   "size": [
+    4.47,
+    3.01,
+    5.15
+   ],
+   "tris": 160,
+   "verts": 90,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Pebble"
+     ],
+     "offset": [
+      -0.4,
+      1.087,
+      -0.243
+     ],
+     "size": [
+      4.475,
+      3.015,
+      5.145
+     ],
+     "tris": 160,
+     "verts": 90,
+     "hash": "74d2b1008a28",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_Surf": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Surf",
+   "data": "src/client/Art14/Meshes/PB_Surf",
+   "exports": [
+    "art/exports/Pebble/PB_Surf.fbx",
+    "art/exports/Pebble/PB_Surf.glb"
+   ],
+   "size": [
+    255.46,
+    0.06,
+    179.61
+   ],
+   "tris": 1888,
+   "verts": 1422,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.45,
+     "glow": false,
+     "library": [
+      "Foam"
+     ],
+     "offset": [
+      62.425,
+      0.09,
+      24.576
+     ],
+     "size": [
+      255.46,
+      0.06,
+      179.607
+     ],
+     "tris": 1888,
+     "verts": 1422,
+     "hash": "46fc61d24307",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_WetSand": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_WetSand",
+   "data": "src/client/Art14/Meshes/PB_WetSand",
+   "exports": [
+    "art/exports/Pebble/PB_WetSand.fbx",
+    "art/exports/Pebble/PB_WetSand.glb"
+   ],
+   "size": [
+    251.07,
+    1.98,
+    175.37
+   ],
+   "tris": 472,
+   "verts": 474,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Sand",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "WetSand"
+     ],
+     "offset": [
+      62.428,
+      1.191,
+      24.557
+     ],
+     "size": [
+      251.071,
+      1.982,
+      175.371
+     ],
+     "tris": 472,
+     "verts": 474,
+     "hash": "31a95724e170",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "PB_Wreck": {
+   "set": "Pebble",
+   "source": "art/blender/PB_PebbleCoast.blend",
+   "object": "SM_PB_Wreck",
+   "data": "src/client/Art14/Meshes/PB_Wreck",
+   "exports": [
+    "art/exports/Pebble/PB_Wreck.fbx",
+    "art/exports/Pebble/PB_Wreck.glb"
+   ],
+   "size": [
+    6.31,
+    2.21,
+    11.13
+   ],
+   "tris": 320,
+   "verts": 202,
+   "motion": "",
+   "groups": [
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "PaintedWood",
+      "Timber",
+      "Driftwood"
+     ],
+     "offset": [
+      0.0,
+      1.353,
+      0.0
+     ],
+     "size": [
+      6.312,
+      2.207,
+      11.128
+     ],
+     "tris": 320,
+     "verts": 202,
+     "hash": "4ac8a6f27fde",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [],
+   "texts": []
+  },
+  "SK_HeroSkiff": {
+   "set": "Skiff",
+   "source": "art/blender/SK_HeroSkiff.blend",
+   "object": "SM_SK_HeroSkiff",
+   "data": "src/client/Art14/Meshes/SK_HeroSkiff",
+   "exports": [
+    "art/exports/Skiff/SK_HeroSkiff.fbx",
+    "art/exports/Skiff/SK_HeroSkiff.glb"
+   ],
+   "size": [
+    10.12,
+    16.45,
+    26.82
+   ],
+   "tris": 1883,
+   "verts": 1297,
+   "motion": "",
+   "groups": [
+    {
+     "material": "SmoothPlastic",
+     "tint": "hull",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "BoatPaint"
+     ],
+     "offset": [
+      0.0,
+      1.1,
+      -2.1
+     ],
+     "size": [
+      9.483,
+      5.3,
+      25.0
+     ],
+     "tris": 160,
+     "verts": 176,
+     "hash": "237692bd0daf",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "stripe",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "BoatStripe"
+     ],
+     "offset": [
+      0.023,
+      2.281,
+      -1.769
+     ],
+     "size": [
+      10.122,
+      1.526,
+      24.471
+     ],
+     "tris": 212,
+     "verts": 110,
+     "hash": "8a05e8db77fb",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Wood",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Timber",
+      "PaintedWood",
+      "DarkWood",
+      "Driftwood"
+     ],
+     "offset": [
+      0.0,
+      1.537,
+      -1.372
+     ],
+     "size": [
+      8.972,
+      7.566,
+      26.456
+     ],
+     "tris": 596,
+     "verts": 442,
+     "hash": "18365454d5ca",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Wood",
+     "tint": "trim",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "BoatTrim"
+     ],
+     "offset": [
+      0.023,
+      5.78,
+      -2.247
+     ],
+     "size": [
+      9.918,
+      14.26,
+      25.426
+     ],
+     "tris": 303,
+     "verts": 167,
+     "hash": "ec4fe863dd0e",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Metal",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "GoldTrim",
+      "Metal"
+     ],
+     "offset": [
+      0.0,
+      7.55,
+      -1.653
+     ],
+     "size": [
+      4.4,
+      13.3,
+      25.806
+     ],
+     "tris": 160,
+     "verts": 104,
+     "hash": "5cbb0b145390",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Wood",
+     "tint": "mast",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "BoatMast"
+     ],
+     "offset": [
+      0.0,
+      7.4,
+      -2.0
+     ],
+     "size": [
+      0.839,
+      12.4,
+      0.839
+     ],
+     "tris": 60,
+     "verts": 32,
+     "hash": "86ee0b7c4b21",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "sail",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Sailcloth"
+     ],
+     "offset": [
+      0.528,
+      8.6,
+      1.45
+     ],
+     "size": [
+      0.976,
+      8.0,
+      6.4
+     ],
+     "tris": 144,
+     "verts": 112,
+     "hash": "096fa6fb72c2",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "sailStripe",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "SailStripe"
+     ],
+     "offset": [
+      0.459,
+      10.6,
+      1.325
+     ],
+     "size": [
+      0.838,
+      2.0,
+      6.15
+     ],
+     "tris": 48,
+     "verts": 42,
+     "hash": "4a65f90414bf",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "SmoothPlastic",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": false,
+     "library": [
+      "Rope"
+     ],
+     "offset": [
+      0.0,
+      7.381,
+      -2.497
+     ],
+     "size": [
+      7.898,
+      11.722,
+      23.467
+     ],
+     "tris": 188,
+     "verts": 104,
+     "hash": "dc2bcb53565d",
+     "assetId": null,
+     "uploadedHash": null
+    },
+    {
+     "material": "Neon",
+     "tint": "",
+     "alpha": 0.0,
+     "glow": true,
+     "library": [
+      "Glow"
+     ],
+     "offset": [
+      0.0,
+      4.15,
+      10.0
+     ],
+     "size": [
+      0.416,
+      0.77,
+      0.416
+     ],
+     "tris": 12,
+     "verts": 8,
+     "hash": "a1fc69f8a2d3",
+     "assetId": null,
+     "uploadedHash": null
+    }
+   ],
+   "solids": [],
+   "lights": [
+    {
+     "pos": [
+      0.0,
+      3.799999952316284,
+      10.0
+     ],
+     "color": [
+      255,
+      200,
+      130
+     ],
+     "range": 12.0,
+     "brightness": 0.8
+    }
+   ],
+   "texts": []
+  }
+ }
+}

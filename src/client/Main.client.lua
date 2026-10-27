@@ -33,6 +33,7 @@ local PortHud = require(script.Parent.PortHud)
 local Spectate = require(script.Parent.Spectate)
 local PortLife = require(script.Parent.PortLife)
 local ChaosFx = require(script.Parent.ChaosFx) -- V13.2: the world chaos events, drawn
+local Renaissance = require(script.Parent.Renaissance) -- V14: the Blender-made art layer
 -- V13.3, the Living Port: the Port's games, the Quest Board and the Hall of Records, the sanctuaries, the card after a
 -- raid, challenges, and titles over goblins' heads.
 local PlayHud = require(script.Parent.PlayHud)
@@ -1640,6 +1641,7 @@ end)
 Spectate.start(Hud.toast)
 PortLife.start()
 ChaosFx.start(Hud)
+Renaissance.start(Weather)
 
 -- V13.3: the Living Port.
 function handlers.PlayResult(p)

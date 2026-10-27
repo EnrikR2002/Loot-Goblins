@@ -25,6 +25,19 @@ Config.RESPAWN_TIME = 3
 -- plank to the skyship and the winners' podium. Nothing of a raid reaches it: inside RADIUS there is no damage, no
 -- keg, no Poltergoblin, no boat call, no treasure, and no storm or tornado is ever seeded on a goblin standing in it.
 -- The round:  PORT (DURATION) -> skyship launch window (SKYSHIP.WINDOW) -> raid (RAID_DURATION) -> back to the PORT.
+-- V14 (The Visual Renaissance): the Blender-made art layer (art/, client/Renaissance.lua, client/MeshKit.lua). Each
+-- client builds it over V10's look, which stays underneath (hidden on that client only; its collision untouched).
+Config.ART = {
+	V14 = true, -- false: everyone sees V10's look (the rollback switch)
+	COMPARE_KEY = "K", -- in Studio, this key flips between V14 and V10 (a small label says which is showing)
+	COMPARE_LIVE = false, -- true: the key and label work in live servers too
+	RADIUS = { Harbor = 1100, Pebble = 800 }, -- a set is built while the camera is this close to it
+	-- Vertices of editable mesh each set may build (tests/luau/Specs/ArtSpec.lua checks the export against them). One
+	-- device measured in Studio held about 36,000 of this kind; a zone is released when the camera leaves it, so the
+	-- busiest moment is the biggest zone plus the Hero Skiff. Real devices (phones above all) are not measured yet.
+	BUDGET = { Harbor = 22000, Pebble = 9000, Skiff = 1500 },
+}
+
 Config.PORT = {
 	CENTER = Vector3.new(0, 0, 4600), -- 2,250 studs south of the sea's wall, 2,900 from Goblin Cove: out of streaming range.
 	RADIUS = 820, -- The Port's zone.
