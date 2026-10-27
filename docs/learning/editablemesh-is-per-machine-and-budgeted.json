@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "editablemesh-is-per-machine-and-budgeted",
+  "title": "EditableMesh content is per machine and each client has a small budget for it",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-26",
+  "topics": [
+    "art",
+    "rendering",
+    "networking"
+  ],
+  "observation": "Building art from data with AssetService:CreateEditableMesh and CreateMeshPartAsync worked in Studio's local place with no setting. A MeshPart built from an EditableMesh on the server replicated as an instance, but the client could not use its mesh ('EditableMesh or its cloned copy can't be used on the client if it was created on the server'), so every client built its own. On a Studio play client CreateEditableMesh returned nil after 8 still-growing meshes whatever their size, and after about 72,000 vertices of fixed-size copies without normals (about 36,000 of a dense mesh with a normal per vertex); the real art set (about 19,000 vertices) fitted twice over. Destroying an EditableMesh removed its MeshPart's shape; a mesh whose reference was lost kept its budget for the rest of the session. A cloned MeshPart kept the same EditableMesh, so copies cost nothing extra.",
+  "recommendation": "Build editable meshes on each client, copy each into a fixed-size mesh (CreateEditableMeshAsync with FixedSize) and destroy the growable one, keep every mesh referenced while it is shown and destroy it when its area is left, share one mesh across copies by cloning the MeshPart, and treat a nil from CreateEditableMesh as 'keep the old look here'. A published experience must allow Mesh / Image APIs.",
+  "applies_when": [
+    "Showing meshes built at run time (procedural or from repository data) instead of uploaded assets"
+  ],
+  "limits": [
+    "Measured on one Studio desktop client; phones were not measured and the budget is device-specific"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md",
+      "detail": "Section 1: the pipeline probes table."
+    }
+  ]
+}

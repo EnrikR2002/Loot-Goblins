@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "client-skins-must-follow-streamed-parts",
+  "title": "A client-side skin on a streamed model must bind to its parts as they arrive",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-26",
+  "topics": [
+    "networking",
+    "art",
+    "boats"
+  ],
+  "observation": "A client drew a new look over every boat whose model carried a BoatType attribute, hiding the old parts and taking their paint colours. With StreamingEnabled the boat models arrived with their attribute but without their parts: waiting 10 seconds for the hull gave up on every far boat, and a skin built when the hull arrived stayed white because the coloured parts (sail, strake) arrived later. Starting the skin when the Hull part arrives (DescendantAdded) and hiding or reading colour from each part as it is added fixed both.",
+  "recommendation": "Under streaming, key client-side dressing on the part it needs (not the model), and apply per-part work (hiding, reading colours) in a ChildAdded handler as well as at build time; remove the dressing when its anchor part leaves.",
+  "applies_when": [
+    "Client-only visuals attached to replicated models under StreamingEnabled (skins, labels, effects)"
+  ],
+  "limits": [
+    "Seen with boats moored far from a goblin in Studio; one client"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md",
+      "detail": "Section 9: the white skins and the missing skins."
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "script-source-limit-200k-for-generated-data",
+  "title": "A script source of 200,000 characters or more cannot be set, so split generated data",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-26",
+  "topics": [
+    "tooling",
+    "studio"
+  ],
+  "observation": "An exporter wrote one Luau module per asset holding its mesh arrays; one came out at 592,318 characters. Setting it as a ModuleScript's Source from a Studio plugin context failed with 'Provided string length (592318) is greater than or equal to max length (200000)'; Rojo's live sync sets sources the same way. Writing one module per material group, and cutting groups over 2,200 triangles, kept every module under 165,000 characters.",
+  "recommendation": "Make any generator that writes Luau data assert each file's length is under 200,000 characters and split by a natural unit (a group, a chunk) when it is not; check the largest file in tests.",
+  "applies_when": [
+    "Generating Luau modules from tools (meshes, layouts, tables of data) that are synced by Rojo or a plugin"
+  ],
+  "limits": [
+    "A Rojo build to a place file was not tested with an oversized module"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md",
+      "detail": "Sections 1 and 9: the 590,000-character module and the split."
+    }
+  ]
+}
