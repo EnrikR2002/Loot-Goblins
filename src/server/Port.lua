@@ -11,7 +11,10 @@
 --   THE WARDROBE     south: Madame Ragwort's shop, with mannequins in her window
 --   THE SPYGLASS     north-east: a tower with a telescope: watch the raid from here
 --   THE PODIUM       south-west: the last raid's winners stand on it when they come home, and a dressed statue of
---                    the champion stays until the next raid crowns someone else
+--                    the champion stays until the next raid crowns someone else; behind it, V13.4's HALL OF LEGENDS
+--                    (the raid leaderboards: server/Leaderboards.lua)
+--   THE SIGNPOST     (V13.4) on the plaza: a coloured arm for every place, and a flag of the same colour over each
+--                    of the Port's games
 --
 -- The server builds it once (Port.build), moves goblins into it (Port.arrive), counts who is ready, keeps the
 -- champion's statue, and owns spectating (Port.spectate): which raider a spectator watches and where the server
@@ -1242,6 +1245,73 @@ local function buildShore()
 	end
 end
 
+-- Finding the way (V13.4) ----------------------------------------------------------------------------------------------------
+-- A signpost on the plaza with an arm pointing at every game, the Hall of Legends, the Quest Board, the lift and the
+-- airship, each painted in its place's colour; and over every venue a tall flag in the same colour with its icon, so a
+-- goblin can follow the colour across town instead of reading signs. All decoration: nothing blocks a path.
+local HALL_SPOT = (function() -- the middle of the Hall of Legends' raid boards
+	local x, z = PortGames.podiumToPort(PortGames.HALL.x - 15, PortGames.HALL.z)
+	return PortGames.world(x, 6, z)
+end)()
+local function groundAt(x, z)
+	local hit = workspace:Raycast(Vector3.new(x, 120, z), Vector3.new(0, -160, 0))
+	return hit and hit.Material ~= Enum.Material.Water and hit.Position.Y or 6
+end
+
+local function buildWayfinding()
+	local places = {}
+	for _, def in ipairs(PortGames.GAMES) do
+		table.insert(
+			places,
+			{ text = def.icon .. " " .. def.short, color = def.color, to = PortGames.VENUES[def.id].join }
+		)
+	end
+	table.insert(places, { text = "🏆 LEGENDS", color = GOLD, to = HALL_SPOT })
+	table.insert(places, { text = "📜 QUESTS", color = rgb(232, 210, 160), to = at(-34, 6, -70).Position })
+	table.insert(places, { text = "🎈 PET ISLES", color = rgb(255, 196, 220), to = at(52, 6, 76).Position })
+	table.insert(places, { text = "⚔ RAIDS", color = RED, to = at(0, 6, -120).Position })
+	local post = at(22, 6, -40)
+	part("Signpost", Vector3.new(1.2, 17, 1.2), post * CFrame.new(0, 8.5, 0), WOOD_DARK, M_WOOD)
+	deco("SignpostCap", Vector3.new(1.8, 1, 1.8), post * CFrame.new(0, 17.4, 0), GOLD, METAL)
+	for i, place in ipairs(places) do
+		local from = post.Position
+		local flat = Vector3.new(place.to.X - from.X, 0, place.to.Z - from.Z)
+		local dir = flat.Magnitude > 1 and flat.Unit or Vector3.new(0, 0, -1)
+		local y = 17.7 - i * 1.2 -- height above the ground
+		-- The arm's length runs along its X axis, pointing the way (lookAt's -Z turned a quarter to +X).
+		local cf = CFrame.lookAt(from, from + dir) * CFrame.Angles(0, math.rad(90), 0)
+		local arm = board(
+			"SignArm",
+			Vector3.new(7.4, 1.05, 0.25),
+			cf * CFrame.new(4.2, y, 0),
+			place.text,
+			rgb(255, 255, 255),
+			place.color
+		)
+		arm.Material = SMOOTH
+		local tip = cf * CFrame.new(8.3, y, 0) * CFrame.Angles(0, math.rad(-90), 0)
+		deco("SignTip", Vector3.new(0.25, 1.05, 0.9), tip, place.color, SMOOTH, { wedge = true })
+	end
+	-- A flag over every venue, in its game's colour.
+	for _, def in ipairs(PortGames.GAMES) do
+		local venue = PortGames.VENUES[def.id]
+		local x, z = venue.sign.X + 4, venue.sign.Z + 4
+		local base = groundAt(x, z)
+		local top = math.max(base + 24, venue.sign.Y + 16)
+		deco("VenuePole", Vector3.new(0.7, top - base, 0.7), CFrame.new(x, (top + base) / 2, z), WOOD_DARK, M_WOOD)
+		deco("VenuePoleCap", Vector3.new(1.2, 1.2, 1.2), CFrame.new(x, top + 0.4, z), GOLD, METAL, { ball = true })
+		local flag = board(
+			"VenueFlag",
+			Vector3.new(7, 4.4, 0.2),
+			CFrame.new(x + 3.8, top - 2.6, z),
+			def.icon,
+			rgb(255, 255, 255),
+			def.color
+		)
+		flag.Material = FABRIC
+	end
+end
+
 -- Building it all ---------------------------------------------------------------------------------------------------------
 function Port.build(worldRefs, displayModel)
 	refs = worldRefs
@@ -1260,6 +1330,7 @@ function Port.build(worldRefs, displayModel)
 	buildPodium()
 	buildSpyglass()
 	buildShore()
+	buildWayfinding() -- V13.4
 	core.Parent = root
 	town.Parent = root
 	-- For the clients: where the Port is (its own screen, the map, spectating).

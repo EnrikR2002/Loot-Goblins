@@ -213,15 +213,21 @@ function TargetGallery.input(session, player, action, aim)
 		points = target and target.points or 0,
 		userId = player.UserId,
 	})
-	if target then
-		local points = target.points
-		task.delay(math.max(0, hitAt - t), function()
-			if session.state == "running" and not entry.left then
-				entry.data.hits += 1
-				Minigames.points(session, player, points, { hits = entry.data.hits })
+	-- When the ball lands: points (and the streak's bonus, V13.4), or the streak ends.
+	task.delay(math.max(0, hitAt - t), function()
+		if session.state ~= "running" or entry.left then
+			return
+		end
+		local points
+		entry.data.streak, points = PortGames.rangeShot(entry.data.streak, target ~= nil, target and target.points or 0)
+		if target then
+			entry.data.hits += 1
+			Minigames.points(session, player, points, { hits = entry.data.hits })
+			if entry.data.streak >= Config.PLAYGROUND.STREAK.FROM then
+				Net.send(player, "PlayFx", { kind = "streak", game = "gallery", n = entry.data.streak })
 			end
-		end)
-	end
+		end
+	end)
 end
 
 function TargetGallery.drop(_session, player)

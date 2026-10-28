@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "and-or-ternary-returns-the-other-side-for-nil",
+  "title": "`cond and a or b` in Luau returns b when a is nil, so a missing value shows the other side's",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-23",
+  "topics": [
+    "luau",
+    "correctness",
+    "code-review"
+  ],
+  "observation": "A server sent each of two challenge players their own score and their opponent's with `mine = player == a and sa or sb` and `theirs = player == a and sb or sa`. When player a had no score (they did not finish) the first expression fell through to sb, and when b had none the second fell through to sa, so a player who did not finish was shown the opponent's time as their own, and a finisher was shown their own time as the opponent's. Nothing displayed the fields in the first release, so linting, builds and 136 tests all passed; a later screen that printed them made the bug visible, and a code review found it by reading the expression, not by running anything.",
+  "recommendation": "Where the value in the middle of `cond and a or b` can legitimately be nil or false, write a plain `if` (or a tiny pure function) instead, and give it a test with a missing value on each side. Treat data sent to clients but not yet shown as untested.",
+  "applies_when": [
+    "A Luau expression picks between two values with `and ... or ...`",
+    "One of the values can be nil or false, for example a score, a time or an optional record"
+  ],
+  "limits": [
+    "One occurrence in one Roblox game (October 2026)",
+    "Selene 0.32 and StyLua do not flag the pattern"
+  ],
+  "evidence": [
+    {
+      "kind": "source-review",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/5598758122916d2de205dae883530e0f3b9bbe68/docs/reports/2026-10-23-v13-4-port-polish.md",
+      "detail": "Section 5, item 1: found by review of src/server/Challenges.lua, replaced with PortGames.sides, and covered by a PortGamesSpec test (143 of 143 Luau tests passed)."
+    }
+  ]
+}

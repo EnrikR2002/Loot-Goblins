@@ -1573,23 +1573,6 @@ end
 
 -- V13: the Goblin Port's own screen, watching the raid from it, and its menagerie. (V13.3: its new chips.)
 local sanctuaryRemote = remotes:WaitForChild("SanctuaryRequest")
-local function questsReady()
-	local text = player:GetAttribute("Quests")
-	local ok, view = pcall(function()
-		return game:GetService("HttpService"):JSONDecode(text or "{}")
-	end)
-	local n = 0
-	if ok and type(view) == "table" then
-		for _, kind in ipairs({ "day", "week" }) do
-			for _, q in ipairs(view[kind] or {}) do
-				if not q.claimed and q.n >= q.goal then
-					n += 1
-				end
-			end
-		end
-	end
-	return n
-end
 PortHud.start(function(focus)
 	Shop.open("shop", focus)
 end, {
@@ -1610,8 +1593,12 @@ end, {
 		return (NextUp.goalText())
 	end,
 	playing = PlayHud.playing,
-	questReady = questsReady,
+	questReady = PortBoard.claimableCount, -- V13.4: PortBoard's, decoded only when it changes
 	petsHome = SanctuaryView.readyCount,
+	legends = function() -- V13.4
+		PortBoard.open("season")
+	end,
+	legendsPlace = PortBoard.bestPlace,
 })
 Titles.start()
 PlayHud.start(Hud, PortHud.fadeIn)
@@ -1660,7 +1647,9 @@ end
 function handlers.QuestRollover(p)
 	PortBoard.rollover(p)
 end
-function handlers.QuestClaimed(_p) end
+function handlers.QuestClaimed(p)
+	PortBoard.claimed(p) -- V13.4
+end
 function handlers.SeasonReward(p)
 	PortBoard.seasonReward(p)
 end

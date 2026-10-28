@@ -153,6 +153,21 @@ These are attributed observations and hypotheses, not automatic changes to the c
 
 - [automated-test](https://github.com/EnrikR2002/Loot-Goblins/blob/40a5d567892c04c305750bf55b746c08e35479a0/scripts/memory.ps1): scripts/check.ps1 failed at the memory test step with exit code 1 and 27 progress dots on stderr. Running the same unittest directly gave 'Ran 27 tests ... OK'. After the fix in this commit the full check exits 0.
 
+### A new settings table in a shared Config module can silently replace an existing one
+
+**ID:** new-config-table-can-replace-an-old-one | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-22
+**Related checks:** General
+
+**Observed / proposed:** A feature added a settings block `Config.SANCTUARY = { ... }` for floating pet isles near the end of a 2,800-line Config module. An older block with the same name (a safe zone used by pursuit, map and minimap code) sat 1,500 lines earlier. Luau raises nothing when a table field is assigned twice, so the new table replaced the old one at require time and every reader of the old fields would have got nil in play. StyLua, Selene, both Rojo builds and the new feature's own tests all passed; an older automated test that read the old table's RADIUS failed with 'arithmetic on nil', which is how it was found before anyone played.
+
+**Recommendation:** When adding a top-level table to a large shared Config (or any module that builds one table across many lines), search for the name first and check for duplicate top-level assignments, for example by listing every `^Config\.[A-Z_]+ =` line and looking for repeats. Keep at least one automated test that reads each older settings table, so a replacement fails loudly instead of in play.
+
+**Applies when:** Adding a settings table to a long shared Config module; Several people or agents add features to the same Config file over time
+
+**Limits:** One occurrence in one Roblox game's Config module (October 2026); Linting with Selene 0.32 did not flag the duplicate assignment; other linters or rules may
+
+- [automated-test](https://github.com/EnrikR2002/Loot-Goblins/blob/802fa17d21c3119c3a3a630f5be035af9d69c5c3/docs/reports/2026-10-22-v13-3-living-port.md): Section 7: ChaosSpec failed at Config.SANCTUARY.RADIUS (nil) after V13.3 redefined Config.SANCTUARY; renamed to Config.PET_ISLES, 136 of 136 Luau tests then passed.
+
 ### Studio MCP's simulated mouse leaves the camera Fixed
 
 **ID:** studio-mcp-mouse-leaves-camera-fixed | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-19

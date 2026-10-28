@@ -129,6 +129,16 @@ BoatLook.LIVERIES = {
 		cabin = rgb(170, 40, 44),
 		materials = { trim = METAL, stripe = METAL, hull = SMOOTH, cabin = SMOOTH },
 	},
+	livery_legend = { -- V13.4: Pirate Legends' gold tier
+		hull = rgb(20, 30, 70),
+		trim = rgb(230, 180, 60),
+		stripe = rgb(255, 214, 90),
+		sail = rgb(28, 40, 96),
+		sailStripe = rgb(255, 210, 80),
+		mast = rgb(14, 20, 50),
+		cabin = rgb(30, 42, 90),
+		materials = { trim = METAL, stripe = METAL, hull = SMOOTH, cabin = SMOOTH },
+	},
 	livery_racer = {
 		hull = rgb(246, 244, 238),
 		trim = rgb(28, 26, 32),
@@ -500,6 +510,30 @@ FLAGS.flag_leader = function(f)
 				Vector3.new(0.05, h * 0.14, w * 0.1),
 				face * CFrame.new(0, -h * 0.25 + i * h * 0.16, w * 0.12) * deg(-30, 0, 0),
 				rgb(70, 140, 60),
+				FABRIC
+			)
+		end
+	end
+	return true
+end
+
+-- V13.4: the weekly Pirate Championship's top ten: crimson with a gold band and three gold stars (the best three
+-- raids) on both faces.
+FLAGS.flag_champion = function(f)
+	local flag = f.flag
+	local w, h = flag.Size.Z, flag.Size.Y
+	f.addOn(flag, "Banner", "block", Vector3.new(flag.Size.X, h, w), CFrame.new(), rgb(170, 30, 40), FABRIC)
+	for _, side in ipairs({ -1, 1 }) do
+		local face = CFrame.new(side * (flag.Size.X / 2 + 0.04), 0, 0)
+		f.addOn(flag, "Band", "block", Vector3.new(0.05, h * 0.14, w), face * CFrame.new(0, -h * 0.28, 0), GOLD, FABRIC)
+		for i = -1, 1 do
+			f.addOn(
+				flag,
+				"Star",
+				"egg",
+				Vector3.new(0.05, h * 0.18, h * 0.18),
+				face * CFrame.new(0, h * 0.12, i * w * 0.26),
+				GOLD,
 				FABRIC
 			)
 		end

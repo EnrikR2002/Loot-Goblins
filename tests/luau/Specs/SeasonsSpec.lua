@@ -239,6 +239,69 @@ return function(t)
 		t.eq(Seasons.addRaid(profile, 5, nextMonth), 5, "new month")
 	end)
 
+	-- V13.4: the raid boards made central.
+	t.test("the weekly Pirate Championship adds a goblin's best three raids of the week, beside the month's", function()
+		local profile = fresh()
+		profile.season.week = nil -- a V13.3 profile loaded before the repair knew the field
+		local weeks = {}
+		for _, gold in ipairs({ 10, 4, 22, 8, 15 }) do
+			local month, week = Seasons.addRaid(profile, gold, WED)
+			table.insert(weeks, week or false)
+			t.ok(month ~= nil or gold <= 8, "the month's sum still moves: " .. gold)
+		end
+		t.eq(weeks[1], 10, "first raid")
+		t.eq(weeks[3], 10 + 4 + 22, "three raids")
+		t.eq(weeks[4], 10 + 22 + 8, "an 8 replaces the 4")
+		t.eq(weeks[5], 22 + 15 + 10, "the best three only")
+		local _, small = Seasons.addRaid(profile, 3, WED)
+		t.eq(small, nil, "a raid outside the best three does not move it")
+		local nextWeek = WED + 7 * DAY
+		local _, fresh2 = Seasons.addRaid(profile, 6, nextWeek)
+		t.eq(fresh2, 6, "a new week starts again")
+		t.eq(#profile.season.raids.list, Config.SEASONS.CHAMPION_RAIDS, "the month keeps its own five")
+	end)
+
+	t.test("the raid boards come first, keep their ids, and pay their new prizes", function()
+		local seenGame = false
+		for _, board in ipairs(Seasons.BOARDS) do
+			if not board.raid then
+				seenGame = true
+			end
+			t.ok(not (board.raid and seenGame), board.id .. ": raid boards are listed before the Port's records")
+			t.ok(board.icon ~= nil, board.id .. " has an icon")
+		end
+		for _, id in ipairs({ "haul", "crown", "champion", "regatta", "golf", "gauntlet" }) do
+			t.ok(Seasons.BOARD_BY_ID[id] ~= nil, id .. " is a board")
+		end
+		t.eq(Seasons.BOARD_BY_ID.champion.period, "month", "Pirate Legends keeps the monthly championship's id")
+		t.eq(Seasons.BOARD_BY_ID.crown.period, "week", "the Pirate Championship is weekly")
+		local top = Seasons.rewardFor("crown", 85, 1)
+		for _, id in ipairs({ "title_weekcaptain", "flag_champion", "flag_leader", "pethat_doubloon" }) do
+			t.ok(table.find(top.items, id) ~= nil, "the week's champion gets " .. id)
+		end
+		t.eq(top.tier, "gold", "85 over three raids is gold")
+		local legend = Seasons.rewardFor("champion", 140, nil)
+		t.ok(table.find(legend.items, "livery_legend") ~= nil, "a gold Pirate Legends tier earns the gilt sails")
+		t.eq(#Seasons.rewardFor("crown", 30, nil).items, 0, "a bronze week: Shinies only")
+	end)
+
+	t.test("a new score's place among the board's last read counts each goblin once", function()
+		local haul = Seasons.BOARD_BY_ID.haul
+		local list = { { u = 1, s = 40 }, { u = 2, s = 30 }, { u = 3, s = 20 }, { u = 9, s = 10 } }
+		t.eq(Seasons.rankAmong(haul, list, 9, 25), 3, "behind 40 and 30")
+		t.eq(Seasons.rankAmong(haul, list, 9, 50), 1, "the top")
+		t.eq(Seasons.rankAmong(haul, list, 2, 30), 2, "their own old row does not count against them")
+		t.eq(Seasons.rankAmong(haul, list, 9, 30), 2, "a tie is shared, not lost")
+		t.eq(Seasons.rankAmong(haul, {}, 9, 1), 1, "an empty board")
+		local full = {}
+		for i = 1, Config.SEASONS.HALL do
+			table.insert(full, { u = 100 + i, s = 1000 - i })
+		end
+		t.eq(Seasons.rankAmong(haul, full, 9, 1), nil, "past the last place kept")
+		local regatta = Seasons.BOARD_BY_ID.regatta
+		t.eq(Seasons.rankAmong(regatta, { { u = 1, s = 4000 } }, 9, 39.5), 1, "times: faster is better")
+	end)
+
 	t.test("a finished period pays once: its tier by score, its placement by rank, cosmetics for the top", function()
 		local profile = fresh()
 		Seasons.submit(profile, "haul", 26, WED)

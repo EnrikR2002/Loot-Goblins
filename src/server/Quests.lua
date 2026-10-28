@@ -147,7 +147,13 @@ local function claim(s, kind, index)
 		balance = s.profile.shinies,
 		bundle = result.bundle and (result.bundle.item or true) or nil,
 	})
-	Net.send(player, "QuestClaimed", { ok = result.ok, kind = kind, index = index })
+	Net.send(player, "QuestClaimed", {
+		ok = result.ok,
+		kind = kind,
+		index = index,
+		shinies = result.ok and result.shinies or nil,
+		bundle = result.ok and result.bundle ~= nil or nil,
+	})
 end
 
 -- The board in the Port ----------------------------------------------------------------------------------------------------

@@ -5,6 +5,10 @@
 -- whatever it is or cost: rarity is never speed. Every pet also stops once to sniff a flower (the same pause for all,
 -- somewhere different each race), so a race is never only a straight line.
 --
+-- V13.4: the heart of the window is a PERFECT cheer (a longer burst), clean jumps in a row make a STREAK (the third on
+-- is ON FIRE: a faster burst; a tumble or mashing ends it), and a COMMENTATOR calls the race (PetDerby.call). Bots are
+-- never perfect (only clean, BOT_SKILL of the time); every pet still runs the same speed.
+--
 -- The race is the server's (20 steps a second): each racer's fraction of a lap, its speed and what it is doing. Clients
 -- draw the pets with the shared animator (shared/PetLook.lua) from the session's fast channel (Minigames.live, 10 a
 -- second) and extrapolate between: client/PlayHud.lua. A cheer is judged on the server's own racer with a little
@@ -224,7 +228,7 @@ end
 local function speedOf(racer)
 	local s = racer.state
 	if s == "zoom" then
-		return DG.SPEED * DG.ZOOM
+		return DG.SPEED * ((racer.streak or 0) >= DG.STREAK and DG.FIRE or DG.ZOOM)
 	elseif s == "trip" then
 		return DG.SPEED * DG.TRIP
 	elseif s == "sniff" or s == "done" then
@@ -259,6 +263,7 @@ local function publishLive(session, t)
 			v = speedOf(racer),
 			s = racer.state,
 			a = racer.stateAt,
+			k = (racer.streak or 0) > 0 and racer.streak or nil, -- V13.4: clean jumps in a row
 		})
 	end
 	Minigames.live(session, { t = t, r = rows })
@@ -289,16 +294,31 @@ function PetDerby.tick(session, dt, t)
 			if h and racer.p >= h + DG.LATE * DG.SPEED / L then
 				local verdict = racer.judged[racer.nextHurdle]
 				racer.nextHurdle += 1
-				if verdict == "clean" then
-					setState(session, racer, "zoom", DG.ZOOM_TIME, t)
+				if verdict == "clean" or verdict == "perfect" then
+					racer.streak = (racer.streak or 0) + 1
+					setState(session, racer, "zoom", verdict == "perfect" and DG.PERFECT_TIME or DG.ZOOM_TIME, t)
+					if racer.streak == DG.STREAK then
+						PetDerby.call(session, t, "fire", racer)
+					end
 				else
+					local wasLeading = session.data.leader == racer
+					racer.streak = 0
 					setState(session, racer, "trip", DG.TRIP_TIME, t)
+					if wasLeading then
+						PetDerby.call(session, t, "trip", racer)
+					end
 				end
 			end
 			if racer.p >= 1 then
 				racer.p = 1
 				racer.finishedAt = t
 				setState(session, racer, "done", 0, t)
+				if not session.data.winner then
+					session.data.winner = racer
+					PetDerby.call(session, t, "win", racer)
+				elseif PetDerby.place(session, racer) == 2 and t - session.data.winner.finishedAt < 0.35 then
+					PetDerby.call(session, t, "photo", racer)
+				end
 				if racer.user then
 					local player
 					for p, entry in pairs(session.entries) do
@@ -314,11 +334,66 @@ function PetDerby.tick(session, dt, t)
 			end
 		end
 	end
+	-- The leader, for the commentator (who has the lead, and the final stretch once).
+	local leader
+	for _, racer in ipairs(session.data.racers) do
+		if not racer.finishedAt and not racer.gone and (not leader or racer.p > leader.p) then
+			leader = racer
+		end
+	end
+	if leader and not session.data.winner then
+		if leader ~= session.data.leader then
+			local first = session.data.leader == nil
+			session.data.leader = leader
+			if not first and leader.p > 0.08 then
+				PetDerby.call(session, t, "lead", leader)
+			end
+		end
+		if leader.p > 0.86 and not session.data.stretch then
+			session.data.stretch = true
+			PetDerby.call(session, t, "stretch", leader, true)
+		end
+	end
 	if session.state == "running" and (session.data.liveDirty or t >= session.data.nextLive) then
 		session.data.liveDirty = false
 		session.data.nextLive = t + 0.1
 		publishLive(session, t)
 	end
+end
+
+-- THE COMMENTATOR (V13.4): a line on everyone's screen at the oval for the moments worth shouting about: a new
+-- leader, the leader tumbling, a pet on fire, the final stretch, a photo finish, the winner. At most one every
+-- CALL_GAP seconds (the winner and the photo always get theirs). The lines are picked by the race, not at random, so
+-- every client and the tests see the same.
+local CALL_GAP = 2.2
+local LINES = {
+	lead = { "%s takes the lead!", "%s noses in front!", "And now it's %s out front!" },
+	trip = { "Oh no! %s goes head over heels!", "%s trips! The crowd gasps!", "Down goes %s! What a tumble!" },
+	fire = { "%s is ON FIRE!", "Three clean jumps: %s is flying!", "Nobody can stop %s!" },
+	stretch = { "Final stretch! %s leads!", "Into the home straight: %s in front!" },
+	photo = { "PHOTO FINISH! %s by a whisker!", "So close! %s is just behind!" },
+	win = { "%s WINS THE DERBY!", "It's %s! What a race!", "%s takes it! Treats all round!" },
+}
+
+local function petName(racer)
+	local item = racer.pet and Catalog.get(racer.pet)
+	local pet = item and item.name or racer.pet or "?"
+	if racer.bot then
+		return racer.name
+	end
+	return string.format("%s's %s", racer.name, pet)
+end
+
+function PetDerby.call(session, t, kind, racer, force)
+	local important = kind == "win" or kind == "photo"
+	if not important and not force and t - (session.data.calledAt or -math.huge) < CALL_GAP then
+		return
+	end
+	session.data.calledAt = t
+	local list = LINES[kind]
+	session.data.calls = (session.data.calls or 0) + 1
+	local text = string.format(list[(raceNumber + session.data.calls) % #list + 1], petName(racer))
+	Net.broadcastNear(track.center, 400, "PlayFx", { kind = "derbycall", text = text, call = kind, racer = racer.id })
 end
 
 -- Where a racer finished among every pet in the race (bots too); unfinished pets by how far they got.
@@ -362,9 +437,10 @@ function PetDerby.input(session, player, action)
 	if h and racer.judged[racer.nextHurdle] then
 		verdict = "none" -- a second cheer for the same hurdle is mashing
 	end
-	if verdict == "clean" or verdict == "early" then
+	if verdict == "perfect" or verdict == "clean" or verdict == "early" then
 		racer.judged[racer.nextHurdle] = verdict
 	elseif racer.state == "run" then
+		racer.streak = 0 -- mashing breaks a streak
 		setState(session, racer, "stumble", DG.STUMBLE, t)
 	end
 	Net.broadcastNear(

@@ -1,12 +1,13 @@
--- The Captain's Quest Board and the Hall of Records on this client (V13.3).
+-- The Captain's Quest Board and the Hall of Legends on this client (V13.3; the raid boards made central in V13.4).
 --
---   THE PANEL   opened at the Quest Board (E), from the Port screen's 📜 chip, or by a quest toast: QUESTS (today's
---               three and the week's three, with progress, CLAIM, and the time to the reset) and SEASON (your best on
---               every board this week or month, your place if you are in the top hundred, the tier you have reached
---               and the next, and how long the period has left). Closing it: X, the CLOSE button, B on a controller.
+--   THE PANEL   opened at the Quest Board (E), from the Port screen's 📜 or 🏆 chip, or by a quest toast: QUESTS
+--               (today's three and the week's three, with progress, CLAIM and CLAIM ALL, and the time to the reset)
+--               and 🏆 LEGENDS (a card per RAID board: your place and score, the bar to the next tier, the time left,
+--               the prizes; then the Port records in a line each). Closing it: X, B on a controller.
 --   THE BOARDS  every client writes the physical boards itself: the Quest Board shows today's quests with this
---               goblin's own progress; each Hall of Records board shows its top ten (friends starred), the goblins in
---               this Port and their bests, last period's champions, and this goblin's own line.
+--               goblin's own progress; each raid board in the Hall of Legends its top eight (friends starred), the
+--               best goblin in this Port, this goblin's line and the #1 prize; the Port records their top three; PAST
+--               CHAMPIONS last period's top three of every raid board.
 --   TELLING     a finished quest, a rollover's payment, a season reward, a new best on a board.
 -- Everything shown comes from attributes the server keeps (the player's Quests and Season, workspace Board_<id>); the
 -- only thing this sends is a claim (ShopRequest "questclaim").
@@ -179,111 +180,262 @@ local function questRow(parent, kind, q, order)
 	end
 end
 
+-- Finished, unclaimed quests: { { kind, index, shinies } } (the CLAIM ALL button and the 📜 chip's badge).
+local function claimable(view)
+	local list = {}
+	for _, kind in ipairs({ "day", "week" }) do
+		for _, q in ipairs(view[kind] or {}) do
+			if q.n >= q.goal and not q.claimed then
+				table.insert(list, { kind = kind, index = q.i, shinies = q.shinies })
+			end
+		end
+	end
+	return list
+end
+
+-- One of this goblin's JSON attributes as a table, decoded again only when its text changes: the Port screen asks for
+-- these every frame. Callers only read it.
+local decoded = {} -- attribute name -> { text, data }
+local function attribute(name)
+	local text = player:GetAttribute(name)
+	local entry = decoded[name]
+	if not entry or entry.text ~= text then
+		entry = { text = text, data = decode(text) }
+		decoded[name] = entry
+	end
+	return entry.data
+end
+
+-- How many finished quests wait to be claimed (the Port screen's 📜 chip).
+function PortBoard.claimableCount()
+	return #claimable(attribute("Quests") or {})
+end
+
+-- This goblin's best place on any raid board right now: { rank, icon } or nil (the Port screen's 🏆 chip).
+function PortBoard.bestPlace()
+	local mine = attribute("Season")
+	local best
+	for _, board in ipairs(Seasons.BOARDS) do
+		local rank = board.raid and mine and mine.rank and mine.rank[board.id]
+		if rank and (not best or rank < best.rank) then
+			best = { rank = rank, icon = board.icon }
+		end
+	end
+	return best
+end
+
 local function renderQuests()
 	local view = decode(player:GetAttribute("Quests")) or { day = {}, week = {} }
 	local t = now()
-	heading(body, "TODAY  ·  new quests in " .. left(Seasons.secondsLeft("day", t)), 1)
+	local ready = claimable(view)
+	if #ready >= 2 then
+		local total = 0
+		for _, q in ipairs(ready) do
+			total += q.shinies or 0
+		end
+		Ui.button(body, {
+			text = string.format("CLAIM ALL  +%d", total),
+			style = "good",
+			size = UDim2.new(1, 0, 0, 40),
+			textSize = 17,
+			order = 0,
+			name = "ClaimAll",
+		}, function()
+			for k, q in ipairs(ready) do
+				task.delay((k - 1) * 0.2, function()
+					shopRemote:FireServer("questclaim", q.kind, q.index)
+				end)
+			end
+			Effects.chime(Effects.CHIME_GOOD, 0.7)
+		end)
+	end
+	heading(body, "TODAY  ·  new in " .. left(Seasons.secondsLeft("day", t)), 1)
 	for i, q in ipairs(view.day or {}) do
 		questRow(body, "day", q, 1 + i)
 	end
-	heading(body, "THIS WEEK  ·  new quests in " .. left(Seasons.secondsLeft("week", t)), 10)
+	heading(body, "THIS WEEK  ·  new in " .. left(Seasons.secondsLeft("week", t)), 10)
 	for i, q in ipairs(view.week or {}) do
 		questRow(body, "week", q, 10 + i)
 	end
 	local week = Seasons.period("week", t)
 	local prize = Catalog.get(Seasons.BUNDLE[week % #Seasons.BUNDLE + 1])
 	Ui.label(body, {
-		Size = UDim2.new(1, 0, 0, 36),
+		Size = UDim2.new(1, 0, 0, 22),
 		Text = view.bundle and "★ This week's prize is yours!"
-			or string.format("Claim all three weekly quests: this week's prize, the %s.", prize and prize.name or "?"),
-		Font = Ui.BODY,
+			or string.format("🎁 All three weekly quests: the %s", prize and prize.name or "?"),
+		Font = Ui.BOLD,
 		TextSize = 14,
-		TextWrapped = true,
-		TextColor3 = C.inkSoft,
+		TextColor3 = view.bundle and C.goldDeep or C.inkSoft,
 		LayoutOrder = 20,
-	})
-	Ui.label(body, {
-		Size = UDim2.new(1, 0, 0, 34),
-		Text = "Finished quests you don't claim are paid at the reset: nothing is lost.",
-		Font = Ui.BODY,
-		TextSize = 13,
-		TextWrapped = true,
-		TextColor3 = C.inkSoft,
-		LayoutOrder = 21,
 	})
 end
 
 local TIER_COLOR = { gold = rgb(214, 160, 30), silver = rgb(150, 156, 170), bronze = rgb(176, 110, 60) }
+
+-- The tier after `tier` (nil: none reached yet) and how far a score is towards it (0..1; raid boards count up).
+local function nextTier(board, best)
+	local tier = Seasons.tier(board, best)
+	local order = { "bronze", "silver", "gold" }
+	local index = tier and table.find(order, tier) or 0
+	local name = order[index + 1]
+	if not name then
+		return nil, 1
+	end
+	local need = board.tiers[name]
+	if board.order == "asc" then
+		return name, best and math.clamp(need / best, 0, 1) or 0
+	end
+	return name, math.clamp((best or 0) / need, 0, 1)
+end
+
+-- What a board's prizes are, short: "#1 Captain of the Week · top 10 Crown Banner · gold Lucky Doubloon".
+local function prizeLine(board)
+	local parts = {}
+	for _, pair in ipairs({ { "top1", "#1" }, { "top10", "top 10" }, { "gold", "gold tier" } }) do
+		local names = {}
+		for _, source in ipairs(board.awards[pair[1]] or {}) do
+			for _, id in ipairs(Seasons.itemsFor(source)) do
+				local item = Catalog.get(id)
+				if item and not table.find(names, item.name) then
+					table.insert(names, item.name)
+				end
+			end
+		end
+		if #names > 0 then
+			table.insert(parts, pair[2] .. " " .. table.concat(names, ", "))
+		end
+	end
+	return table.concat(parts, "  ·  ")
+end
+
+-- A raid board's card: its name and time left, your place and score big, the bar to the next tier, its prizes.
+local function raidCard(board, mine, order, t)
+	local best = mine.best and mine.best[board.id]
+	local rank = mine.rank and mine.rank[board.id]
+	local tier = Seasons.tier(board, best)
+	local card = Ui.make("Frame", {
+		Size = UDim2.new(1, 0, 0, 96),
+		BackgroundColor3 = C.white,
+		BackgroundTransparency = 0.2,
+		LayoutOrder = order,
+	}, body)
+	Ui.corner(card, 12)
+	Ui.stroke(card, board.period == "week" and rgb(90, 170, 220) or C.goldDeep, 2)
+	Ui.label(card, {
+		Position = UDim2.fromOffset(12, 6),
+		Size = UDim2.new(1, -24, 0, 20),
+		Text = string.format(
+			"%s %s  ·  %s %s",
+			board.icon or "",
+			board.name,
+			board.period == "week" and "week ends in" or "month ends in",
+			left(Seasons.secondsLeft(board.period, t))
+		),
+		Font = Ui.BOLD,
+		TextSize = 14,
+		TextColor3 = C.ink,
+	})
+	Ui.label(card, {
+		Position = UDim2.fromOffset(12, 28),
+		Size = UDim2.fromOffset(90, 34),
+		Text = rank and ("#" .. rank) or "—",
+		Font = Ui.TITLE,
+		TextSize = 30,
+		TextColor3 = rank and rank <= 3 and C.goldDeep or C.ink,
+	})
+	Ui.label(card, {
+		Position = UDim2.fromOffset(104, 28),
+		Size = UDim2.new(1, -116, 0, 18),
+		Text = best and (fmt(board, best) .. (tier and ("  ·  " .. string.upper(tier)) or ""))
+			or "No score yet: " .. board.sub,
+		Font = Ui.BOLD,
+		TextSize = 14,
+		TextColor3 = tier and TIER_COLOR[tier] or C.inkSoft,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+	})
+	local goal, share = nextTier(board, best)
+	local bar = Ui.make(
+		"Frame",
+		{ Position = UDim2.fromOffset(104, 50), Size = UDim2.new(1, -230, 0, 10), BackgroundColor3 = C.parchmentDark },
+		card
+	)
+	Ui.corner(bar, 5)
+	Ui.corner(
+		Ui.make("Frame", {
+			Size = UDim2.fromScale(share, 1),
+			BackgroundColor3 = goal and TIER_COLOR[goal] or TIER_COLOR.gold,
+		}, bar),
+		5
+	)
+	Ui.label(card, {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -12, 0, 46),
+		Size = UDim2.fromOffset(116, 18),
+		Text = goal and string.format("%s at %s", string.upper(goal), fmt(board, board.tiers[goal])) or "★ GOLD TIER",
+		Font = Ui.BOLD,
+		TextSize = 12,
+		TextColor3 = goal and TIER_COLOR[goal] or C.goldDeep,
+		TextXAlignment = Enum.TextXAlignment.Right,
+	})
+	Ui.label(card, {
+		Position = UDim2.fromOffset(12, 68),
+		Size = UDim2.new(1, -24, 0, 26),
+		Text = "🎁 " .. prizeLine(board),
+		Font = Ui.BODY,
+		TextSize = 12,
+		TextWrapped = true,
+		TextColor3 = C.inkSoft,
+	})
+end
+
 local function renderSeason()
 	local mine = decode(player:GetAttribute("Season")) or { best = {}, rank = {} }
 	local t = now()
-	for i, board in ipairs(Seasons.BOARDS) do
-		local best = mine.best and mine.best[board.id]
-		local rank = mine.rank and mine.rank[board.id]
-		local tier = Seasons.tier(board, best)
-		local nextTier
-		for _, name in ipairs({ "bronze", "silver", "gold" }) do
-			if not tier or (tier == "bronze" and name ~= "bronze") or (tier == "silver" and name == "gold") then
-				nextTier = name
-				break
-			end
+	heading(body, "🏆 RAID LEGENDS", 1, C.goldDeep)
+	local order = 1
+	for _, board in ipairs(Seasons.BOARDS) do
+		if board.raid then
+			order += 1
+			raidCard(board, mine, order, t)
 		end
-		local row = Ui.make("Frame", {
-			Size = UDim2.new(1, 0, 0, 60),
-			BackgroundColor3 = C.white,
-			BackgroundTransparency = 0.25,
-			LayoutOrder = i,
-		}, body)
-		Ui.corner(row, 10)
-		Ui.label(row, {
-			Position = UDim2.fromOffset(12, 4),
-			Size = UDim2.new(1, -24, 0, 20),
-			Text = string.format(
-				"%s  ·  %s  ·  ends in %s",
-				board.name,
-				board.period == "week" and "THIS WEEK" or "THIS MONTH",
-				left(Seasons.secondsLeft(board.period, t))
-			),
-			Font = Ui.BOLD,
-			TextSize = 14,
-			TextColor3 = C.ink,
-		})
-		local line = "Your best: " .. fmt(board, best)
-		if rank then
-			line ..= string.format("   ·   #%d", rank)
+	end
+	heading(body, "PORT RECORDS", 10)
+	order = 10
+	for _, board in ipairs(Seasons.BOARDS) do
+		if not board.raid then
+			order += 1
+			local best = mine.best and mine.best[board.id]
+			local rank = mine.rank and mine.rank[board.id]
+			local tier = Seasons.tier(board, best)
+			Ui.label(body, {
+				Size = UDim2.new(1, 0, 0, 22),
+				Text = string.format(
+					"%s %s   %s%s%s   ·   %s",
+					board.icon or "",
+					board.name,
+					fmt(board, best),
+					rank and ("  #" .. rank) or "",
+					tier and ("  " .. string.upper(tier)) or "",
+					left(Seasons.secondsLeft(board.period, t))
+				),
+				Font = Ui.BOLD,
+				TextSize = 13,
+				TextColor3 = tier and TIER_COLOR[tier] or C.ink,
+				LayoutOrder = order,
+			})
 		end
-		if tier then
-			line ..= "   ·   " .. string.upper(tier)
-		end
-		if nextTier and board.tiers[nextTier] then
-			line ..= string.format("   ·   %s at %s", string.upper(nextTier), fmt(board, board.tiers[nextTier]))
-		end
-		Ui.label(row, {
-			Position = UDim2.fromOffset(12, 26),
-			Size = UDim2.new(1, -24, 0, 18),
-			Text = line,
-			Font = Ui.BODY,
-			TextSize = 13,
-			TextColor3 = tier and TIER_COLOR[tier] or C.inkSoft,
-		})
-		Ui.label(row, {
-			Position = UDim2.fromOffset(12, 42),
-			Size = UDim2.new(1, -24, 0, 16),
-			Text = board.sub,
-			Font = Ui.BODY,
-			TextSize = 12,
-			TextColor3 = C.inkSoft,
-		})
 	end
 	Ui.label(body, {
-		Size = UDim2.new(1, 0, 0, 40),
-		Text = "Tiers are yours whoever else plays; places are paid after the period ends (next time you're here). "
-			.. string.format("Trophies in your sanctuary: %d.", mine.trophies or 0),
+		Size = UDim2.new(1, 0, 0, 34),
+		Text = string.format(
+			"Tiers are yours whoever else plays. Prizes arrive after the period ends.  ·  🏆 %d trophies",
+			mine.trophies or 0
+		),
 		Font = Ui.BODY,
-		TextSize = 13,
+		TextSize = 12,
 		TextWrapped = true,
 		TextColor3 = C.inkSoft,
-		LayoutOrder = 20,
+		LayoutOrder = 30,
 	})
 end
 
@@ -385,7 +537,7 @@ local function build()
 		end
 	)
 	tabButtons.season = Ui.button(tabs, {
-		text = "SEASON",
+		text = "🏆 LEGENDS",
 		style = "wood",
 		size = UDim2.fromOffset(150, 34),
 		textSize = 16,
@@ -513,69 +665,99 @@ local function writeHall()
 		return
 	end
 	local mine = decode(player:GetAttribute("Season")) or { best = {}, rank = {} }
+	local PODIUM = { rgb(255, 214, 90), rgb(214, 220, 232), rgb(232, 160, 100) }
+	local past, pastColors = {}, {}
 	for _, board in ipairs(Seasons.BOARDS) do
-		local part = core:FindFirstChild("Board_" .. board.id)
-		if part then
-			local data = decode(workspace:GetAttribute("Board_" .. board.id)) or { top = {} }
-			local lines, colors = {}, {}
-			for i = 1, 8 do
-				local row = data.top and data.top[i]
-				if row then
-					local friend = isFriend(row.u)
-					table.insert(
-						lines,
-						string.format("%d. %s%s  %s", i, friend and "★ " or "", row.n or "?", fmt(board, row.s))
-					)
-					table.insert(
-						colors,
-						row.u == player.UserId and C.goldPale or (friend and rgb(150, 230, 255) or C.parchment)
-					)
-				else
-					table.insert(lines, i == 1 and "No scores yet: be the first!" or "")
-					table.insert(colors, C.parchment)
-				end
+		local data = decode(workspace:GetAttribute("Board_" .. board.id)) or { top = {} }
+		local best = mine.best and mine.best[board.id]
+		local rank = mine.rank and mine.rank[board.id]
+		local you = "YOU: " .. (best and fmt(board, best) or "-") .. (rank and string.format("  #%d", rank) or "")
+		local lines, colors = {}, {}
+		local function add(text, color)
+			table.insert(lines, text)
+			table.insert(colors, color or C.parchment)
+		end
+		local function row(i)
+			local r = data.top and data.top[i]
+			if not r then
+				add(i == 1 and "Nobody yet: be the first!" or "")
+				return
 			end
-			-- Goblins in this Port, and their best this period.
-			local here = {}
+			local friend = isFriend(r.u)
+			add(
+				string.format("%d. %s%s  %s", i, friend and "★ " or "", r.n or "?", fmt(board, r.s)),
+				r.u == player.UserId and C.goldPale or (friend and rgb(150, 230, 255) or PODIUM[i] or C.parchment)
+			)
+		end
+		local part = core:FindFirstChild("Board_" .. board.id)
+		if part and board.raid then
+			-- The raid board: time left, the top eight, the best goblin in this Port, you, the prizes.
+			local ends = (data.ends or 0) - now()
+			add((board.period == "week" and "WEEK" or "MONTH") .. " ENDS IN " .. left(ends > 0 and ends or 0), C.gold)
+			for i = 1, 8 do
+				row(i)
+			end
+			local here
 			for _, other in ipairs(Players:GetPlayers()) do
 				if other ~= player then
 					local season = decode(other:GetAttribute("Season"))
-					local best = season and season.best and season.best[board.id]
-					if best then
-						table.insert(here, { name = other.DisplayName, best = best, friend = isFriend(other.UserId) })
+					local theirs = season and season.best and season.best[board.id]
+					if theirs and (not here or Seasons.better(board, theirs, here.best)) then
+						here = { name = other.DisplayName, best = theirs, friend = isFriend(other.UserId) }
 					end
 				end
 			end
-			table.sort(here, function(a, b)
-				return Seasons.better(board, a.best, b.best)
-			end)
-			if here[1] then
-				table.insert(
-					lines,
-					string.format(
-						"HERE: %s%s %s",
-						here[1].friend and "★ " or "",
-						here[1].name,
-						fmt(board, here[1].best)
-					)
-				)
-				table.insert(colors, rgb(150, 230, 255))
-			else
-				table.insert(lines, "")
-				table.insert(colors, C.parchment)
-			end
-			local best = mine.best and mine.best[board.id]
-			local rank = mine.rank and mine.rank[board.id]
-			table.insert(lines, "YOU: " .. fmt(board, best) .. (rank and string.format("  #%d", rank) or ""))
-			table.insert(colors, C.gold)
-			local last = data.last and data.last.top and data.last.top[1]
-			table.insert(
-				lines,
-				last and string.format("LAST %s: %s", board.period == "week" and "WEEK" or "MONTH", last.n) or ""
+			add(
+				here
+						and string.format(
+							"IN PORT: %s%s %s",
+							here.friend and "★ " or "",
+							here.name,
+							fmt(board, here.best)
+						)
+					or "",
+				rgb(150, 230, 255)
 			)
-			table.insert(colors, rgb(255, 180, 230))
+			add(you, C.gold)
+			local top1 = board.awards.top1 and Seasons.itemsFor(board.awards.top1[1])[1]
+			local item = top1 and Catalog.get(top1)
+			add(item and ("#1 WINS: " .. string.upper(item.name)) or "", rgb(255, 180, 230))
+			writeLines(part, lines, colors)
+		elseif part then
+			-- A Port record: small, the top three and you.
+			add(string.format("%s %s", board.icon or "", board.name), C.gold)
+			for i = 1, 3 do
+				row(i)
+			end
+			add(you, C.goldPale)
 			writeLines(part, lines, colors)
 		end
+		-- PAST CHAMPIONS: last period's top three of every raid board.
+		if board.raid then
+			local last = data.last and data.last.top or {}
+			table.insert(
+				past,
+				string.format("%s LAST %s", board.icon or "", board.period == "week" and "WEEK" or "MONTH")
+			)
+			table.insert(pastColors, C.gold)
+			table.insert(
+				past,
+				last[1] and ("👑 " .. last[1].n .. "  " .. fmt(board, last[1].s)) or "crowned at the end"
+			)
+			table.insert(pastColors, last[1] and PODIUM[1] or C.parchment)
+			local rest = {}
+			for i = 2, 3 do
+				if last[i] then
+					table.insert(rest, i .. ". " .. last[i].n)
+				end
+			end
+			table.insert(past, table.concat(rest, "   "))
+			table.insert(pastColors, C.parchment)
+		end
+	end
+	local pastBoard = core:FindFirstChild("PastChampions")
+	if pastBoard then
+		writeLines(pastBoard, past, pastColors)
 	end
 end
 
@@ -661,6 +843,35 @@ function PortBoard.questDone(p)
 	Effects.chime(Effects.CHIME_GOOD, 0.7)
 end
 
+-- A claim went through: the Shinies pop up from the middle of the screen and float away (no extra card).
+function PortBoard.claimed(p)
+	if not p.ok or not gui then
+		return
+	end
+	local pop = Ui.label(gui, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.42),
+		Size = UDim2.fromOffset(320, 60),
+		Text = string.format("+%d ◆%s", p.shinies or 0, p.bundle and "  ★ WEEK DONE!" or ""),
+		Font = Ui.TITLE,
+		TextSize = 44,
+		TextColor3 = C.goldPale,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+	Ui.stroke(pop, C.night, 3).ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	local scale = Ui.make("UIScale", { Scale = 0.4 }, pop)
+	TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	TweenService:Create(
+		pop,
+		TweenInfo.new(1.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 0.5),
+		{ Position = UDim2.fromScale(0.5, 0.3), TextTransparency = 1 }
+	):Play()
+	Effects.chime(p.bundle and { 1, 1.26, 1.5, 2, 2.5 } or Effects.CHIME_GOOD, 0.7)
+	task.delay(2, function()
+		pop:Destroy()
+	end)
+end
+
 function PortBoard.rollover(p)
 	if (p.shinies or 0) > 0 then
 		hud.toast(string.format("New quests! Your %d finished one(s) were paid: +%d Shinies.", p.count or 0, p.shinies))
@@ -670,10 +881,15 @@ function PortBoard.rollover(p)
 	end
 end
 
+-- A new best on a board. (A raid board's news waits for the what's-next card, which shows every place it moved.)
 function PortBoard.best(p)
 	local board = Seasons.BOARD_BY_ID[p.board]
-	if board then
-		hud.toast(string.format("New best on %s: %s", board.name, fmt(board, p.score)))
+	if board and not board.raid then
+		local place = ""
+		if p.rank then
+			place = "  ·  #" .. p.rank .. ((p.was == nil or p.rank < p.was) and " ▲" or "")
+		end
+		hud.toast(string.format("%s %s: %s%s", board.icon or "", board.name, fmt(board, p.score), place))
 	end
 end
 

@@ -5,6 +5,8 @@
 --   THE DERBY   every pet hops each hurdle; one that missed its cheer tumbles after it; a clean one zooms off in a
 --               sparkle. Your own pet has a gold ring under it and a timing cue: NOW! is the moment to CHEER (Space,
 --               E, a click, A on a controller, or CHEER on a touch screen). Cheering with no hurdle near is a stumble.
+--               V13.4: a TIMING BAR (red too soon, green clean, gold perfect) under the cue; a perfect cheer makes the
+--               pet somersault the hurdle; a pet on a streak of three is ON FIRE (flames, a 🔥 on its name).
 --   THE CRABS   scuttling, fleeing, burrowing, popping up; golden ones in gold. A catch is a poof and a number.
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
@@ -31,8 +33,14 @@ local derbyCrowd, crabCrowd
 local tags = {} -- racer id -> { anchor, gui, label }
 local myRing
 local cheerGui, cheerCue
+local timingBar, timingMark -- V13.4: the hurdle timing bar (early red, clean green, perfect gold)
 local cheering = false
 local derbyDrawn = {} -- racer id -> { p, state }
+local flips = {} -- V13.4: racer id -> when a perfect cheer was heard (the pet flips over that hurdle)
+local BAR_SPAN = DG.TOO_EARLY + 0.6 -- seconds before a hurdle that the bar starts to show
+local function barAt(tth)
+	return math.clamp((BAR_SPAN - tth) / (BAR_SPAN + DG.LATE), 0, 1)
+end
 local crabs = {} -- crab id -> { x, z, h, tx, tz, th, s, g, seen }
 
 local function sessionOf(game)
@@ -86,6 +94,7 @@ local function clearDerby()
 		tags[id] = nil
 	end
 	table.clear(derbyDrawn)
+	table.clear(flips)
 	if myRing then
 		myRing.Transparency = 1
 	end
@@ -171,16 +180,23 @@ local function drawDerby(t)
 			local state = row and row.s or "run"
 			local speed = row and row.v or 0
 			local lift = 0
+			local hop -- how far through a hop it is (0..1), over the hurdle it is crossing
 			local extra
 			-- A hop over every hurdle.
 			for _, h in ipairs(track.hurdles) do
 				local d = (p - h) * track.length
 				if d > -2.2 and d < 2.2 then
 					lift = math.max(lift, math.cos(d / 2.2 * math.pi / 2) * 1.8)
+					hop = (d + 2.2) / 4.4
 				end
 			end
 			local since = t - (row and row.a or t)
-			if state == "trip" and since < 0.8 then
+			local flipAge = flips[racer.i] and t - flips[racer.i]
+			if flipAge and flipAge < 1.6 and hop then
+				-- A perfect cheer: a somersault over the hurdle.
+				lift += 0.8
+				extra = CFrame.new(0, 0.6, 0) * CFrame.Angles(-math.rad(hop * 360), 0, 0) * CFrame.new(0, -0.6, 0)
+			elseif state == "trip" and since < 0.8 then
 				extra = CFrame.new(0, 0.6, 0)
 					* CFrame.Angles(-math.rad(since / 0.8 * 360), 0, 0)
 					* CFrame.new(0, -0.6, 0)
@@ -189,7 +205,13 @@ local function drawDerby(t)
 			elseif state == "sniff" then
 				extra = CFrame.Angles(math.rad(18), 0, 0)
 			elseif state == "zoom" and math.random() < 0.3 then
-				Effects.burst(position + v3(0, 1, 0), C.goldPale, 2, 6)
+				local onFire = (row and row.k or 0) >= DG.STREAK
+				Effects.burst(
+					position + v3(0, 1, 0),
+					onFire and Color3.fromRGB(255, 120, 40) or C.goldPale,
+					onFire and 5 or 2,
+					onFire and 9 or 6
+				)
 			end
 			local origin = derbyCrowd:place(
 				pet,
@@ -201,6 +223,10 @@ local function drawDerby(t)
 			local tag =
 				tagFor(racer.i, racer.n .. (racer.loan and " (a loaned crab)" or ""), mine and mine.i == racer.i)
 			tag.anchor.CFrame = CFrame.new(origin.Position + v3(0, 3.6, 0))
+			local streak = row and row.k or 0
+			tag.label.Text = (streak >= DG.STREAK and "🔥 " or "")
+				.. racer.n
+				.. (racer.loan and " (a loaned crab)" or "")
 			if mine and mine.i == racer.i and myRing then
 				myRing.Transparency = 0.25
 				myRing.CFrame = CFrame.new(position.X, position.Y + 0.15, position.Z)
@@ -264,17 +290,28 @@ local function updateCue(mine, live, session, t)
 	end
 	local speed = math.max(row and row.v or DG.SPEED, DG.SPEED * 0.3)
 	local tth = nextH and (nextH - p) * track.length / speed or nil
-	if tth and tth <= DG.EARLY and tth >= -DG.LATE then
+	-- V13.4: the bar fills towards the hurdle; cheer while the marker is in the green (gold: perfect).
+	local streak = row and row.k or 0
+	timingBar.Visible = tth ~= nil and tth <= BAR_SPAN and row ~= nil and row.s ~= "done"
+	if timingBar.Visible then
+		timingMark.Position = UDim2.fromScale(barAt(tth), 0.5)
+	end
+	if tth and tth <= DG.PERFECT_EARLY and tth >= -DG.PERFECT_LATE then
 		cheerCue.Text = "NOW!"
 		cheerCue.TextColor3 = C.gold
-		cheerCue.TextSize = 48
-	elseif tth and tth <= DG.TOO_EARLY + 0.6 then
-		cheerCue.Text = string.format("HURDLE IN %.1f", tth)
-		cheerCue.TextColor3 = C.white
-		cheerCue.TextSize = 30
+		cheerCue.TextSize = 52
+	elseif tth and tth <= DG.EARLY and tth >= -DG.LATE then
+		cheerCue.Text = "NOW!"
+		cheerCue.TextColor3 = Color3.fromRGB(150, 240, 130)
+		cheerCue.TextSize = 44
+	elseif tth and tth <= BAR_SPAN then
+		cheerCue.Text = streak >= DG.STREAK and "🔥 ON FIRE"
+			or (streak > 0 and string.format("STREAK x%d", streak) or "")
+		cheerCue.TextColor3 = streak >= DG.STREAK and Color3.fromRGB(255, 150, 60) or C.white
+		cheerCue.TextSize = 28
 	else
-		cheerCue.Text = row and row.s == "done" and "FINISHED!" or "RUN!"
-		cheerCue.TextColor3 = C.parchment
+		cheerCue.Text = row and row.s == "done" and "FINISHED!" or (streak >= DG.STREAK and "🔥 ON FIRE" or "RUN!")
+		cheerCue.TextColor3 = streak >= DG.STREAK and Color3.fromRGB(255, 150, 60) or C.parchment
 		cheerCue.TextSize = 26
 	end
 end
@@ -336,6 +373,21 @@ local function drawCrabs(dt, t)
 	local _ = t
 end
 
+-- V13.4: how many crabs are still loose in a round (the co-op goal: catch them all and everyone scores more).
+function PlayCritters.crabsLeft(sessionId)
+	local live = ctx and ctx.lives[sessionId]
+	if not live or not live.c then
+		return nil
+	end
+	local n = 0
+	for _, row in ipairs(live.c) do
+		if row[5] ~= "c" then
+			n += 1
+		end
+	end
+	return n
+end
+
 -- Events ----------------------------------------------------------------------------------------------------------------------------
 local function popup(position, text, color)
 	local anchor = Ui.make("Part", {
@@ -390,16 +442,23 @@ function PlayCritters.fx(p)
 		return true
 	elseif kind == "cheer" then
 		local pet = derbyCrowd and derbyCrowd:get(p.racer)
+		local verdict = p.verdict
+		local good = verdict == "clean" or verdict == "perfect"
+		if verdict == "perfect" then
+			flips[p.racer] = workspace:GetServerTimeNow()
+		end
 		if pet and pet.origin then
-			local verdict = p.verdict
 			popup(
 				pet.origin.Position + v3(0, 2, 0),
-				verdict == "clean" and "GO!" or (verdict == "early" and "TOO SOON!" or "?!"),
-				verdict == "clean" and C.gold or C.white
+				verdict == "perfect" and "PERFECT!" or (good and "GO!" or (verdict == "early" and "TOO SOON!" or "?!")),
+				good and C.gold or C.white
 			)
 		end
 		if p.userId == player.UserId then
-			Effects.sound("blip", { speed = p.verdict == "clean" and 1.8 or 0.9, volume = 0.5 })
+			Effects.sound("blip", { speed = verdict == "perfect" and 2.2 or (good and 1.8 or 0.9), volume = 0.5 })
+			if verdict == "perfect" then
+				Effects.chime({ 1.5, 2 }, 0.4)
+			end
 		end
 		return true
 	end
@@ -438,6 +497,40 @@ function PlayCritters.start(context)
 		TextXAlignment = Enum.TextXAlignment.Center,
 	})
 	Ui.stroke(cheerCue, C.night, 2.5).ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	-- V13.4: the timing bar under the cue. The marker runs left to right as the hurdle comes; cheer in the green.
+	timingBar = Ui.make("Frame", {
+		Name = "TimingBar",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.69),
+		Size = UDim2.fromOffset(360, 18),
+		BackgroundColor3 = C.night,
+		BackgroundTransparency = 0.25,
+		Visible = false,
+	}, cheerGui)
+	Ui.corner(timingBar, 9)
+	local function zone(from, to, color)
+		local a, b = barAt(from), barAt(to)
+		Ui.corner(
+			Ui.make("Frame", {
+				Position = UDim2.fromScale(a, 0.15),
+				Size = UDim2.fromScale(b - a, 0.7),
+				BackgroundColor3 = color,
+				BorderSizePixel = 0,
+			}, timingBar),
+			5
+		)
+	end
+	zone(DG.TOO_EARLY, DG.EARLY, Color3.fromRGB(220, 80, 70))
+	zone(DG.EARLY, -DG.LATE, Color3.fromRGB(110, 210, 100))
+	zone(DG.PERFECT_EARLY, -DG.PERFECT_LATE, C.gold)
+	timingMark = Ui.make("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Size = UDim2.fromOffset(6, 28),
+		BackgroundColor3 = C.white,
+		BorderSizePixel = 0,
+		ZIndex = 3,
+	}, timingBar)
+	Ui.corner(timingMark, 3)
 end
 
 function PlayCritters.update(dt, context)
