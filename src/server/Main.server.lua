@@ -25,8 +25,8 @@
 --   WorldChaos   one physical chaos event per raid, played in episodes (V13.2)
 --   Raid sign-up the Port's JOIN / STAY IN PORT / AUTO-JOIN and the raid's LEAVE (V13.2: RaidRequest)
 --   V13.3, THE LIVING PORT:
---   Minigames    the framework for the Port's seven games (Regatta, Gauntlet, CannonGolf, PetDerby, TreasureToss,
---                TargetGallery, CrabChaos: one module each)
+--   Minigames    the framework for the Port's games (Regatta, Gauntlet, CannonGolf: one module each; V13.5 removed
+--                the Pet Derby, Treasure Toss, the Target Gallery and Crab Chaos)
 --   Quests       the Captain's Quest Board (daily and weekly quests)
 --   Leaderboards weekly and monthly boards, the Hall of Records, season rewards
 --   Sanctuary    every goblin's floating pet isle and pet expeditions
@@ -84,6 +84,7 @@ local WorldChaos = require(script.Parent.WorldChaos)
 local WorldKit = require(script.Parent.WorldKit)
 -- V13.3: the Living Port.
 local Minigames = require(script.Parent.Minigames)
+local PortGames = require(ReplicatedStorage.LootGoblins:WaitForChild("PortGames"))
 local Regatta = require(script.Parent.Regatta)
 local Quests = require(script.Parent.Quests)
 local Leaderboards = require(script.Parent.Leaderboards)
@@ -124,7 +125,7 @@ Boats.build(refs)
 -- V13: the Goblin Port, where every goblin arrives and waits between raids (its slipways show every boat class).
 Port.build(refs, Boats.displayModel)
 -- V13.3: the Port's games, the Quest Board, the Hall of Records and the sanctuaries (each builds its own corner of town).
-for _, name in ipairs({ "Regatta", "Gauntlet", "CannonGolf", "PetDerby", "TreasureToss", "TargetGallery", "CrabChaos" }) do
+for _, name in ipairs({ "Regatta", "Gauntlet", "CannonGolf" }) do
 	Minigames.register(require(script.Parent[name]))
 end
 Minigames.build(Port.kit)
@@ -156,13 +157,14 @@ BoatAbilities.init(refs)
 Progress.participating = Raid.isParticipant
 -- V13.3 (registered before Progress opens anyone's profile, so their first publish already includes the Port's parts).
 Minigames.reward = Progress.onPortGame
-Minigames.bestOf = function(player, gameId) -- V13.4: shown on the play panel as the score to beat
+Minigames.bestOf = function(player, gameId, class) -- V13.4: shown on the play panel as the score to beat
 	local s = Progress.session(player)
-	return s and s.profile.games.best[gameId] or nil
+	return s and s.profile.games.best[PortGames.recordKey(gameId, class)] or nil -- V13.5: a Regatta best is per boat
 end
 Quests.init(Port.kit)
 Leaderboards.init(Port.kit)
 Sanctuary.init(Port.kit)
+task.spawn(Port.curate) -- V13.5: the curated Port's furniture, after every building it must keep off (it waits a frame)
 Challenges.init()
 Prospects.init()
 Raid.onDeparting = function(players)
@@ -225,10 +227,14 @@ local Blast = require(script.Parent.Blast)
 Blast.safe = function(position)
 	return Lobby.inPort(position) or Util.flatDistance(position, refs.hoard.position) <= Config.WARD_RADIUS
 end
--- V13.2: no bow gun fires from there, and no boat ability acts there (a little wider: the docks are busy).
+-- V13.2: no bow gun fires from there, and no boat ability acts there (a little wider: the docks are busy). V13.5: except
+-- on the Regatta's water, where a test drive plays its boat's ability for real (the race is the only thing out there).
 Cannons.inSafeZone = Blast.safe
 BoatAbilities.safe = function(position)
-	return Lobby.inPort(position) or Util.flatDistance(position, refs.hoard.position) <= Config.WARD_RADIUS + 60
+	if Lobby.inPort(position) then
+		return not PortGames.onRegatta(position)
+	end
+	return Util.flatDistance(position, refs.hoard.position) <= Config.WARD_RADIUS + 60
 end
 
 -- Spirits can't bank; the Hoard's ward also pulls them back before they reach it.

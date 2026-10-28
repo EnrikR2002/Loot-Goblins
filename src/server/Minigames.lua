@@ -1,12 +1,13 @@
--- The Port's games (V13.3, The Living Port): one framework for all seven, so each game is only what makes it itself.
--- A game module (server/Regatta.lua, Gauntlet.lua, CannonGolf.lua, PetDerby.lua, TreasureToss.lua, TargetGallery.lua,
--- CrabChaos.lua) registers here and gives a few hooks; this module runs everything around them:
+-- The Port's games (V13.3, The Living Port): one framework for all of them, so each game is only what makes it itself.
+-- A game module (server/Regatta.lua, Gauntlet.lua, CannonGolf.lua; V13.5 removed the Pet Derby, Treasure Toss, the
+-- Target Gallery and Crab Chaos) registers here and gives a few hooks; this module runs everything around them:
 --
---   JOINING    a prompt at the venue (E), a challenge (server/Challenges.lua), or AGAIN on the results. Only a goblin in
---              the Port and in no other game. HEAT games (one session at a time: the Regatta, the Derby, the Toss, the
---              Gallery, Crab Chaos) wait in a LOBBY for Config.PLAYGROUND.LOBBY seconds after the first goblin steps in;
---              anyone arriving while a heat runs is QUEUED for the next one. CONCURRENT games (the Gauntlet, Golf) give
---              every goblin (or challenge pair) a run of their own at once, up to the game's own limit.
+--   JOINING    a prompt at the venue (E), a challenge (server/Challenges.lua), AGAIN on the results, or (V13.5) a game's
+--              own way in (the showroom's TEST DRIVE: "choose" a boat, then "join"). Only a goblin in the Port and in no
+--              other game. HEAT games (one session at a time: the Regatta) wait in a LOBBY for Config.PLAYGROUND.LOBBY
+--              seconds after the first goblin steps in; anyone arriving while a heat runs is QUEUED for the next one.
+--              CONCURRENT games (the Gauntlet, Golf) give every goblin (or challenge pair) a run of their own at once,
+--              up to the game's own limit.
 --   A HEAT     lobby -> countdown (COUNTDOWN s: everyone placed and held) -> running -> results (RESULTS s) -> closed.
 --              The game says when a goblin is DONE and with what score (Minigames.done) or keeps a running score
 --              (Minigames.points); the heat ends when everyone is done, when the game's time runs out, or when
@@ -28,7 +29,8 @@
 -- A game module: { id, concurrent, limit (concurrent sessions), max (players), duration (seconds after GO),
 --   build(kit), prepare(session), go(session, t), tick(session, dt, t), input(session, player, action, a, b),
 --   drop(session, player, why), stop(session), public(session) (optional), spot(session, player) (optional: where a
---   goblin is put back afterwards) }
+--   goblin is put back afterwards), choose(player, option, session) (optional, V13.5: an option picked before or in a
+--   lobby, such as the Regatta's boat), optionOf(player) (optional: that option, for the score to beat) }
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -47,7 +49,8 @@ Minigames.Finished = Util.signal() -- (session, standings): a heat is over (Chal
 Minigames.reward = function()
 	return nil
 end
--- (player, gameId) -> the goblin's personal best, or nil (V13.4: Main sets it from the profile; the panel shows it).
+-- (player, gameId, option) -> the goblin's personal best, or nil (V13.4: Main sets it from the profile; the panel shows
+-- it). option (V13.5): the game's option (the Regatta's boat: a best is that boat's own).
 Minigames.bestOf = function()
 	return nil
 end
@@ -93,7 +96,7 @@ local function standingsOf(session)
 			return a.joinedAt < b.joinedAt
 		end
 		if sa ~= sb then
-			if def.kind == "time" then
+			if PortGames.lowerWins(def.id) then
 				return sa < sb
 			end
 			return sa > sb
@@ -131,7 +134,8 @@ function Minigames.publish(session)
 			l = entry.left or nil,
 			r = entry.ready or nil, -- V13.4: pressed START NOW in the lobby
 			b = entry.best, -- V13.4: their personal best before this heat (the score to beat)
-			x = entry.show, -- a short line the game wants shown (laps, crabs, a checkpoint)
+			o = entry.option, -- V13.5: their option (the Regatta's boat)
+			x = entry.show, -- a short line the game wants shown (a checkpoint, a hole)
 		})
 	end
 	local data = {
@@ -207,7 +211,8 @@ local function create(gameId, private)
 end
 
 local function addPlayer(session, player)
-	local ok, best = pcall(Minigames.bestOf, player, session.game)
+	local option = session.mod.optionOf and session.mod.optionOf(player) or nil
+	local ok, best = pcall(Minigames.bestOf, player, session.game, option)
 	local entry = {
 		player = player,
 		userId = player.UserId,
@@ -215,6 +220,7 @@ local function addPlayer(session, player)
 		joinedAt = now(),
 		data = {},
 		best = ok and type(best) == "number" and best or nil,
+		option = option, -- V13.5: the game's option (the Regatta's boat)
 	}
 	session.entries[player] = entry
 	table.insert(session.order, player)
@@ -328,15 +334,12 @@ function Minigames.finish(session, why)
 	pcall(session.mod.stop, session)
 	local standings = standingsOf(session)
 	local count = humans(session)
-	local kind = session.def.kind
+	local lower = PortGames.lowerWins(session.game)
 	for _, entry in ipairs(standings) do
 		local player = entry.player
 		if player.Parent and not entry.left then
-			local counts = entry.score ~= nil and (kind == "time" or entry.score > 0)
-			-- (The Derby's place counts the bot pets too: the game says.)
-			if session.mod.placeOf then
-				entry.place = session.mod.placeOf(session, entry) or entry.place
-			end
+			-- A time or a round of strokes counts once finished; points only above zero (standing about earns nothing).
+			local counts = entry.score ~= nil and (lower or entry.score > 0)
 			local ok, breakdown = pcall(
 				Minigames.reward,
 				player,
@@ -460,6 +463,13 @@ function Minigames.join(player, gameId)
 		addPlayer(session, player)
 		startLobby(session)
 		return true
+	end
+	-- V13.5: a heat waits at its venue: a goblin who joined from across the Port (the showroom's TEST DRIVE) is taken
+	-- there first, or the lobby's "walked away" check would send them off at once.
+	local venue = PortGames.VENUES[gameId]
+	local root = Util.aliveRoot(player)
+	if venue and root and (root.Position - venue.zone).Magnitude > venue.radius + 20 then
+		Port.arrive(player, CFrame.new(venue.zone + Vector3.new(0, 3.5, 0)))
 	end
 	for _, session in ipairs(activeFor(gameId)) do
 		if session.state == "lobby" and not session.private and #session.order < (mod.max or 8) then
@@ -765,9 +775,20 @@ function Minigames.request(player, action, a, b)
 			Minigames.publish(session)
 		end
 		return
-	elseif action == "again" then
+	elseif action == "again" or action == "join" then
 		if type(a) == "string" and modules[a] and not playing[player] then
 			Minigames.join(player, a)
+		end
+		return
+	elseif action == "choose" then
+		-- V13.5: a game's option (the Regatta's boat), before joining or while its lobby waits.
+		local mod = type(a) == "string" and modules[a]
+		if mod and mod.choose then
+			local session = playing[player]
+			local ok, err = pcall(mod.choose, player, b, session and session.game == a and session or nil)
+			if not ok then
+				warn("[Minigames] " .. a .. " choose: " .. tostring(err))
+			end
 		end
 		return
 	end

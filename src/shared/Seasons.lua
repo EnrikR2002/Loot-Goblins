@@ -188,41 +188,26 @@ Seasons.QUESTS = {
 			text = "Land on 3 greens in Cannon Golf",
 			go = "golf",
 		},
+		-- V13.5: the Pet Derby, Treasure Toss, Gallery and Crab Chaos quests went with their games (a goblin holding
+		-- one is dealt today's quest in its place: Seasons.ensureQuests). Two new ones show off what the games became.
 		{
-			id = "d_toss",
+			id = "d_testdrive",
 			slot = 2,
 			tier = "easy",
-			event = "toss_points",
-			goal = 30,
-			text = "Score 30 in Treasure Toss",
-			go = "toss",
+			event = "regatta_class",
+			goal = 2,
+			distinct = true,
+			text = "Race the Regatta in 2 different boats",
+			go = "regatta",
 		},
 		{
-			id = "d_crabs",
+			id = "d_skip3",
 			slot = 2,
-			tier = "easy",
-			event = "crabs",
-			goal = 8,
-			text = "Catch 8 crabs in Crab Chaos",
-			go = "crabs",
-		},
-		{
-			id = "d_gallery",
-			slot = 2,
-			tier = "easy",
-			event = "gallery_hits",
-			goal = 10,
-			text = "Hit 10 ships in the Target Gallery",
-			go = "gallery",
-		},
-		{
-			id = "d_derby",
-			slot = 2,
-			tier = "easy",
-			event = "game_derby",
+			tier = "medium",
+			event = "golf_skips",
 			goal = 1,
-			text = "Race a pet in the Pet Derby",
-			go = "derby",
+			text = "Skip 3 times off the sea in one Cannon Golf shot",
+			go = "golf",
 		},
 		{ id = "d_tricks3", slot = 3, tier = "medium", event = "tricks", goal = 3, text = "Land 3 clean boat tricks" },
 		{
@@ -285,11 +270,20 @@ Seasons.QUESTS = {
 			slot = 2,
 			tier = "hard",
 			event = "game_distinct",
-			goal = 5,
+			goal = 3, -- V13.5: all three (it was 5 of the seven)
 			distinct = true,
-			text = "Finish 5 different Port games",
+			text = "Finish all 3 Port games",
 		},
 		{ id = "w_regatta5", slot = 2, tier = "medium", event = "game_regatta", goal = 5, text = "Finish 5 Regattas" },
+		{
+			id = "w_fleet4",
+			slot = 2,
+			tier = "medium",
+			event = "regatta_class",
+			goal = 4,
+			distinct = true,
+			text = "Race the Regatta in 4 different boats",
+		},
 		{
 			id = "w_best2",
 			slot = 2,
@@ -421,6 +415,44 @@ local function freshQuests(kind, index)
 	return out
 end
 
+-- V13.5: the quests whose games were removed, as they were (so one a goblin had already finished is still paid).
+Seasons.RETIRED_QUESTS = {
+	d_toss = { goal = 30, tier = "easy" },
+	d_crabs = { goal = 8, tier = "easy" },
+	d_gallery = { goal = 10, tier = "easy" },
+	d_derby = { goal = 1, tier = "easy" },
+}
+
+-- V13.5: a quest that no longer exists (its game was removed) and was not claimed is replaced by the quest the board
+-- deals for its place in this period; if it had been finished it is paid first, as if claimed (an earned reward is
+-- never lost). A claimed one is left (it was paid). The others, and their progress and claims, are left exactly as
+-- they are. Adds what it paid to `out` (Seasons.ensureQuests's result).
+local function replaceRetired(profile, list, kind, index, out)
+	local deal
+	for i, entry in ipairs(list or {}) do
+		if not Seasons.QUEST_BY_ID[entry.id] and not entry.claimed then
+			deal = deal or freshQuests(kind, index)
+			local fresh = deal[i]
+			local taken = false
+			for _, other in ipairs(list) do
+				taken = taken or (fresh ~= nil and other.id == fresh.id)
+			end
+			if fresh and not taken then
+				local old = Seasons.RETIRED_QUESTS[entry.id]
+				if old and (entry.n or 0) >= old.goal then
+					local rewards = kind == "week" and Config.QUESTS.WEEKLY_REWARD or Config.QUESTS.REWARD
+					local shinies = rewards[old.tier] or 0
+					profile.shinies += shinies
+					profile.stats.questsDone = (profile.stats.questsDone or 0) + 1
+					out.shinies += shinies
+					out.count += 1
+				end
+				list[i] = fresh
+			end
+		end
+	end
+end
+
 local function countKeys(map)
 	local n = 0
 	for _ in pairs(map or {}) do
@@ -505,6 +537,8 @@ function Seasons.ensureQuests(profile, unix, owns)
 		q.week = week
 		q.weekly = freshQuests("week", week)
 	end
+	replaceRetired(profile, q.daily, "day", day, out)
+	replaceRetired(profile, q.weekly, "week", week, out)
 	return out
 end
 
@@ -656,24 +690,27 @@ Seasons.BOARDS = {
 		awards = { top1 = { "champion_top1" }, top10 = { "champion_top10" }, gold = { "legend_gold" } },
 	},
 	{
-		id = "regatta",
+		-- V13.5: the new course. Only Racing Tub laps count (everyone in the same boat); a test drive's lap is a
+		-- class record instead (server/Leaderboards.lua: the week's CLASS RECORDS at the dock).
+		id = "regatta2",
 		period = "week",
 		order = "asc",
 		icon = "⛵",
 		name = "FASTEST REGATTA",
-		sub = "one lap of the Tiny Boat Regatta",
+		sub = "one lap in the Racing Tub",
 		unit = "time",
 		tiers = { bronze = G.REGATTA.MEDALS.bronze, silver = G.REGATTA.MEDALS.silver, gold = G.REGATTA.MEDALS.gold },
 		awards = { top1 = { "regatta_top1" }, top10 = { "weekly_top10", "regatta_top10" }, gold = { "regatta_gold" } },
 	},
 	{
-		id = "golf",
+		-- V13.5: six holes in strokes (fewest wins).
+		id = "golf2",
 		period = "week",
-		order = "desc",
+		order = "asc",
 		icon = "⛳",
 		name = "CANNON GOLF",
-		sub = "best round of three holes",
-		unit = "points",
+		sub = "fewest strokes round six holes",
+		unit = "strokes",
 		tiers = { bronze = G.GOLF.MEDALS.bronze, silver = G.GOLF.MEDALS.silver, gold = G.GOLF.MEDALS.gold },
 		awards = { top1 = { "golf_top1" }, top10 = { "weekly_top10" } },
 	},
@@ -689,18 +726,51 @@ Seasons.BOARDS = {
 		awards = { top1 = { "gauntlet_top1" } },
 	},
 }
+-- V13.5: boards whose games changed (the Regatta's old course, Cannon Golf's old points). They take no new scores and
+-- stand nowhere, but they are still known, so what goblins already scored on them (this period's places included) is
+-- paid out when the period ends, and their Hall records and DataStores stay as they are.
+Seasons.RETIRED_BOARDS = {
+	{
+		id = "regatta",
+		period = "week",
+		order = "asc",
+		icon = "⛵",
+		name = "FASTEST REGATTA (the old course)",
+		sub = "one lap round the island",
+		unit = "time",
+		tiers = { bronze = 54, silver = 43, gold = 36 },
+		awards = { top1 = { "regatta_top1" }, top10 = { "weekly_top10", "regatta_top10" }, gold = { "regatta_gold" } },
+	},
+	{
+		id = "golf",
+		period = "week",
+		order = "desc",
+		icon = "⛳",
+		name = "CANNON GOLF (three holes)",
+		sub = "best round of three holes",
+		unit = "points",
+		tiers = { bronze = 50, silver = 120, gold = 200 },
+		awards = { top1 = { "golf_top1" }, top10 = { "weekly_top10" } },
+	},
+}
 Seasons.BOARD_BY_ID = {}
 for _, board in ipairs(Seasons.BOARDS) do
+	Seasons.BOARD_BY_ID[board.id] = board
+end
+for _, board in ipairs(Seasons.RETIRED_BOARDS) do
+	board.retired = true
 	Seasons.BOARD_BY_ID[board.id] = board
 end
 
 -- Every catalogue `award` source the Port can pay, and the items it grants (the tests check both directions).
 function Seasons.awardSources()
 	local sources = { weekly_bundle = true }
-	for _, board in ipairs(Seasons.BOARDS) do
-		for _, list in pairs(board.awards) do
-			for _, source in ipairs(list) do
-				sources[source] = true
+	for _, list in ipairs({ Seasons.BOARDS, Seasons.RETIRED_BOARDS }) do
+		for _, board in ipairs(list) do
+			for _, awards in pairs(board.awards) do
+				for _, source in ipairs(awards) do
+					sources[source] = true
+				end
 			end
 		end
 	end
@@ -780,9 +850,10 @@ function Seasons.best(profile, boardId, unix)
 end
 
 -- A new score for a board (the server measured it). Returns improved (bool), the period key, and the stored value.
+-- A retired board (V13.5) takes none.
 function Seasons.submit(profile, boardId, score, unix)
 	local board = Seasons.BOARD_BY_ID[boardId]
-	if not board or type(score) ~= "number" or score ~= score then
+	if not board or board.retired or type(score) ~= "number" or score ~= score then
 		return false
 	end
 	local key = Seasons.boardKey(board, unix)

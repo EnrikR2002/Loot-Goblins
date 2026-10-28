@@ -27,7 +27,6 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("LootGoblins")
 local Config = require(Shared:WaitForChild("Config"))
-local Lobby = require(Shared:WaitForChild("Lobby"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Boats = require(script.Parent.Boats)
@@ -496,11 +495,12 @@ local function volley(boat, player, aim)
 	return true
 end
 
--- The Stormrunner's twister: over open water, away from home and the Port, behind the stern.
+-- The Stormrunner's twister: over open water, away from home and the Port (V13.5: the Regatta's water excepted: a test
+-- drive's twister is real), behind the stern.
 local function twister(boat, player)
 	local spec = A.twister
 	local hull = boat.hull
-	if Lobby.inPort(hull.Position) then
+	if BoatAbilities.safe(hull.Position) then
 		return false, "No tornadoes in the Port!"
 	end
 	if refs and Util.flatDistance(hull.Position, refs.hoard.position) < spec.homeClear then

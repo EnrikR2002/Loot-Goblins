@@ -114,10 +114,10 @@ local function suggestion(profile, view)
 			return { game = def.id, name = def.name, icon = def.icon, why = "new" }
 		end
 	end
-	-- A best to beat (a different one each time).
+	-- A best to beat (a different one each time; V13.5: kept under the game's record, the Regatta's in the tub).
 	local list = {}
 	for _, def in ipairs(PortGames.GAMES) do
-		if profile.games.best[def.id] then
+		if profile.games.best[PortGames.recordKey(def.id)] then
 			table.insert(list, def)
 		end
 	end
@@ -128,7 +128,7 @@ local function suggestion(profile, view)
 			name = def.name,
 			icon = def.icon,
 			why = "best",
-			best = profile.games.best[def.id],
+			best = profile.games.best[PortGames.recordKey(def.id)],
 			unit = def.unit,
 		}
 	end

@@ -36,8 +36,9 @@ local Net = require(script.Parent.Net)
 local Poltergoblin = require(script.Parent.Poltergoblin)
 
 local Flight = {}
--- V13.3: (player, position, launcher) when a thrown goblin has come down for good (after any bounces): Cannon Golf
--- scores the shot from it. `launcher` is what threw them (nil for a throw with no launcher).
+-- V13.3: (player, position, launcher, info) when a thrown goblin has come down for good (after any bounces): Cannon Golf
+-- scores the shot from it. `launcher` is what threw them (nil for a throw with no launcher). V13.5: info = { water (it
+-- ended in the sea, or nowhere: not on something solid), bounces (skips off the sea on the way) }.
 Flight.Landed = Util.signal()
 
 local D = Config.DIVE
@@ -200,10 +201,12 @@ function Flight.phaseOf(player)
 	return s and s.phase
 end
 
--- The flight is over (or never happened): an ordinary goblin again, on its feet.
-local function finish(player, s, humanoid, root, phase)
+-- The flight is over (or never happened): an ordinary goblin again, on its feet. onGround (V13.5): it came down on
+-- something solid (anything else, the sea or a flight cut short, is not a landing on a target).
+local function finish(player, s, humanoid, root, phase, onGround)
 	local landed = (s.phase == "diving" or s.phase == "embedded") and root and root.Parent and root.Position or nil
 	local thrownBy = s.thrownBy
+	local bounces = s.bounces
 	s.token += 1
 	stiffen(s)
 	release(s)
@@ -224,7 +227,7 @@ local function finish(player, s, humanoid, root, phase)
 	end
 	player:SetAttribute("DeployState", phase or "landed")
 	if landed then
-		Flight.Landed:Fire(player, landed, thrownBy)
+		Flight.Landed:Fire(player, landed, thrownBy, { water = onGround ~= true, bounces = bounces or 0 })
 	end
 end
 
@@ -344,6 +347,7 @@ function Flight.launch(player, velocity, launcher, start)
 	end
 	release(s)
 	s.thrownBy = launcher -- V13.3: who threw them (Flight.Landed says so)
+	s.skim = launcher ~= nil and launcher.skim == true -- V13.5: a skimmer skips by its angle (Config.DIVE.SKIM)
 	if launcher then
 		Net.broadcastNear(from, 2600, "DiveFire", {
 			position = from,
@@ -379,6 +383,7 @@ function Flight.launch(player, velocity, launcher, start)
 		velocity = velocity,
 		token = s.token,
 		start = (typeof(start) == "Vector3" and start) or (launcher and launcher.fromFn and from) or nil,
+		skim = s.skim or nil,
 	})
 	return true
 end
@@ -450,22 +455,25 @@ local function soft(player, s, humanoid, root, position, kind)
 		"DiveImpact",
 		{ kind = kind or "soft", position = position, userId = player.UserId }
 	)
-	finish(player, s, humanoid, root)
+	finish(player, s, humanoid, root, nil, true)
 end
 
 local function splash(player, s, humanoid, root, position)
 	local v = root.AssemblyLinearVelocity
-	local away = Dive.bounce(Vector3.new(v.X, math.min(v.Y, s.fall), v.Z), s.bounces + 1, s.mode)
+	local away = Dive.bounce(Vector3.new(v.X, math.min(v.Y, s.fall), v.Z), s.bounces + 1, s.mode, s.skim)
 	Net.broadcastNear(position, 1400, "DiveImpact", {
 		kind = "water",
 		position = position,
 		userId = player.UserId,
 		bounce = away and (s.bounces + 1) or 0,
+		speed = math.floor(Vector3.new(v.X, 0, v.Z).Magnitude), -- V13.5: the splash is as big as the arrival
+		skim = s.skim or nil,
 	})
 	if away then
 		s.bounces += 1
 		s.fall = 0
-		s.landAfter = now() + D.BOUNCE_GRACE -- it is still beside the water for a moment: not a second landing
+		-- It is still beside the water for a moment: not a second landing. (A skimmer's skips are quicker.)
+		s.landAfter = now() + (s.skim and D.SKIM.GRACE or D.BOUNCE_GRACE)
 		s.token += 1
 		-- The goblin is put on the surface, which can be a jump of many studs for a fast one. Loose limbs
 		-- would be left behind for a moment (they stretched 15 studs in a test), so they are hooked back on
@@ -521,7 +529,7 @@ local function ostrich(player, s, root, hit)
 		end
 		r.Anchored = false
 		r.CFrame = CFrame.new(position + Vector3.new(0, 3.4, 0))
-		finish(player, s, h, r)
+		finish(player, s, h, r, nil, true)
 		r.AssemblyLinearVelocity = Vector3.new((math.random() - 0.5) * 16, D.POP_SPEED, (math.random() - 0.5) * 16)
 		Net.broadcastNear(position, 900, "DiveImpact", { kind = "pop", position = position, userId = player.UserId })
 	end)

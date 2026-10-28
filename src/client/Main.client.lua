@@ -547,6 +547,14 @@ local function findHook(origin, ray)
 	local camera = workspace.CurrentCamera
 	local function try(direction)
 		local hit = workspace:Raycast(ray.Origin, direction * 1000, aimParams)
+		if hit and hit.Instance.Name == "HookTarget" then
+			-- V13.5: the catch round a Gauntlet hook: swing from the gold ball's middle, not the edge of the catch.
+			local middle = hit.Instance.Position
+			if (middle - origin).Magnitude <= range then
+				return { Position = middle, Normal = Vector3.yAxis, Instance = hit.Instance }
+			end
+			return nil
+		end
 		if hit and (hit.Position - origin).Magnitude <= range and staticHook(hit.Instance, hit.Position) then
 			return hit
 		end
@@ -1601,7 +1609,9 @@ end, {
 	legendsPlace = PortBoard.bestPlace,
 })
 Titles.start()
-PlayHud.start(Hud, PortHud.fadeIn)
+PlayHud.start(Hud, PortHud.fadeIn, function(focus) -- V13.5: the results card's SHOWROOM opens the wardrobe on a boat
+	Shop.open("shop", focus)
+end)
 PortBoard.start(Hud)
 SanctuaryView.start(Hud)
 NextUp.start(function()
@@ -1634,6 +1644,9 @@ ChaosFx.start(Hud)
 -- V13.3: the Living Port.
 function handlers.PlayResult(p)
 	PlayHud.result(p)
+end
+function handlers.ClassRecord(p) -- V13.5: the week's record in a Regatta boat
+	PlayHud.classRecord(p)
 end
 function handlers.PlayFx(p)
 	PlayHud.fx(p)
@@ -1762,6 +1775,12 @@ function handlers.Stolen(p)
 	Effects.chime(Effects.CHIME_STEAL, 0.8)
 	Effects.burst(p.position, color, 40, 24)
 	Effects.ring(p.position, color, 16, 0.6)
+	-- V13.5: prised off its spot: dust off the plinth, and for the thief a jolt (the world has noticed).
+	Effects.dustRing(p.position - Vector3.new(0, 2, 0), 14, Color3.fromRGB(220, 200, 160))
+	if isMe(p) then
+		Effects.shakeAt(p.position, 0.6, 0.3, 60)
+		Effects.punchFov(88)
+	end
 	Pets.react(p.userId, "cheer")
 end
 
@@ -1791,6 +1810,7 @@ function handlers.LootLoose(p)
 	Effects.burst(p.position, color, 25, 16)
 	Effects.ring(p.position, color, 8, 0.4)
 	Effects.sound("thud", { position = p.position, volume = 0.9, speed = 0.8 })
+	Effects.popText(p.position + Vector3.new(0, 5, 0), "LOOSE!", color, 1) -- V13.5: it is up for grabs
 end
 
 function handlers.Banked(p)
@@ -1825,6 +1845,15 @@ function handlers.Banked(p)
 		end)
 	end
 	Effects.sound("boom", { position = p.position, volume = 0.5, speed = 1.4 })
+	-- V13.5: the haul spills: a shower of gold coins as big as what was banked, and the sum over the Hoard.
+	Effects.debris(
+		p.position + Vector3.new(0, 4, 0),
+		Color3.fromRGB(255, 205, 60),
+		math.clamp(math.floor((p.value or 4) * 1.5), 6, 26),
+		30,
+		Enum.Material.Metal
+	)
+	Effects.popText(p.position + Vector3.new(0, 10, 0), string.format("+%d GOLD", p.value or 0), GOLD, 1.8)
 end
 
 function handlers.Trouble(p)
@@ -1864,6 +1893,9 @@ function handlers.GuardianSmash(p)
 	Effects.ring(p.position + Vector3.new(0, 0.5, 0), Color3.fromRGB(200, 150, 110), 14, 0.5)
 	Effects.sound("boom", { position = p.position, speed = 0.6, volume = 1 })
 	Effects.shakeAt(p.position, 1.4, 0.4, 90)
+	-- V13.5: stone fists on the ground: a rolling ring of dust and chips of rock.
+	Effects.dustRing(p.position, 18, Color3.fromRGB(200, 170, 130))
+	Effects.debris(p.position + Vector3.new(0, 1.5, 0), Color3.fromRGB(130, 120, 110), 7, 26, Enum.Material.Slate)
 end
 
 function handlers.TotemCharge(p)
@@ -2076,6 +2108,7 @@ function handlers.CannonFire(p)
 	Effects.ball(p.position, Color3.fromRGB(255, 190, 90), 6, 0.2)
 	Effects.sound("boom", { position = p.position, speed = 0.9, volume = 1, range = 700 })
 	Effects.shakeAt(p.position, 0.7, 0.25, 60)
+	Effects.dustRing(p.position, 8, Color3.fromRGB(150, 146, 150)) -- V13.5: the powder smoke rolls off the muzzle
 end
 
 function handlers.KegLit(p)
@@ -2541,6 +2574,7 @@ function handlers.GuardianLaunch(p)
 	Pets.react(p.userId, "tumble")
 	Effects.sound("boom", { position = p.position, speed = 0.55, volume = 1, range = 700 })
 	Effects.spray(p.position, 1.4)
+	Effects.splashColumn(p.position, 34, 9) -- V13.5: the sea thrown up with the boat
 	Effects.shakeAt(p.position, 1, 0.6, 260)
 	if isMe(p) then
 		Effects.punchFov(110)
@@ -2566,6 +2600,13 @@ end
 function handlers.KnockedOut(p)
 	Hud.knockout(p.seconds, p.cause)
 	Effects.punchFov(60)
+	-- V13.5: the thump of going down, where it happened.
+	local fallen = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if fallen then
+		Effects.dustRing(fallen.Position - Vector3.new(0, 2.5, 0), 9, Color3.fromRGB(210, 195, 170))
+		Effects.popText(fallen.Position + Vector3.new(0, 5, 0), "KO!", Color3.fromRGB(255, 120, 100), 1.4)
+		Effects.sound("thud", { speed = 0.6, volume = 0.9 })
+	end
 	-- Flat on its back (a goblin at the wheel just slumps there). Its own client owns the body, so it lays it down.
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -2660,7 +2701,23 @@ function handlers.AbilityRefused(p)
 end
 
 function handlers.BoatImpact(p)
-	Effects.spray(p.position, p.power or 0.3)
+	local power = p.power or 0.3
+	Effects.spray(p.position, power)
+	-- V13.5: a crash looks like one: planks fly and it thumps as hard as the hit; a scrape only grinds.
+	if not p.scrape and power >= 0.35 then
+		Effects.debris(
+			p.position + Vector3.new(0, 2, 0),
+			Color3.fromRGB(150, 104, 62),
+			math.floor(3 + power * 8),
+			18 + power * 26
+		)
+		Effects.sound("thud", {
+			position = p.position,
+			speed = 0.75 - power * 0.25,
+			volume = 0.6 + power * 0.4,
+			range = 350,
+		})
+	end
 end
 
 function handlers.BoatSunk(p)

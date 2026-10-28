@@ -32,6 +32,7 @@ local Shop = {}
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("LootGoblinsRemotes")
 local shopRemote = remotes:WaitForChild("ShopRequest")
+local playRemote = remotes:WaitForChild("PlayRequest") -- V13.5: the showroom's TEST DRIVE (the Regatta)
 local emoteRemote = remotes:WaitForChild("EmoteRequest")
 
 local C = Ui.C
@@ -124,6 +125,9 @@ local function listed(item, set)
 	end
 	if tab == "locker" then
 		return owns(item, set)
+	end
+	if item.unearnable and not owns(item, set) then
+		return false -- V13.5: its way to earn it is gone (the Derby Laurel): shown only to whoever has it
 	end
 	if item.rarity == "premium" then
 		return premiumInfo(item) ~= nil
@@ -563,6 +567,22 @@ local function stageOverlay(item)
 				TextWrapped = true,
 				TextYAlignment = Enum.TextYAlignment.Top,
 			})
+		end
+		-- V13.5: try any boat for real, owned or not: a lap of the Regatta in it (a loaner; nothing is bought).
+		if player:GetAttribute("Zone") == "port" and not player:GetAttribute("PlaySession") then
+			Ui.button(overlay, {
+				text = "⛵ TEST DRIVE IT",
+				style = "good",
+				anchor = Vector2.new(1, 0),
+				position = UDim2.new(1, -10, 0, 10),
+				size = UDim2.fromOffset(150, 36),
+				textSize = 15,
+				name = "TestDrive",
+			}, function()
+				playRemote:FireServer("choose", "regatta", item.class)
+				playRemote:FireServer("join", "regatta")
+				Shop.close()
+			end)
 		end
 		return
 	end
@@ -1639,6 +1659,9 @@ local function buildTrophies()
 	for index, achievement in ipairs(Catalog.ACHIEVEMENTS) do
 		local p = progress[achievement.id] or { 0, achievement.goal }
 		local finished = done[achievement.id]
+		if achievement.unearnable and not finished then
+			continue -- V13.5: it cannot be unlocked any more (its game is gone): only whoever earned it sees it
+		end
 		local row = Ui.make("TextButton", {
 			Size = UDim2.new(1, -10, 0, 100),
 			BackgroundColor3 = finished and C.goldPale or C.parchment,

@@ -1223,6 +1223,9 @@ function Kit.stream(name, a, b, halfWidth, speed)
 			chevron.CastShadow = false
 		end
 	end
+	if name == "" then
+		return -- V13.5: one stretch of a longer current (the Regatta's Flume): its first stretch has the sign
+	end
 	local holder = decor(
 		"StreamSign",
 		Vector3.new(1, 1, 1),

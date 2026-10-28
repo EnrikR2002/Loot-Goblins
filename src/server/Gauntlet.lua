@@ -8,7 +8,11 @@
 --   THE CLOCK   starts at GO (everyone held on the start deck until then) and stops at the bell. The server watches
 --               every runner ten times a second and only counts a platform once the one before it was reached.
 --   FALLING     a runner who drops into the water (Config.PLAYGROUND.GAUNTLET.FALL_Y) is put back on the last
---               platform they reached, and the clock runs on: falling costs time, never the run.
+--               platform they reached, and the clock runs on: falling costs time, never the run. (V13.5: put back
+--               facing the next platform, the splashes counted on the panel.)
+--   V13.5       targeted polish, the course itself unchanged: each hook has a big invisible catch round it (a hook
+--               aimed near the gold ball swings from the ball itself: client/Main.lua), the hooks of the leg ahead
+--               light up (client/PlayHud.lua), a shortcut says how many platforms it skipped.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("LootGoblins")
@@ -92,6 +96,14 @@ local function hook(kit, position)
 	ball.Shape = Enum.PartType.Ball
 	ball.CanCollide = false -- hookable (the grapple's ray finds it), never something to bonk into
 	ball.CanQuery = true
+	-- V13.5: a catch round it, so a hook aimed near the ball takes (the client swings from the ball's middle).
+	local catch = kit.part("HookTarget", v3(15, 15, 15), CFrame.new(position), HOOK_GOLD, Enum.Material.SmoothPlastic, {
+		ball = true,
+		transparency = 1,
+		shadow = false,
+	})
+	catch.CanCollide = false
+	catch.CanQuery = true
 	for i = 0, 7 do
 		local a = i / 8 * math.pi * 2
 		kit.deco(
@@ -153,8 +165,8 @@ function Gauntlet.build(kit)
 		Palette.WOOD,
 		Enum.Material.Wood
 	)
-	for _, at in ipairs(course.hooks) do
-		hook(kit, at)
+	for _, h in ipairs(course.hooks) do
+		hook(kit, h.at)
 	end
 	for _, entry in ipairs(course.pads) do
 		pad(kit, entry.at, entry.launch)
@@ -192,13 +204,15 @@ local function startSpot(index)
 	return base * CFrame.new((index - 1) * 4 - 2, 0, 0)
 end
 
-local function putBack(entry, t)
+local function putBack(session, entry, t)
 	local index = entry.data.cp - 1
 	local cf = index >= 1 and course.checkpoints[index].respawn or startSpot(1)
 	Minigames.place(entry.player, cf, true)
 	entry.data.heldUntil = t + 0.5
 	entry.data.falls = (entry.data.falls or 0) + 1
-	Net.send(entry.player, "PlayFx", { kind = "fall", game = "gauntlet" })
+	entry.show = { cp = index, of = #course.checkpoints, falls = entry.data.falls }
+	session.dirty = true
+	Net.send(entry.player, "PlayFx", { kind = "fall", game = "gauntlet", position = cf.Position })
 end
 
 function Gauntlet.prepare(session)
@@ -241,13 +255,15 @@ function Gauntlet.tick(session, _dt, t)
 				if reached then
 					local skipped = reached - entry.data.cp
 					entry.data.cp = reached + 1
-					entry.show = { cp = reached, of = #course.checkpoints }
+					entry.show = { cp = reached, of = #course.checkpoints, falls = entry.data.falls }
 					session.dirty = true
-					Net.send(
-						player,
-						"PlayFx",
-						{ kind = "checkpoint", game = "gauntlet", n = reached, shortcut = skipped > 0 or nil }
-					)
+					Net.send(player, "PlayFx", {
+						kind = "checkpoint",
+						game = "gauntlet",
+						n = reached,
+						shortcut = skipped > 0 or nil,
+						skipped = skipped > 0 and skipped or nil,
+					})
 					if entry.data.cp > #course.checkpoints then
 						local time = math.floor((t - session.goAt) * 100 + 0.5) / 100
 						if time < GA.MIN_TIME then
@@ -259,7 +275,7 @@ function Gauntlet.tick(session, _dt, t)
 						end
 					end
 				elseif p.Y < GA.FALL_Y and not entry.data.heldUntil and not PortGames.inBox(p, course.startBox) then
-					putBack(entry, t)
+					putBack(session, entry, t)
 				end
 			end
 		end
@@ -272,7 +288,7 @@ function Gauntlet.input(session, player, action)
 		local t = now()
 		if t - (entry.data.resetAt or 0) > 2 then
 			entry.data.resetAt = t
-			putBack(entry, t)
+			putBack(session, entry, t)
 		end
 	end
 end

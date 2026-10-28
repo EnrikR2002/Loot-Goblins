@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "check-generated-layouts-by-numbers-before-building",
+  "title": "A short script that checks a new layout's clearances catches overlaps before any build or Studio session",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-25",
+  "topics": [
+    "world-building",
+    "testing",
+    "layout"
+  ],
+  "observation": "A boat-race circuit (20 points with lane widths, rock walls beside a shortcut channel, obstacles) and six golf holes were written as data in a shared module. Before building anything, a plain Python script recomputed the same geometry and checked every lane stretch against the island's coast lobes, the zone's edge, a dock, the obstacles and the two ways through the shortcut. It took seconds and found two real faults: the outer edge of a hairpin's lane ran past the play zone's edge, and the shortcut's rock walls overlapped the safe route's lane near both ends. Both were fixed in the data, and the same checks were then written as Luau tests so they keep holding.",
+  "recommendation": "Keep new layouts as data with one mapping function, check their clearances in a quick script or a pure test before building, then keep the checks as tests. Sample along every segment, not only at the points.",
+  "applies_when": [
+    "A course, track or set of targets is placed by numbers that cannot be checked by eye during development",
+    "The layout has lanes or routes with widths and obstacles beside them"
+  ],
+  "limits": [
+    "One game (October 2026); the island was described by its fill lobes, so a check is only as good as that description",
+    "Clearance is not fun: whether the corners feel good still needs people"
+  ],
+  "evidence": [
+    {
+      "kind": "automated-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/cb19fd9e964557df10ee63eed95fb0adf27230aa/docs/reports/2026-10-25-v13-5-curated-port.md",
+      "detail": "Sections 8 and 10, item 3: the script found the Flume's lane past the Port's edge and the Teeth's rocks on the safe lane; PortGamesSpec now checks both (150 of 150 Luau tests passed)."
+    }
+  ]
+}

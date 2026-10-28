@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "check-what-an-existing-flag-does-before-reusing-it",
+  "title": "Before reusing an existing flag for a gentler meaning, read every place it is enforced; a 'retired' item flag revoked owners' items",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-25",
+  "topics": [
+    "economy",
+    "persistence",
+    "code-review"
+  ],
+  "observation": "Removing a minigame left a trophy item (a pet hat earned by winning it) that should stay with its owners but stop being advertised. The catalogue already had a `retired = true` flag, and the obvious move was to set it. Reading its uses first showed it meant 'withdrawn': the shop hid it even from owners, the economy refused to equip it, and saved looks dropped it, so setting it would have silently taken an earned reward away from every goblin who had it. A new flag (`unearnable`: hidden from the shop and trophy list unless owned, never unlocked again, still owned and wearable) did what was needed.",
+  "recommendation": "When an item, achievement or reward source loses its way to be earned, grep every use of any existing status flag before setting it, and prefer a new, explicitly named flag whose behaviour is exactly 'kept by owners, offered to nobody'. Add a test that the item is still owned and wearable.",
+  "applies_when": [
+    "Content is being removed from a live game with saved player ownership",
+    "An existing status flag looks like it fits the new meaning"
+  ],
+  "limits": [
+    "One occurrence in one Roblox game (October 2026); caught by reading code before any player was affected"
+  ],
+  "evidence": [
+    {
+      "kind": "source-review",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/cb19fd9e964557df10ee63eed95fb0adf27230aa/docs/reports/2026-10-25-v13-5-curated-port.md",
+      "detail": "Section 10, item 5; PortGamesSpec checks the Derby Laurel is not retired and is unearnable (150 of 150 Luau tests passed)."
+    }
+  ]
+}

@@ -20,6 +20,11 @@
 --   REWARDS    paid into each goblin's own profile, once (Seasons.pay marks the period in the same profile change),
 --              the next time they are in a server after the Hall is written: being offline at a reset loses nothing.
 --              If the Hall is still missing after GIVE_UP_DAYS, the tier reward is paid without a placement.
+--   RETIRED    (V13.5) the old Regatta and Cannon Golf boards (their games changed) take no new scores and are not
+--              shown, but what was scored on them is still settled and paid like any other (Seasons.RETIRED_BOARDS).
+--   CLASSES    (V13.5) the week's CLASS RECORDS: the fastest Regatta lap in each boat (the Racing Tub and the ten
+--              classes), one DataStore key per week ("LG_RegattaRecords_v1", key = the week's), kept with UpdateAsync
+--              so a record is only ever beaten, never lost. Prestige only: no Shinies, no cosmetics.
 -- In Studio without DataStore access, in-memory stand-ins are used (everything resets when Play stops).
 local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
@@ -49,6 +54,9 @@ local hallStore
 local tops = {} -- boardId -> { key, list = { { u, s } } (stored values, best first), readAt }
 local halls = {} -- "board@key" -> { final = true, top = { { u, s } } }
 local pending = {} -- player -> { ["board@key"] = { board, key, value, due } }
+local recordStore -- V13.5: the class records' DataStore (or a stand-in)
+local classLaps = { key = nil, laps = {} } -- the week's class records: laps[class] = { s = hundredths, u = userId }
+local recordQueue = {} -- class -> { s, u }: laps waiting to be written
 local written = setmetatable({}, { __mode = "k" }) -- player -> { ["board@key"] = os.clock() of the last write }
 local names = {} -- userId -> display name
 
@@ -94,6 +102,7 @@ function MockOrdered:GetSortedAsync(ascending, pageSize)
 	}
 end
 local mockHall = { data = {} }
+local mockRecords = { data = {} } -- V13.5
 function mockHall:UpdateAsync(key, fn)
 	local value = fn(self.data[key] and HttpService:JSONDecode(HttpService:JSONEncode(self.data[key])) or nil)
 	if value ~= nil then
@@ -104,6 +113,8 @@ end
 function mockHall:GetAsync(key)
 	return self.data[key]
 end
+mockRecords.UpdateAsync = mockHall.UpdateAsync
+mockRecords.GetAsync = mockHall.GetAsync
 
 -- Stores ----------------------------------------------------------------------------------------------------------------
 local function storeFor(board, key)
@@ -439,6 +450,115 @@ function Leaderboards.lastMoves(player)
 	return moves[player] or {}
 end
 
+-- The week's class records (V13.5) ----------------------------------------------------------------------------------------
+local function weekKey()
+	return Seasons.key("week", Seasons.period("week", unix()))
+end
+
+local function publishRecords()
+	local out = {}
+	local ids = {}
+	for class, row in pairs(classLaps.laps) do
+		table.insert(ids, row.u)
+		out[class] = { s = row.s / 100, u = row.u }
+	end
+	learnNames(ids)
+	for _, row in pairs(out) do
+		row.n = nameOf(row.u)
+	end
+	local ok, text = pcall(HttpService.JSONEncode, HttpService, { key = classLaps.key, laps = out })
+	if ok then
+		workspace:SetAttribute("RegattaRecords", text)
+	end
+end
+
+-- Merge stored laps into the week's (only ever a better one wins; a new week starts empty).
+local function mergeRecords(key, stored)
+	if classLaps.key ~= key then
+		classLaps.key = key
+		classLaps.laps = {}
+		table.clear(recordQueue)
+	end
+	for class, row in pairs(type(stored) == "table" and stored or {}) do
+		if type(class) == "string" and type(row) == "table" and type(row.s) == "number" and type(row.u) == "number" then
+			local mine = classLaps.laps[class]
+			if not mine or row.s < mine.s then
+				classLaps.laps[class] = { s = row.s, u = row.u }
+			end
+		end
+	end
+end
+
+local function readRecords()
+	local key = weekKey()
+	if not recordStore then
+		mergeRecords(key, nil)
+		return
+	end
+	local ok, stored = pcall(function()
+		return recordStore:GetAsync(key)
+	end)
+	mergeRecords(key, ok and stored or nil)
+end
+
+-- Writes the queued laps in one UpdateAsync that keeps the better lap for every class.
+local lastRecordWrite = 0
+local function flushRecords()
+	local gap = Config.PLAYGROUND.REGATTA.RECORD_GAP
+	if next(recordQueue) == nil or not recordStore or os.clock() - lastRecordWrite < gap then
+		return
+	end
+	lastRecordWrite = os.clock()
+	local key, queued = classLaps.key, recordQueue
+	recordQueue = {}
+	task.spawn(function()
+		local ok, result = pcall(function()
+			return recordStore:UpdateAsync(key, function(old)
+				local laps = type(old) == "table" and old or {}
+				local changed = false
+				for class, row in pairs(queued) do
+					local had = type(laps[class]) == "table" and laps[class] or nil
+					if not had or type(had.s) ~= "number" or row.s < had.s then
+						laps[class] = { s = row.s, u = row.u }
+						changed = true
+					end
+				end
+				return changed and laps or nil
+			end)
+		end)
+		if ok then
+			mergeRecords(key, result)
+			publishRecords()
+		elseif classLaps.key == key then
+			for class, row in pairs(queued) do -- try again with the next write
+				if not recordQueue[class] or row.s < recordQueue[class].s then
+					recordQueue[class] = row
+				end
+			end
+		end
+	end)
+end
+
+-- A finished Regatta lap in `class` (server-timed): a new class record if it beats the week's. Returns true if it did.
+function Leaderboards.classLap(player, class, time)
+	if type(class) ~= "string" or type(time) ~= "number" or time ~= time then
+		return false
+	end
+	local key = weekKey()
+	if classLaps.key ~= key then
+		mergeRecords(key, nil)
+	end
+	local s = math.max(1, math.floor(time * 100 + 0.5))
+	local had = classLaps.laps[class]
+	if had and had.s <= s then
+		return false
+	end
+	classLaps.laps[class] = { s = s, u = player.UserId }
+	recordQueue[class] = { s = s, u = player.UserId }
+	task.spawn(publishRecords) -- (it may look up names: never in the middle of paying a heat)
+	return true
+end
+
 -- Refreshing every board: this period's top, last period's champions, the Hall when it is due.
 local function refresh()
 	for _, board in ipairs(Seasons.BOARDS) do
@@ -585,6 +705,15 @@ local function build(kit)
 		kit.deco("TrophyHandle", Vector3.new(0.7, 3, 1.6), handle, GOLD, METAL)
 	end
 	kit.light(bowl, rgb(255, 220, 140), 40, 1.2)
+	-- V13.5: a column of gold light over the trophy, so the Hall is found from anywhere in town.
+	kit.deco(
+		"HallBeacon",
+		Vector3.new(3.4, 90, 3.4),
+		cup * CFrame.new(0, 54, 0),
+		rgb(255, 214, 110),
+		Enum.Material.Neon,
+		{ transparency = 0.72, shadow = false }
+	)
 	-- Two braziers in front of the stage's ends: warm light on the boards at night.
 	for _, side in ipairs({ -1, 1 }) do
 		local at = hall * CFrame.new(side * 37, 0, -7)
@@ -623,9 +752,14 @@ function Leaderboards.init(kit)
 			return DataStoreService:GetDataStore("LG_Hall_v1")
 		end)
 		hallStore = hallOk and store or nil
+		local recordsOk, classStore = pcall(function()
+			return DataStoreService:GetDataStore("LG_RegattaRecords_v1")
+		end)
+		recordStore = recordsOk and classStore or nil
 	elseif RunService:IsStudio() then
 		mode = "studio"
 		hallStore = mockHall
+		recordStore = mockRecords
 	end
 	table.insert(Progress.publishers, publish)
 	-- Scores from raids and from the Port's games.
@@ -657,10 +791,21 @@ function Leaderboards.init(kit)
 			announce(player, list)
 		end
 	end)
-	Progress.GamePlayed:Connect(function(player, _s, gameId, score)
-		local def = PortGames.BY_ID[gameId]
-		if def and def.board and score ~= nil then
-			Leaderboards.submit(player, def.board, score)
+	Progress.GamePlayed:Connect(function(player, _s, gameId, score, _run, extra)
+		-- V13.5: the board Progress says (a test drive's lap has none: it is a class record instead).
+		local board = extra and extra.board
+		if board and score ~= nil then
+			Leaderboards.submit(player, board, score)
+		end
+		if gameId == "regatta" and score ~= nil and extra and extra.class then
+			if Leaderboards.classLap(player, extra.class, score) then
+				local name = extra.class == "racer" and "RACING TUB" or string.upper(extra.class)
+				Net.feed(
+					string.format("⛵ %s set the week's %s record: %.2f s!", player.DisplayName, name, score),
+					Palette.GOLD
+				)
+				Net.send(player, "ClassRecord", { class = extra.class, score = score })
+			end
 		end
 	end)
 	-- A goblin arriving: their bests go to the boards again (healing a write a crash lost), and old periods are paid.
@@ -686,6 +831,8 @@ function Leaderboards.init(kit)
 		for _, player in ipairs(Players:GetPlayers()) do
 			flush(player, true)
 		end
+		lastRecordWrite = 0
+		pcall(flushRecords)
 		task.wait(2)
 	end)
 	task.spawn(function()
@@ -705,7 +852,15 @@ function Leaderboards.init(kit)
 				if not okRefresh then
 					warn("[Leaderboards] refresh: " .. tostring(refreshErr))
 				end
+				local okRecords, recordsErr = pcall(function()
+					readRecords()
+					publishRecords()
+				end)
+				if not okRecords then
+					warn("[Leaderboards] class records: " .. tostring(recordsErr))
+				end
 			end
+			pcall(flushRecords)
 			if os.clock() >= nextPay then
 				nextPay = os.clock() + 300
 				for _, player in ipairs(Players:GetPlayers()) do

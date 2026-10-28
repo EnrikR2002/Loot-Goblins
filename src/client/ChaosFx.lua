@@ -10,6 +10,9 @@
 --   haunted    two green portal rings and the phantom ships they spit out
 --   thunder    the sky darkens, a crackling ring, the bolt, the shockwave racing out, chains between boats
 -- And for each episode a banner for goblins close enough to care.
+-- V13.5: a meteor's shockwave rolling out over the water, columns of white water where heavy things hit the sea, a
+-- swelling dome before a tentacle, smoke and a whistle for the armada's shells, planks off exploding barrels, crackling
+-- sparks on a SUPERCHARGED boat, and a big episode's banner says so.
 local Debris = game:GetService("Debris")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
@@ -178,9 +181,42 @@ local function meteorWarn(p)
 	end
 end
 
+-- A ring racing out from a point over `time` seconds to `reach` (a shockwave: what it passes is thrown).
+local function shockRing(at, reach, time, color)
+	local ring = part({
+		Name = "Shockwave",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(1.6, 4, 4),
+		Color = color,
+		Material = Enum.Material.Neon,
+		Transparency = 0.25,
+		CFrame = CFrame.new(at + Vector3.new(0, 1.2, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+	})
+	TweenService:Create(ring, TweenInfo.new(time, Enum.EasingStyle.Linear), {
+		Size = Vector3.new(1.6, reach * 2, reach * 2),
+		Transparency = 0.9,
+	}):Play()
+	Debris:AddItem(ring, time + 0.1)
+end
+
 local function meteorHit(p)
 	local at, radius = p.position, p.radius or 40
 	Effects.explosion(at, radius * 0.7, false)
+	if p.shock then
+		shockRing(at, p.shock, p.shockTime or 0.9, Color3.fromRGB(255, 200, 140))
+	end
+	if at.Y < 3 then
+		Effects.splashColumn(at, p.big and 70 or 44, radius * 0.35)
+	else
+		Effects.dustRing(at, radius * 0.9, Color3.fromRGB(150, 120, 90))
+		Effects.debris(
+			at + Vector3.new(0, 3, 0),
+			Color3.fromRGB(90, 60, 40),
+			p.big and 14 or 8,
+			50,
+			Enum.Material.Basalt
+		)
+	end
 	Effects.ring(at + Vector3.new(0, 1, 0), ORANGE, radius * 2.2, 0.8)
 	Effects.ring(at + Vector3.new(0, 1, 0), FOAM, radius * 1.4, 0.6)
 	Effects.spray(at, p.big and 3 or 2)
@@ -237,6 +273,20 @@ local function krakenWarn(p)
 	bubbles.Parent = holder
 	holder.Size = Vector3.new(18, 1, 18)
 	Debris:AddItem(holder, warn + 0.3)
+	-- V13.5: the sea swells into a dome over it before it breaks the surface.
+	local dome = part({
+		Name = "KrakenSwell",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(4, 2, 4),
+		CFrame = CFrame.new(at),
+		Color = FOAM:Lerp(Color3.fromRGB(80, 170, 220), 0.4),
+		Material = Enum.Material.Glass,
+		Transparency = 0.35,
+	})
+	TweenService:Create(dome, TweenInfo.new(warn, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		Size = Vector3.new(30, 12, 30),
+	}):Play()
+	Debris:AddItem(dome, warn + 0.05)
 	Effects.sound("rise", { position = at, speed = 0.3, volume = 0.9, range = 500 })
 	if near(at, 300) and hud then
 		hud.banner("🐙 BUBBLES! THE KRAKEN!", PURPLE, 1.3, 2)
@@ -316,6 +366,7 @@ local function krakenStrike(p)
 	local K = X.kraken
 	if p.strike == "sweep" then
 		local angle, direction = p.angle or 0, p.direction or 1
+		Effects.splashColumn(base, 30, 8)
 		tentacle(base, 0.35 + K.sweepTime + 0.8, function(age)
 			local rise = math.clamp(age / 0.35, 0, 1)
 			local k = math.clamp((age - 0.35) / K.sweepTime, 0, 1)
@@ -333,6 +384,7 @@ local function krakenStrike(p)
 			return Vector3.new(1, 0, 0), 70 * up * (1 - down * 0.85) * (1 - sink), 0.15 + down * 0.3
 		end)
 	else -- toss
+		Effects.splashColumn(base, 46, 9)
 		tentacle(base, 1.4, function(age)
 			local up = math.clamp(age / 0.25, 0, 1)
 			local sink = math.clamp((age - 0.6) / 0.8, 0, 1)
@@ -609,6 +661,17 @@ local function shell(p)
 	Effects.shell(p.from, p.to, p.time or 1.4)
 	Effects.burst(p.from, Color3.fromRGB(255, 200, 120), 26, 26)
 	Effects.sound("boom", { position = p.from, speed = 0.9, volume = 0.8, range = 900 })
+	-- V13.5: powder smoke off the galleon, the shell's whistle as it drops, and on the sea a column where it lands.
+	Effects.dustRing(p.from, 12, Color3.fromRGB(120, 116, 124))
+	local time = p.time or 1.4
+	task.delay(time * 0.55, function()
+		Effects.sound("whoosh", { position = p.to, speed = 2.2, volume = 0.6, range = 400 })
+	end)
+	if p.to.Y < 3 then
+		task.delay(time, function()
+			Effects.splashColumn(p.to, 26, 6)
+		end)
+	end
 end
 
 -- Barrels -----------------------------------------------------------------------------------------------------------------
@@ -849,6 +912,21 @@ end
 
 local function supercharge(p)
 	Effects.burst(p.position + Vector3.new(0, 3, 0), SPARK, 50, 40)
+	-- V13.5: the charge crackles over the hull for as long as it lasts, for everyone to see.
+	if typeof(p.hull) == "Instance" and p.hull.Parent then
+		local sparks = Instance.new("ParticleEmitter")
+		sparks.Name = "Supercharge"
+		sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		sparks.Color = ColorSequence.new(SPARK, Color3.fromRGB(255, 255, 255))
+		sparks.LightEmission = 1
+		sparks.Size = NumberSequence.new(1.6, 0)
+		sparks.Lifetime = NumberRange.new(0.3, 0.6)
+		sparks.Speed = NumberRange.new(6, 14)
+		sparks.SpreadAngle = Vector2.new(180, 180)
+		sparks.Rate = 60
+		sparks.Parent = p.hull
+		Debris:AddItem(sparks, p.time or 1.6)
+	end
 	local mine = false
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -896,6 +974,8 @@ local HANDLERS = {
 			return
 		end
 		local start = Vector3.new(w.x, 0, w.z)
+		-- V13.5: heard before it is seen: a long low roar from where it rises.
+		Effects.sound("boom", { position = start, speed = 0.25, volume = 1, range = 1400, muffle = true })
 		if near(start, X.waves.start + 500) then
 			hud.banner(
 				"🌊 ROGUE WAVE FROM THE "
@@ -935,6 +1015,11 @@ local HANDLERS = {
 			barrels[p.id] = nil
 			b.part:Destroy()
 		end
+		if p.boom and typeof(p.position) == "Vector3" then
+			-- V13.5: a powder keg goes up: staves fly and the sea jumps.
+			Effects.debris(p.position + Vector3.new(0, 2, 0), Color3.fromRGB(150, 96, 56), 6, 40)
+			Effects.splashColumn(p.position, 20, 5)
+		end
 	end,
 	whirls = function(p)
 		if hud and near(p.center, X.ALERT_RANGE) then
@@ -943,6 +1028,7 @@ local HANDLERS = {
 	end,
 	fling = function(p)
 		Effects.spray(p.position, 1.6)
+		Effects.splashColumn(p.position, 28, 7) -- V13.5: thrown out of the eye on a spout of water
 		Effects.sound("whoosh", { position = p.position, speed = 0.6, volume = 1, range = 500 })
 	end,
 	portals = portals,
@@ -975,8 +1061,8 @@ local HANDLERS = {
 		-- Far away: the feed says so (the server's line). Near: the big banner (each event's own handler says
 		-- what to do; this one names it).
 		if hud and typeof(p.center) == "Vector3" and near(p.center, (p.radius or 200) + X.ALERT_RANGE) then
-			hud.banner(string.format("%s %s!", p.icon or "", p.name or "CHAOS"), ORANGE, 2, 2)
-			Effects.chime({ 1.5, 1.2, 0.9 }, 0.6)
+			hud.banner(string.format("%s %s!", p.icon or "", p.name or "CHAOS"), ORANGE, p.mood == "big" and 3 or 2, 2)
+			Effects.chime(p.mood == "big" and { 1.5, 1.2, 0.9, 0.7, 0.5 } or { 1.5, 1.2, 0.9 }, 0.6)
 		end
 	end,
 	reset = clear,

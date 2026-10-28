@@ -1,13 +1,13 @@
--- CHALLENGES (V13.3): ask another goblin in the Port to a game, one on one: the Regatta, the Gauntlet, Cannon Golf,
--- the Derby, the Toss, the Gallery or Crab Chaos. No matchmaking and no second server: the two of them get a private
+-- CHALLENGES (V13.3): ask another goblin in the Port to a game, one on one: the Regatta, the Gauntlet or Cannon Golf
+-- (V13.5; the four removed games went with it). No matchmaking and no second server: the two of them get a private
 -- heat at the venue as soon as it is free (server/Minigames.lua: Minigames.startPrivate).
 --
 --   ASKING     ChallengeRequest("ask", userId, game) from the Port screen's ⚔ CHALLENGE picker. Both must be in the
 --              Port, not raiding, not watching, not already playing. One invitation out at a time per goblin.
 --   ANSWERING  the invited goblin sees ACCEPT / NO THANKS for Config.CHALLENGES.INVITE_TIME seconds
 --              ("answer", inviteId, yes). The asker can take it back ("cancel"). Silence is a no.
---   RESULT     the better score wins (a time game needs a finish; equal scores are a TIE). A goblin who leaves or
---              disconnects forfeits: the other is told they won, but a forfeit pays nothing (so nobody farms an
+--   RESULT     the better score wins (a time or a golf round needs a finish; equal scores are a TIE). A goblin who
+--              leaves or disconnects forfeits: the other is told they won, but a forfeit pays nothing (so nobody farms an
 --              opponent who walks off). A win pays WIN Shinies and a tie TIE, at most DAILY_PAID paid a day and
 --              PER_OPPONENT against the same goblin (the counters are in the profile). Wins count toward The
 --              Challenger trophy; playing counts toward the challenge quest.
@@ -268,7 +268,7 @@ Minigames.Finished:Connect(function(session, standings)
 	record.rematchUntil = now() + CH.REMATCH
 	local a, b = record.a, record.b
 	local ea, eb = session.entries[a], session.entries[b]
-	local kind = session.def.kind
+	local lower = PortGames.lowerWins(session.game)
 	local function score(entry)
 		if not entry or entry.left then
 			return nil
@@ -276,7 +276,7 @@ Minigames.Finished:Connect(function(session, standings)
 		if entry.score == nil then
 			return nil
 		end
-		if kind ~= "time" and entry.score <= 0 then
+		if not lower and entry.score <= 0 then
 			return nil
 		end
 		return entry.score

@@ -1312,6 +1312,287 @@ local function buildWayfinding()
 	end
 end
 
+-- The curated Port (V13.5) --------------------------------------------------------------------------------------------------
+-- The ground the four removed games stood on goes back to the town, each patch with one purpose: THE LOOKOUT (the old
+-- Derby oval: benches round a lantern tree, a telescope on the golf water), THE 19TH HOLE (the old crab beach beside the
+-- golf jetty: deck chairs, parasols and a bonfire ring), the REGATTA STAND (three tiers on the shore facing the start
+-- line), and the PROMENADE (the old Toss booths: a lit walk with benches between the square and the Regatta). Small
+-- flags in each game's colour lead from the square to its venue. Everything stands on the ground where it is (a ray
+-- down) and only seats and steps are solid; nothing is built on top of another building.
+local curated = { placed = 0, skipped = 0 }
+local function onGround(x, z)
+	local hit = workspace:Raycast(Vector3.new(C.X + x, 120, C.Z + z), Vector3.new(0, -160, 0))
+	if not hit or hit.Material == Enum.Material.Water or hit.Instance ~= workspace.Terrain then
+		curated.skipped += 1
+		return nil -- the sea, or something already built there
+	end
+	curated.placed += 1
+	return hit.Position.Y
+end
+
+local function bench(x, z, yaw)
+	local y = onGround(x, z)
+	if not y then
+		return
+	end
+	local base = CFrame.new(C.X + x, y, C.Z + z) * CFrame.Angles(0, math.rad(yaw), 0)
+	part("Bench", Vector3.new(6, 0.5, 1.8), base * CFrame.new(0, 1.6, 0), WOOD_LIGHT, PLANKS)
+	deco("BenchBack", Vector3.new(6, 1.4, 0.3), base * CFrame.new(0, 2.6, 0.85), WOOD, PLANKS)
+	for _, side in ipairs({ -2.4, 2.4 }) do
+		deco("BenchLeg", Vector3.new(0.4, 1.4, 1.4), base * CFrame.new(side, 0.7, 0), WOOD_DARK, M_WOOD)
+	end
+end
+
+local function lantern(x, z, height, color)
+	local y = onGround(x, z)
+	if not y then
+		return
+	end
+	height = height or 8
+	deco(
+		"PathLanternPost",
+		Vector3.new(0.5, height, 0.5),
+		CFrame.new(C.X + x, y + height / 2, C.Z + z),
+		WOOD_DARK,
+		M_WOOD
+	)
+	local glass = deco(
+		"PathLantern",
+		Vector3.new(1.2, 1.5, 1.2),
+		CFrame.new(C.X + x, y + height + 0.6, C.Z + z),
+		color or rgb(255, 214, 130),
+		NEON,
+		{ shadow = false }
+	)
+	light(glass, color or rgb(255, 196, 120), 18, 1)
+end
+
+-- A line of small flags in a game's colour from the square towards its venue, one every `gap` studs.
+local function trail(to, color, gap)
+	local tx, tz = to.X - C.X, to.Z - C.Z
+	local length = math.sqrt(tx * tx + tz * tz)
+	if length < 90 then
+		return
+	end
+	local ux, uz = tx / length, tz / length
+	for d = 72, length - 26, gap or 30 do
+		local x, z = ux * d, uz * d
+		local y = onGround(x, z)
+		if y then
+			deco("TrailPole", Vector3.new(0.35, 5, 0.35), CFrame.new(C.X + x, y + 2.5, C.Z + z), WOOD_DARK, M_WOOD)
+			deco(
+				"TrailFlag",
+				Vector3.new(0.12, 1.4, 1.9),
+				CFrame.lookAt(Vector3.new(C.X + x, y + 4.3, C.Z + z), Vector3.new(to.X, y + 4.3, to.Z))
+					* CFrame.new(0, 0, -0.9),
+				color,
+				FABRIC,
+				{ shadow = false }
+			)
+		end
+	end
+end
+
+-- (Main calls this once every venue, the Hall and the lift are built, so its rays down see them and keep off. It
+-- yields: terrain poured this frame does not answer a ray yet, so it waits until the Lookout's lawn does.)
+function Port.curate()
+	for _ = 1, 50 do
+		if onGround(30, 205) then
+			break
+		end
+		task.wait(0.1)
+	end
+	curated.placed, curated.skipped = 0, 0
+	-- THE LOOKOUT: benches round a lantern tree, facing out; a telescope on its tripod at the edge, on the golf water.
+	local lx, lz = 30, 205
+	local trunkY = onGround(lx, lz)
+	if trunkY then
+		deco("LanternTree", Vector3.new(2, 14, 2), CFrame.new(C.X + lx, trunkY + 7, C.Z + lz), WOOD_DARK, M_WOOD)
+		for k = 0, 5 do
+			local a = k / 6 * math.pi * 2
+			local bulb = deco(
+				"TreeLantern",
+				Vector3.new(1.2, 1.4, 1.2),
+				CFrame.new(C.X + lx + math.cos(a) * 4, trunkY + 11 + (k % 2), C.Z + lz + math.sin(a) * 4),
+				({ RED, GOLD, TEAL })[k % 3 + 1],
+				NEON,
+				{ egg = true, shadow = false }
+			)
+			if k % 2 == 0 then
+				light(bulb, rgb(255, 210, 150), 16, 0.8)
+			end
+		end
+		deco(
+			"TreeCanopy",
+			Vector3.new(12, 6, 12),
+			CFrame.new(C.X + lx, trunkY + 14, C.Z + lz),
+			rgb(90, 160, 80),
+			Enum.Material.Grass,
+			{ egg = true }
+		)
+	end
+	for k = 0, 5 do
+		local a = k / 6 * math.pi * 2 + 0.3
+		bench(lx + math.cos(a) * 13, lz + math.sin(a) * 13, -math.deg(a) + 90)
+	end
+	local tx, tz = lx - 30, lz + 38
+	local scopeY = onGround(tx, tz)
+	if scopeY then
+		local mount = CFrame.new(C.X + tx, scopeY, C.Z + tz)
+		for k = 0, 2 do
+			local a = k / 3 * math.pi * 2
+			deco(
+				"TripodLeg",
+				Vector3.new(0.3, 4.6, 0.3),
+				mount
+					* CFrame.new(math.cos(a) * 0.9, 2.2, math.sin(a) * 0.9)
+					* CFrame.Angles(math.sin(a) * 0.3, 0, math.cos(a) * 0.3),
+				WOOD_DARK,
+				M_WOOD
+			)
+		end
+		deco(
+			"Telescope",
+			Vector3.new(4, 0.9, 0.9),
+			mount * CFrame.new(0, 4.6, 0) * CFrame.Angles(0, math.rad(-130), math.rad(12)),
+			GOLD,
+			METAL,
+			{ cyl = true }
+		)
+	end
+	board(
+		"LookoutSign",
+		Vector3.new(10, 2.4, 0.3),
+		CFrame.lookAt(
+			Vector3.new(C.X + lx, (trunkY or 6) + 5, C.Z + lz - 20),
+			Vector3.new(C.X + lx, (trunkY or 6) + 5, C.Z + lz - 60)
+		),
+		"THE LOOKOUT",
+		GOLD
+	)
+	-- THE 19TH HOLE: deck chairs and parasols on the beach by the golf jetty, and a bonfire ring with log seats.
+	local bx, bz = -85, 175
+	local fireY = onGround(bx, bz)
+	if fireY then
+		for k = 0, 7 do
+			local a = k / 8 * math.pi * 2
+			part(
+				"FireStone",
+				Vector3.new(1.4, 0.9, 1.4),
+				CFrame.new(C.X + bx + math.cos(a) * 2.6, fireY + 0.45, C.Z + bz + math.sin(a) * 2.6),
+				STONE_DARK,
+				SLATE
+			)
+		end
+		local coals = deco(
+			"Bonfire",
+			Vector3.new(2.6, 0.6, 2.6),
+			CFrame.new(C.X + bx, fireY + 0.5, C.Z + bz),
+			rgb(255, 140, 40),
+			NEON
+		)
+		local fire = Instance.new("Fire")
+		fire.Size, fire.Heat = 6, 7
+		fire.Parent = coals
+		light(coals, rgb(255, 170, 90), 30, 1.6)
+		for k = 0, 3 do
+			local a = k / 4 * math.pi * 2 + 0.4
+			local y = onGround(bx + math.cos(a) * 8, bz + math.sin(a) * 8)
+			if y then
+				part(
+					"LogSeat",
+					Vector3.new(5, 1.6, 1.6),
+					CFrame.new(C.X + bx + math.cos(a) * 8, y + 0.8, C.Z + bz + math.sin(a) * 8)
+						* CFrame.Angles(0, -a + math.pi / 2, 0),
+					WOOD,
+					M_WOOD,
+					{ cyl = true }
+				)
+			end
+		end
+	end
+	for k = 0, 2 do
+		local cx, cz = bx - 26 + k * 13, bz + 22
+		local y = onGround(cx, cz)
+		if y then
+			local base = CFrame.new(C.X + cx, y, C.Z + cz) * CFrame.Angles(0, math.rad(-40), 0)
+			part(
+				"DeckChair",
+				Vector3.new(2.6, 0.4, 5),
+				base * CFrame.new(0, 1.2, 0) * CFrame.Angles(math.rad(-14), 0, 0),
+				({ RED, TEAL, GOLD })[k + 1],
+				FABRIC
+			)
+			deco("Parasol", Vector3.new(0.3, 8, 0.3), base * CFrame.new(1.8, 4, -1), WOOD_DARK, M_WOOD)
+			deco(
+				"ParasolTop",
+				Vector3.new(7, 1.4, 7),
+				base * CFrame.new(1.8, 8, -1),
+				({ RED, TEAL, GOLD })[k + 1],
+				FABRIC,
+				{ egg = true }
+			)
+		end
+	end
+	board(
+		"ClubhouseSign",
+		Vector3.new(10, 2.4, 0.3),
+		CFrame.lookAt(
+			Vector3.new(C.X + bx + 14, (fireY or 6) + 5, C.Z + bz - 14),
+			Vector3.new(C.X + bx + 40, (fireY or 6) + 5, C.Z + bz - 40)
+		),
+		"THE 19TH HOLE",
+		rgb(150, 240, 130)
+	)
+	-- THE REGATTA STAND: three tiers on the shore just south of the dock, facing the start line.
+	local sx, sz = 180, 100
+	local standY = onGround(sx, sz)
+	if standY then
+		for tier = 0, 2 do
+			part(
+				"StandTier",
+				Vector3.new(6, 1.6 + tier * 1.6, 26),
+				CFrame.new(C.X + sx - tier * 6, standY + (1.6 + tier * 1.6) / 2, C.Z + sz),
+				tier % 2 == 0 and WOOD_LIGHT or WOOD,
+				PLANKS
+			)
+		end
+		bunting(
+			Vector3.new(C.X + sx - 14, standY + 9, C.Z + sz - 13),
+			Vector3.new(C.X + sx - 14, standY + 9, C.Z + sz + 13),
+			{ rgb(80, 190, 255), rgb(255, 96, 170), GOLD }
+		)
+		for _, side in ipairs({ -13, 13 }) do
+			deco(
+				"StandPole",
+				Vector3.new(0.6, 10, 0.6),
+				CFrame.new(C.X + sx - 14, standY + 5, C.Z + sz + side),
+				WOOD_DARK,
+				M_WOOD
+			)
+		end
+	end
+	-- THE PROMENADE: a lit walk with benches from the square towards the Regatta, where the Toss's booths were.
+	for k = 0, 4 do
+		local x = 78 + k * 20
+		lantern(x, 96 + (k % 2) * 26, 7)
+		if k % 2 == 1 then
+			bench(x, 109, 90)
+		end
+	end
+	-- Flags in each game's colour from the square to its venue.
+	for _, def in ipairs(PortGames.GAMES) do
+		trail(PortGames.VENUES[def.id].join, def.color, 30)
+	end
+	print(
+		string.format(
+			"[LootGoblins] the curated Port: %d pieces placed, %d spots kept off",
+			curated.placed,
+			curated.skipped
+		)
+	)
+end
+
 -- Building it all ---------------------------------------------------------------------------------------------------------
 function Port.build(worldRefs, displayModel)
 	refs = worldRefs

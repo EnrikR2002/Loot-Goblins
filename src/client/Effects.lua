@@ -619,6 +619,132 @@ function Effects.spray(position, power)
 	Effects.shakeAt(position, power * 1.2, 0.3, 80)
 end
 
+-- V13.5: words that pop out of the world where something happened ("SKIP x2!", "BIG AIR!") and float away. Far ones
+-- are not drawn.
+function Effects.popText(position, text, color, seconds)
+	if Effects.distanceTo(position) > 500 then
+		return
+	end
+	seconds = seconds or 1.2
+	local anchor = fxPart(Vector3.new(0.2, 0.2, 0.2), CFrame.new(position), Color3.new(1, 1, 1))
+	anchor.Transparency = 1
+	local bill = Instance.new("BillboardGui")
+	bill.Size = UDim2.fromOffset(240, 54)
+	bill.AlwaysOnTop = true
+	bill.LightInfluence = 0
+	bill.MaxDistance = 500
+	bill.Parent = anchor
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.Text = text
+	label.TextColor3 = color or Color3.new(1, 1, 1)
+	label.TextStrokeColor3 = Color3.fromRGB(20, 16, 24)
+	label.TextStrokeTransparency = 0
+	label.Parent = bill
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.4
+	scale.Parent = label
+	TweenService:Create(scale, TweenInfo.new(0.22, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	TweenService
+		:Create(anchor, TweenInfo.new(seconds, Enum.EasingStyle.Quad), { Position = position + Vector3.new(0, 9, 0) })
+		:Play()
+	task.delay(seconds * 0.6, function()
+		TweenService:Create(label, TweenInfo.new(seconds * 0.4), { TextTransparency = 1, TextStrokeTransparency = 1 })
+			:Play()
+	end)
+	Debris:AddItem(anchor, seconds + 0.1)
+end
+
+-- V13.5: a column of white water thrown up where something heavy hit the sea (a meteor, a goblin's first skip, a
+-- breaking wave). height and radius in studs.
+function Effects.splashColumn(position, height, radius)
+	if Effects.distanceTo(position) > AUDIO.DRAW_BLAST then
+		return
+	end
+	local white = Color3.fromRGB(235, 248, 255)
+	local upright = CFrame.Angles(0, 0, math.rad(90)) -- a cylinder's axis is its X: stood on end
+	local column = fxPart(
+		Vector3.new(1, radius * 0.8, radius * 0.8),
+		CFrame.new(position + Vector3.new(0, 0.5, 0)) * upright,
+		white,
+		Enum.PartType.Cylinder
+	)
+	column.Material = Enum.Material.SmoothPlastic
+	column.Transparency = 0.25
+	local rise = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(column, rise, {
+		Size = Vector3.new(height, radius * 1.4, radius * 1.4),
+		CFrame = CFrame.new(position + Vector3.new(0, height / 2, 0)) * upright,
+	}):Play()
+	task.delay(0.35, function()
+		fadeOut(column, 0.6, {
+			Size = Vector3.new(height * 0.3, radius * 2.2, radius * 2.2),
+			CFrame = CFrame.new(position + Vector3.new(0, height * 0.15, 0)) * upright,
+		})
+	end)
+	Effects.burst(position + Vector3.new(0, height * 0.7, 0), white, math.floor(20 + radius * 2), 12 + height * 0.3)
+	Effects.ring(position + Vector3.new(0, 0.8, 0), Color3.fromRGB(200, 240, 255), radius * 3, 0.9)
+end
+
+-- V13.5: solid bits flying off an impact (wood off a hull, rock off a meteor): a few real, falling, local pieces.
+function Effects.debris(position, color, count, speed, material)
+	if Effects.distanceTo(position) > 400 then
+		return
+	end
+	for _ = 1, count or 6 do
+		local size = 0.6 + math.random() * 1.2
+		local piece = Instance.new("Part")
+		piece.Name = "Debris"
+		piece.Size = Vector3.new(size, size * 0.5, size * 1.4)
+		piece.CFrame = CFrame.new(position)
+			* CFrame.Angles(math.random() * 6.28, math.random() * 6.28, math.random() * 6.28)
+		piece.Color = color
+		piece.Material = material or Enum.Material.WoodPlanks
+		piece.CanCollide = false
+		piece.CanQuery = false
+		piece.CanTouch = false
+		piece.CastShadow = false
+		local a = math.random() * math.pi * 2
+		local out = (speed or 30) * (0.5 + math.random() * 0.6)
+		piece.AssemblyLinearVelocity =
+			Vector3.new(math.cos(a) * out, out * (0.6 + math.random() * 0.6), math.sin(a) * out)
+		piece.AssemblyAngularVelocity = Vector3.new(math.random(-12, 12), math.random(-12, 12), math.random(-12, 12))
+		piece.Parent = workspace
+		Debris:AddItem(piece, 1.6)
+	end
+end
+
+-- V13.5: a ring of dust or spray hugging the ground, rolling outward from a landing or a blast.
+function Effects.dustRing(position, radius, color)
+	if Effects.distanceTo(position) > AUDIO.DRAW_BLAST then
+		return
+	end
+	local holder = fxPart(Vector3.new(0.2, 0.2, 0.2), CFrame.new(position + Vector3.new(0, 1, 0)), Color3.new(1, 1, 1))
+	holder.Transparency = 1
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	emitter.Color = ColorSequence.new(color or Color3.fromRGB(210, 190, 160))
+	emitter.Size =
+		NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, radius * 0.35) })
+	emitter.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) })
+	emitter.Lifetime = NumberRange.new(0.7, 1.1)
+	emitter.Speed = NumberRange.new(radius * 0.9, radius * 1.2)
+	emitter.SpreadAngle = Vector2.new(12, 3)
+	emitter.EmissionDirection = Enum.NormalId.Front
+	emitter.Drag = 3
+	emitter.Rate = 0
+	emitter.Parent = holder
+	-- A flat spray: emitted round the circle by turning the holder.
+	for i = 0, 11 do
+		holder.CFrame = CFrame.new(position + Vector3.new(0, 1, 0)) * CFrame.Angles(0, i / 12 * math.pi * 2, 0)
+		emitter:Emit(3)
+	end
+	Debris:AddItem(holder, 1.4)
+end
+
 -- A flock of gulls bursting off the island.
 function Effects.gulls(position)
 	for _ = 1, 14 do

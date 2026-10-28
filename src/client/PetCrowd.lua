@@ -1,6 +1,7 @@
--- A crowd of pets drawn by this client (V13.3): the Pet Derby's racers, Crab Chaos's crabs and the sanctuaries' pets
--- all use it. Each pet is a rig from the shared builder and animator (shared/PetLook.lua: the same code that draws the
--- pets that follow goblins), placed where its owner says each frame, and every moved part goes out in one BulkMoveTo.
+-- A crowd of pets drawn by this client (V13.3): the sanctuaries' pets use it (the Pet Derby and Crab Chaos did too,
+-- until V13.5 removed them). Each pet is a rig from the shared builder and animator (shared/PetLook.lua: the same
+-- code that draws the pets that follow goblins), placed where its owner says each frame, and every moved part goes
+-- out in one BulkMoveTo.
 -- Nothing here is physical or replicated: anchored, non-colliding parts, local to this client.
 --
 --   local crowd = PetCrowd.new("Name")       a folder in the workspace
