@@ -29,3 +29,6 @@ Desktop.ini
 *.log
 *.tmp
 *.bak
+
+# Blender's backup copies of .blend files (art/)
+*.blend1

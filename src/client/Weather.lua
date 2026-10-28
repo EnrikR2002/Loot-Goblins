@@ -59,6 +59,15 @@ local STORM_SHADES = {
 
 -- A puff is an ellipsoid (a block with a sphere mesh: a Ball part can't be squashed). Storm billows are opaque:
 -- see-through puffs show each other's insides and read as soap bubbles.
+-- V14: the art layer (client/Renaissance.lua) swaps the fair-weather light; weather then eases from the new values.
+-- values: any of brightness, outdoor, ambient, density, offset, color, haze.
+function Weather.setBase(values)
+	captureBase()
+	for key, value in pairs(values) do
+		base[key] = value
+	end
+end
+
 local function cloudPuff(folder, name, size, color, transparency, offset)
 	local p = Instance.new("Part")
 	p.Name = name

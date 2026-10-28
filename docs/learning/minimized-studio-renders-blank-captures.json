@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "minimized-studio-renders-blank-captures",
+  "title": "A minimized Studio window renders blank (white) screen captures while the game keeps running",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-26",
+  "topics": [
+    "studio",
+    "testing"
+  ],
+  "observation": "Mid-session, every Studio MCP screen capture came back white in play and in edit, with the game running at 60 fps and no errors; a test that moved the camera seemed broken. The Studio window had been minimized. Restoring it without activating it (ShowWindow with SW_SHOWNOACTIVATE) brought captures back without taking the person's keyboard focus.",
+  "recommendation": "Before debugging blank captures, check whether Studio is minimized (IsIconic) or the display is asleep; restore it without stealing focus and say so to the person.",
+  "applies_when": [
+    "Taking screenshots of Studio from an agent while a person may be using the same computer"
+  ],
+  "limits": [
+    "Windows 10, one machine"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md",
+      "detail": "Seen during the showcase captures."
+    }
+  ]
+}

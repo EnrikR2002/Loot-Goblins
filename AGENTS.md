@@ -13,8 +13,6 @@ Maintain all game detail in `docs/GAME_DESIGN.md`; test evidence belongs in date
 
 After pushing evidence, record reusable observations in `docs/learning/` and run `./scripts/memory.ps1 submit`. Routine new observation/hypothesis additions may publish automatically under the approved notebook policy; changes to the notebook's own rules/software/standards still need a human's OK. Attach every created notebook PR, distinguish confirmed sharing from pending, and preserve/retry failed submissions. No unattended background process or terminal work for teammates.
 
-V7 and V8 (Ninety's work) were merged into main on October 14. Historical branch/report status is evidence, not a current merge restriction.
-
 ## Architecture and scope
 Inspect existing systems first, follow conventions, and avoid duplicate implementations. Build what was asked and make it actually work; don't refactor unrelated systems along the way. If a feature needs something structural (a new framework, dependency, data or networking design, or reorganizing folders), just do it and say so plainly in the PR.
 

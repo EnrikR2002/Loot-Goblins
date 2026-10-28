@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "editablemesh-materials-ignore-uvs-colours-multiply",
+  "title": "On a MeshPart built from an EditableMesh, materials tile in studs and vertex colours multiply the part's Color",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-26",
+  "topics": [
+    "art",
+    "rendering"
+  ],
+  "observation": "Two identical cubes built with UVs 0..1 and 0..4 showed Brick and WoodPlanks at the same density as a plain 4-stud Part: the built-in materials ignored the mesh's UVs. Vertex colours rendered, multiplied by MeshPart.Color (the default grey darkened them to olive); with Color white they showed as painted. Counter-clockwise faces (Blender's convention) were front faces.",
+  "recommendation": "For a vertex-painted stylized look, keep MeshParts white and paint colour (and baked shading) into vertex colours; choose a built-in material for grain only, knowing it tiles by studs; reserve a part's Color for in-game tints (a paint job) on white-painted groups.",
+  "applies_when": [
+    "Rendering imported or editable meshes with vertex colours and Roblox's built-in materials"
+  ],
+  "limits": [
+    "Seen in Studio with the 2026-10 engine; textured MeshParts (TextureContent) were not tried"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md",
+      "detail": "Section 1: vertex colours, materials and winding probes."
+    }
+  ]
+}

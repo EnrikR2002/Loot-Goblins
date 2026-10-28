@@ -138,6 +138,66 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### When a game's course or scoring changes, keep bests and boards under new keys and retire the old boards instead of deleting them
+
+**ID:** new-course-gets-new-record-keys-and-retired-boards | **Status:** hypothesis | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-25
+**Related checks:** General
+
+**Observed / proposed:** Two Port minigames were rebuilt mid-week: a race got a new circuit and a golf game moved from points (more is better) to strokes (fewer is better). Reusing the old record keys would have compared new laps with old-course bests (a bogus 'new best' or an unbeatable one) and inverted the golf board's order. Deleting the old boards would have stopped paying this week's legitimate places, because payouts look a board up by id when the period ends. The change kept personal bests under new keys (per boat for the race), gave each game a new board id, and moved the old boards to a retired list that is still known for payouts and history but takes no new scores and is not displayed. No saved-profile migration was needed, because the profile's maps already accepted any key.
+
+**Recommendation:** Version a game's record and leaderboard keys with its rules. Retire the old board (no new scores, not shown, still settled and paid) rather than deleting it, and test that a score already on it this period is still paid after the period ends.
+
+**Applies when:** A live game's course, scoring direction or rules change while a leaderboard period is running; Rewards are paid per board id after the period ends
+
+**Limits:** One game, Studio tests with in-memory DataStore stand-ins only; not yet seen in a live period
+
+- [automated-test](https://github.com/EnrikR2002/Loot-Goblins/blob/cb19fd9e964557df10ee63eed95fb0adf27230aa/docs/reports/2026-10-25-v13-5-curated-port.md): Sections 2, 3 and 8: SeasonsSpec pays a retired board's period and refuses new scores on it; PortGamesSpec keeps the old course's best untouched (150 of 150 Luau tests passed).
+
+### Before reusing an existing flag for a gentler meaning, read every place it is enforced; a 'retired' item flag revoked owners' items
+
+**ID:** check-what-an-existing-flag-does-before-reusing-it | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-25
+**Related checks:** General
+
+**Observed / proposed:** Removing a minigame left a trophy item (a pet hat earned by winning it) that should stay with its owners but stop being advertised. The catalogue already had a `retired = true` flag, and the obvious move was to set it. Reading its uses first showed it meant 'withdrawn': the shop hid it even from owners, the economy refused to equip it, and saved looks dropped it, so setting it would have silently taken an earned reward away from every goblin who had it. A new flag (`unearnable`: hidden from the shop and trophy list unless owned, never unlocked again, still owned and wearable) did what was needed.
+
+**Recommendation:** When an item, achievement or reward source loses its way to be earned, grep every use of any existing status flag before setting it, and prefer a new, explicitly named flag whose behaviour is exactly 'kept by owners, offered to nobody'. Add a test that the item is still owned and wearable.
+
+**Applies when:** Content is being removed from a live game with saved player ownership; An existing status flag looks like it fits the new meaning
+
+**Limits:** One occurrence in one Roblox game (October 2026); caught by reading code before any player was affected
+
+- [source-review](https://github.com/EnrikR2002/Loot-Goblins/blob/cb19fd9e964557df10ee63eed95fb0adf27230aa/docs/reports/2026-10-25-v13-5-curated-port.md): Section 10, item 5; PortGamesSpec checks the Derby Laurel is not retired and is unearnable (150 of 150 Luau tests passed).
+
+### A short script that checks a new layout's clearances catches overlaps before any build or Studio session
+
+**ID:** check-generated-layouts-by-numbers-before-building | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-25
+**Related checks:** General
+
+**Observed / proposed:** A boat-race circuit (20 points with lane widths, rock walls beside a shortcut channel, obstacles) and six golf holes were written as data in a shared module. Before building anything, a plain Python script recomputed the same geometry and checked every lane stretch against the island's coast lobes, the zone's edge, a dock, the obstacles and the two ways through the shortcut. It took seconds and found two real faults: the outer edge of a hairpin's lane ran past the play zone's edge, and the shortcut's rock walls overlapped the safe route's lane near both ends. Both were fixed in the data, and the same checks were then written as Luau tests so they keep holding.
+
+**Recommendation:** Keep new layouts as data with one mapping function, check their clearances in a quick script or a pure test before building, then keep the checks as tests. Sample along every segment, not only at the points.
+
+**Applies when:** A course, track or set of targets is placed by numbers that cannot be checked by eye during development; The layout has lanes or routes with widths and obstacles beside them
+
+**Limits:** One game (October 2026); the island was described by its fill lobes, so a check is only as good as that description; Clearance is not fun: whether the corners feel good still needs people
+
+- [automated-test](https://github.com/EnrikR2002/Loot-Goblins/blob/cb19fd9e964557df10ee63eed95fb0adf27230aa/docs/reports/2026-10-25-v13-5-curated-port.md): Sections 8 and 10, item 3: the script found the Flume's lane past the Port's edge and the Teeth's rocks on the safe lane; PortGamesSpec now checks both (150 of 150 Luau tests passed).
+
+### Rays cast down during a boot that just poured terrain can miss it; place-on-the-ground builders should wait for a probe ray to hit
+
+**ID:** boot-time-ground-rays-can-miss-fresh-terrain | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-25
+**Related checks:** General
+
+**Observed / proposed:** A server builder placed benches, flags and steps by casting a ray straight down at each spot and building only where the ray hit terrain (to keep off buildings). It ran during the synchronous boot, after the town's terrain had been filled with FillCylinder and ReplaceMaterial. On the first start of Play every spot was skipped: only the signs, which do not ask the ground, appeared, and nothing errored. The same rays cast from a test command a few seconds later all hit the terrain. After the builder was moved into a task that first waits (0.1 s steps, 5 s at most) until one probe ray hits the terrain, a second start placed 31 pieces and correctly kept off 3 spots on buildings. The exact cause (terrain collision not ready in the boot frame, or something else present only then) was not isolated.
+
+**Recommendation:** Do not rely on rays against terrain written in the same boot step. Run ground-placing builders after a yield and wait until a probe ray at a known spot hits terrain; count what was placed and skipped and print it, so a silent all-skipped run shows in the boot log.
+
+**Applies when:** A builder decides where to place things with raycasts against terrain it or the boot just generated; The placement skips spots silently when a ray misses
+
+**Limits:** One occurrence in one Roblox game, Studio Play mode (October 2026); Cause not isolated; earlier builders in the same boot that raycast right after their own fill appeared to work
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/cb19fd9e964557df10ee63eed95fb0adf27230aa/docs/reports/2026-10-25-v13-5-curated-port.md): Sections 8 and 10, item 1: first boot placed none of the Port's new furniture; after Port.curate waited for a probe ray, the boot log read 31 placed, 3 kept off.
+
 ### Edit-mode Luau tests can load sources straight from disk over a loopback file server
 
 **ID:** studio-tests-from-disk-over-loopback | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-23

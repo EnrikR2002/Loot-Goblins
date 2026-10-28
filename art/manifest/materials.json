@@ -1,0 +1,486 @@
+{
+ "order": [
+  "Timber",
+  "DarkWood",
+  "Driftwood",
+  "PaintedWood",
+  "BoatPaint",
+  "BoatStripe",
+  "BoatTrim",
+  "BoatMast",
+  "Sailcloth",
+  "SailStripe",
+  "Canvas",
+  "Plaster",
+  "Sandstone",
+  "Cobble",
+  "Flagstone",
+  "RoofTile",
+  "Slate",
+  "CoastRock",
+  "Pebble",
+  "Sand",
+  "WetSand",
+  "Soil",
+  "Foliage",
+  "Bark",
+  "Flower",
+  "Metal",
+  "GoldTrim",
+  "Rope",
+  "Glass",
+  "Glow",
+  "ShopGlass",
+  "Foam"
+ ],
+ "materials": {
+  "Timber": {
+   "blender": "M_Timber",
+   "color": [
+    178,
+    120,
+    72
+   ],
+   "roblox": "Wood",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "honey timber: posts, frames, planks, crates"
+  },
+  "DarkWood": {
+   "blender": "M_DarkWood",
+   "color": [
+    98,
+    64,
+    42
+   ],
+   "roblox": "Wood",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "dark timber: beams, braces, trim, barrel staves"
+  },
+  "Driftwood": {
+   "blender": "M_Driftwood",
+   "color": [
+    176,
+    162,
+    140
+   ],
+   "roblox": "Wood",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "sun-bleached grey wood: piles, driftwood, old docks"
+  },
+  "PaintedWood": {
+   "blender": "M_PaintedWood",
+   "color": [
+    255,
+    255,
+    255
+   ],
+   "roblox": "Wood",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "painted boards, shutters, doors: colour per piece"
+  },
+  "BoatPaint": {
+   "blender": "M_BoatPaint",
+   "color": [
+    255,
+    255,
+    255
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "hull",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "a hull's paint (tinted in game)"
+  },
+  "BoatStripe": {
+   "blender": "M_BoatStripe",
+   "color": [
+    255,
+    255,
+    255
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "stripe",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "a hull's stripe (tinted)"
+  },
+  "BoatTrim": {
+   "blender": "M_BoatTrim",
+   "color": [
+    255,
+    255,
+    255
+   ],
+   "roblox": "Wood",
+   "tint": "trim",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "rails, transom, yard (tinted)"
+  },
+  "BoatMast": {
+   "blender": "M_BoatMast",
+   "color": [
+    255,
+    255,
+    255
+   ],
+   "roblox": "Wood",
+   "tint": "mast",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "the mast (tinted)"
+  },
+  "Sailcloth": {
+   "blender": "M_Sailcloth",
+   "color": [
+    255,
+    255,
+    255
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "sail",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "a sail (tinted by the paint)"
+  },
+  "SailStripe": {
+   "blender": "M_SailStripe",
+   "color": [
+    255,
+    255,
+    255
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "sailStripe",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "a sail's band (tinted)"
+  },
+  "Canvas": {
+   "blender": "M_Canvas",
+   "color": [
+    238,
+    226,
+    198
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "awnings, sacks, banners: colour per piece"
+  },
+  "Plaster": {
+   "blender": "M_Plaster",
+   "color": [
+    244,
+    232,
+    204
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 0.3,
+   "note": "lime-washed walls"
+  },
+  "Sandstone": {
+   "blender": "M_Sandstone",
+   "color": [
+    214,
+    180,
+    128
+   ],
+   "roblox": "Sandstone",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "dressed stone: plinths, quoins, steps"
+  },
+  "Cobble": {
+   "blender": "M_Cobble",
+   "color": [
+    176,
+    164,
+    150
+   ],
+   "roblox": "Cobblestone",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "chimneys and rough stonework"
+  },
+  "Flagstone": {
+   "blender": "M_Flagstone",
+   "color": [
+    208,
+    192,
+    160
+   ],
+   "roblox": "Concrete",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 0.5,
+   "note": "paving flags on paths and quays"
+  },
+  "RoofTile": {
+   "blender": "M_RoofTile",
+   "color": [
+    198,
+    92,
+    62
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "terracotta tiles, modelled in rows"
+  },
+  "Slate": {
+   "blender": "M_Slate",
+   "color": [
+    84,
+    92,
+    112
+   ],
+   "roblox": "Slate",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "slate roofs and dark stone"
+  },
+  "CoastRock": {
+   "blender": "M_CoastRock",
+   "color": [
+    140,
+    128,
+    120
+   ],
+   "roblox": "Slate",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "coastal rock: chunky faceted boulders and cliffs"
+  },
+  "Pebble": {
+   "blender": "M_Pebble",
+   "color": [
+    156,
+    164,
+    172
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "smooth sea-worn pebbles (Pebble Isle)"
+  },
+  "Sand": {
+   "blender": "M_Sand",
+   "color": [
+    228,
+    198,
+    142
+   ],
+   "roblox": "Sand",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "sand mounds and dune skirts"
+  },
+  "WetSand": {
+   "blender": "M_WetSand",
+   "color": [
+    196,
+    166,
+    116
+   ],
+   "roblox": "Sand",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 0.0,
+   "note": "the darker band the waves keep wet"
+  },
+  "Soil": {
+   "blender": "M_Soil",
+   "color": [
+    124,
+    88,
+    58
+   ],
+   "roblox": "Ground",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "planters, earth under roots"
+  },
+  "Foliage": {
+   "blender": "M_Foliage",
+   "color": [
+    92,
+    170,
+    74
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "leaves and bushes: two greens per plant"
+  },
+  "Bark": {
+   "blender": "M_Bark",
+   "color": [
+    128,
+    96,
+    66
+   ],
+   "roblox": "Wood",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "palm trunks and roots"
+  },
+  "Flower": {
+   "blender": "M_Flower",
+   "color": [
+    255,
+    255,
+    255
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "petals: colour per piece"
+  },
+  "Metal": {
+   "blender": "M_Metal",
+   "color": [
+    74,
+    74,
+    82
+   ],
+   "roblox": "Metal",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "iron: bands, hinges, anchors, cannon"
+  },
+  "GoldTrim": {
+   "blender": "M_GoldTrim",
+   "color": [
+    255,
+    196,
+    46
+   ],
+   "roblox": "Metal",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "goblin gold: finials, sign lettering plates, trim"
+  },
+  "Rope": {
+   "blender": "M_Rope",
+   "color": [
+    214,
+    190,
+    146
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "rope, rigging, nets"
+  },
+  "Glass": {
+   "blender": "M_Glass",
+   "color": [
+    70,
+    96,
+    112
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": false,
+   "ao": 1.0,
+   "note": "dark window panes (a lighter streak painted on)"
+  },
+  "Glow": {
+   "blender": "M_Glow",
+   "color": [
+    255,
+    214,
+    140
+   ],
+   "roblox": "Neon",
+   "tint": "",
+   "alpha": 0.0,
+   "glow": true,
+   "ao": 1.0,
+   "note": "lantern glass: small, deliberate"
+  },
+  "ShopGlass": {
+   "blender": "M_ShopGlass",
+   "color": [
+    190,
+    228,
+    250
+   ],
+   "roblox": "Glass",
+   "tint": "",
+   "alpha": 0.72,
+   "glow": false,
+   "ao": 1.0,
+   "note": "a shop window you can see through"
+  },
+  "Foam": {
+   "blender": "M_Foam",
+   "color": [
+    250,
+    252,
+    255
+   ],
+   "roblox": "SmoothPlastic",
+   "tint": "",
+   "alpha": 0.45,
+   "glow": false,
+   "ao": 1.0,
+   "note": "surf and foam at the waterline"
+  }
+ }
+}
