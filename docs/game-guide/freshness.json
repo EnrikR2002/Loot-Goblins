@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "fingerprint": "e721aa0966d23cf86b8829634add647620fb2c706d84bae7187ed48a7ea95a02",
+  "fingerprint": "2c935d3573da25c8b9744d73f664e3d808b982e24f19d5061344d434bb1c8251",
   "source_baseline": {
     "src/client/Art14/Layouts/Harbor.lua": "3544b0985dfa0c483006f31eaa8e61922e3ae7ef88d25c2cf3c4c9953a3b837b",
     "src/client/Art14/Layouts/Pebble.lua": "4425b142d1f8c64e40958d060adfc835a84d458d3edd69486184a429c095f31c",
@@ -238,7 +238,7 @@
     "src/shared/Config.lua": "45e48e8c5cffc8038c04e78d92b6ca1ebeab124c6cd5363d148d53e41ec4d8be",
     "src/shared/Archipelago.lua": "956910425a5272c52fa671e6c8d109c6423542682b43032c55fb06ed56e87944",
     "default.project.json": "9fb828dd6c23f4351950c7fae8134f3c58e32a1b40379ced561ace167170b94d",
-    "docs/reports/2026-10-27-standin-merge-fixes.md": "f42c11ff3fe4b5060488336ea91307639768ccbf8b1f1af5873758877691c71d",
+    "docs/reports/2026-10-27-standin-merge-fixes.md": "c9582d422420a50643561b69472e34b0f95c9a6230817c3573996a0cd9011e8e",
     "docs/reports/2026-10-26-v14-visual-renaissance.md": "d6baa0cb13b8f3bea06ade2c7f8f5a24eff7a21a71e714ccabb2431737e6fe12",
     "docs/reports/2026-10-25-v13-5-curated-port.md": "0727f3fbaf28072a5c60ec73f9ae4c5c14dec8ed7812d13b342aef030616be4b",
     "docs/reports/2026-10-23-v13-4-port-polish.md": "bdca836a38c9fbe967d92d9d0ec1969654671f03b9cc3dc12b72dec9f096c277",

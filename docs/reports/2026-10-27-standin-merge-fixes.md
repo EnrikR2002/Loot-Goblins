@@ -18,8 +18,9 @@ Two bugs found by a whole-repo audit on main (2467b6e, V14). Both happen only on
 
 - New `EconomySpec` tests: a veteran's stand-in earns no achievement twice; stand-in Port game Shinies past the cap go back (and within the cap are all kept); merged bests keep the better golf round and lap, keep a first lap in a new boat, and take a genuinely better round.
 - `PortGamesSpec`: every game's record key is lower-is-better, like its id.
-- `./scripts/check.ps1`: see the PR for the run on this branch.
-- The Luau suite needs Studio; whether it was run is stated in the PR.
+- `./scripts/check.ps1`: StyLua, Selene (0 errors, 0 warnings), both Rojo builds, `git diff --check` and the notebook tests pass.
+- **160 Luau tests pass** in Studio's Edit mode on the test place built from this branch (157 before; 3 new in `EconomySpec`), 0 failed.
+- No Play-mode playtest: the change is to profile merging, which only runs on the stand-in path.
 
 ## Limits
 

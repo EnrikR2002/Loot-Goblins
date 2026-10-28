@@ -9,7 +9,7 @@ This file is a self-contained game description, quality rubric, and dated develo
 **Game repository:** https://github.com/EnrikR2002/Loot-Goblins
 **Documented gameplay revision:** 2c1e944387f92f0ef2f338c56d1ea7767e3e0ea2
 **Shared rubric revision:** 611c10f81a76a5818076a0f42c233e366228f78a
-**Document freshness fingerprint:** e721aa0966d23cf86b8829634add647620fb2c706d84bae7187ed48a7ea95a02
+**Document freshness fingerprint:** 2c935d3573da25c8b9744d73f664e3d808b982e24f19d5061344d434bb1c8251
 
 Ask an outside AI: 'Read this complete guide, compare the current game with the included rubric, and suggest the highest-value improvements. Separate documented gaps, hypotheses, and ideas. Respect game-specific decisions and current prototype gates.'
 
@@ -6075,8 +6075,9 @@ Two bugs found by a whole-repo audit on main (2467b6e, V14). Both happen only on
 
 - New `EconomySpec` tests: a veteran's stand-in earns no achievement twice; stand-in Port game Shinies past the cap go back (and within the cap are all kept); merged bests keep the better golf round and lap, keep a first lap in a new boat, and take a genuinely better round.
 - `PortGamesSpec`: every game's record key is lower-is-better, like its id.
-- `./scripts/check.ps1`: see the PR for the run on this branch.
-- The Luau suite needs Studio; whether it was run is stated in the PR.
+- `./scripts/check.ps1`: StyLua, Selene (0 errors, 0 warnings), both Rojo builds, `git diff --check` and the notebook tests pass.
+- **160 Luau tests pass** in Studio's Edit mode on the test place built from this branch (157 before; 3 new in `EconomySpec`), 0 failed.
+- No Play-mode playtest: the change is to profile merging, which only runs on the stand-in path.
 
 ## Limits
 
