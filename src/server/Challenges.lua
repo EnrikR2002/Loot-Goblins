@@ -233,6 +233,10 @@ end
 
 -- The heat is over: who won, what it pays.
 local function pay(winner, loser, amount, s)
+	-- The caps live in the saved profile: a stand-in's would start empty and pay past them (like claiming, this waits).
+	if not Progress.isReady(s) then
+		return 0
+	end
 	local c = s.profile.challenges
 	local day = Seasons.period("day", os.time())
 	if c.day ~= day then

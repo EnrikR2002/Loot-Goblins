@@ -12,6 +12,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Catalog = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Catalog"))
+local Config = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Config"))
 local PortGames = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("PortGames"))
 local Seasons = require(ReplicatedStorage:WaitForChild("LootGoblins"):WaitForChild("Seasons"))
 
@@ -432,6 +433,11 @@ function Economy.mergePort(profile, standIn)
 			for game, n in pairs(b.runs or {}) do
 				a.runs[game] = (a.runs[game] or 0) + n
 			end
+			-- The stand-in started today with an empty cap: whatever it paid beyond what was left of today's cap goes
+			-- back (mergeEarnings has already moved the stand-in's Shinies across).
+			local cap = Config.PLAYGROUND.DAILY_SHINIES
+			local over = math.min(b.earned or 0, math.max(0, (a.earned or 0) + (b.earned or 0) - cap))
+			profile.shinies = math.max(0, profile.shinies - over)
 			a.earned = (a.earned or 0) + (b.earned or 0)
 			a.bests = (a.bests or 0) + (b.bests or 0)
 		elseif (b.day or 0) > (a.day or 0) then

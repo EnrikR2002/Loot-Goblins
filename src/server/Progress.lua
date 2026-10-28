@@ -351,13 +351,22 @@ function Progress.announce(s, entry)
 	Analytics.shinies(s.player, false, entry.shinies, s.profile.shinies, "Gameplay", "achievement:" .. achievement.id)
 end
 
+-- Achievements unlock only on the real profile. A stand-in starts from zero, so it would unlock (and pay) again what a
+-- veteran already has; its stats merge into the real profile, and adopt() checks them there.
+local function unlock(s)
+	if s.status ~= "ready" then
+		return {}
+	end
+	return Economy.checkAchievements(s.profile, unix(), P.HISTORY)
+end
+
 local function recordAndCheck(player, kind, a, b, c)
 	local s = sessions[player]
 	if not s then
 		return
 	end
 	Economy.record(s.profile, kind, a, b, c)
-	local unlocked = Economy.checkAchievements(s.profile, unix(), P.HISTORY)
+	local unlocked = unlock(s)
 	changed(s, #unlocked > 0)
 	for _, entry in ipairs(unlocked) do
 		Progress.announce(s, entry)
@@ -370,7 +379,7 @@ function Progress.checkAchievements(player)
 	if not s then
 		return
 	end
-	local unlocked = Economy.checkAchievements(s.profile, unix(), P.HISTORY)
+	local unlocked = unlock(s)
 	if #unlocked > 0 then
 		changed(s, true)
 		for _, entry in ipairs(unlocked) do
@@ -527,7 +536,7 @@ function Progress.award(results)
 				local breakdown = Economy.payout(r.gold, r.won, median, P, s.deeds)
 				Economy.addShinies(s.profile, breakdown.total)
 				Economy.record(s.profile, "raid", r.won)
-				local unlocked = Economy.checkAchievements(s.profile, unix(), P.HISTORY)
+				local unlocked = unlock(s)
 				changed(s, true)
 				payouts[player] = breakdown.total
 				local names = {}

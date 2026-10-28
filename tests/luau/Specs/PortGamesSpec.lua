@@ -69,6 +69,8 @@ return function(t)
 			local medals = G[string.upper(def.id)].MEDALS
 			t.ok(medals.gold and medals.silver and medals.bronze, def.id .. ": medals")
 			t.ok(PortGames.lowerWins(def.id), def.id .. ": less is better (a time, or strokes)")
+			-- A best is kept under its record key: the merge of a stand-in compares by it.
+			t.ok(PortGames.lowerWins(PortGames.recordKey(def.id, "dory")), def.id .. ": its record key too")
 			t.ok(medals.gold < medals.silver and medals.silver < medals.bronze, def.id .. ": gold is the fewest")
 		end
 		t.eq(PortGames.medal("regatta", G.REGATTA.MEDALS.gold - 1), "gold", "a fast lap")
