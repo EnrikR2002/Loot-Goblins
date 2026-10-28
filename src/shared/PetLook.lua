@@ -664,6 +664,69 @@ HATS.pethat_crown = function(rig, at, group)
 		Enum.Material.Glass
 	)
 end
+-- V13.3: earned in the Port (an achievement or a week's quests).
+HATS.pethat_explorer = function(rig, at, group)
+	local khaki = rgb(214, 190, 140)
+	add(rig, group, "Dome", "egg", Vector3.new(0.5, 0.34, 0.56), at * CFrame.new(0, 0.16, 0), khaki)
+	add(rig, group, "Brim", "cyl", Vector3.new(0.05, 0.78, 0.82), at * CFrame.new(0, 0.05, 0) * UPRIGHT, khaki)
+	add(
+		rig,
+		group,
+		"Band",
+		"cyl",
+		Vector3.new(0.07, 0.52, 0.56),
+		at * CFrame.new(0, 0.1, 0) * UPRIGHT,
+		rgb(120, 76, 44)
+	)
+end
+HATS.pethat_laurel = function(rig, at, group)
+	local leaf = rgb(96, 170, 70)
+	for i = 0, 4 do -- five leaves: the biggest pet plus its hat stays within the 40-part budget (PetSpec)
+		local a = i / 5 * math.pi * 2
+		add(
+			rig,
+			group,
+			"Leaf" .. i,
+			"egg",
+			Vector3.new(0.12, 0.08, 0.22),
+			at * CFrame.new(math.cos(a) * 0.26, 0.06, math.sin(a) * 0.26) * CFrame.Angles(0, -a, math.rad(20)),
+			i % 2 == 0 and leaf or rgb(130, 196, 80)
+		)
+	end
+end
+HATS.pethat_medal = function(rig, at, group)
+	local blue = rgb(50, 110, 220)
+	add(
+		rig,
+		group,
+		"Rosette",
+		"cyl",
+		Vector3.new(0.08, 0.46, 0.46),
+		at * CFrame.new(0, 0.12, -0.12) * deg(0, 90, 0),
+		blue
+	)
+	add(
+		rig,
+		group,
+		"RosetteCore",
+		"cyl",
+		Vector3.new(0.1, 0.24, 0.24),
+		at * CFrame.new(0, 0.12, -0.16) * deg(0, 90, 0),
+		GOLD,
+		METAL
+	)
+	for _, side in ipairs({ -1, 1 }) do
+		add(
+			rig,
+			group,
+			"Ribbon",
+			"block",
+			Vector3.new(0.1, 0.3, 0.04),
+			at * CFrame.new(side * 0.08, -0.08, -0.14) * deg(0, 0, side * 12),
+			blue
+		)
+	end
+end
 PetLook.HATS = HATS
 
 -- The V13 bestiary: thirty-seven more pets, built with the same parts kit.

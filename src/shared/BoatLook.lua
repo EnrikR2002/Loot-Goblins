@@ -118,6 +118,36 @@ BoatLook.LIVERIES = {
 		cabin = rgb(34, 42, 86),
 		materials = { trim = METAL, stripe = METAL, hull = SMOOTH, cabin = SMOOTH },
 	},
+	-- V13.3: season rewards (shared/Seasons.lua).
+	livery_champion = {
+		hull = rgb(150, 28, 34),
+		trim = rgb(230, 176, 48),
+		stripe = rgb(255, 210, 70),
+		sail = rgb(196, 36, 40),
+		sailStripe = rgb(255, 214, 90),
+		mast = rgb(90, 20, 24),
+		cabin = rgb(170, 40, 44),
+		materials = { trim = METAL, stripe = METAL, hull = SMOOTH, cabin = SMOOTH },
+	},
+	livery_racer = {
+		hull = rgb(246, 244, 238),
+		trim = rgb(28, 26, 32),
+		stripe = rgb(220, 40, 44),
+		sail = rgb(246, 244, 238),
+		sailStripe = rgb(28, 26, 32),
+		mast = rgb(28, 26, 32),
+		cabin = rgb(236, 234, 228),
+		materials = { hull = SMOOTH, cabin = SMOOTH },
+	},
+	livery_voyager = {
+		hull = rgb(46, 132, 116),
+		trim = rgb(150, 104, 62),
+		stripe = rgb(232, 210, 160),
+		sail = rgb(232, 214, 168),
+		sailStripe = rgb(150, 90, 50),
+		mast = rgb(110, 76, 46),
+		cabin = rgb(60, 150, 130),
+	},
 }
 
 -- Making parts ---------------------------------------------------------------------------------------------------------
@@ -383,8 +413,160 @@ EXTRAS.livery_starlit = function(f)
 	end
 end
 
+-- V13.3: a gold laurel on each sail of the Champion's Sails, and chequers down the Racer's sides.
+EXTRAS.livery_champion = function(f)
+	for _, sail in ipairs(f.sails) do
+		for _, side in ipairs({ -1, 1 }) do
+			local face = CFrame.new(side * (sail.Size.X / 2 + 0.04), 0, 0)
+			for i = 0, 4 do
+				local a = math.rad(-70 + i * 35)
+				for _, arm in ipairs({ -1, 1 }) do
+					f.addOn(
+						sail,
+						"Laurel",
+						"egg",
+						Vector3.new(0.06, sail.Size.Y * 0.1, sail.Size.Z * 0.07),
+						face
+							* CFrame.new(
+								0,
+								-math.cos(a) * sail.Size.Y * 0.22,
+								arm * math.sin(math.abs(a)) * sail.Size.Z * 0.22
+							)
+							* deg(arm * (20 + i * 12), 0, 0),
+						GOLD,
+						FABRIC
+					)
+				end
+			end
+		end
+	end
+end
+
+EXTRAS.livery_racer = function(f)
+	local k = f.k
+	for _, side in ipairs({ -1, 1 }) do
+		for i = 0, 5 do
+			f.add(
+				"Check",
+				"block",
+				Vector3.new(0.08, 0.7 * k, 1.1 * k),
+				CFrame.new(
+					side * (f.size.X / 2 + 0.05),
+					(i % 2 == 0) and 0.35 * k or -0.35 * k,
+					-f.size.Z * 0.3 + i * 1.1 * k
+				),
+				BLACK,
+				SMOOTH
+			)
+		end
+	end
+end
+
 -- Flags (built round the boat's own Flag part, which they replace) --------------------------------------------------------------
 local FLAGS = {}
+
+-- V13.3: season pennants.
+FLAGS.flag_leader = function(f)
+	local flag = f.flag
+	local w, h = flag.Size.Z, flag.Size.Y
+	f.addOn(flag, "Banner", "block", Vector3.new(flag.Size.X, h, w * 0.7), CFrame.new(0, 0, -w * 0.15), GOLD, FABRIC)
+	for _, y in ipairs({ -1, 1 }) do
+		f.addOn(
+			flag,
+			"Tail",
+			"wedge",
+			Vector3.new(flag.Size.X, h / 2, w * 0.3),
+			CFrame.new(0, y * h / 4, w * 0.35) * deg(y > 0 and 180 or 0, 0, 0),
+			GOLD,
+			FABRIC
+		)
+	end
+	for _, side in ipairs({ -1, 1 }) do
+		local face = CFrame.new(side * (flag.Size.X / 2 + 0.04), 0, -w * 0.15)
+		for i = 0, 3 do
+			f.addOn(
+				flag,
+				"Leaf",
+				"egg",
+				Vector3.new(0.05, h * 0.14, w * 0.1),
+				face * CFrame.new(0, -h * 0.25 + i * h * 0.16, -w * 0.12) * deg(30, 0, 0),
+				rgb(70, 140, 60),
+				FABRIC
+			)
+			f.addOn(
+				flag,
+				"Leaf",
+				"egg",
+				Vector3.new(0.05, h * 0.14, w * 0.1),
+				face * CFrame.new(0, -h * 0.25 + i * h * 0.16, w * 0.12) * deg(-30, 0, 0),
+				rgb(70, 140, 60),
+				FABRIC
+			)
+		end
+	end
+	return true
+end
+
+FLAGS.flag_burgee = function(f)
+	local flag = f.flag
+	local w, h = flag.Size.Z, flag.Size.Y
+	for row = 0, 1 do
+		f.addOn(
+			flag,
+			"Check",
+			"block",
+			Vector3.new(flag.Size.X, h / 2, w * 0.3),
+			CFrame.new(0, (row - 0.5) * h / 2, -w * 0.35),
+			row == 0 and WHITE or BLACK,
+			FABRIC
+		)
+		f.addOn(
+			flag,
+			"Check",
+			"block",
+			Vector3.new(flag.Size.X, h / 2, w * 0.3),
+			CFrame.new(0, (row - 0.5) * h / 2, -w * 0.05),
+			row == 0 and BLACK or WHITE,
+			FABRIC
+		)
+	end
+	f.addOn(
+		flag,
+		"Point",
+		"wedge",
+		Vector3.new(flag.Size.X, h, w * 0.42),
+		CFrame.new(0, 0, w * 0.31) * deg(180, 0, 0),
+		rgb(220, 40, 44),
+		FABRIC
+	)
+	return true
+end
+
+FLAGS.flag_questor = function(f)
+	local flag = f.flag
+	local w, h = flag.Size.Z, flag.Size.Y
+	f.addOn(
+		flag,
+		"Pennant",
+		"wedge",
+		Vector3.new(flag.Size.X, h * 0.8, w * 1.5),
+		CFrame.new(0, 0, w * 0.25),
+		rgb(60, 110, 200),
+		FABRIC
+	)
+	for _, side in ipairs({ -1, 1 }) do
+		f.addOn(
+			flag,
+			"Seal",
+			"cyl",
+			Vector3.new(0.08, h * 0.42, h * 0.42),
+			CFrame.new(side * (flag.Size.X / 2 + 0.05), 0, -w * 0.3) * CFrame.Angles(0, 0, 0),
+			GOLD,
+			METAL
+		)
+	end
+	return true
+end
 
 -- The default keeps each boat's coloured flag (the colours tell boats apart) and adds a skull to it.
 FLAGS.flag_jolly = function(f)

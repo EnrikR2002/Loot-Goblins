@@ -71,16 +71,17 @@ local function foreignLock(data, session)
 	return type(data) == "table" and type(data.lock) == "table" and data.lock.session ~= session
 end
 
--- Opens a profile for `session`. Returns status, profile, how:
---   "ok", profile, how ("new" | "migrated" | "loaded" | "repaired")   the lock is ours now
+-- Opens a profile for `session`. Returns status, profile, how, lastSeen:
+--   "ok", profile, how ("new" | "migrated" | "loaded" | "repaired"), lastSeen   the lock is ours now (lastSeen: when
+--                       it was last opened or saved before now, V13.3: a returning goblin's gap)
 --   "locked", nil       another session holds a fresh lock
 --   "newer", nil        written by a newer version of the game: play unsaved, never write
 --   "error", nil, msg   the store failed every attempt
 function ProfileStore:open(key, session)
-	local status, profile, how
+	local status, profile, how, lastSeen
 	local ok, err = self:_update(key, function(old)
 		-- UpdateAsync may run this more than once: start clean each time.
-		status, profile, how = nil, nil, nil
+		status, profile, how, lastSeen = nil, nil, nil, nil
 		local t = self.now()
 		if foreignLock(old, session) then
 			local age = t - (tonumber(old.lock.at) or 0)
@@ -94,6 +95,7 @@ function ProfileStore:open(key, session)
 			status = reason
 			return nil
 		end
+		lastSeen = type(old) == "table" and tonumber(old.seen) or nil
 		loaded.lock = { job = self.job, session = session, at = t }
 		loaded.seen = t
 		status, profile, how = "ok", loaded, reason
@@ -102,7 +104,7 @@ function ProfileStore:open(key, session)
 	if not ok then
 		return "error", nil, err
 	end
-	return status or "error", profile, how
+	return status or "error", profile, how, lastSeen
 end
 
 -- Writes `profile` for `session`. release = true also gives the lock up (the goblin is leaving). Returns status:

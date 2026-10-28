@@ -36,6 +36,9 @@ local Net = require(script.Parent.Net)
 local Poltergoblin = require(script.Parent.Poltergoblin)
 
 local Flight = {}
+-- V13.3: (player, position, launcher) when a thrown goblin has come down for good (after any bounces): Cannon Golf
+-- scores the shot from it. `launcher` is what threw them (nil for a throw with no launcher).
+Flight.Landed = Util.signal()
 
 local D = Config.DIVE
 
@@ -199,6 +202,8 @@ end
 
 -- The flight is over (or never happened): an ordinary goblin again, on its feet.
 local function finish(player, s, humanoid, root, phase)
+	local landed = (s.phase == "diving" or s.phase == "embedded") and root and root.Parent and root.Position or nil
+	local thrownBy = s.thrownBy
 	s.token += 1
 	stiffen(s)
 	release(s)
@@ -218,6 +223,9 @@ local function finish(player, s, humanoid, root, phase)
 		root.CFrame = CFrame.lookAt(root.Position, root.Position + flatLook)
 	end
 	player:SetAttribute("DeployState", phase or "landed")
+	if landed then
+		Flight.Landed:Fire(player, landed, thrownBy)
+	end
 end
 
 -- Climb in.
@@ -335,6 +343,7 @@ function Flight.launch(player, velocity, launcher, start)
 		velocity = Dive.solve(from, s.target, launcher.elevation, launcher.speed)
 	end
 	release(s)
+	s.thrownBy = launcher -- V13.3: who threw them (Flight.Landed says so)
 	if launcher then
 		Net.broadcastNear(from, 2600, "DiveFire", {
 			position = from,
@@ -563,8 +572,8 @@ function Flight.tick(_dt)
 			Flight.forget(player)
 		elseif s.phase == "loaded" then
 			local launcher = s.launcher
-			if launcher.kind ~= "cannon" and t - s.loadedAt > D.LOADED_TIMEOUT then
-				Net.toast(player, "The catapult tips you out. (Space fires it.)")
+			if launcher.kind ~= "cannon" and t - s.loadedAt > (launcher.timeout or D.LOADED_TIMEOUT) then
+				Net.toast(player, launcher.timeoutText or "The catapult tips you out. (Space fires it.)")
 				Flight.leave(player)
 			end
 		elseif s.phase == "diving" then
@@ -609,9 +618,15 @@ function Flight.forget(player)
 	end
 end
 
--- The raid is over: everyone out of the air and out of the launchers.
+-- The raid is over: everyone out of the air and out of the launchers. (V13.3: except a goblin playing a Port game with a
+-- Port launcher, Cannon Golf's tee: the raid's comings and goings are not theirs.)
 function Flight.reset()
 	for _, player in ipairs(Players:GetPlayers()) do
+		local s = state[player]
+		local launcher = s and (s.launcher or s.thrownBy)
+		if launcher and launcher.port then
+			continue
+		end
 		Flight.forget(player)
 		setBodyGroup(player.Character, "Default")
 		player:SetAttribute("Diving", nil)

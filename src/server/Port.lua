@@ -25,6 +25,7 @@ local Palette = require(Shared:WaitForChild("Palette"))
 local Lobby = require(Shared:WaitForChild("Lobby"))
 local Catalog = require(Shared:WaitForChild("Catalog"))
 local Wardrobe = require(Shared:WaitForChild("Wardrobe"))
+local PortGames = require(Shared:WaitForChild("PortGames"))
 local Util = require(script.Parent.Util)
 local Net = require(script.Parent.Net)
 local Flight = require(script.Parent.Flight)
@@ -1199,6 +1200,9 @@ local function buildShore()
 	}
 	local Kit = require(script.Parent.WorldKit)
 	for _, p in ipairs(palms) do
+		if not PortGames.clearOf(p[1], p[2]) then
+			continue -- V13.3: a venue stands there now
+		end
 		local x, z = C.X + p[1], C.Z + p[2]
 		local hit = workspace:Raycast(Vector3.new(x, 80, z), Vector3.new(0, -120, 0))
 		if hit and hit.Position.Y > 1.5 and hit.Material ~= Enum.Material.Water then
@@ -1261,6 +1265,30 @@ function Port.build(worldRefs, displayModel)
 	-- For the clients: where the Port is (its own screen, the map, spectating).
 	core:SetAttribute("Center", C)
 	Port.core = core
+	-- V13.3: the same building kit for the Port's games, the Quest Board, the Hall of Records and the Sanctuary Lift,
+	-- so everything new in town is built the way the town was. Positions passed to `at` are relative to the centre.
+	Port.kit = {
+		at = at,
+		part = part,
+		deco = deco,
+		floor = floor,
+		board = board,
+		prompt = prompt,
+		light = light,
+		lamp = lamp,
+		crate = crate,
+		barrel = barrel,
+		bunting = bunting,
+		arch = arch,
+		shopkeeper = shopkeeper,
+		upright = upright,
+		mannequinOn = mannequinOn,
+		core = core,
+		town = town,
+		center = C,
+		refs = refs, -- the world's folders (launch pads, ziplines)
+		worldKit = require(script.Parent.WorldKit), -- the world's own hoops, ramps and ziplines
+	}
 end
 
 -- Moving goblins in ---------------------------------------------------------------------------------------------------------
@@ -1284,6 +1312,12 @@ local function freeOf(player)
 	player:SetAttribute("DeployState", nil)
 	player:SetAttribute("LaunchBy", nil)
 	return humanoid, root
+end
+
+-- V13.3: out of any launcher, seat or spirit form, ready to be put somewhere (the Port's games use it). Returns
+-- humanoid, root (nil if there is no body).
+function Port.freeOf(player)
+	return freeOf(player)
 end
 
 -- Put a goblin in the Port: at `spot` (a CFrame) or the next free arrival point round the fountain. Teleports are

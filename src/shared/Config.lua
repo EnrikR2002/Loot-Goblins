@@ -848,6 +848,29 @@ Config.BOAT_TYPES = {
 		ramPower = 2.2,
 		passengers = 0,
 	},
+	-- V13.3: the Tiny Boat Regatta's RACING TUB (server/Regatta.lua). Not a class (nobody owns one; the Port lends them)
+	-- and no ability (R on the water does nothing; R in the air is still a trick). As small as the Wraith is narrow and
+	-- shorter than the Reefhopper, so its physics stay inside what the fleet already floats. It never sinks: the
+	-- regatta is for bumping, not wrecking.
+	racer = {
+		name = "Racing Tub",
+		size = Vector3.new(8, 2.6, 16),
+		draft = 1.1,
+		density = 0.7,
+		accel = 70,
+		maxSpeed = 112,
+		turn = 2.6,
+		turnFade = 240,
+		grip = 3.4,
+		driftGrip = 0.34,
+		driftTurn = 1.7,
+		lean = 36,
+		health = 5000,
+		crashTaken = 0.15,
+		ramPower = 1.3,
+		passengers = 0,
+		boardReach = 30,
+	},
 }
 Config.BOAT_BOOST_MULT = 1.42 -- Top speed while boosting (V13.2: a Skiff 168, an Ironbelly 150; V13: 1.5, a skiff 202).
 Config.BOAT_BOOST_THRUST = 2.2 -- V13.2 (V13: 2.4, V6: 2.1)
@@ -2562,5 +2585,216 @@ Config.AUDIO = {
 
 -- Traversal ------------------------------------------------------------------
 Config.ZIPLINE_SPEED = 110 -- The long lines are 550 studs: five seconds (V3: 90).
+
+-- V13.3, THE LIVING PORT ----------------------------------------------------------------------------------------------
+-- Seven Port games (server/Minigames.lua and one module each), the Captain's Quest Board, weekly and monthly
+-- leaderboards, a pet sanctuary per goblin with pet expeditions, and challenges between goblins. Layouts (where things
+-- stand) are in shared/PortGames.lua and shared/Habitat.lua; every number a playtest might change is here.
+--
+-- THE REWARD BUDGET (Shinies; docs/GAME_DESIGN.md has the full table). Raids stay the main way to earn: a typical raid
+-- pays about 24 in 7.3 minutes (about 196 an hour). Around them, everything is small and CAPPED PER GOBLIN PER UTC DAY,
+-- and the caps live in the goblin's saved profile, so leaving, rejoining or switching servers resets nothing:
+--   Port games      1 to 6 a run (a medal, winning a heat of two or more, a personal best), at most 40 a day
+--   daily quests    3 a day, 12 to 25 each (about 55 a day if all are done; unclaimed ones are paid at the reset)
+--   weekly quests   3 a week, 50 to 100 each, and a cosmetic for finishing all three
+--   leaderboards    tiers anyone can reach (10 to 35 a board a week) and placements (15 to 250), cosmetic prestige
+--   expeditions     6 to 20 a trip, at most 30 a day, whatever the pet
+--   challenges      4 for a win, 2 for a tie, at most 5 paid wins a day and 2 against the same goblin
+-- Casual (30 min a day) about 150 a day, raids 60% of it; active (2 h) about 500, raids two thirds; skilled about 640.
+-- Nothing here is ever sold for Robux, and nothing changes how strong a goblin is.
+
+Config.PLAYGROUND = {
+	-- Every finished run pays a little, by its medal (see each game's MEDALS); never more than the daily caps.
+	REWARD = { played = 1, bronze = 1, silver = 2, gold = 4, winner = 1, best = 2 },
+	DAILY_RUNS = 6, -- Paid runs per game per UTC day (a run after that still counts for bests, quests and boards).
+	DAILY_SHINIES = 40, -- The most Shinies Port games pay one goblin in a UTC day.
+	DAILY_BESTS = 3, -- Personal-best bonuses a day (a new best still counts as a best after that).
+	LOBBY = 8, -- Seconds a heat waits for more goblins after the first steps in (a challenge skips it).
+	COUNTDOWN = 3, -- 3, 2, 1, GO.
+	RESULTS = 5, -- Seconds the results stay on the venue before it opens again.
+	RAID_WARN = 15, -- A goblin signed up for the raid is warned this long before it leaves (it ends their game).
+	INPUT_RATE = 12, -- Game inputs a goblin may send a second (a throw, a cheer, a shot); more are ignored.
+	VENUE_DRAW = 320, -- (client) Studs from the camera within which a venue's moving parts are drawn.
+
+	-- TINY BOAT REGATTA: one lap of the water round the Port in a Racing Tub (Config.BOAT_TYPES.racer).
+	REGATTA = {
+		MAX = 8,
+		RADIUS = 600, -- The course: a ring this far round the island's middle (PortGames.ISLAND).
+		CHECKPOINTS = 12, -- Every 30 degrees; all must be passed, in order.
+		GATE_RADIUS = 70, -- A checkpoint is a stretch of water this wide, not a hoop.
+		LIMIT = 80, -- Seconds after GO; anyone still out does not finish.
+		MIN_TIME = 20, -- A lap faster than this is not believed (no score, no reward).
+		MEDALS = { gold = 36, silver = 43, bronze = 54 }, -- Seconds (first guesses: nobody has raced it yet).
+		REJOIN_AFTER = 2.5, -- Out of your tub this long: back at your last checkpoint, seated, at rest.
+		SPLASH_EVERY = 4.5, -- The splash cannons: one shot each this often...
+		SPLASH_WARN = 1.4, -- ...after a ring on the water this long...
+		SPLASH_RADIUS = 20, -- ...throwing every tub inside it...
+		SPLASH_LIFT = 72, -- ...this fast upwards...
+		SPLASH_PUSH = 38, -- ...and this fast outwards.
+		SPLASH_LEAD = 1.2, -- They aim this many seconds ahead of the nearest tub.
+	},
+	-- GRAPPLE GAUNTLET: a course in the air over the north-west water: swing rings, bounce pads, a beam and a zipline.
+	GAUNTLET = {
+		MAX_RUNNERS = 12, -- At once (every run is its own; a challenge starts two together).
+		LIMIT = 180,
+		MIN_TIME = 14,
+		MEDALS = { gold = 40, silver = 55, bronze = 80 },
+		FALL_Y = 3.5, -- A goblin this low over the water has fallen: back to the last checkpoint (the clock runs on).
+	},
+	-- CANNON GOLF: a tee cannon, three floating greens, one shot at each. Aim the way you look; hold to charge.
+	GOLF = {
+		TEES = 3, -- Three tee cannons side by side: three goblins can play at once.
+		ELEVATION = math.rad(42),
+		MIN_SPEED = 45,
+		MAX_SPEED = 135, -- About 300 studs on flat water: the far green needs most of it.
+		POWER_CYCLE = 1.5, -- (client) Seconds for the power meter to go up and down once.
+		YAW_MAX = 70, -- Degrees either side of the tee's own heading.
+		RETURN = 1.8, -- Seconds after landing before you are back in the cannon for the next hole.
+		LIMIT = 150,
+		CUP = 4, -- Studs from the pin: in the cup...
+		NEAR = 8, -- ...so close...
+		GREEN = 15, -- ...on the green...
+		FRINGE = 26, -- ...on the fringe. Farther: a splash.
+		POINTS = { cup = 100, near = 70, green = 45, fringe = 20, miss = 0 },
+		MEDALS = { gold = 200, silver = 120, bronze = 50 }, -- Points out of 300.
+	},
+	-- PET DERBY: your pet (or a loaned crab) races three or more round an oval with hurdles. CHEER as it reaches one.
+	DERBY = {
+		FIELD = 4, -- Bots from the menagerie fill the field to this many.
+		MAX = 6,
+		SPEED = 9.5, -- Every pet, whatever it is: rarity is never speed.
+		ZOOM = 1.5, -- A clean jump: this much faster...
+		ZOOM_TIME = 1.2, -- ...for this long.
+		TRIP = 0.3, -- A missed or mistimed hurdle: this share of speed...
+		TRIP_TIME = 1.0, -- ...for this long (a tumble).
+		STUMBLE = 0.4, -- A cheer with no hurdle near: a little stumble (no mashing).
+		EARLY = 0.6, -- A cheer up to this long before the hurdle is clean...
+		LATE = 0.18, -- ...and up to this long after it (the server sees the pet a moment late)...
+		TOO_EARLY = 1.3, -- ...earlier than EARLY but within this: it jumps too soon and trips.
+		SNIFF = 0.6, -- Every pet stops once to sniff a flower (the same pause for all; only where differs).
+		BOT_SKILL = 0.62, -- A bot pet's chance of a clean jump.
+		LIMIT = 70,
+	},
+	-- TREASURE TOSS: throw chests into moving baskets, a rowboat, a parrot's perch and the Goblin King's mouth.
+	TOSS = {
+		ROUND = 40,
+		MAX = 6,
+		SPEED = 74, -- Every throw leaves this fast, the way you look...
+		GRAVITY = 60, -- ...under the dive's readable gravity (the world's 196 makes a throw a lob of 25 studs).
+		RELOAD = 0.55,
+		PITCH_MIN = -10, -- Degrees: a throw is between this and PITCH_MAX above level,
+		PITCH_MAX = 65,
+		YAW_MAX = 80, -- and within this of the booth's facing.
+		CHEST = 1.2, -- The chest's own radius.
+		MEDALS = { gold = 40, silver = 22, bronze = 8 },
+	},
+	-- TARGET SHIP GALLERY: man a shore cannon and sink the cut-out pirate fleet sailing past.
+	GALLERY = {
+		ROUND = 45,
+		STATIONS = 4,
+		SPEED = 220, -- The island cannons' muzzle speed and gravity (Config.CANNON_SPEED, CANNON_GRAVITY).
+		GRAVITY = 95,
+		RELOAD = 1.1,
+		DOWN_TIME = 2.6, -- A hit ship keels over and comes back up after this long.
+		BALL = 1.6,
+		MEDALS = { gold = 36, silver = 20, bronze = 8 },
+	},
+	-- CRAB CHAOS: a crate of crabs bursts on the beach. Catch them (run into them; a dash helps).
+	CRABS = {
+		ROUND = 45,
+		MAX = 8,
+		COUNT = 16,
+		GOLDEN = 2, -- Golden crabs: worth GOLDEN_POINTS, faster, burrow more.
+		GOLDEN_POINTS = 3,
+		CATCH = 3.6, -- Studs from a goblin's middle.
+		WANDER = 5,
+		FLEE = 15, -- Slower than any running goblin (21 to 38), but they turn.
+		GOLD_FLEE = 19,
+		SCARE = 14, -- A goblin this close sends a crab running.
+		JINK = 0.6, -- Seconds between zigzags.
+		BURROW_NEAR = 6, -- Cornered this close, a crab may burrow...
+		BURROW_CHANCE = 0.3,
+		BURROW_TIME = 1.4, -- ...and come up 12 to 20 studs away after this.
+		BURROW_REST = 5,
+		ALL_BONUS = 5, -- Every crab caught before the end: everyone in the round scores this many more.
+		MEDALS = { gold = 8, silver = 5, bronze = 2 },
+	},
+}
+
+-- THE CAPTAIN'S QUEST BOARD (server/Quests.lua, shared/Seasons.lua). Three daily and three weekly quests, the same for
+-- everyone on the day (so goblins can do them together). Resets: every day at 00:00 UTC, every Monday 00:00 UTC.
+-- Progress is the server's, saved in the profile; a finished quest nobody claimed is paid at the reset, never lost.
+Config.QUESTS = {
+	DAILY = 3,
+	WEEKLY = 3,
+	REWARD = { easy = 12, medium = 18, hard = 25 }, -- Daily.
+	WEEKLY_REWARD = { easy = 50, medium = 75, hard = 100 },
+	BUNDLE_SHINIES = 60, -- All three weekly quests claimed: the week's cosmetic, or this if it is already owned.
+}
+
+-- LEADERBOARDS (server/Leaderboards.lua, shared/Seasons.lua). Weekly: the biggest single-raid haul, the fastest
+-- Regatta, the best Cannon Golf round. Monthly: the PIRATE CHAMPIONSHIP (the sum of a goblin's best CHAMPION_RAIDS raid
+-- hauls of the month: skill, not hours) and the fastest Gauntlet. Every score is the server's own measurement. Rewards
+-- are paid to each goblin's own profile after the period ends (whenever they are next in a server), once.
+Config.SEASONS = {
+	CHAMPION_RAIDS = 5,
+	SETTLE = 900, -- Seconds after a period ends before its final standings are written (late saves land first).
+	REFRESH = 120, -- Seconds between reads of each board's top ten.
+	WRITE_GAP = 20, -- A goblin's improved score is written at most this often per board.
+	SHOW = 10, -- Rows on a board.
+	HALL = 100, -- Places kept in the final standings (placement rewards reach this far).
+	KEEP = 8, -- Periods of a goblin's own scores kept in their profile.
+	GIVE_UP_DAYS = 14, -- Final standings still missing after this: the tier reward is paid without a placement.
+	-- Placement rewards (Shinies) by rank, per period kind.
+	PLACE = {
+		week = {
+			{ rank = 1, shinies = 100 },
+			{ rank = 3, shinies = 60 },
+			{ rank = 10, shinies = 40 },
+			{ rank = 100, shinies = 15 },
+		},
+		month = {
+			{ rank = 1, shinies = 250 },
+			{ rank = 3, shinies = 150 },
+			{ rank = 10, shinies = 80 },
+			{ rank = 100, shinies = 30 },
+		},
+	},
+	TIER = { week = { bronze = 10, silver = 20, gold = 35 }, month = { bronze = 25, silver = 50, gold = 80 } },
+}
+
+-- THE PET SANCTUARY (server/Sanctuary.lua, client/Sanctuary.lua, shared/Habitat.lua). Every goblin in the server has a
+-- little floating isle over the Port where the pets they own wander, eat, chase a ball and come running to a bell.
+-- (Not Config.SANCTUARY: that is V9's safe water round Goblin Cove.)
+Config.PET_ISLES = {
+	RINGS = { { radius = 250, y = 190, count = 10 }, { radius = 410, y = 230, count = 22 } }, -- 32 isles.
+	ISLE = 30, -- An isle's radius.
+	RESIDENTS = 12, -- Pets shown on an isle at once (the owner picks them; the newest first otherwise).
+	DRAW = 240, -- (client) An isle's pets are animated only within this of the camera.
+	FEED_GAP = 12, -- Seconds between feedings (anyone on the isle can feed, the owner's pets come running).
+	TOY_GAP = 2.5,
+	BELL_GAP = 8,
+}
+-- PET EXPEDITIONS: send a pet you own scavenging; it comes back with Shinies on its own clock (the server's), even
+-- while you are offline. Small on purpose: at most DAILY_CAP a UTC day, whatever the pet; a rare pet earns no more.
+Config.EXPEDITIONS = {
+	DAILY_CAP = 30,
+	TRIPS = {
+		{ id = "shore", name = "Shore Scavenge", hours = 2, shinies = 6 },
+		{ id = "reef", name = "Reef Run", hours = 6, shinies = 12 },
+		{ id = "voyage", name = "Long Voyage", hours = 12, shinies = 20 },
+	},
+}
+
+-- CHALLENGES (server/Challenges.lua): ask a goblin in the Port to a game. Two of you, one heat, no matchmaking.
+Config.CHALLENGES = {
+	INVITE_TIME = 20, -- Seconds an invitation waits for an answer.
+	GAP = 3, -- Seconds between invitations from one goblin.
+	WIN = 4,
+	TIE = 2,
+	DAILY_PAID = 5, -- Paid challenge wins a day...
+	PER_OPPONENT = 2, -- ...and against any one goblin.
+	REMATCH = 15, -- Seconds both have to press REMATCH.
+}
 
 return Config
