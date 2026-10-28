@@ -138,6 +138,97 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### A script source of 200,000 characters or more cannot be set, so split generated data
+
+**ID:** script-source-limit-200k-for-generated-data | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-26
+**Related checks:** General
+
+**Observed / proposed:** An exporter wrote one Luau module per asset holding its mesh arrays; one came out at 592,318 characters. Setting it as a ModuleScript's Source from a Studio plugin context failed with 'Provided string length (592318) is greater than or equal to max length (200000)'; Rojo's live sync sets sources the same way. Writing one module per material group, and cutting groups over 2,200 triangles, kept every module under 165,000 characters.
+
+**Recommendation:** Make any generator that writes Luau data assert each file's length is under 200,000 characters and split by a natural unit (a group, a chunk) when it is not; check the largest file in tests.
+
+**Applies when:** Generating Luau modules from tools (meshes, layouts, tables of data) that are synced by Rojo or a plugin
+
+**Limits:** A Rojo build to a place file was not tested with an oversized module
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md): Sections 1 and 9: the 590,000-character module and the split.
+
+### A minimized Studio window renders blank (white) screen captures while the game keeps running
+
+**ID:** minimized-studio-renders-blank-captures | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-26
+**Related checks:** General
+
+**Observed / proposed:** Mid-session, every Studio MCP screen capture came back white in play and in edit, with the game running at 60 fps and no errors; a test that moved the camera seemed broken. The Studio window had been minimized. Restoring it without activating it (ShowWindow with SW_SHOWNOACTIVATE) brought captures back without taking the person's keyboard focus.
+
+**Recommendation:** Before debugging blank captures, check whether Studio is minimized (IsIconic) or the display is asleep; restore it without stealing focus and say so to the person.
+
+**Applies when:** Taking screenshots of Studio from an agent while a person may be using the same computer
+
+**Limits:** Windows 10, one machine
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md): Seen during the showcase captures.
+
+### On a MeshPart built from an EditableMesh, materials tile in studs and vertex colours multiply the part's Color
+
+**ID:** editablemesh-materials-ignore-uvs-colours-multiply | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-26
+**Related checks:** General
+
+**Observed / proposed:** Two identical cubes built with UVs 0..1 and 0..4 showed Brick and WoodPlanks at the same density as a plain 4-stud Part: the built-in materials ignored the mesh's UVs. Vertex colours rendered, multiplied by MeshPart.Color (the default grey darkened them to olive); with Color white they showed as painted. Counter-clockwise faces (Blender's convention) were front faces.
+
+**Recommendation:** For a vertex-painted stylized look, keep MeshParts white and paint colour (and baked shading) into vertex colours; choose a built-in material for grain only, knowing it tiles by studs; reserve a part's Color for in-game tints (a paint job) on white-painted groups.
+
+**Applies when:** Rendering imported or editable meshes with vertex colours and Roblox's built-in materials
+
+**Limits:** Seen in Studio with the 2026-10 engine; textured MeshParts (TextureContent) were not tried
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md): Section 1: vertex colours, materials and winding probes.
+
+### EditableMesh content is per machine and each client has a small budget for it
+
+**ID:** editablemesh-is-per-machine-and-budgeted | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-26
+**Related checks:** General
+
+**Observed / proposed:** Building art from data with AssetService:CreateEditableMesh and CreateMeshPartAsync worked in Studio's local place with no setting. A MeshPart built from an EditableMesh on the server replicated as an instance, but the client could not use its mesh ('EditableMesh or its cloned copy can't be used on the client if it was created on the server'), so every client built its own. On a Studio play client CreateEditableMesh returned nil after 8 still-growing meshes whatever their size, and after about 72,000 vertices of fixed-size copies without normals (about 36,000 of a dense mesh with a normal per vertex); the real art set (about 19,000 vertices) fitted twice over. Destroying an EditableMesh removed its MeshPart's shape; a mesh whose reference was lost kept its budget for the rest of the session. A cloned MeshPart kept the same EditableMesh, so copies cost nothing extra.
+
+**Recommendation:** Build editable meshes on each client, copy each into a fixed-size mesh (CreateEditableMeshAsync with FixedSize) and destroy the growable one, keep every mesh referenced while it is shown and destroy it when its area is left, share one mesh across copies by cloning the MeshPart, and treat a nil from CreateEditableMesh as 'keep the old look here'. A published experience must allow Mesh / Image APIs.
+
+**Applies when:** Showing meshes built at run time (procedural or from repository data) instead of uploaded assets
+
+**Limits:** Measured on one Studio desktop client; phones were not measured and the budget is device-specific
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md): Section 1: the pipeline probes table.
+
+### A client-side skin on a streamed model must bind to its parts as they arrive
+
+**ID:** client-skins-must-follow-streamed-parts | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-26
+**Related checks:** General
+
+**Observed / proposed:** A client drew a new look over every boat whose model carried a BoatType attribute, hiding the old parts and taking their paint colours. With StreamingEnabled the boat models arrived with their attribute but without their parts: waiting 10 seconds for the hull gave up on every far boat, and a skin built when the hull arrived stayed white because the coloured parts (sail, strake) arrived later. Starting the skin when the Hull part arrives (DescendantAdded) and hiding or reading colour from each part as it is added fixed both.
+
+**Recommendation:** Under streaming, key client-side dressing on the part it needs (not the model), and apply per-part work (hiding, reading colours) in a ChildAdded handler as well as at build time; remove the dressing when its anchor part leaves.
+
+**Applies when:** Client-only visuals attached to replicated models under StreamingEnabled (skins, labels, effects)
+
+**Limits:** Seen with boats moored far from a goblin in Studio; one client
+
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md): Section 9: the white skins and the missing skins.
+
+### Blender's bmesh operators can return elements in memory order, so exports differ run to run
+
+**ID:** bmesh-order-breaks-deterministic-exports | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-26
+**Related checks:** General
+
+**Observed / proposed:** A headless Blender build of the same assets, run twice with fixed seeds, wrote byte-identical data for 44 of 45 assets; one (extruded paving slabs) came out with its normals, colours and triangles in a different order each run although the geometry was the same. Sorting each piece's vertices by position and its faces by their vertex numbers, and starting each face at its lowest vertex, made every rebuild byte-identical. Blender's FBX writer also embedded the .blend's absolute path (the machine's user folder).
+
+**Recommendation:** When generated art is committed, sort geometry deterministically before writing it, hash two rebuilds to prove it, and scrub absolute paths from exported files (in place, at the same length for FBX's length-prefixed strings).
+
+**Applies when:** Committing data or files generated by Blender scripts
+
+**Limits:** Blender 4.5.10 LTS on Windows; FBX files still record a creation time
+
+- [source-review](https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/art/README.md): The determinism note under 'The pipeline'.
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md): Section 8: byte-identical rebuilds and no machine path.
+
 ### When a game's course or scoring changes, keep bests and boards under new keys and retire the old boards instead of deleting them
 
 **ID:** new-course-gets-new-record-keys-and-retired-boards | **Status:** hypothesis | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-25

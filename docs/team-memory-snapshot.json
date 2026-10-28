@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "repository": "EnrikR2002/Roblox-Team-Knowledge",
-  "revision": "d7e6b9191e2d27fab188c4fa5053c8b1aced0f04",
+  "revision": "611c10f81a76a5818076a0f42c233e366228f78a",
   "baseline": "# Shared Roblox quality rubric\n\nAdapted from Ethan's CLARITY.md, supplied October 12, 2026. This is a shared evaluation lens. Each game's AGENTS.md, current human decisions, and source-controlled implementation retain their own authority. A rubric does not authorize extra features or a release.\n\nThe AI reads relevant checks before player-facing work, updates affected findings in the game's existing context and dated reports, and contributes generalizable evidence to the shared notebook. Run the quick audit for prototypes, relevant checks for changes, and the full applicable gate before release. Untested remains untested. Saving, progression, shops, long-term collections, and analytics are N/A when outside the approved game scope; never add them to satisfy a checklist.\n\nGAME_GUIDE.md describes one game in detail. QUALITY_RUBRIC.md describes the shared quality standards plus attributed team learning. An outside AI can compare the two, separating documented gaps, probable risks, and proposals. Neither file alone proves actual runtime defects. Source research below is attributed design guidance, not new first-hand testing or an up-to-date popularity ranking.\n\nImportant changes to the base standard require human review. Routine lesson additions extend the learning section automatically, with their original evidence and limits.\n\n## Principles\n\nClarity means fewer moments where players must guess, not more instructions. At a normal moment, a new player should understand what they are doing, where/how to do it, and what success means. Use world layout, readable affordances, and immediate feedback before adding paragraphs or UI. Teach an input when it becomes relevant. Preserve discovery and mystery while making controls, costs, consequences, and recovery understandable. Basic actions should be easy to try and interesting to master. Celebrations should reflect meaningful achievements instead of constant noise. Every feature and HUD element must earn its place.\n\nThese standards are a design lens, not a formula for popularity. Successful games can inspire hypotheses; popularity alone does not prove which UI choice caused success. A phone emulator is not a real-device acceptance test. Automated tests are not human fun validation. Each game sets its own first-action and payoff time targets and measures them; example goals such as a first action within 15 seconds are hypotheses, not Roblox benchmarks.\n\n## Status and evidence\n\nFor each applicable check record **PASS**, **FAIL**, **NOT TESTED**, or **N/A**. N/A needs a reason. A pass needs an actual observation, reproducible test, measured result, or inspected code path appropriate to the claim, plus the source revision, environment, date, and limitations. Design specifications do not establish implementation. Code inspection cannot establish discoverability, feel, device usability, or multiplayer fun. Preserve old failed evidence and link its later rerun rather than deleting it.\n\nRecord findings in the game's existing current context and dated report: check ID, affected player moment, expected understanding, observed behavior or attributed quote, evidence, likely cause/confidence, smallest fix, and retest. Never invent player quotes, analytics, logs, screenshots, or paths. Keep confirmed defects, suspected defects, design hypotheses, and owner decisions distinguishable.\n\n## Universal checks\n\nP0 means essential comprehension, usability, or reliability when relevant; P1 means depth/expression according to genre. Only advertised input modes need release acceptance. Optional systems outside the approved prototype are N/A, not an excuse for scope expansion.\n\n### A. Fantasy, objective, and player action\n\n- **CL-01 One-sentence pitch (P0):** Explain the fun using a concrete player verb, object, and payoff.\n- **CL-02 Honest thumbnail promise (P0):** The title/icon/thumbnail represent gameplay players actually encounter; no fake feature or hidden grind promise.\n- **CL-03 Spawn orientation (P0):** The initial camera frames the main toy/destination or a comprehensible direction.\n- **CL-04 Immediate action (P0):** Players can enjoy an action without unnecessary unskippable dialogue, a forced shop, or unexplained waiting. Adapt waiting rooms to round games.\n- **CL-05 One visible main goal (P0):** The immediate goal outranks secondary promotions and UI demands.\n- **CL-06 Contextual controls (P0):** Interaction prompts show the actual keyboard, touch, or gamepad action in context.\n\n### B. World and visual readability\n\n- **CL-07 Visual hierarchy (P0):** Important objects differ from decoration through silhouette, contrast, movement, or sound rather than tiny labels alone.\n- **CL-08 Navigation (P0):** Intended journeys from start to action and onward can be followed without memorizing an explanatory map. Test the actual route.\n- **CL-09 Interactable affordances (P0):** Players can distinguish pickups, buttons, portals, NPCs, hazards, and decoration when that distinction matters.\n- **CL-10 World signage (P0):** Signs are concise, placed at decisions, and readable at the intended camera distance.\n- **CL-11 Camera and occlusion (P0):** The player, hazards, targets, and important interactions remain visible during movement and vehicle use.\n- **CL-12 Visual noise (P0):** Effects, nameplates, loot beams, and repeated cues do not hide the route, collision geometry, or other players' actions.\n\n### C. Action feedback and game feel\n\n- **CL-13 Input response (P0):** A press/tap gets prompt acknowledgement; successful and rejected input are not silently ambiguous.\n- **CL-14 Outcome response (P0):** Success, failure, partial progress, and blocked actions produce distinct comprehensible feedback.\n- **CL-15 Clear numbers (P0):** Currency, rewards, score, damage, multipliers, and costs have meaningful units and context.\n- **CL-16 Meaningful celebration (P0):** Big success cues reflect achievements; excessive shake or prolonged input locks do not prevent play.\n- **CL-17 Retry clarity (P0):** Death, misses, depletion, and respawn make the next attempt understandable and reasonably quick.\n- **CL-18 State consistency (P0):** HUD and world agree on cooldowns, ownership, inventory, rewards, scores, and round state.\n\n### D. Core loop, pacing, and progression\n\n- **CL-19 Loop closure (P0):** An action produces a result and a understandable reason to act again, without a compulsory paywall.\n- **CL-20 Short-term goal (P0):** A practical session goal exists rather than only an extremely distant grind; adapt goals to the genre.\n- **CL-21 Long-term aspiration (P1, when applicable):** Players can see meaningful mastery, exploration, social, collection, or unlock opportunities. Persistent progression is not mandatory.\n- **CL-22 Upgrade comprehension (when applicable):** An upgrade's effect is clear before purchase and actually changes the promised behavior afterwards.\n- **CL-23 Real choice (when applicable):** Routes, roles, classes, and upgrades provide meaningful distinct choices rather than misleading duplicates.\n- **CL-24 Challenge curve (P0):** The first attempt is accessible; subsequent challenges reward learning rather than unexplained difficulty spikes.\n- **CL-25 Dead-time audit (P0):** Travel, loading, respawn, intermission, matchmaking, and animation do not dominate the intended experience.\n- **CL-26 Fair loss and reward (P0):** Loss, sunk cost, chance wording, and recovery are understandable and truthful.\n\n### E. UI, input, and accessibility\n\n- **CL-27 HUD priority (P0):** The current objective and player state outrank secondary clutter; show what matters now.\n- **CL-28 Real small-phone test (P0 for advertised touch):** Controls and text are readable, tappable, and unclipped on an actual target device, without chat/jump/cutout overlap.\n- **CL-29 Multiple inputs (P0 for advertised modes):** The essential loop works on every advertised input mode with correct prompts; a keyboard-only feature is labeled honestly.\n- **CL-30 Contrast and text (P0):** Text stays legible over bright worlds and busy effects at real screen size.\n- **CL-31 Not color-only (P0):** Essential hazards, teams, and outcomes have cues beyond color alone.\n- **CL-32 UI failure feedback (P0 where applicable):** Insufficient funds, invalid actions, purchase results, timeouts, and interrupted choices have understandable states.\n- **CL-33 Menu escape (P0):** Players can close menus, regain controls, and recover from interruptions.\n\n### F. Multiplayer and reliability\n\n- **CL-34 Solo or empty server (when applicable):** The basic activity works alone unless it is explicitly a group-only game. A multiplayer claim needs real multiplayer evidence.\n- **CL-35 Shared state (P0 for multiplayer):** Important events, outcomes, ownership, and phases agree across clients.\n- **CL-36 Contribution (P0 for multiplayer):** Players understand personal versus shared rewards and who earned credit.\n- **CL-37 Join, leave, and reset (P0):** Mid-round joining, departure, death, respawn, and lag do not orphan UI or leave controls stuck.\n- **CL-38 Save integrity (P0 when persistence exists):** Ownership and progress survive rejoin; failures are handled honestly, without false saved claims. Session-only scores are valid when advertised.\n- **CL-39 Exploit resistance (P0):** The server validates valuable state and transactions; simultaneous or malicious requests cannot duplicate rewards. Client-owned motion requires explicit trust-boundary review.\n- **CL-40 Performance (P0):** Join time, frame pacing, memory, script work, and network use meet game-specific targets measured on relevant devices and loads. Never invent a universal threshold.\n\n### G. Social storytelling and packaging\n\n- **CL-41 Shareable moment (P1):** A brief gameplay clip can convey a recognizable action and interesting consequence without extensive narration, where relevant.\n- **CL-42 Visible achievement (P1):** Records, collections, mastery, or playful results are meaningfully visible when the game calls for them.\n- **CL-43 Group moment (P1):** Friends can cooperate, compete, react, or roleplay in ways serving the game. Mischief games may deliberately support reversible interference; do not universalize a no-trolling preference.\n- **CL-44 Return reason (P1):** Players have credible reasons to explore, master, create, or return without manufactured urgency.\n- **CL-45 Honest release packaging (P0 before launch):** The first image, title, and description match the actual early experience.\n\n### H. Trust, inclusion, and accessibility\n\n- **CL-46 Audio-independent cues (P0):** Critical outcomes, hazards, and objectives remain understandable with sound muted; audio supports rather than replaces necessary cues.\n- **CL-47 Language resilience (according to scope):** Longer labels and relevant translations fit; visuals support limited reading fluency. Unsupported localization is reported honestly.\n- **CL-48 Honest rewards and trust (P0 where applicable):** Prices, premium access, cooldowns, loss rules, and rarity claims are comprehensible and truthful. No deceptive purchase prompts or fake paid promises. Monetization-specific checks are N/A when absent.\n\n## Five-minute rapid audit\n\nFor prototypes or brainstorming, inspect the main toy/goal from spawn, first input, first payoff, reason for another attempt, advertised input usability, recovery, applicable two-player clarity, and documented-versus-tested truth. Report the top three problems with evidence or hypothesis labels and the smallest fix. Do not code new systems simply to answer the questions. Time goals are chosen for the specific game, not mandatory universal benchmarks.\n\n## Change impact\n\nDo not rerun all 48 checks after every edit. Record the affected system, player promise, relevant check IDs, nearby conflicts, and planned test; afterwards record observed results, evidence, and remaining unknowns.\n\n| Change | Relevant checks | Typical regression |\n| --- | --- | --- |\n| Spawn, map, geometry | CL-03, CL-07 through CL-12, CL-25 | Hidden objective, blocked route, excess travel |\n| HUD, UI, camera | CL-05, CL-10 through CL-18, CL-27 through CL-33, CL-46 | Lost objective, occlusion, device overlap |\n| Pickups or interactions | CL-06, CL-09, CL-13 through CL-15, CL-19, CL-39 | Silent pickup, unreachable prompt, duplicated reward |\n| Vehicles or movement | CL-06, CL-11, CL-13 through CL-18, CL-25, CL-29, CL-37, CL-40 | Bad steering, trapped driver, broken route |\n| Currency, upgrades, saving | CL-15, CL-18, CL-22, CL-26, CL-32, CL-38, CL-39, CL-48 | Wrong price, double charge, lost ownership |\n| Rounds or social systems | CL-05, CL-14 through CL-18, CL-25, CL-34 through CL-37, CL-43 | Stale phase, wrong payout, late-join confusion |\n| Monsters or hazards | CL-07, CL-11 through CL-18, CL-24, CL-31, CL-40, CL-46 | Invisible danger, unfair hit, cue overload |\n| Loading or streaming | CL-03, CL-04, CL-08, CL-09, CL-25, CL-37, CL-40 | Spawn before ground or objective is ready |\n\n## Full review and release\n\nIdentify the real branch/build, approved scope, genre, loop, and accessible evidence. Observe a new player from normal spawn without a spoken tutorial; record their first question, wrong turn, action, outcome, and unprompted replay. Check the applicable advertised devices and multiplayer scenarios: simultaneous interactions, late join, death, departure/reconnect, failure recovery, and at least three repeated rounds or loops. If saving exists, test loading and failures; if it does not, do not add it. Measure relevant demanding-scene performance on target hardware. Runtime checks unavailable to the AI remain NOT TESTED.\n\nRelease verdicts are **DESIGN ONLY** (no playable evidence), **BLOCKED** (critical applicable failure), **CONDITIONAL** (important tests still unknown), or **READY for the named scope/build/devices** (applicable critical checks passed with evidence). A document-only audit cannot clear a public release. Keep source code review, Studio simulation, real-device use, human multiplayer fun, and production analytics distinct. Prioritize exposed blocking causes first, then small improvements; a checklist percentage is not a virality forecast.\n\nAnalytics are relevant only when explicitly implemented and available. Track meaningful steps such as controllable spawn, first action, first outcome, repeat action, and full round; separate observed cohorts and traffic from hypotheses. Do not publish an experience or add telemetry merely to satisfy this rubric.\n\n## Idea evaluation\n\nFirst diagnose the current loop. Recommend a small set of useful ideas, not a forced feature quota. For each state the specific observed friction or hypothesis, player verb, emotional payoff, current system it deepens, overlap with accepted/rejected decisions, smallest complete slice, implementation cost, affected checks, risks, and a playtest that would show improvement. Rank FIX EXISTING / ADD / MERGE / DEFER / REJECT. More maps, pets, rarity tiers, currencies, and effects do not establish quality by themselves.\n\nThe ceiling is the potential player benefit; the floor is implementation work, confusing controls, device friction, performance, multiplayer, and save risk. Prefer the smallest experiment that connects the two. Proposed features remain proposed until the human authorizes them.\n\n## Further source reading\n\nEthan's original rubric referenced Roblox's official guidance on [onboarding](https://create.roblox.com/docs/production/game-design/onboarding), [UI/UX](https://create.roblox.com/docs/production/game-design/ui-ux-design), [cross-platform development](https://create.roblox.com/docs/projects/cross-platform), [accessibility](https://create.roblox.com/docs/production/publishing/accessibility), [performance](https://create.roblox.com/docs/performance-optimization), and [funnel events](https://create.roblox.com/docs/production/analytics/funnel-events). Consult the current official documentation before making implementation-specific claims. The illustrative commercial-game comparisons in the original are research inspiration, not measured causal proof.\n",
   "notes": [
     {
@@ -189,6 +189,38 @@
       "rubric_checks": [
         "CL-23",
         "CL-25"
+      ]
+    },
+    {
+      "schema_version": 1,
+      "id": "bmesh-order-breaks-deterministic-exports",
+      "title": "Blender's bmesh operators can return elements in memory order, so exports differ run to run",
+      "status": "observation",
+      "game": "EnrikR2002/Loot-Goblins",
+      "date": "2026-10-26",
+      "topics": [
+        "tooling",
+        "art"
+      ],
+      "observation": "A headless Blender build of the same assets, run twice with fixed seeds, wrote byte-identical data for 44 of 45 assets; one (extruded paving slabs) came out with its normals, colours and triangles in a different order each run although the geometry was the same. Sorting each piece's vertices by position and its faces by their vertex numbers, and starting each face at its lowest vertex, made every rebuild byte-identical. Blender's FBX writer also embedded the .blend's absolute path (the machine's user folder).",
+      "recommendation": "When generated art is committed, sort geometry deterministically before writing it, hash two rebuilds to prove it, and scrub absolute paths from exported files (in place, at the same length for FBX's length-prefixed strings).",
+      "applies_when": [
+        "Committing data or files generated by Blender scripts"
+      ],
+      "limits": [
+        "Blender 4.5.10 LTS on Windows; FBX files still record a creation time"
+      ],
+      "evidence": [
+        {
+          "kind": "source-review",
+          "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/art/README.md",
+          "detail": "The determinism note under 'The pipeline'."
+        },
+        {
+          "kind": "studio-test",
+          "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md",
+          "detail": "Section 8: byte-identical rebuilds and no machine path."
+        }
       ]
     },
     {
@@ -463,6 +495,34 @@
     },
     {
       "schema_version": 1,
+      "id": "client-skins-must-follow-streamed-parts",
+      "title": "A client-side skin on a streamed model must bind to its parts as they arrive",
+      "status": "observation",
+      "game": "EnrikR2002/Loot-Goblins",
+      "date": "2026-10-26",
+      "topics": [
+        "networking",
+        "art",
+        "boats"
+      ],
+      "observation": "A client drew a new look over every boat whose model carried a BoatType attribute, hiding the old parts and taking their paint colours. With StreamingEnabled the boat models arrived with their attribute but without their parts: waiting 10 seconds for the hull gave up on every far boat, and a skin built when the hull arrived stayed white because the coloured parts (sail, strake) arrived later. Starting the skin when the Hull part arrives (DescendantAdded) and hiding or reading colour from each part as it is added fixed both.",
+      "recommendation": "Under streaming, key client-side dressing on the part it needs (not the model), and apply per-part work (hiding, reading colours) in a ChildAdded handler as well as at build time; remove the dressing when its anchor part leaves.",
+      "applies_when": [
+        "Client-only visuals attached to replicated models under StreamingEnabled (skins, labels, effects)"
+      ],
+      "limits": [
+        "Seen with boats moored far from a goblin in Studio; one client"
+      ],
+      "evidence": [
+        {
+          "kind": "studio-test",
+          "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md",
+          "detail": "Section 9: the white skins and the missing skins."
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "id": "coloured-lights-and-terrain-colours-mislead",
       "title": "Judge colours in a screenshot: lights and terrain shading change them a lot",
       "status": "observation",
@@ -552,6 +612,61 @@
           "kind": "studio-test",
           "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/0635aec9368565ade07d534144be178fead2fb95/docs/reports/2026-10-17-v11-goblin-life.md",
           "detail": "Sections 16 and 22, and GAME_DESIGN.md V11 lessons (3) and (4)."
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "id": "editablemesh-is-per-machine-and-budgeted",
+      "title": "EditableMesh content is per machine and each client has a small budget for it",
+      "status": "observation",
+      "game": "EnrikR2002/Loot-Goblins",
+      "date": "2026-10-26",
+      "topics": [
+        "art",
+        "rendering",
+        "networking"
+      ],
+      "observation": "Building art from data with AssetService:CreateEditableMesh and CreateMeshPartAsync worked in Studio's local place with no setting. A MeshPart built from an EditableMesh on the server replicated as an instance, but the client could not use its mesh ('EditableMesh or its cloned copy can't be used on the client if it was created on the server'), so every client built its own. On a Studio play client CreateEditableMesh returned nil after 8 still-growing meshes whatever their size, and after about 72,000 vertices of fixed-size copies without normals (about 36,000 of a dense mesh with a normal per vertex); the real art set (about 19,000 vertices) fitted twice over. Destroying an EditableMesh removed its MeshPart's shape; a mesh whose reference was lost kept its budget for the rest of the session. A cloned MeshPart kept the same EditableMesh, so copies cost nothing extra.",
+      "recommendation": "Build editable meshes on each client, copy each into a fixed-size mesh (CreateEditableMeshAsync with FixedSize) and destroy the growable one, keep every mesh referenced while it is shown and destroy it when its area is left, share one mesh across copies by cloning the MeshPart, and treat a nil from CreateEditableMesh as 'keep the old look here'. A published experience must allow Mesh / Image APIs.",
+      "applies_when": [
+        "Showing meshes built at run time (procedural or from repository data) instead of uploaded assets"
+      ],
+      "limits": [
+        "Measured on one Studio desktop client; phones were not measured and the budget is device-specific"
+      ],
+      "evidence": [
+        {
+          "kind": "studio-test",
+          "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md",
+          "detail": "Section 1: the pipeline probes table."
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "id": "editablemesh-materials-ignore-uvs-colours-multiply",
+      "title": "On a MeshPart built from an EditableMesh, materials tile in studs and vertex colours multiply the part's Color",
+      "status": "observation",
+      "game": "EnrikR2002/Loot-Goblins",
+      "date": "2026-10-26",
+      "topics": [
+        "art",
+        "rendering"
+      ],
+      "observation": "Two identical cubes built with UVs 0..1 and 0..4 showed Brick and WoodPlanks at the same density as a plain 4-stud Part: the built-in materials ignored the mesh's UVs. Vertex colours rendered, multiplied by MeshPart.Color (the default grey darkened them to olive); with Color white they showed as painted. Counter-clockwise faces (Blender's convention) were front faces.",
+      "recommendation": "For a vertex-painted stylized look, keep MeshParts white and paint colour (and baked shading) into vertex colours; choose a built-in material for grain only, knowing it tiles by studs; reserve a part's Color for in-game tints (a paint job) on white-painted groups.",
+      "applies_when": [
+        "Rendering imported or editable meshes with vertex colours and Roblox's built-in materials"
+      ],
+      "limits": [
+        "Seen in Studio with the 2026-10 engine; textured MeshParts (TextureContent) were not tried"
+      ],
+      "evidence": [
+        {
+          "kind": "studio-test",
+          "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md",
+          "detail": "Section 1: vertex colours, materials and winding probes."
         }
       ]
     },
@@ -840,6 +955,33 @@
           "kind": "measurement",
           "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/8f399c7b26d721f7947ad8fcbc6c497943d6d6b2/docs/reports/2026-10-12-v6-ocean-flow-audio.md",
           "detail": "The before/after thunder observations were obtained from sound event logs and distance calculations, not listening."
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "id": "minimized-studio-renders-blank-captures",
+      "title": "A minimized Studio window renders blank (white) screen captures while the game keeps running",
+      "status": "observation",
+      "game": "EnrikR2002/Loot-Goblins",
+      "date": "2026-10-26",
+      "topics": [
+        "studio",
+        "testing"
+      ],
+      "observation": "Mid-session, every Studio MCP screen capture came back white in play and in edit, with the game running at 60 fps and no errors; a test that moved the camera seemed broken. The Studio window had been minimized. Restoring it without activating it (ShowWindow with SW_SHOWNOACTIVATE) brought captures back without taking the person's keyboard focus.",
+      "recommendation": "Before debugging blank captures, check whether Studio is minimized (IsIconic) or the display is asleep; restore it without stealing focus and say so to the person.",
+      "applies_when": [
+        "Taking screenshots of Studio from an agent while a person may be using the same computer"
+      ],
+      "limits": [
+        "Windows 10, one machine"
+      ],
+      "evidence": [
+        {
+          "kind": "studio-test",
+          "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md",
+          "detail": "Seen during the showcase captures."
         }
       ]
     },
@@ -1374,6 +1516,33 @@
           "kind": "source-review",
           "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/663d44f5c5df8f169f1852be07f34b4f18924d9f/docs/GAME_DESIGN.md",
           "detail": "V13.1 lessons (4) in the game description."
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "id": "script-source-limit-200k-for-generated-data",
+      "title": "A script source of 200,000 characters or more cannot be set, so split generated data",
+      "status": "observation",
+      "game": "EnrikR2002/Loot-Goblins",
+      "date": "2026-10-26",
+      "topics": [
+        "tooling",
+        "studio"
+      ],
+      "observation": "An exporter wrote one Luau module per asset holding its mesh arrays; one came out at 592,318 characters. Setting it as a ModuleScript's Source from a Studio plugin context failed with 'Provided string length (592318) is greater than or equal to max length (200000)'; Rojo's live sync sets sources the same way. Writing one module per material group, and cutting groups over 2,200 triangles, kept every module under 165,000 characters.",
+      "recommendation": "Make any generator that writes Luau data assert each file's length is under 200,000 characters and split by a natural unit (a group, a chunk) when it is not; check the largest file in tests.",
+      "applies_when": [
+        "Generating Luau modules from tools (meshes, layouts, tables of data) that are synced by Rojo or a plugin"
+      ],
+      "limits": [
+        "A Rojo build to a place file was not tested with an oversized module"
+      ],
+      "evidence": [
+        {
+          "kind": "studio-test",
+          "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/51d3a8bce4bb1e01cb6b23b46bc78216b422f122/docs/reports/2026-10-26-v14-visual-renaissance.md",
+          "detail": "Sections 1 and 9: the 590,000-character module and the split."
         }
       ]
     },

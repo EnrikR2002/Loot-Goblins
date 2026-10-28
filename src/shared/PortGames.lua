@@ -81,14 +81,16 @@ PortGames.GAMES = {
 	},
 }
 PortGames.BY_ID = {}
+local byRecord = {} -- a best's key in profile.games.best (PortGames.recordKey, without a ":class") -> its game
 for index, def in ipairs(PortGames.GAMES) do
 	def.order = index
 	PortGames.BY_ID[def.id] = def
+	byRecord[def.record or def.id] = def
 end
 
--- Is less better in this game? (Times and strokes.)
+-- Is less better in this game? (Times and strokes.) Takes a game id or a record key ("golf2", "regatta2:dory").
 function PortGames.lowerWins(gameId)
-	local def = PortGames.BY_ID[gameId]
+	local def = PortGames.BY_ID[gameId] or (type(gameId) == "string" and byRecord[string.match(gameId, "^[^:]*")])
 	return def ~= nil and def.kind ~= "points"
 end
 

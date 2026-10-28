@@ -277,6 +277,52 @@ return function(t)
 		t.eq(real.stats.bankedFrom.Chalice, 1, "banked")
 	end)
 
+	t.test("a veteran's stand-in earns no achievement again: the merged real profile is what is checked", function()
+		local real = fresh(200)
+		Economy.record(real, "bank", "Chalice", 10)
+		Economy.checkAchievements(real, 1)
+		local before = real.shinies
+		-- On the stand-in (Progress does not check achievements there): one more treasure banked.
+		local standIn = fresh(0)
+		Economy.record(standIn, "bank", "Chalice", 10)
+		Economy.mergeEarnings(real, standIn)
+		t.eq(#Economy.checkAchievements(real, 2), 0, "First Haul is not unlocked twice")
+		t.eq(real.shinies, before, "nothing paid twice")
+		t.eq(real.stats.treasures, 2, "the treasure still counts")
+	end)
+
+	t.test("a stand-in's Port game Shinies past today's cap go back", function()
+		local cap = Config.PLAYGROUND.DAILY_SHINIES
+		local real = fresh(100)
+		real.games.day, real.games.earned = 7, cap - 10
+		local standIn = fresh(30)
+		standIn.games.day, standIn.games.earned = 7, 30
+		Economy.mergeEarnings(real, standIn)
+		t.eq(real.shinies, 100 + 10, "only the 10 left of today's cap is kept")
+		t.eq(real.games.earned, cap + 20, "today's counter holds both (no more today)")
+		local other = fresh(0)
+		other.games.day = 7
+		local paid = fresh(25)
+		paid.games.day, paid.games.earned = 7, 25
+		Economy.mergeEarnings(other, paid)
+		t.eq(other.shinies, 25, "within the cap: all kept")
+	end)
+
+	t.test("merged personal bests keep the better score, lower for golf strokes and Regatta laps", function()
+		local real = fresh(0)
+		real.games.best.golf2, real.games.best["regatta2:racer"] = 18, 40
+		local standIn = fresh(0)
+		standIn.games.best.golf2, standIn.games.best["regatta2:racer"] = 24, 55
+		standIn.games.best["regatta2:dory"] = 61
+		Economy.mergeEarnings(real, standIn)
+		t.eq(real.games.best.golf2, 18, "a worse golf round does not replace the best")
+		t.eq(real.games.best["regatta2:racer"], 40, "a slower lap does not replace the best")
+		t.eq(real.games.best["regatta2:dory"], 61, "a first lap in a new boat is kept")
+		standIn.games.best.golf2 = 15
+		Economy.mergeEarnings(real, standIn)
+		t.eq(real.games.best.golf2, 15, "a better round does")
+	end)
+
 	t.test("the welcome is given once", function()
 		local profile = fresh(0)
 		t.eq(Economy.welcome(profile, 60), 60, "first")
