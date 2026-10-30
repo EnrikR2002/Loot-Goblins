@@ -1,4 +1,4 @@
-param([ValidateSet('read','submit','init','export','check','test','library-build','library-check')][string]$Action = 'read')
+param([ValidateSet('read','submit','init','export','rebaseline','check','test','library-build','library-check')][string]$Action = 'read')
 $ErrorActionPreference = 'Stop'
 $memoryPython = $null
 $memoryPrefix = @()
@@ -22,10 +22,13 @@ if (!$memoryPython) {
     $memoryPython = $launcher.Source
     $memoryPrefix = @('-3')
 }
-# Python writes progress (the test runner's dots) and warnings to stderr. Under Stop, Windows PowerShell 5.1 turns that
-# into a terminating error, so only the exit code decides here.
+# Python writes normal progress (the test runner's dots, warnings) to stderr. Under 'Stop', Windows PowerShell 5.1
+# turns that into a terminating error, so stderr is only shown here and the exit code alone decides.
 $previousErrorAction = $ErrorActionPreference
 $ErrorActionPreference = 'Continue'
-& $memoryPython @memoryPrefix (Join-Path $PSScriptRoot 'memory.py') $Action
-$ErrorActionPreference = $previousErrorAction
+try {
+    & $memoryPython @memoryPrefix (Join-Path $PSScriptRoot 'memory.py') $Action
+} finally {
+    $ErrorActionPreference = $previousErrorAction
+}
 if ($LASTEXITCODE -ne 0) { throw 'The memory step needs attention. The AI should read the reason above and repair it; existing records were preserved.' }

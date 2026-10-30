@@ -17,6 +17,9 @@ VERSION = 1
 NOTE_ID = re.compile(r"^[a-z0-9][a-z0-9-]{4,90}$")
 REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 EVIDENCE = {"source-review", "automated-test", "studio-test", "human-feedback", "measurement"}
+KNOWLEDGE = "EnrikR2002/SYFER-Roblox-Knowledge"
+# GitHub renamed Roblox-Team-Knowledge to SYFER-Roblox-Knowledge; caches cloned before then still point at the old name.
+FORMER_KNOWLEDGE_URL = re.compile(r"^(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)EnrikR2002/Roblox-Team-Knowledge(?:\.git)?/?$", re.IGNORECASE)
 
 
 def run(args, cwd=None, stdin=None):
@@ -193,7 +196,13 @@ def refresh(root):
     if not cache.exists():
         run(["git", "clone", "--no-checkout", f"https://github.com/{config['knowledge_repository']}.git", str(cache)])
     remote = run(["git", "remote", "get-url", "origin"], cache).strip()
-    if remote != f"https://github.com/{config['knowledge_repository']}.git":
+    expected = f"https://github.com/{config['knowledge_repository']}.git"
+    if remote != expected and config["knowledge_repository"] == KNOWLEDGE and FORMER_KNOWLEDGE_URL.fullmatch(remote):
+        # Only the URL changes; the cache's objects, refs and saved snapshot stay as they are.
+        run(["git", "remote", "set-url", "origin", expected], cache)
+        print("Pointed the notebook cache at the renamed Knowledge repository; nothing was deleted.")
+        remote = expected
+    if remote != expected:
         raise ValueError("The notebook cache points to a different repository; preserve it and ask the AI to repair it.")
     run(["git", "fetch", "origin", "main"], cache)
     revision = run(["git", "rev-parse", "FETCH_HEAD"], cache).strip()
@@ -223,7 +232,7 @@ def guide_outputs(root, snapshot=None):
     actual = source_hashes(root)
     if actual != config.get("source_baseline"):
         changed = sorted(k for k in actual.keys() | config.get("source_baseline", {}).keys() if actual.get(k) != config.get("source_baseline", {}).get(k))
-        raise ValueError("Game source changed since the guide baseline: " + ", ".join(changed) + ". Inspect affected mechanics, update the game description/evidence, then update those baseline fingerprints. Fingerprints do not establish code inspection or gameplay tests.")
+        raise ValueError("Game source changed since the guide baseline: " + ", ".join(changed) + ". Inspect affected mechanics, update the game description/evidence, then run ./scripts/memory.ps1 rebaseline. Fingerprints do not establish code inspection or gameplay tests.")
     if snapshot is None:
         snapshot = read_json(root / "docs/team-memory-snapshot.json")
     if snapshot.get("schema_version") != VERSION or snapshot.get("repository") != config["knowledge_repository"]:
@@ -273,6 +282,14 @@ def initialize_guide(root):
     if not (root / "docs/TEMPLATE_ORIGIN.md").exists():
         raise ValueError("Missing template origin; cannot establish new-scaffold provenance.")
     # This is a generated starter snapshot, explicitly not a source-review stamp.
+    config["source_baseline"] = source_hashes(root)
+    write(root / "docs/game-guide/manifest.json", json_text(config))
+    export(root)
+
+
+def rebaseline(root):
+    # Run after updating the game description for changed source: accepts the current fingerprints, then exports.
+    config = project_config(root)
     config["source_baseline"] = source_hashes(root)
     write(root / "docs/game-guide/manifest.json", json_text(config))
     export(root)
@@ -412,7 +429,7 @@ def auto_publish(root, number):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("read", "submit", "init", "export", "check", "test", "library-build", "library-check", "auto-publish"))
+    parser.add_argument("action", choices=("read", "submit", "init", "export", "rebaseline", "check", "test", "library-build", "library-check", "auto-publish"))
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
     parser.add_argument("--pr", type=int)
     args = parser.parse_args()
@@ -421,6 +438,8 @@ def main():
         refresh(root)
     elif args.action == "init":
         initialize_guide(root)
+    elif args.action == "rebaseline":
+        rebaseline(root)
     elif args.action == "submit":
         submit(root)
     elif args.action in ("export", "check"):

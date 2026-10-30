@@ -58,10 +58,9 @@ try {
     }
 
     # 4. Build the game file. It is rebuilt every time, so it is always the newest version.
-    New-Item -ItemType Directory -Path 'build' -Force | Out-Null
     $place = $PlaceFile
     Write-Host 'Building the game...'
-    Invoke-Checked (Join-Path $RokitBin 'rojo.exe') @('build', 'default.project.json', '--output', $place)
+    Build-Place
 
     # 5. Open Studio on it.
     if ($NoOpen) { Write-Host "Built $place (not opened)."; exit 0 }

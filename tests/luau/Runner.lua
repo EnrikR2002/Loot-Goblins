@@ -1,7 +1,8 @@
--- The V11 test runner. Mapped by test.project.json into ServerStorage.LootGoblinsTests (never into the game itself).
--- Run in Studio's EDIT mode (command bar or Studio MCP execute_luau):
+-- The Luau spec runner. test.project.json maps tests/luau to ServerStorage.LootGoblinsTests (never into play builds),
+-- and dev.ps1 serves that project. Run in Studio's EDIT mode (command bar or Studio MCP execute_luau):
 --   print(require(game.ServerStorage.LootGoblinsTests.Runner).run().summary)
--- The specs only require pure modules (no remotes, no DataStore, no players), so they cannot disturb a running game.
+-- Specs only require pure modules (no remotes, DataStores or players), so they cannot disturb a running game.
+-- Each Specs/<Name>.lua returns function(t), using t.test(name, fn), t.ok(condition, message), t.eq(actual, expected).
 local Runner = {}
 
 function Runner.run()

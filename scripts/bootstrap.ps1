@@ -10,7 +10,7 @@ try {
     $rokit = Join-Path $RokitBin 'rokit.exe'
     if (!(Test-Path -LiteralPath $rokit)) {
         # Official, tested Rokit bootstrap release. Project tool pins live in rokit.toml.
-        $stage = Join-Path ([IO.Path]::GetTempPath()) ('loot-rokit-' + [guid]::NewGuid())
+        $stage = Join-Path ([IO.Path]::GetTempPath()) ('rbx-rokit-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $stage | Out-Null
         $zip = Join-Path $stage 'rokit.zip'
         Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/rojo-rbx/rokit/releases/download/v1.2.0/rokit-1.2.0-windows-x86_64.zip' -OutFile $zip
@@ -43,7 +43,7 @@ try {
             $pluginHash = $Matches[1]
             $currentHash = if (Test-Path -LiteralPath $plugin) { (Get-FileHash -LiteralPath $plugin).Hash.ToLower() } else { '' }
             if ($currentHash -ne $pluginHash) {
-                $download = Join-Path ([IO.Path]::GetTempPath()) ('loot-rojo-' + [guid]::NewGuid() + '.rbxm')
+                $download = Join-Path ([IO.Path]::GetTempPath()) ('rbx-rojo-' + [guid]::NewGuid() + '.rbxm')
                 Invoke-WebRequest -UseBasicParsing -Uri $asset.browser_download_url -OutFile $download
                 if ((Get-FileHash -LiteralPath $download).Hash.ToLower() -ne $pluginHash) { throw 'Rojo plugin checksum mismatch.' }
                 if ($currentHash) {

@@ -138,6 +138,21 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### A temporary stand-in profile must not unlock one-time rewards or start fresh daily caps, and merges must compare stored keys by their own rules
+
+**ID:** standin-profile-must-not-run-unlocks-or-fresh-caps | **Status:** hypothesis | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-27
+**Related checks:** General
+
+**Observed / proposed:** When a save stayed locked by another server, the player kept playing on a blank stand-in profile that was merged into the real one when it opened. Achievement checks ran on the stand-in, which starts from zero, so a veteran re-unlocked and was paid one-time achievements they already owned. Daily caps started empty on the stand-in, so a capped player could earn a second day's cap. Separately, personal bests were later moved to versioned record keys, and the merge still looked each key up as a game id; the lookup failed silently and fell back to 'higher is better', so worse golf rounds and slower laps replaced bests. A whole-repo audit found both. Neither was caught by tests, because the merge tests only checked counters adding up.
+
+**Recommendation:** Treat a stand-in as a ledger of earnings, not a profile with its own rules: only check one-time unlocks once the real profile is open (on the merged stats), and reconcile capped earnings against the real profile's counters at merge time (or pay them only once it is open). When stored keys stop matching ids, make the comparison helpers accept the stored key, and add a merge test where the stand-in's score is worse than the saved best.
+
+**Applies when:** A game lets players keep playing on an in-memory profile while the saved one is locked or unavailable; Saved records are keyed differently from the definitions used to compare them
+
+**Limits:** One game; found by code audit and covered by Luau specs, not observed in a live server
+
+- [automated-test](https://github.com/EnrikR2002/Loot-Goblins/blob/d05cb62dd07d9036fed84c0abd63d036e567dc75/docs/reports/2026-10-27-standin-merge-fixes.md): EconomySpec: no achievement paid twice after a merge, stand-in Port game Shinies past the cap are taken back, merged golf and Regatta bests keep the better score; PortGamesSpec: record keys are lower-is-better.
+
 ### A script source of 200,000 characters or more cannot be set, so split generated data
 
 **ID:** script-source-limit-200k-for-generated-data | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-26

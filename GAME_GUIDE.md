@@ -8,8 +8,8 @@ This file is a self-contained game description, quality rubric, and dated develo
 
 **Game repository:** https://github.com/EnrikR2002/Loot-Goblins
 **Documented gameplay revision:** 2c1e944387f92f0ef2f338c56d1ea7767e3e0ea2
-**Shared rubric revision:** 611c10f81a76a5818076a0f42c233e366228f78a
-**Document freshness fingerprint:** 2c935d3573da25c8b9744d73f664e3d808b982e24f19d5061344d434bb1c8251
+**Shared rubric revision:** 42fe4d9836988144a7dba43c0492688d34480fe0
+**Document freshness fingerprint:** 51487f88e33c40f8ae1ccb7d3aab08d0d501b9b85145c2251f3b5a8cd41e490a
 
 Ask an outside AI: 'Read this complete guide, compare the current game with the included rubric, and suggest the highest-value improvements. Separate documented gaps, hypotheses, and ideas. Respect game-specific decisions and current prototype gates.'
 
@@ -1038,6 +1038,8 @@ See Boats (B). In the last `FINAL_RUSH` seconds `Raid.onBanked` pays `FINAL_RUSH
 | `src/client/Art14/` (generated) | `...LootGoblinsClient.Art14` | V14: `Manifest` (every asset, from `art/manifest/assets.json`), `Meshes/<asset>/<group>` (mesh data), `Layouts/<set>` (placed instances, hides, solids). Written by `art/blender/scripts/lgexport.py`; never edited by hand |
 | `art/` (not mapped) | | V14: the art pipeline: `blender/` (`.blend` sources and the build scripts), `exports/` (FBX and glTF per asset), `manifest/`, `textures/`, `references/` (ground captured from the game). See `art/README.md` |
 | `src/shared/*.lua` | `ReplicatedStorage.LootGoblins` | `Config` (tuning), `Archipelago` (the island list), `Sea` (sea math), `BoatSim` (boat physics, V9 tricks and swept hoops), `Dive` (the dive model), V9 `Twister` (tornado maths), V10 `Palette` (the art direction's colours), V11 `Catalog`, `Wardrobe`, `BoatLook`, `PetLook`, `EmoteMoves`, `StyleFx`; V12 `Landing` (where a picked island throws you); V13 `Lobby` (the Port's rules: zone, late entry, countdown, spectating ring), `PetBestiary` (37 pet builders); V13.3 `PortGames` (venues, courses, targets and the rules every machine shares), `Seasons` (calendar, quests, boards, season rewards), `Habitat` (the sanctuary and expeditions) |
+| `assets/` | `ReplicatedStorage.LootGoblinsAssets` | Factory adoption (2026-10-30): the root for `.rbxmx` models and SYFER Factory Library items (`assets/<item>/`, installed only by the Factory's `install-library.ps1`). Empty so far; no game code reads it yet |
+| `.syfer/` (not mapped) | | `factory.json`: the Factory 0.1.0 legacy-adoption record and installed Library items; `outbox/`: pending reusable contributions. See `docs/TEMPLATE_ORIGIN.md` |
 | `tests/luau/` | `ServerStorage.LootGoblinsTests` (only in `test.project.json`) | Luau tests (46 in V11, 53 in V12, 76 in V13: `LobbySpec`, `BoatClassSpec`, `PetSpec` are new; 107 in V13.2; 136 in V13.3: `SeasonsSpec`, `PortGamesSpec`, `HabitatSpec` are new; 143 in V13.4: new cases in `SeasonsSpec`, `PortGamesSpec` and `PersistenceSpec`; 150 in V13.5: `PortGamesSpec` rewritten for the three games, the circuit and the skimmer, new cases in `SeasonsSpec` and `ChaosSpec`; 157 in V14: `ArtSpec`): `Runner` and `Specs/*`. Run in Studio's Edit mode: `require(game.ServerStorage.LootGoblinsTests.Runner).run().summary` |
 
 - **Plain modules, no framework.** Direct calls and tiny `Util.signal()` events. Require order has no cycles: `Net`/`Util` → `Movement` → `Sea`/`SeaNav` → `World`/`Boats` → `Loot` → `Heat` → `Poltergoblin` → `Destructibles` → `Blast` → `Cannons`/`Kegs`/`Mechanisms` → `Combat`/`Threats` → `Storms` → `Navy` → `Troubles` → `Escalation` → `Coins` → `Creatures` → `Bestiary`/`BestiaryMinor` → `Raid` → `Main`. (`Main` requires the two bestiary modules only so they register their creatures before `Creatures.build`.) Injections that avoid cycles: `Loot.canBank`, `Destructibles.explode` (set by `Blast`), `Threats.handlers` (filled by `Troubles`), `Blast.Hit` (Navy's mines listen), `Mechanisms.BeaconLit` (Main tells the Navy), `Landform.touch` (set by `World`), `Boats.Sunk` and `Storms.Spent` (Main drops salvage), `Loot.Taken` (Main tells `Creatures.onTaken`).
@@ -4957,6 +4959,9 @@ These are current source values, not evidence that the balance or platform exper
     "ReplicatedStorage": {
       "LootGoblins": {
         "$path": "src/shared"
+      },
+      "LootGoblinsAssets": {
+        "$path": "assets"
       }
     },
     "ServerScriptService": {
@@ -5126,6 +5131,21 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 ## Team learning additions
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
+
+### A temporary stand-in profile must not unlock one-time rewards or start fresh daily caps, and merges must compare stored keys by their own rules
+
+**ID:** standin-profile-must-not-run-unlocks-or-fresh-caps | **Status:** hypothesis | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-27
+**Related checks:** General
+
+**Observed / proposed:** When a save stayed locked by another server, the player kept playing on a blank stand-in profile that was merged into the real one when it opened. Achievement checks ran on the stand-in, which starts from zero, so a veteran re-unlocked and was paid one-time achievements they already owned. Daily caps started empty on the stand-in, so a capped player could earn a second day's cap. Separately, personal bests were later moved to versioned record keys, and the merge still looked each key up as a game id; the lookup failed silently and fell back to 'higher is better', so worse golf rounds and slower laps replaced bests. A whole-repo audit found both. Neither was caught by tests, because the merge tests only checked counters adding up.
+
+**Recommendation:** Treat a stand-in as a ledger of earnings, not a profile with its own rules: only check one-time unlocks once the real profile is open (on the merged stats), and reconcile capped earnings against the real profile's counters at merge time (or pay them only once it is open). When stored keys stop matching ids, make the comparison helpers accept the stored key, and add a merge test where the stand-in's score is worse than the saved best.
+
+**Applies when:** A game lets players keep playing on an in-memory profile while the saved one is locked or unavailable; Saved records are keyed differently from the definitions used to compare them
+
+**Limits:** One game; found by code audit and covered by Luau specs, not observed in a live server
+
+- [automated-test](https://github.com/EnrikR2002/Loot-Goblins/blob/d05cb62dd07d9036fed84c0abd63d036e567dc75/docs/reports/2026-10-27-standin-merge-fixes.md): EconomySpec: no achievement paid twice after a merge, stand-in Port game Shinies past the cap are taken back, merged golf and Regatta bests keep the better score; PortGamesSpec: record keys are lower-is-better.
 
 ### A script source of 200,000 characters or more cannot be set, so split generated data
 
@@ -6050,6 +6070,88 @@ These are attributed observations and hypotheses, not automatic changes to the c
 # Development changelog and historical test reports
 
 Reports below are preserved in full, newest first. A historical test pass applies to that recorded revision and environment. Old priorities, controls, limitations, and status may have been superseded by the current game description above.
+
+---
+
+## Report: 2026-10-30-factory-adoption.md
+
+# Factory adoption: Loot Goblins joins SYFER Roblox Factory 0.1.0 — October 30, 2026
+
+Loot Goblins was **adopted** into SYFER Roblox Factory `0.1.0` at Factory commit `853c1a6ad01a0c75053b0826e0c05e526eb11eb3` (which includes the Knowledge compatibility fix from Factory PR #5). It was not generated by the Factory. This change touches shared infrastructure, documentation and metadata only: no file under `src/` changed, and no gameplay, controls, tuning or authority boundaries changed.
+
+## Before adoption (main at `fe6e2a4`)
+
+- No `.syfer/factory.json`, so the Factory's updater and Library installer refused the game as legacy.
+- `./scripts/memory.ps1 read` failed with "Unexpected library identity". The guide manifest still named the pre-rename `EnrikR2002/Roblox-Team-Knowledge`, but the Knowledge repository now identifies itself as `EnrikR2002/SYFER-Roblox-Knowledge`. The local cache at `.local/team-memory/repository` (cloned 2026-10-13) also still had the old origin URL.
+- The committed Knowledge snapshot was `611c10f` with 61 lessons under the old name.
+- Shared tooling was an older generation of the Factory starter. It had no `memory.ps1 rebaseline`, no build stamp guard against overwriting a place saved in Studio, no CI tool cache, and no `assets/` root. AGENTS.md pointed at the old `Roblox-Game-Template` repository.
+
+## Knowledge repair and the cache self-heal
+
+The manifest's `knowledge_repository` was changed to `EnrikR2002/SYFER-Roblox-Knowledge`, and the Factory's `memory.py` (with the PR #5 fix) was adopted. Then the normal `./scripts/memory.ps1 read` ran, with stderr captured:
+
+| | Before read | After read |
+| --- | --- | --- |
+| Cache origin | `https://github.com/EnrikR2002/Roblox-Team-Knowledge.git` | `https://github.com/EnrikR2002/SYFER-Roblox-Knowledge.git` |
+| Cache folder created | 2026-10-13T04:48:25Z | 2026-10-13T04:48:25Z (same folder; not deleted or recloned) |
+| Git objects | count 156, in-pack 51, size-pack 42 | identical |
+
+Output: "Pointed the notebook cache at the renamed Knowledge repository; nothing was deleted." followed by "Checked shared lessons at 42fe4d983698; 62 lessons." The cache was not deleted by hand. `export` then wrote `docs/team-memory-snapshot.json` as `EnrikR2002/SYFER-Roblox-Knowledge` at `42fe4d9` with 62 lessons. The new lesson is this game's stand-in profile lesson, already merged in Knowledge.
+
+## Shared infrastructure brought up to the 0.1.0 starter
+
+| File | What changed |
+| --- | --- |
+| `scripts/memory.ps1`, `scripts/memory.py`, `tests/test_memory.py` | Starter copies: Knowledge rename self-heal, `rebaseline`, the PowerShell 5.1 stderr guard in `try/finally`, 33 tests |
+| `scripts/bootstrap.ps1` | Starter copy (temporary-folder names only) |
+| `scripts/check.ps1`, `scripts/dev.ps1` | Starter copies: build through `Build-Place`; `dev.ps1` serves `test.project.json`, so the Luau specs sit in ServerStorage while the AI edits (play builds still never include them) |
+| `scripts/common.ps1` | Starter copy (adds `Build-Place`, which keeps a place saved in Studio as `build/LootGoblinsTest001.saved-<time>.rbxlx`), keeping the Loot Goblins place file |
+| `scripts/play.ps1` | Starter copy (builds through `Build-Place`), keeping "Press H" |
+| `tests/luau/Runner.lua` | Starter header comment only |
+| `.github/workflows/check.yml` | Adds the starter's pinned-tool cache step |
+| `docs/SHARED_MEMORY.md`, `docs/TEAM_SETUP_PROMPT.md` | Starter copies (Factory Knowledge names, `rebaseline`, invitation hint) |
+| `docs/WORKSTATION.md` | Starter improvements merged into the Loot Goblins copy: private-repo invitation step, `assets/` and saved-copy guidance, `assets` Rojo mapping |
+| `default.project.json`, `test.project.json` | Add `ReplicatedStorage.LootGoblinsAssets` mapped to `assets/` |
+| `assets/README.md` | Starter copy; the Library install root, empty for now |
+| `AGENTS.md` | Factory origin section replaces the old template section; adds the `assets/`/Library rule, `rebaseline`, saved-copy rule, Luau spec rule, `.syfer` ownership line |
+| `.syfer/factory.json`, `.syfer/outbox/README.md`, `docs/TEMPLATE_ORIGIN.md` | New Factory metadata and an honest adoption record |
+| `docs/GAME_DESIGN.md` | Architecture table rows for `assets/` and `.syfer/` only |
+
+`docs/game-guide/manifest.json` changed in two values: the Knowledge repository name and the `default.project.json` fingerprint. The fingerprint was updated through `memory.ps1 rebaseline` after the mapping was documented in GAME_DESIGN. No other source fingerprint changed. `GAME_GUIDE.md`, `QUALITY_RUBRIC.md`, `docs/game-guide/freshness.json` and `docs/team-memory-snapshot.json` were regenerated by the tooling.
+
+## Loot Goblins customizations kept
+
+These are also listed under `adoption.customized` in `.syfer/factory.json`. **That list is informational only.** The Factory 0.1 updater does not read it and does not protect these files.
+
+- Rojo project and place identity `LootGoblinsTest001` (`build/LootGoblinsTest001.rbxlx`), and the Workspace streaming settings.
+- Rojo port 34872.
+- "Press H" in `play.ps1`: the game has no `?` help button.
+- CI runs on pull requests to any base branch, so stacked PRs are checked.
+- `*.blend1` in `.gitignore` and `scripts/art.ps1` for the art pipeline.
+- AGENTS.md team policy: open scope, merging when the requesting teammate is happy, stacked-PR handling, Git done for teammates who do not use it.
+- WORKSTATION's three-player checklist and extra troubleshooting entries.
+- All game specs in `tests/luau/Specs/`, art direction, monetization, gameplay configuration, reports and history.
+- Not adopted: `docs/PROTOTYPE_TEST.md` (the game is past its prototype gate), the starter's `UtilSpec.lua` (it tests the starter's own `Util.lua`), and the starter's phone/touch rule (a human decision, not part of this adoption).
+
+## Tests
+
+- `./scripts/memory.ps1 test`: 33 tests passed (Windows PowerShell 5.1, Python 3.14).
+- `./scripts/memory.ps1 read`, `rebaseline` (which exports), `export` and `check`: all passed.
+- `./scripts/check.ps1`: memory check and tests, StyLua, Selene (0 errors, 0 warnings), Rojo builds of `default.project.json` and `test.project.json`, and `git diff --check` all passed.
+- Both built places contain the new empty `LootGoblinsAssets` folder.
+- `git diff origin/main -- src` is empty.
+- Library tooling: the Factory's `install-library.ps1` now gets past its "legacy game needs Factory adoption first" gate for this repository. It was probed with an empty item folder, so it stopped at the missing item manifest and installed nothing (`assets/` still holds only its README; `installedItems` is empty). The Factory Library itself has no items yet.
+- Luau specs in Studio: **160 passed, 0 failed**, the same count as the last recorded run. Studio was opened once with `./scripts/dev.ps1 -OpenStudio`. The Rojo plugin was not connected (its Connect button cannot be pressed through MCP), so an Edit-mode `execute_luau` loaded `tests/luau` from a temporary read-only `python -m http.server` on 127.0.0.1. `HttpService.HttpEnabled` was switched on only for the fetch and restored to off. The 18 modules came to 167,504 bytes, matching the files on disk, and were destroyed after the run. The place was not saved.
+
+## Not runtime-verified
+
+- No gameplay playtest was run. Nothing under `src/` changed, and the only runtime difference is an empty `ReplicatedStorage.LootGoblinsAssets` folder that no code reads.
+- **First build after updating:** the first build on each computer finds no build stamp next to its existing `build/LootGoblinsTest001.rbxlx`. It therefore keeps that file as `build/LootGoblinsTest001.saved-<time>.rbxlx` and prints "Studio changes saved into the game file were kept…". This is expected once per computer. It happened here on the first `check.ps1` and not on the second. Ethan and Ninety may see it the first time they double-click the launcher after this merges.
+- Human check: double-click `Play Loot Goblins.bat`, press Play, and confirm the game behaves as before.
+
+## Next step
+
+Factory Library pilot: extract one real Loot Goblins boat into a reusable, versioned Factory Library item. Validate it in a clean game, then install it back here through `install-library.ps1` into `assets/<item>/`.
 
 ---
 
