@@ -3,8 +3,8 @@ $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $RokitBin = Join-Path $env:USERPROFILE '.rokit\bin'
 # The built, disposable place file. Everything that opens or builds it uses this one path.
 $PlaceFile = Join-Path $ProjectRoot 'build\LootGoblinsTest001.rbxlx'
-# Each game has its own Rojo port so two games can be edited at once. In Studio, set the Rojo
-# plugin to localhost and this port (it only auto-detects the default, 34872, which is ours).
+# Each game gets its own Rojo port so two games can be edited at once. In Studio, type
+# localhost:<this port> into the Rojo plugin (it only auto-detects the default 34872).
 $RojoPort = 34872
 
 # Include newly installed user tools even in a terminal opened before bootstrap.
@@ -45,6 +45,23 @@ function Start-StudioOnce {
     }
     Start-Process -FilePath $StudioPath -ArgumentList ('"' + $Place + '"')
     return $true
+}
+
+# Rebuilds the place from the repository. Studio saves into this same file, so a copy that
+# someone saved since the last build is kept next to it instead of being overwritten.
+function Build-Place {
+    $stamp = $PlaceFile + '.built'
+    if (Test-Path -LiteralPath $PlaceFile) {
+        $built = if (Test-Path -LiteralPath $stamp) { [IO.File]::ReadAllText($stamp).Trim() } else { '' }
+        if ("$((Get-Item -LiteralPath $PlaceFile).LastWriteTimeUtc.Ticks)" -ne $built) {
+            $saved = $PlaceFile -replace '\.rbxlx$', ('.saved-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.rbxlx')
+            Copy-Item -LiteralPath $PlaceFile -Destination $saved
+            Write-Warning "Studio changes saved into the game file were kept in $saved. Ask your AI helper to move anything you built there into the game."
+        }
+    }
+    New-Item -ItemType Directory -Path (Split-Path -Parent $PlaceFile) -Force | Out-Null
+    Invoke-Checked (Join-Path $RokitBin 'rojo.exe') @('build', (Join-Path $ProjectRoot 'default.project.json'), '--output', $PlaceFile)
+    [IO.File]::WriteAllText($stamp, "$((Get-Item -LiteralPath $PlaceFile).LastWriteTimeUtc.Ticks)")
 }
 
 function Get-StudioExe {

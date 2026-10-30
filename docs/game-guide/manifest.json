@@ -2,7 +2,7 @@
   "schema_version": 1,
   "game_name": "Loot Goblins V14",
   "repository": "EnrikR2002/Loot-Goblins",
-  "knowledge_repository": "EnrikR2002/Roblox-Team-Knowledge",
+  "knowledge_repository": "EnrikR2002/SYFER-Roblox-Knowledge",
   "reviewed_gameplay_ref": "2c1e944387f92f0ef2f338c56d1ea7767e3e0ea2",
   "chapters": [
     "docs/GAME_DESIGN.md",
@@ -242,6 +242,6 @@
     "src/shared/Swing.lua": "017af6fbefa20cecc5c1cc0c463bfb00818d2713f84b033cbf760a89dd1b16dd",
     "src/shared/Twister.lua": "4adc48a196a61a32c6cff03f3c66308a962f23202c7765423d3e1ea8e4fb8b35",
     "src/shared/Wardrobe.lua": "3decb5be78171523f1ba78829c765d14cae2babf22146ee5fe7ac5bc6ac24279",
-    "default.project.json": "9fb828dd6c23f4351950c7fae8134f3c58e32a1b40379ced561ace167170b94d"
+    "default.project.json": "de92d2ce74bd6c216551d993fc699c704853b497583cb465210935d34ab7ee12"
   }
 }

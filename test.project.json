@@ -5,6 +5,9 @@
     "ReplicatedStorage": {
       "LootGoblins": {
         "$path": "src/shared"
+      },
+      "LootGoblinsAssets": {
+        "$path": "assets"
       }
     },
     "ServerScriptService": {

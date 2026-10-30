@@ -1,6 +1,9 @@
 import copy
 import importlib.util
 import json
+import os
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -100,6 +103,13 @@ class MemoryTests(unittest.TestCase):
         memory.write(self.root / "src/server/Main.lua", "return {changed = true}\n")
         with self.assertRaisesRegex(ValueError, "source changed"): memory.export(self.root)
 
+    def test_rebaseline_accepts_reviewed_source(self):
+        self.game(); memory.export(self.root)
+        memory.write(self.root / "src/server/Main.lua", "return {changed = true}\n")
+        memory.write(self.root / "src/server/New.lua", "return {}\n")
+        memory.rebaseline(self.root)
+        memory.export(self.root, check=True)
+
     def test_new_source_requires_review(self):
         self.game()
         memory.write(self.root / "src/server/New.lua", "return {}\n")
@@ -174,6 +184,80 @@ class MemoryTests(unittest.TestCase):
         with patch.object(memory, "run", side_effect=failing_run):
             with self.assertRaises(ValueError): memory.refresh(self.root)
         self.assertEqual(before, saved.read_bytes())
+
+    def knowledge_cache(self, origin):
+        # A real local Git cache for a game whose manifest already names the renamed Knowledge repository.
+        self.root = Path(tempfile.mkdtemp(dir=self.temp.name))
+        self.game()
+        path = self.root / "docs/game-guide/manifest.json"
+        config = memory.read_json(path); config["knowledge_repository"] = memory.KNOWLEDGE
+        memory.write(path, memory.json_text(config))
+        cache = self.root / ".local/team-memory/repository"; cache.mkdir(parents=True)
+        memory.run(["git", "init", "-q"], cache)
+        memory.run(["git", "remote", "add", "origin", origin], cache)
+        kept = memory.run(["git", "hash-object", "-w", "--stdin"], cache, stdin="cached lesson data\n").strip()
+        return cache, kept
+
+    def refresh_offline(self):
+        # Real Git for the cache checks; the network fetch is the first step after them.
+        real_run = memory.run
+        def run(args, *rest, **kwargs):
+            if "fetch" in args: raise ValueError("offline")
+            return real_run(args, *rest, **kwargs)
+        with patch.object(memory, "run", side_effect=run):
+            with self.assertRaisesRegex(ValueError, "offline"): memory.refresh(self.root)
+
+    def assert_cache(self, cache, kept, origin):
+        self.assertEqual(memory.run(["git", "remote", "get-url", "origin"], cache).strip(), origin)
+        memory.run(["git", "cat-file", "-e", kept], cache)
+
+    def test_former_knowledge_cache_is_repointed_and_kept(self):
+        current = f"https://github.com/{memory.KNOWLEDGE}.git"
+        for origin in ("https://github.com/EnrikR2002/Roblox-Team-Knowledge.git", "https://github.com/EnrikR2002/Roblox-Team-Knowledge", "git@github.com:EnrikR2002/Roblox-Team-Knowledge.git", "ssh://git@github.com/enrikr2002/roblox-team-knowledge.git"):
+            with self.subTest(origin=origin):
+                cache, kept = self.knowledge_cache(origin)
+                self.refresh_offline()
+                self.assert_cache(cache, kept, current)
+
+    def test_current_knowledge_cache_is_unchanged(self):
+        current = f"https://github.com/{memory.KNOWLEDGE}.git"
+        cache, kept = self.knowledge_cache(current)
+        self.refresh_offline()
+        self.assert_cache(cache, kept, current)
+
+    def test_unrelated_cache_is_rejected_and_kept(self):
+        for origin in ("https://github.com/Stranger/Roblox-Team-Knowledge.git", "https://github.com/EnrikR2002/Roblox-Team-Knowledge-Fork.git", "https://example.com/EnrikR2002/Roblox-Team-Knowledge.git", "https://github.com/EnrikR2002/Other.git"):
+            with self.subTest(origin=origin):
+                cache, kept = self.knowledge_cache(origin)
+                with self.assertRaisesRegex(ValueError, "different repository"): memory.refresh(self.root)
+                self.assert_cache(cache, kept, origin)
+
+    def test_former_cache_is_not_repointed_for_another_knowledge_repository(self):
+        origin = "https://github.com/EnrikR2002/Roblox-Team-Knowledge.git"
+        cache, kept = self.knowledge_cache(origin)
+        path = self.root / "docs/game-guide/manifest.json"
+        config = memory.read_json(path); config["knowledge_repository"] = "Example/Notebook"
+        memory.write(path, memory.json_text(config))
+        with self.assertRaisesRegex(ValueError, "different repository"): memory.refresh(self.root)
+        self.assert_cache(cache, kept, origin)
+
+    @unittest.skipUnless(shutil.which("powershell"), "Windows PowerShell 5.1 is not installed")
+    def test_windows_powershell_wrapper_shows_stderr_and_keeps_exit_code(self):
+        # A stand-in memory.py beside the real wrapper: prints to both streams, exits with the requested code.
+        scripts = self.root / "scripts"; scripts.mkdir()
+        shutil.copy(Path(__file__).resolve().parents[1] / "scripts/memory.ps1", scripts / "memory.ps1")
+        memory.write(scripts / "memory.py", "import os, sys\nprint('normal output')\nprint('progress on stderr', file=sys.stderr)\nsys.exit(int(os.environ['MEMORY_STUB_EXIT']))\n")
+        # The failure needs a caller that captures the wrapper's error stream (2>&1), as AI tools and scripts do.
+        wrapper = str(scripts / "memory.ps1").replace("'", "''")
+        command = f"try {{ & '{wrapper}' check 2>&1 | ForEach-Object {{ [string]$_ }}; exit 0 }} catch {{ [string]$_; exit 1 }}"
+        for code in (0, 3):
+            with self.subTest(exit_code=code):
+                result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command], capture_output=True, text=True, env={**os.environ, "MEMORY_STUB_EXIT": str(code)})
+                output = result.stdout + result.stderr
+                self.assertIn("normal output", output)
+                self.assertIn("progress on stderr", output)
+                self.assertEqual(result.returncode != 0, code != 0, output)
+                self.assertEqual("needs attention" in output, code != 0, output)
 
     def test_protected_software_change_cannot_auto_merge(self):
         self.library()

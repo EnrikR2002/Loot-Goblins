@@ -18,6 +18,12 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
+      # Reusing the pinned tools avoids GitHub's anonymous download rate limit (rokit 403s).
+      - name: Restore pinned Roblox project tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.rokit
+          key: rokit-${{ runner.os }}-${{ hashFiles('rokit.toml') }}
       - name: Install pinned Roblox project tools
         shell: pwsh
         run: ./scripts/bootstrap.ps1 -Headless
