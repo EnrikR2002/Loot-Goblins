@@ -18,8 +18,18 @@ $env:Path = $RokitBin + ';' + $env:Path
 
 function Invoke-Checked {
     param([string]$Command, [string[]]$Arguments)
-    & $Command @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "$Command failed (exit $LASTEXITCODE)." }
+    # Tools print normal progress and warnings to stderr. Under 'Stop', Windows PowerShell 5.1 turns that into a
+    # terminating error when the caller captures the stream (2>&1), so stderr is only shown and the exit code decides.
+    $global:LASTEXITCODE = $null
+    $previousErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $Command @Arguments
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+    }
+    if ($exitCode -ne 0) { throw "$Command failed (exit $exitCode)." }
 }
 
 # True when a Studio window already has THIS game's place file open. Studio shows the full

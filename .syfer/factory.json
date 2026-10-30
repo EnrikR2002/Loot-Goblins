@@ -1,32 +1,34 @@
 {
-  "schemaVersion": 1,
-  "factoryVersion": "0.1.0",
-  "factoryRepo": "EnrikR2002/SYFER-Roblox-Factory",
-  "knowledgeRepo": "EnrikR2002/SYFER-Roblox-Knowledge",
-  "factoryCommit": "853c1a6ad01a0c75053b0826e0c05e526eb11eb3",
-  "createdAt": null,
-  "lastMigratedAt": null,
-  "installedItems": {},
-  "adoption": {
-    "type": "legacy",
-    "note": "Loot Goblins existed before the Factory and was adopted into Factory 0.1.0; it was not generated from the starter. createdAt is null for that reason.",
-    "adoptedAt": "2026-10-30",
-    "gameCommitBeforeAdoption": "fe6e2a4b3fcb7465bf47b8d01d96b9244be7070d",
-    "report": "docs/reports/2026-10-30-factory-adoption.md",
-    "customized": {
-      "note": "Informational only. The Factory 0.1 updater does not read this list and does not protect these files; review each one by hand before any migration changes it.",
-      "files": {
-        "AGENTS.md": "Loot Goblins team policy: open scope, merge when the requesting teammate is happy, stacked PRs, Git done for teammates who do not use it. No PROTOTYPE_TEST gate and no phone/touch rule yet.",
-        "default.project.json": "Rojo project name LootGoblinsTest001 and Workspace streaming settings.",
-        "test.project.json": "Rojo project name LootGoblinsTest001 and Workspace streaming settings.",
-        "scripts/common.ps1": "Place file build/LootGoblinsTest001.rbxlx; Rojo port 34872.",
-        "scripts/play.ps1": "Prints 'Press H' only; the game has no ? help button.",
-        ".github/workflows/check.yml": "Runs on pull requests to any base branch, so stacked PRs are checked.",
-        ".gitignore": "Also ignores Blender *.blend1 backups (art/).",
-        "docs/WORKSTATION.md": "Loot Goblins names, three-player test checklist, and extra troubleshooting entries.",
-        "docs/PROTOTYPE_TEST.md": "Deliberately absent: the game is past its prototype gate.",
-        "tests/luau/Specs/UtilSpec.lua": "Deliberately absent: the game has its own specs and its own Util.lua."
-      }
-    }
-  }
+    "schemaVersion":  1,
+    "factoryVersion":  "0.1.1",
+    "factoryRepo":  "EnrikR2002/SYFER-Roblox-Factory",
+    "knowledgeRepo":  "EnrikR2002/SYFER-Roblox-Knowledge",
+    "factoryCommit":  "ed1d60828fe927a40243b22884aa5234893b9497",
+    "createdAt":  null,
+    "lastMigratedAt":  "2026-10-30T08:28:16.3775191Z",
+    "installedItems":  {
+
+                       },
+    "adoption":  {
+                     "type":  "legacy",
+                     "note":  "Loot Goblins existed before the Factory and was adopted into Factory 0.1.0; it was not generated from the starter. createdAt is null for that reason.",
+                     "adoptedAt":  "2026-10-30",
+                     "gameCommitBeforeAdoption":  "fe6e2a4b3fcb7465bf47b8d01d96b9244be7070d",
+                     "report":  "docs/reports/2026-10-30-factory-adoption.md",
+                     "customized":  {
+                                        "note":  "Informational only. The Factory 0.1 updater does not read this list and does not protect these files; review each one by hand before any migration changes it.",
+                                        "files":  {
+                                                      "AGENTS.md":  "Loot Goblins team policy: open scope, merge when the requesting teammate is happy, stacked PRs, Git done for teammates who do not use it. No PROTOTYPE_TEST gate and no phone/touch rule yet.",
+                                                      "default.project.json":  "Rojo project name LootGoblinsTest001 and Workspace streaming settings.",
+                                                      "test.project.json":  "Rojo project name LootGoblinsTest001 and Workspace streaming settings.",
+                                                      "scripts/common.ps1":  "Place file build/LootGoblinsTest001.rbxlx; Rojo port 34872.",
+                                                      "scripts/play.ps1":  "Prints \u0027Press H\u0027 only; the game has no ? help button.",
+                                                      ".github/workflows/check.yml":  "Runs on pull requests to any base branch, so stacked PRs are checked.",
+                                                      ".gitignore":  "Also ignores Blender *.blend1 backups (art/).",
+                                                      "docs/WORKSTATION.md":  "Loot Goblins names, three-player test checklist, and extra troubleshooting entries.",
+                                                      "docs/PROTOTYPE_TEST.md":  "Deliberately absent: the game is past its prototype gate.",
+                                                      "tests/luau/Specs/UtilSpec.lua":  "Deliberately absent: the game has its own specs and its own Util.lua."
+                                                  }
+                                    }
+                 }
 }
