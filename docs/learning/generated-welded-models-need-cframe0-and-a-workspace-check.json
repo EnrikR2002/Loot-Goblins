@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "id": "generated-welded-models-need-cframe0-and-a-workspace-check",
+  "title": "A generated model's WeldConstraints need CFrame0, and only a clone in Workspace shows the fault",
+  "status": "observation",
+  "game": "EnrikR2002/Loot-Goblins",
+  "date": "2026-10-30",
+  "topics": [
+    "models",
+    "welds",
+    "studio",
+    "testing",
+    "tooling"
+  ],
+  "observation": "A 15-part pirate boat with 14 WeldConstraints was generated as an .rbxmx by a script that listed only Part0 and Part1 on each weld. Built through Rojo into a place and opened in Studio (Edit mode), the stored model in ReplicatedStorage looked and measured correct: every part's frame relative to the hull matched the source data and a content checksum matched the original boat. The moment a clone was parented to Workspace, every welded part read an offset of 0,0,0 from the hull, and a render showed a flat slab with a stub mast. A PivotTo drift check passed vacuously because its reference offsets were read from the already-collapsed clone. A weld's CFrame0 and CFrame1 are hidden (reading CFrame0 from a script failed with 'not a valid member'), so the cause was found by experiment. Five encodings of one welded part (hull at the origin, child at 1.5, 5, -3 turned 27 degrees) were built through Rojo and opened in Studio: CFrame0 = the child's frame in the hull's space with an identity CFrame1 kept the offset; CFrame0 = identity with CFrame1 = the inverse frame kept it; CFrame0 = the inverse frame collapsed the part; no CFrame0 or CFrame1 collapsed it; a legacy Weld with C0 = the child's frame and an identity C1 kept it. Rojo writes WeldConstraint references as Part0Internal and Part1Internal and carries CFrame0 and CFrame1 through. After the generator wrote CFrame0 (the part's frame in the hull's space) and an identity CFrame1, a clone in Workspace had the same content checksum as the boat built live by the game's own code, every part kept its offset under PivotTo and rotation (worst drift 0.000016 studs), and a render from the same camera matched the original.",
+  "recommendation": "When a model file with WeldConstraints is generated or written outside Studio's own save, store each weld's offset: CFrame0 = Part1's frame in Part0's space with an identity CFrame1 (this encoding was verified; do not guess the inverse). Then validate the model live, not as stored: clone it into Workspace, take the expected offsets from the source data and not from the clone, measure every welded part against them, move and rotate the model once, and look at it. A check that only reads the template in ReplicatedStorage or ServerStorage cannot detect this fault.",
+  "applies_when": [
+    "Generating or hand-writing .rbxmx, .model.json or similar model files that contain WeldConstraints (or other joints) instead of saving from Studio",
+    "Turning a model built by code or a build script into a stored, reusable asset, for example a Factory Library item",
+    "Validating a welded model before approving it for reuse"
+  ],
+  "limits": [
+    "One 15-part model and one five-variant test: Rojo 7.7.1 built the place and Studio (Edit mode, October 2026, Windows 10) opened it; nothing was run in Play mode or on another platform",
+    "Only WeldConstraint and a legacy Weld with C0 and C1 were tried; other constraint or joint types were not tested",
+    "Loading a Part0/Part1-only .rbxmx straight into Studio (Insert from file) was not tried, so it is not established that every loader collapses the parts; the finding is that the Rojo-built path did",
+    "The convention (CFrame0 = relative frame, CFrame1 = identity; the inverse in CFrame0 fails) was established by experiment because the properties are hidden, not from documentation, and could change with a Studio update"
+  ],
+  "evidence": [
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/SYFER-Roblox-Factory/blob/a224f00e7040b5c1585822999449e39c483e6675/library/assets/pirate-boat/README.md",
+      "detail": "Factory PR #7 (merged at a224f00), the item's README sections 'Gotchas' and 'Validation': the first generated file looked right in ReplicatedStorage but every welded part snapped onto the hull's centre once a clone was in Workspace; it showed only in a visual comparison against the original; after CFrame0 was written, the installed model in a clean game matched the original's content checksum and render."
+    },
+    {
+      "kind": "source-review",
+      "url": "https://github.com/EnrikR2002/SYFER-Roblox-Factory/blob/a224f00e7040b5c1585822999449e39c483e6675/library/assets/pirate-boat/source/build_rbxmx.py",
+      "detail": "The generator after the fix: each WeldConstraint is written with CFrame0 = the part's frame in the hull's space, an identity CFrame1, and Part0Internal/Part1Internal, with a comment recording the failure when they are missing."
+    },
+    {
+      "kind": "studio-test",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/f061b9a3d9f0ce485de552e027edfe0aac350a0e/.syfer/outbox/2026-10-30-knowledge-lesson-weldconstraint-cframe0.md",
+      "detail": "Loot Goblins PR #36's outbox note, written the day of the test: the five-variant results (CFrame0 relative, CFrame0 identity with inverse CFrame1, inverse CFrame0, none, legacy Weld) as observed in Studio after a Rojo build, and the note that the first numeric check had measured the template, not a live clone."
+    },
+    {
+      "kind": "measurement",
+      "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/be501887af60859243c9ba63ef923edfe5bf351f/art/references/skiff_parts.txt",
+      "detail": "Loot Goblins' own runtime capture of its Skiff (source game, commit be50188). All 15 parts of the generated model matched it in position, size, colour, material and transparency within 0.006 studs; the five gameplay-only parts in the capture (BowSkid, Driver, Passenger1, BowGunBase, BowGunBarrel) were left out on purpose."
+    }
+  ],
+  "rubric_checks": []
+}
