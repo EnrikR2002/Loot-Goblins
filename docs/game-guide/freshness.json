@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "fingerprint": "c6e83f26a7e425f8fc435ff1e213701843087ed46e1b45edfdeeac9eb0a604ae",
+  "fingerprint": "18b22ecf3d53bbeb4e8f1c75d75efb0ced4a5039366aa14818913ba8e941fcff",
   "source_baseline": {
     "src/client/Art14/Layouts/Harbor.lua": "3544b0985dfa0c483006f31eaa8e61922e3ae7ef88d25c2cf3c4c9953a3b837b",
     "src/client/Art14/Layouts/Pebble.lua": "4425b142d1f8c64e40958d060adfc835a84d458d3edd69486184a429c095f31c",
@@ -266,5 +266,5 @@
     "docs/reports/2026-10-03-yone-e-test.md": "e65828d401927d8b907b211fbefa624325a0dafa6ac183401d693cc150ebe74f",
     "docs/reports/2026-10-03-setup-verification.md": "56527ccdc0716c33c0aa0584e884d15b6b7d6cd8dc9672a17dc9d71f53c21c0a"
   },
-  "knowledge_revision": "42fe4d9836988144a7dba43c0492688d34480fe0"
+  "knowledge_revision": "0996576fb6f150b355f9d3d3db2f8bb5ea5505f6"
 }

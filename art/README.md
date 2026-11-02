@@ -166,9 +166,12 @@ in the client scripts), a human uploads the exports and records the ids:
 **Roblox's Blender plugin** ([docs](https://create.roblox.com/docs/art/modeling/roblox-blender-plugin),
 [source](https://github.com/Roblox/roblox-blender-plugin)) is an open-source Open Cloud implementation that links a
 Roblox account and sends objects from Blender into a Studio session. It needs a person to sign in with their Roblox
-account (OAuth), so it was not used here; the same rule applies: upload as the experience's owner or its group, then
-record the ids as in step 4. The Blender MCP server configured on Ninety's machine (for Codex) was not available to this
-session; nothing here needs it, because the build scripts run Blender headless.
+account (OAuth), so the build session did not use it; the same rule applies: upload as the experience's owner or its group,
+then record the ids as in step 4. Since 2026-11-02 it (v1.0.5) and the **Blender MCP** (`mcp-for-blender`, so an AI can
+model in a live Blender for hand-made, higher-quality assets) are installed on Enrik's machine for Claude Code and Codex;
+`docs/WORKSTATION.md` ("Blender for the AI") has the steps for another machine. Neither is needed by the build scripts,
+which run Blender headless. A hand-modelled `.blend` becomes the source of its set (see "The pipeline"): export it with
+`./scripts/art.ps1 -Export`. MCP's online asset sources stay off (see Licences).
 
 ## Updating and rolling back
 
@@ -181,7 +184,9 @@ session; nothing here needs it, because the build scripts run Blender headless.
 ## Licences
 
 Everything here is original, made for Loot Goblins by the build scripts in this folder (generated geometry, the team's
-own palette). **No third-party models, textures, fonts or images are used** (lettering uses Roblox's built-in FredokaOne).
+own palette). **No third-party models, textures, fonts or images are used** (lettering uses Roblox's built-in FredokaOne). That
+includes Blender MCP's Poly Haven, Sketchfab, Poly Pizza and AI-generation sources: they stay off, and if one is ever used,
+record its licence and attribution first.
 Blender is GPL software; what it outputs belongs to its author, not to Blender's licence. The ground captures in
 `references/` are data from this game.
 

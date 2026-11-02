@@ -18,6 +18,18 @@ If this computer already works on another of our games, Git, Studio, the AI clie
 
 The guide assumes Windows x64 for automatic Rokit installation. Other systems use the official [Rokit installer](https://github.com/rojo-rbx/rokit) and the same `rokit.toml` pins.
 
+## Blender for the AI (optional, only for art work)
+
+For higher-quality models the AI can drive Blender directly (Blender MCP) and send finished models to Roblox (Roblox's Blender plugin). Nothing here is needed to play or to write code; the art pipeline in `art/README.md` runs Blender headless without any of it. The AI does these steps on a machine that has none of it (Windows, once per computer, never committed: the MCP entries live in each AI client's user config):
+
+1. `winget install --id BlenderFoundation.Blender.LTS.4.5` (4.5 LTS: `scripts/art.ps1` and the build scripts are pinned to it; not the newest Blender) and `winget install --id astral-sh.uv`.
+2. Register the MCP server with the absolute path to `uvx.exe` (GUI-launched clients do not see the terminal's PATH), the version pinned and telemetry off. Claude Code: `claude mcp add --scope user blender -e DISABLE_TELEMETRY=true -- <uvx.exe> mcp-for-blender@2.2.6`. Codex: append `[mcp_servers.blender]` (`command` = that path, `args = ["mcp-for-blender@2.2.6"]`) and `[mcp_servers.blender.env]` (`DISABLE_TELEMETRY = "true"`) to `~/.codex/config.toml`, keeping a backup. Restart the client.
+3. Install the Blender add-on from the **same** version: run Blender once so its user folder exists, then `BLENDERMCP_ADDONS_DIR="%APPDATA%\Blender Foundation\Blender\4.5\scripts\addons" uvx mcp-for-blender@2.2.6 install-addon`. The add-on starts its server when Blender opens (port 9876, localhost only, no authentication: anyone on the machine can run Python in Blender through it).
+4. Install the Roblox plugin: download `upload-to-roblox-v<version>.zip` from [Roblox/roblox-blender-plugin releases](https://github.com/Roblox/roblox-blender-plugin/releases) (v1.0.5 tested) and install it from the zip (`bpy.ops.preferences.addon_install`, or Preferences > Add-ons > Install from Disk). Its **Install Dependencies** button just runs pip into the add-on's folder; headless, run Blender's own `python -m pip install -r requirements.txt --target dependencies_public` inside the add-on folder. Enable both add-ons and save preferences.
+5. Check it for real: open Blender, then call the MCP server's `get_addon_status` and `get_scene_info` (a "Connected" status from the client only shows the server process starts, not that Blender answers).
+
+Human-only steps: sign in with a Roblox account inside the plugin (Blender sidebar > Roblox tab; OAuth in a browser) and pick the creator the upload goes to (the experience's owning group; see `art/README.md`). Only one AI can drive Blender at a time (there is one socket), the same one-writer rule as the repository. Keep the MCP add-on's Poly Haven, Sketchfab, Poly Pizza and AI-generation sources off: the art here is original (`art/README.md`, Licences). `execute_blender_code` runs arbitrary Python, so save the `.blend` first.
+
 ## Playing without a terminal
 
 Ethan and Ninety play by double-clicking **`Play Loot Goblins.bat`** in the repository folder. It runs `scripts/play.ps1`:

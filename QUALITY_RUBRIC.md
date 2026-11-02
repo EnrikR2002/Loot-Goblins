@@ -138,6 +138,178 @@ Ethan's original rubric referenced Roblox's official guidance on [onboarding](ht
 
 These are attributed observations and hypotheses, not automatic changes to the core standards. Apply their context and limits. New evidence may challenge them; never turn a game preference into a universal requirement.
 
+### From Studio MCP scripts, ContextActionService:CallFunction and VirtualInputManager are blocked, so sync a timed tap to your own first tap
+
+**ID:** studio-mcp-scripts-cannot-press-keys-sync-to-your-own-tap | **Status:** observation | **Game:** EnrikR2002/Skip-Yourself | **Date:** 2026-11-01
+**Related checks:** General
+
+**Observed / proposed:** In a Studio play session, execute_luau on the Client could not call ContextActionService:CallFunction or VirtualInputManager:SendKeyEvent: both failed with 'The current thread cannot call ... (lacking capability RobloxScript)'. Tapping a free-running sine sweep (a cannon barrel that swings every 2 s) with the user_keyboard_input tool landed at a random pitch. Because the game restarts the sweep at the bottom when a retry tap is made, one call with the actions retry tap, wait N ms, launch tap puts the second tap at a phase that depends only on N plus the tool's own overhead: N = 150, 370 and 750 ms gave phases 0.25, 0.47 and 0.85 s into the sweep, so pitches 16.6, 28.9 and 48.3 degrees, the repeats of N = 150 landed at 14.3, 16.0 and 16.6 degrees, and of N = 370 and N = 750 within 0.1 degree. A client-side recorder read the pitch from the HUD at the moment the aim group hid, so each run's real pitch was measured rather than assumed.
+
+**Recommendation:** To test a timed input through the Studio MCP, do not try to inject it from a script. Find an event the game itself restarts (a retry tap) and put the timed tap after it in the same keyboard-tool call, with a wait computed from the model plus about 100 ms of overhead; record the value the game actually used from the client and correct the wait from it.
+
+**Applies when:** a Studio MCP playtest needs a tap at a particular moment of a periodic aim, meter or sweep; a script wants to trigger the game's own input binding
+
+**Limits:** one Windows PC and one Studio session; the 100 ms overhead is a rough observation, not a distribution (it also appears in an earlier lesson); the phase repeatability came from a handful of runs, not a measured spread
+
+- [studio-test](https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/docs/reports/2026-11-01-ocean-encounters.md): Report 'Evidence': flights at 16.6, 28.9 and 48.3 degrees from waits of 150, 370 and 750 ms; the client recorder's measured pitch and phase for each; the two capability errors.
+
+### A catch plane whose height depends on fall speed can be crossed between two frames without registering
+
+**ID:** speed-dependent-catch-plane-slips-between-frames | **Status:** observation | **Game:** EnrikR2002/Skip-Yourself | **Date:** 2026-11-01
+**Related checks:** General
+
+**Observed / proposed:** A trampoline raft caught a falling avatar when a swept step crossed a plane 6 studs above its skin plus 0.06 per stud/s of fall, and only if the step started above the plane. The plane rises as the fall speeds up. A real 44 degree flight (about 100 studs/s down, 60 frames a second) had its previous frame at 14.30 studs when the plane for that frame was 14.25 (not yet crossed), and the next frame started at 14.30 when the plane was 14.31 (already below), so the raft it flew straight into never fired, while 42 and 46 degrees fired. A frame-by-frame simulation of every launch pitch found it (one raft was never hit by any pitch); allowing the previous sample to be up to 2 studs below the plane fixed it.
+
+**Recommendation:** When a swept 'crossed from above' test uses a threshold that moves with speed or time, do not compare the previous point with the new threshold alone: allow a small slack below it for the previous sample, and clamp the crossing fraction. Run a frame-by-frame simulation across the whole input range and assert every target is reachable.
+
+**Applies when:** a game catches or bounces a fast projectile on a plane or surface by comparing consecutive positions; the plane's height or the trigger distance depends on speed
+
+**Limits:** seen in one game with a 60 frame/s client and a server that samples the same position; with a coarser network sample the gap between frames is larger, so the slack should grow; 2 studs was enough here and is not a general number
+
+- [automated-test](https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/tests/luau/Specs/EncounterSpec.lua): EncounterSpec 'every encounter is reachable by some pitch and missed by others' failed with 'pad2 is never hit' before the fix and passes after it.
+- [studio-test](https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/docs/reports/2026-11-01-ocean-encounters.md): Report 'Problems found' item 2: the 44 degree flight's two frames around the plane, 14.30 against 14.25, then 14.30 against 14.31.
+
+### A boost that sets the same exit velocity from any entry makes every later hit all-or-nothing
+
+**ID:** fixed-boost-outputs-make-chains-all-or-nothing | **Status:** hypothesis | **Game:** EnrikR2002/Skip-Yourself | **Date:** 2026-11-01
+**Related checks:** General
+
+**Observed / proposed:** In a one-button game whose only input is the launch angle, an authored course of barrels and trampolines first gave each hit a fixed exit velocity. A simulation of every launch pitch showed one angle band chaining all four far encounters in lockstep (the same four hits for every pitch from 13 to 19 degrees, and the same distances to within about 11 studs), because every entry leaves from nearly the same place at the same speed. Grading the effect by how close to the centre the hit was (a glancing hit gives half of the gain, a dead-centre one all of it, with the way up between 72 and 86 or 74 and 90 studs/s) spread the outcomes: two runs from nearly the same pitch (28.9 and 29.0 degrees) both started with the same raft at quality 0.95 and 0.96 yet went on to different second and third hits (1,999 and 1,752 studs).
+
+**Recommendation:** When a boost resets a flight, do not make the exit independent of the entry: let it depend on how well the player hit it (and, if possible, on the incoming speed), and check by simulating the whole input range that no input band hits every later target, before placing the later targets.
+
+**Applies when:** targets in a course are placed along a single trajectory family and each hit launches the player again; the player has a single continuous input that picks the trajectory
+
+**Limits:** simulation and a handful of Studio flights by the AI, not human play; whether graded hits feel better than fixed ones, or whether a chain feels earned, is untested; one game's numbers; the lockstep result came from a throwaway Python model of the flight that was not kept; the graded-hit course is covered by EncounterSpec in the Luau sim
+
+- [automated-test](https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/tests/luau/Specs/EncounterSpec.lua): EncounterSpec 'no single pitch chains through the whole course' and 'every encounter is reachable by some pitch and missed by others' run every pitch frame by frame.
+- [studio-test](https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/docs/reports/2026-11-01-ocean-encounters.md): Report 'Evidence' rows 'Chain': the 28.9 and 29.0 degree runs, 1,999 and 1,752 studs, and 'The course by simulation' (first draft versus graded hits).
+
+### An aim indicator that tests the water at the surface disagrees with a server that calls a splash several studs above it
+
+**ID:** aim-indicator-must-use-the-servers-splash-rule | **Status:** observation | **Game:** EnrikR2002/Skip-Yourself | **Date:** 2026-11-01
+**Related checks:** General
+
+**Observed / proposed:** The aim bar's red zone ('too flat to skip') ended at 20 degrees, from a landing prediction that tested the water at its surface using the speed at the end of a 0.2 s step. The server calls a fast fall over water a splash at 3.2 studs plus 0.06 per stud/s above the surface and decides a skip from the speed it sees there. A real flight at 23.5 degrees belly flopped for 269 studs and no skip, in the green zone; the real threshold was about 24.5 degrees. Testing the water at the server's height, with the fall at the touch and a skip that starts 4 studs up like the server's, moved the prediction's first skipping pitch to 25 and the aim bar with it; a measured flight at 35.6 degrees came down at 587 studs against a predicted 591.
+
+**Recommendation:** Give an indicator the exact trigger the authoritative code uses (the same height above the surface, the same speed measure, the same restart height), not a physically ideal one, and check the indicator against a real flight at the edge of each zone, not only in the middle.
+
+**Applies when:** a ring, bar or preview predicts what a server-ruled rule will do; the server uses a tolerance or early trigger the client-side prediction lacks
+
+**Limits:** one game and one rule (stone skipping off water); the check flew one real flight in the wrong zone (23.5 degrees) and one in the middle, not every pitch; the fix lives in a candidate Factory kit version that is not yet approved
+
+- [studio-test](https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/docs/reports/2026-11-01-ocean-encounters.md): Report evidence rows 'Belly flop' (23.5 degrees: 269 studs, 0 skips) and 'Open-sea prediction' (first skipping pitch 25, matches a real flight).
+- [automated-test](https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/tests/luau/Specs/FlightMathSpec.lua): FlightMathSpec 'predict calls a splash as the server does' (22 degrees: one touch, 27 degrees: three skips and the splash) in the kit's own spec.
+
+### A modal Studio dialog stops RenderStepped while Heartbeat keeps running
+
+**ID:** studio-modal-dialog-stops-renderstepped | **Status:** observation | **Game:** EnrikR2002/Skip-Yourself | **Date:** 2026-10-30
+**Related checks:** General
+
+**Observed / proposed:** An information-only 'Lighting Technology Migration' dialog in front of the Studio window made RenderStepped fire 0 times per second while Heartbeat kept firing at 60. A character driven by a RenderStepped script was never controlled and flew off under physics, which looked like a gameplay bug. Dismissing the dialog restored rendering and the same code ran normally.
+
+**Recommendation:** When a script-driven object misbehaves in a Studio MCP playtest, count RenderStepped over one second first and look for a modal dialog or an occluded Studio window before debugging the game code.
+
+**Applies when:** a Studio playtest is driven through the Studio MCP and some behavior depends on RenderStepped or camera updates; an avatar or camera behaves as if its per-frame script never ran
+
+**Limits:** seen once, with one Studio version and one dialog, in October 2026; the dialog opened on a freshly built place; other dialogs were not tested
+
+- [studio-test](https://github.com/EnrikR2002/Skip-Yourself/blob/b844f42cfdc77b730ab217de3b8d45101bed13da/docs/reports/2026-10-30-core-launch-skip.md): Report problem 7: RenderStepped counted 0 per second while Heartbeat counted 60 with the dialog showing; after dismissing it play mode ran normally.
+
+### Studio MCP keyboard input adds about 100 ms per action, enough to miss a short timing window
+
+**ID:** studio-mcp-keyboard-input-adds-delay | **Status:** observation | **Game:** EnrikR2002/Skip-Yourself | **Date:** 2026-10-30
+**Related checks:** General
+
+**Observed / proposed:** Each user_keyboard_input action added around 100 ms of overhead. A blind-timed tap aimed at a 0.28 s perfect-timing window missed on the first attempt and succeeded after the overhead was allowed for. The tool's argument is key_code, not key.
+
+**Recommendation:** For timing tests through the Studio MCP, compute the expected event time from the model and allow for the per-action delay, or drive the input from the game's own model. Do not conclude a window is too tight from a single missed simulated tap.
+
+**Applies when:** a Studio MCP playtest presses keys inside a window shorter than about half a second; a simulated tap seems to fail although the on-screen cue was right
+
+**Limits:** one Windows PC and one Studio session; the overhead may vary with machine load; the 100 ms figure is a rough observation, not a measured distribution
+
+- [studio-test](https://github.com/EnrikR2002/Skip-Yourself/blob/b844f42cfdc77b730ab217de3b8d45101bed13da/docs/reports/2026-10-30-core-launch-skip.md): Report 'Not tested' section: the first blind tap missed the window because of the simulated keyboard's delay and a later tap that allowed for it produced the PERFECT x1 callout.
+
+### A perfect-timing bonus that adds height can end a run sooner than not tapping
+
+**ID:** perfect-timing-bonus-can-make-a-run-worse | **Status:** observation | **Game:** EnrikR2002/Skip-Yourself | **Date:** 2026-10-30
+**Related checks:** General
+
+**Observed / proposed:** In Skip Yourself a well-timed tap on the first water contact added extra bounce height. The longer hop let forward drag steepen the next landing past the belly-flop angle limit. At a 35 degree launch the first tuning gave 509 studs with 1 skip for a perfect first skip, against 473 studs with 4 skips for no tap at all. The skilled input was worse than doing nothing for some launch angles.
+
+**Recommendation:** Test across the whole input range that the skilled input is never worse than doing nothing, as an automated spec. Prefer bonuses that keep speed (a smaller speed loss) over bonuses that add height, because height feeds back into the next impact angle.
+
+**Applies when:** a timed or skill input adds an energy, height or speed bonus to a bouncing, skipping or ricocheting projectile; the next collision outcome depends on the angle or speed carried out of the previous one
+
+**Limits:** one game's skip model with its own tuning values; the fix (smaller bounce bonus, 30 percent of the normal speed loss on a perfect) is that game's tuning, not a general number; checked with a deterministic model in Studio and a spec, not with human players
+
+- [automated-test](https://github.com/EnrikR2002/Skip-Yourself/blob/b844f42cfdc77b730ab217de3b8d45101bed13da/tests/luau/Specs/SkipSpec.lua): Spec 'a perfect first skip never makes a run shorter' runs every launch pitch that skips and passes after the retune; the first tuning failed it at 35 degrees.
+- [measurement](https://github.com/EnrikR2002/Skip-Yourself/blob/b844f42cfdc77b730ab217de3b8d45101bed13da/docs/reports/2026-10-30-core-launch-skip.md): Report problem 3 records 509 studs and 1 skip for the perfect first skip against 473 studs and 4 skips with no tap, before the retune.
+
+### A generated model's WeldConstraints need CFrame0, and only a clone in Workspace shows the fault
+
+**ID:** generated-welded-models-need-cframe0-and-a-workspace-check | **Status:** observation | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-30
+**Related checks:** General
+
+**Observed / proposed:** A 15-part pirate boat with 14 WeldConstraints was generated as an .rbxmx by a script that listed only Part0 and Part1 on each weld. Built through Rojo into a place and opened in Studio (Edit mode), the stored model in ReplicatedStorage looked and measured correct: every part's frame relative to the hull matched the source data and a content checksum matched the original boat. The moment a clone was parented to Workspace, every welded part read an offset of 0,0,0 from the hull, and a render showed a flat slab with a stub mast. A PivotTo drift check passed vacuously because its reference offsets were read from the already-collapsed clone. A weld's CFrame0 and CFrame1 are hidden (reading CFrame0 from a script failed with 'not a valid member'), so the cause was found by experiment. Five encodings of one welded part (hull at the origin, child at 1.5, 5, -3 turned 27 degrees) were built through Rojo and opened in Studio: CFrame0 = the child's frame in the hull's space with an identity CFrame1 kept the offset; CFrame0 = identity with CFrame1 = the inverse frame kept it; CFrame0 = the inverse frame collapsed the part; no CFrame0 or CFrame1 collapsed it; a legacy Weld with C0 = the child's frame and an identity C1 kept it. Rojo writes WeldConstraint references as Part0Internal and Part1Internal and carries CFrame0 and CFrame1 through. After the generator wrote CFrame0 (the part's frame in the hull's space) and an identity CFrame1, a clone in Workspace had the same content checksum as the boat built live by the game's own code, every part kept its offset under PivotTo and rotation (worst drift 0.000016 studs), and a render from the same camera matched the original.
+
+**Recommendation:** When a model file with WeldConstraints is generated or written outside Studio's own save, store each weld's offset: CFrame0 = Part1's frame in Part0's space with an identity CFrame1 (this encoding was verified; do not guess the inverse). Then validate the model live, not as stored: clone it into Workspace, take the expected offsets from the source data and not from the clone, measure every welded part against them, move and rotate the model once, and look at it. A check that only reads the template in ReplicatedStorage or ServerStorage cannot detect this fault.
+
+**Applies when:** Generating or hand-writing .rbxmx, .model.json or similar model files that contain WeldConstraints (or other joints) instead of saving from Studio; Turning a model built by code or a build script into a stored, reusable asset, for example a Factory Library item; Validating a welded model before approving it for reuse
+
+**Limits:** One 15-part model and one five-variant test: Rojo 7.7.1 built the place and Studio (Edit mode, October 2026, Windows 10) opened it; nothing was run in Play mode or on another platform; Only WeldConstraint and a legacy Weld with C0 and C1 were tried; other constraint or joint types were not tested; Loading a Part0/Part1-only .rbxmx straight into Studio (Insert from file) was not tried, so it is not established that every loader collapses the parts; the finding is that the Rojo-built path did; The convention (CFrame0 = relative frame, CFrame1 = identity; the inverse in CFrame0 fails) was established by experiment because the properties are hidden, not from documentation, and could change with a Studio update
+
+- [studio-test](https://github.com/EnrikR2002/SYFER-Roblox-Factory/blob/a224f00e7040b5c1585822999449e39c483e6675/library/assets/pirate-boat/README.md): Factory PR #7 (merged at a224f00), the item's README sections 'Gotchas' and 'Validation': the first generated file looked right in ReplicatedStorage but every welded part snapped onto the hull's centre once a clone was in Workspace; it showed only in a visual comparison against the original; after CFrame0 was written, the installed model in a clean game matched the original's content checksum and render.
+- [source-review](https://github.com/EnrikR2002/SYFER-Roblox-Factory/blob/a224f00e7040b5c1585822999449e39c483e6675/library/assets/pirate-boat/source/build_rbxmx.py): The generator after the fix: each WeldConstraint is written with CFrame0 = the part's frame in the hull's space, an identity CFrame1, and Part0Internal/Part1Internal, with a comment recording the failure when they are missing.
+- [studio-test](https://github.com/EnrikR2002/Loot-Goblins/blob/f061b9a3d9f0ce485de552e027edfe0aac350a0e/.syfer/outbox/2026-10-30-knowledge-lesson-weldconstraint-cframe0.md): Loot Goblins PR #36's outbox note, written the day of the test: the five-variant results (CFrame0 relative, CFrame0 identity with inverse CFrame1, inverse CFrame0, none, legacy Weld) as observed in Studio after a Rojo build, and the note that the first numeric check had measured the template, not a live clone.
+- [measurement](https://github.com/EnrikR2002/Loot-Goblins/blob/be501887af60859243c9ba63ef923edfe5bf351f/art/references/skiff_parts.txt): Loot Goblins' own runtime capture of its Skiff (source game, commit be50188). All 15 parts of the generated model matched it in position, size, colour, material and transparency within 0.006 studs; the five gameplay-only parts in the capture (BowSkid, Driver, Passenger1, BowGunBase, BowGunBarrel) were left out on purpose.
+
+### A game camera that shares a render priority with a library camera fights it
+
+**ID:** game-camera-must-bind-after-a-kits-camera | **Status:** hypothesis | **Game:** EnrikR2002/Skip-Yourself | **Date:** 2026-10-30
+**Related checks:** General
+
+**Observed / proposed:** The launch-flight kit binds its chase camera and landing hold at RenderPriority.Camera + 1. Skip Yourself's own cannon camera used the same priority, so after a quick retry both would write the camera during the kit's 1.1 s landing hold, in an undefined order. Binding the game's camera at Camera + 2 makes it run last and win while the game owns the view.
+
+**Recommendation:** When a game and an installed kit both script the camera, give the one that should win in each state a strictly later render priority, and only write the camera in the states it owns.
+
+**Applies when:** a Library system ships its own camera; the game keeps a scripted camera for other states (menus, aiming)
+
+**Limits:** the flicker was reasoned from the code, not seen; the playtest after the change showed no fight
+
+- [source-review](https://github.com/EnrikR2002/Skip-Yourself/blob/6e740b7dec624e47040d68e7e77871c16318f139/docs/reports/2026-10-30-launch-flight-kit.md): Main.client.lua binds SkipYourselfFrame at Camera + 2; FlightClient binds SyferFlightCamera at Camera + 1.
+
+### A landing prediction that steps 0.2 s by the new velocity lands several percent short
+
+**ID:** coarse-step-arc-prediction-lands-short | **Status:** observation | **Game:** EnrikR2002/Skip-Yourself | **Date:** 2026-10-30
+**Related checks:** General
+
+**Observed / proposed:** The launch-flight kit predicted its landing rings by updating the velocity first and then moving by that new velocity, 0.2 s per step. Under constant gravity this came down 21 studs short of a 300-stud throw (about 7%), so the ring sat short of where the frame-by-frame flight really landed. Moving each step by the average of the old and new velocities made it 0.34 studs off.
+
+**Recommendation:** When a coarse-step loop predicts a ballistic arc for an indicator, move by the average of the step's two velocities (exact for constant acceleration), and spec the prediction against an exact target before trusting the indicator.
+
+**Applies when:** a landing ring, trajectory line or aim preview is computed with a large time step; the real flight runs at frame rate with the same acceleration
+
+**Limits:** measured on one throw shape (30 degrees, 300 studs); drag or steering modes are not exact with averaging either
+
+- [studio-test](https://github.com/EnrikR2002/Skip-Yourself/blob/6e740b7dec624e47040d68e7e77871c16318f139/docs/reports/2026-10-30-launch-flight-kit.md): FlightMathSpec 'solve lands a plain throw on its target' failed at (278.5, 0, -37.1) for (300, 0, -40); passed at 0.34 studs after the fix.
+
+### A client-made BillboardGui with AlwaysOnTop on drew nothing; with it off it drew
+
+**ID:** billboardgui-alwaysontop-drew-nothing | **Status:** observation | **Game:** EnrikR2002/Skip-Yourself | **Date:** 2026-10-30
+**Related checks:** General
+
+**Observed / proposed:** A circle-outline BillboardGui parented to a fully transparent anchored part in workspace, created by a client script, drew nothing with AlwaysOnTop set to true. The same part, size and position drew normally with AlwaysOnTop set to false. The cause was not isolated.
+
+**Recommendation:** If a billboard marker is invisible, toggle AlwaysOnTop before suspecting its position, size or parent. If it must read over other geometry, lift it clear of the surface instead of relying on AlwaysOnTop.
+
+**Applies when:** a world-space marker or reticle is built from a BillboardGui on a transparent anchor part; a flat SurfaceGui ring is nearly edge-on from a low camera and a billboard replaces it
+
+**Limits:** observed once in one Studio session; the cause is unknown and may not reproduce elsewhere; other BillboardGui setups were not compared
+
+- [studio-test](https://github.com/EnrikR2002/Skip-Yourself/blob/b844f42cfdc77b730ab217de3b8d45101bed13da/docs/reports/2026-10-30-core-launch-skip.md): Report problem 4: the landing ring was invisible with AlwaysOnTop on and visible with it off, floating 5 studs above the landing point.
+
 ### A temporary stand-in profile must not unlock one-time rewards or start fresh daily caps, and merges must compare stored keys by their own rules
 
 **ID:** standin-profile-must-not-run-unlocks-or-fresh-caps | **Status:** hypothesis | **Game:** EnrikR2002/Loot-Goblins | **Date:** 2026-10-27
