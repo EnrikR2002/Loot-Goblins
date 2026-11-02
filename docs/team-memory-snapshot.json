@@ -1,9 +1,45 @@
 {
   "schema_version": 1,
   "repository": "EnrikR2002/SYFER-Roblox-Knowledge",
-  "revision": "42fe4d9836988144a7dba43c0492688d34480fe0",
+  "revision": "0996576fb6f150b355f9d3d3db2f8bb5ea5505f6",
   "baseline": "# Shared Roblox quality rubric\n\nAdapted from Ethan's CLARITY.md, supplied October 12, 2026. This is a shared evaluation lens. Each game's AGENTS.md, current human decisions, and source-controlled implementation retain their own authority. A rubric does not authorize extra features or a release.\n\nThe AI reads relevant checks before player-facing work, updates affected findings in the game's existing context and dated reports, and contributes generalizable evidence to the shared notebook. Run the quick audit for prototypes, relevant checks for changes, and the full applicable gate before release. Untested remains untested. Saving, progression, shops, long-term collections, and analytics are N/A when outside the approved game scope; never add them to satisfy a checklist.\n\nGAME_GUIDE.md describes one game in detail. QUALITY_RUBRIC.md describes the shared quality standards plus attributed team learning. An outside AI can compare the two, separating documented gaps, probable risks, and proposals. Neither file alone proves actual runtime defects. Source research below is attributed design guidance, not new first-hand testing or an up-to-date popularity ranking.\n\nImportant changes to the base standard require human review. Routine lesson additions extend the learning section automatically, with their original evidence and limits.\n\n## Principles\n\nClarity means fewer moments where players must guess, not more instructions. At a normal moment, a new player should understand what they are doing, where/how to do it, and what success means. Use world layout, readable affordances, and immediate feedback before adding paragraphs or UI. Teach an input when it becomes relevant. Preserve discovery and mystery while making controls, costs, consequences, and recovery understandable. Basic actions should be easy to try and interesting to master. Celebrations should reflect meaningful achievements instead of constant noise. Every feature and HUD element must earn its place.\n\nThese standards are a design lens, not a formula for popularity. Successful games can inspire hypotheses; popularity alone does not prove which UI choice caused success. A phone emulator is not a real-device acceptance test. Automated tests are not human fun validation. Each game sets its own first-action and payoff time targets and measures them; example goals such as a first action within 15 seconds are hypotheses, not Roblox benchmarks.\n\n## Status and evidence\n\nFor each applicable check record **PASS**, **FAIL**, **NOT TESTED**, or **N/A**. N/A needs a reason. A pass needs an actual observation, reproducible test, measured result, or inspected code path appropriate to the claim, plus the source revision, environment, date, and limitations. Design specifications do not establish implementation. Code inspection cannot establish discoverability, feel, device usability, or multiplayer fun. Preserve old failed evidence and link its later rerun rather than deleting it.\n\nRecord findings in the game's existing current context and dated report: check ID, affected player moment, expected understanding, observed behavior or attributed quote, evidence, likely cause/confidence, smallest fix, and retest. Never invent player quotes, analytics, logs, screenshots, or paths. Keep confirmed defects, suspected defects, design hypotheses, and owner decisions distinguishable.\n\n## Universal checks\n\nP0 means essential comprehension, usability, or reliability when relevant; P1 means depth/expression according to genre. Only advertised input modes need release acceptance. Optional systems outside the approved prototype are N/A, not an excuse for scope expansion.\n\n### A. Fantasy, objective, and player action\n\n- **CL-01 One-sentence pitch (P0):** Explain the fun using a concrete player verb, object, and payoff.\n- **CL-02 Honest thumbnail promise (P0):** The title/icon/thumbnail represent gameplay players actually encounter; no fake feature or hidden grind promise.\n- **CL-03 Spawn orientation (P0):** The initial camera frames the main toy/destination or a comprehensible direction.\n- **CL-04 Immediate action (P0):** Players can enjoy an action without unnecessary unskippable dialogue, a forced shop, or unexplained waiting. Adapt waiting rooms to round games.\n- **CL-05 One visible main goal (P0):** The immediate goal outranks secondary promotions and UI demands.\n- **CL-06 Contextual controls (P0):** Interaction prompts show the actual keyboard, touch, or gamepad action in context.\n\n### B. World and visual readability\n\n- **CL-07 Visual hierarchy (P0):** Important objects differ from decoration through silhouette, contrast, movement, or sound rather than tiny labels alone.\n- **CL-08 Navigation (P0):** Intended journeys from start to action and onward can be followed without memorizing an explanatory map. Test the actual route.\n- **CL-09 Interactable affordances (P0):** Players can distinguish pickups, buttons, portals, NPCs, hazards, and decoration when that distinction matters.\n- **CL-10 World signage (P0):** Signs are concise, placed at decisions, and readable at the intended camera distance.\n- **CL-11 Camera and occlusion (P0):** The player, hazards, targets, and important interactions remain visible during movement and vehicle use.\n- **CL-12 Visual noise (P0):** Effects, nameplates, loot beams, and repeated cues do not hide the route, collision geometry, or other players' actions.\n\n### C. Action feedback and game feel\n\n- **CL-13 Input response (P0):** A press/tap gets prompt acknowledgement; successful and rejected input are not silently ambiguous.\n- **CL-14 Outcome response (P0):** Success, failure, partial progress, and blocked actions produce distinct comprehensible feedback.\n- **CL-15 Clear numbers (P0):** Currency, rewards, score, damage, multipliers, and costs have meaningful units and context.\n- **CL-16 Meaningful celebration (P0):** Big success cues reflect achievements; excessive shake or prolonged input locks do not prevent play.\n- **CL-17 Retry clarity (P0):** Death, misses, depletion, and respawn make the next attempt understandable and reasonably quick.\n- **CL-18 State consistency (P0):** HUD and world agree on cooldowns, ownership, inventory, rewards, scores, and round state.\n\n### D. Core loop, pacing, and progression\n\n- **CL-19 Loop closure (P0):** An action produces a result and a understandable reason to act again, without a compulsory paywall.\n- **CL-20 Short-term goal (P0):** A practical session goal exists rather than only an extremely distant grind; adapt goals to the genre.\n- **CL-21 Long-term aspiration (P1, when applicable):** Players can see meaningful mastery, exploration, social, collection, or unlock opportunities. Persistent progression is not mandatory.\n- **CL-22 Upgrade comprehension (when applicable):** An upgrade's effect is clear before purchase and actually changes the promised behavior afterwards.\n- **CL-23 Real choice (when applicable):** Routes, roles, classes, and upgrades provide meaningful distinct choices rather than misleading duplicates.\n- **CL-24 Challenge curve (P0):** The first attempt is accessible; subsequent challenges reward learning rather than unexplained difficulty spikes.\n- **CL-25 Dead-time audit (P0):** Travel, loading, respawn, intermission, matchmaking, and animation do not dominate the intended experience.\n- **CL-26 Fair loss and reward (P0):** Loss, sunk cost, chance wording, and recovery are understandable and truthful.\n\n### E. UI, input, and accessibility\n\n- **CL-27 HUD priority (P0):** The current objective and player state outrank secondary clutter; show what matters now.\n- **CL-28 Real small-phone test (P0 for advertised touch):** Controls and text are readable, tappable, and unclipped on an actual target device, without chat/jump/cutout overlap.\n- **CL-29 Multiple inputs (P0 for advertised modes):** The essential loop works on every advertised input mode with correct prompts; a keyboard-only feature is labeled honestly.\n- **CL-30 Contrast and text (P0):** Text stays legible over bright worlds and busy effects at real screen size.\n- **CL-31 Not color-only (P0):** Essential hazards, teams, and outcomes have cues beyond color alone.\n- **CL-32 UI failure feedback (P0 where applicable):** Insufficient funds, invalid actions, purchase results, timeouts, and interrupted choices have understandable states.\n- **CL-33 Menu escape (P0):** Players can close menus, regain controls, and recover from interruptions.\n\n### F. Multiplayer and reliability\n\n- **CL-34 Solo or empty server (when applicable):** The basic activity works alone unless it is explicitly a group-only game. A multiplayer claim needs real multiplayer evidence.\n- **CL-35 Shared state (P0 for multiplayer):** Important events, outcomes, ownership, and phases agree across clients.\n- **CL-36 Contribution (P0 for multiplayer):** Players understand personal versus shared rewards and who earned credit.\n- **CL-37 Join, leave, and reset (P0):** Mid-round joining, departure, death, respawn, and lag do not orphan UI or leave controls stuck.\n- **CL-38 Save integrity (P0 when persistence exists):** Ownership and progress survive rejoin; failures are handled honestly, without false saved claims. Session-only scores are valid when advertised.\n- **CL-39 Exploit resistance (P0):** The server validates valuable state and transactions; simultaneous or malicious requests cannot duplicate rewards. Client-owned motion requires explicit trust-boundary review.\n- **CL-40 Performance (P0):** Join time, frame pacing, memory, script work, and network use meet game-specific targets measured on relevant devices and loads. Never invent a universal threshold.\n\n### G. Social storytelling and packaging\n\n- **CL-41 Shareable moment (P1):** A brief gameplay clip can convey a recognizable action and interesting consequence without extensive narration, where relevant.\n- **CL-42 Visible achievement (P1):** Records, collections, mastery, or playful results are meaningfully visible when the game calls for them.\n- **CL-43 Group moment (P1):** Friends can cooperate, compete, react, or roleplay in ways serving the game. Mischief games may deliberately support reversible interference; do not universalize a no-trolling preference.\n- **CL-44 Return reason (P1):** Players have credible reasons to explore, master, create, or return without manufactured urgency.\n- **CL-45 Honest release packaging (P0 before launch):** The first image, title, and description match the actual early experience.\n\n### H. Trust, inclusion, and accessibility\n\n- **CL-46 Audio-independent cues (P0):** Critical outcomes, hazards, and objectives remain understandable with sound muted; audio supports rather than replaces necessary cues.\n- **CL-47 Language resilience (according to scope):** Longer labels and relevant translations fit; visuals support limited reading fluency. Unsupported localization is reported honestly.\n- **CL-48 Honest rewards and trust (P0 where applicable):** Prices, premium access, cooldowns, loss rules, and rarity claims are comprehensible and truthful. No deceptive purchase prompts or fake paid promises. Monetization-specific checks are N/A when absent.\n\n## Five-minute rapid audit\n\nFor prototypes or brainstorming, inspect the main toy/goal from spawn, first input, first payoff, reason for another attempt, advertised input usability, recovery, applicable two-player clarity, and documented-versus-tested truth. Report the top three problems with evidence or hypothesis labels and the smallest fix. Do not code new systems simply to answer the questions. Time goals are chosen for the specific game, not mandatory universal benchmarks.\n\n## Change impact\n\nDo not rerun all 48 checks after every edit. Record the affected system, player promise, relevant check IDs, nearby conflicts, and planned test; afterwards record observed results, evidence, and remaining unknowns.\n\n| Change | Relevant checks | Typical regression |\n| --- | --- | --- |\n| Spawn, map, geometry | CL-03, CL-07 through CL-12, CL-25 | Hidden objective, blocked route, excess travel |\n| HUD, UI, camera | CL-05, CL-10 through CL-18, CL-27 through CL-33, CL-46 | Lost objective, occlusion, device overlap |\n| Pickups or interactions | CL-06, CL-09, CL-13 through CL-15, CL-19, CL-39 | Silent pickup, unreachable prompt, duplicated reward |\n| Vehicles or movement | CL-06, CL-11, CL-13 through CL-18, CL-25, CL-29, CL-37, CL-40 | Bad steering, trapped driver, broken route |\n| Currency, upgrades, saving | CL-15, CL-18, CL-22, CL-26, CL-32, CL-38, CL-39, CL-48 | Wrong price, double charge, lost ownership |\n| Rounds or social systems | CL-05, CL-14 through CL-18, CL-25, CL-34 through CL-37, CL-43 | Stale phase, wrong payout, late-join confusion |\n| Monsters or hazards | CL-07, CL-11 through CL-18, CL-24, CL-31, CL-40, CL-46 | Invisible danger, unfair hit, cue overload |\n| Loading or streaming | CL-03, CL-04, CL-08, CL-09, CL-25, CL-37, CL-40 | Spawn before ground or objective is ready |\n\n## Full review and release\n\nIdentify the real branch/build, approved scope, genre, loop, and accessible evidence. Observe a new player from normal spawn without a spoken tutorial; record their first question, wrong turn, action, outcome, and unprompted replay. Check the applicable advertised devices and multiplayer scenarios: simultaneous interactions, late join, death, departure/reconnect, failure recovery, and at least three repeated rounds or loops. If saving exists, test loading and failures; if it does not, do not add it. Measure relevant demanding-scene performance on target hardware. Runtime checks unavailable to the AI remain NOT TESTED.\n\nRelease verdicts are **DESIGN ONLY** (no playable evidence), **BLOCKED** (critical applicable failure), **CONDITIONAL** (important tests still unknown), or **READY for the named scope/build/devices** (applicable critical checks passed with evidence). A document-only audit cannot clear a public release. Keep source code review, Studio simulation, real-device use, human multiplayer fun, and production analytics distinct. Prioritize exposed blocking causes first, then small improvements; a checklist percentage is not a virality forecast.\n\nAnalytics are relevant only when explicitly implemented and available. Track meaningful steps such as controllable spawn, first action, first outcome, repeat action, and full round; separate observed cohorts and traffic from hypotheses. Do not publish an experience or add telemetry merely to satisfy this rubric.\n\n## Idea evaluation\n\nFirst diagnose the current loop. Recommend a small set of useful ideas, not a forced feature quota. For each state the specific observed friction or hypothesis, player verb, emotional payoff, current system it deepens, overlap with accepted/rejected decisions, smallest complete slice, implementation cost, affected checks, risks, and a playtest that would show improvement. Rank FIX EXISTING / ADD / MERGE / DEFER / REJECT. More maps, pets, rarity tiers, currencies, and effects do not establish quality by themselves.\n\nThe ceiling is the potential player benefit; the floor is implementation work, confusing controls, device friction, performance, multiplayer, and save risk. Prefer the smallest experiment that connects the two. Proposed features remain proposed until the human authorizes them.\n\n## Further source reading\n\nEthan's original rubric referenced Roblox's official guidance on [onboarding](https://create.roblox.com/docs/production/game-design/onboarding), [UI/UX](https://create.roblox.com/docs/production/game-design/ui-ux-design), [cross-platform development](https://create.roblox.com/docs/projects/cross-platform), [accessibility](https://create.roblox.com/docs/production/publishing/accessibility), [performance](https://create.roblox.com/docs/performance-optimization), and [funnel events](https://create.roblox.com/docs/production/analytics/funnel-events). Consult the current official documentation before making implementation-specific claims. The illustrative commercial-game comparisons in the original are research inspiration, not measured causal proof.\n",
   "notes": [
+    {
+      "schema_version": 1,
+      "id": "aim-indicator-must-use-the-servers-splash-rule",
+      "title": "An aim indicator that tests the water at the surface disagrees with a server that calls a splash several studs above it",
+      "status": "observation",
+      "game": "EnrikR2002/Skip-Yourself",
+      "date": "2026-11-01",
+      "topics": [
+        "prediction",
+        "indicator",
+        "projectile",
+        "server authority"
+      ],
+      "observation": "The aim bar's red zone ('too flat to skip') ended at 20 degrees, from a landing prediction that tested the water at its surface using the speed at the end of a 0.2 s step. The server calls a fast fall over water a splash at 3.2 studs plus 0.06 per stud/s above the surface and decides a skip from the speed it sees there. A real flight at 23.5 degrees belly flopped for 269 studs and no skip, in the green zone; the real threshold was about 24.5 degrees. Testing the water at the server's height, with the fall at the touch and a skip that starts 4 studs up like the server's, moved the prediction's first skipping pitch to 25 and the aim bar with it; a measured flight at 35.6 degrees came down at 587 studs against a predicted 591.",
+      "recommendation": "Give an indicator the exact trigger the authoritative code uses (the same height above the surface, the same speed measure, the same restart height), not a physically ideal one, and check the indicator against a real flight at the edge of each zone, not only in the middle.",
+      "applies_when": [
+        "a ring, bar or preview predicts what a server-ruled rule will do",
+        "the server uses a tolerance or early trigger the client-side prediction lacks"
+      ],
+      "limits": [
+        "one game and one rule (stone skipping off water); the check flew one real flight in the wrong zone (23.5 degrees) and one in the middle, not every pitch",
+        "the fix lives in a candidate Factory kit version that is not yet approved"
+      ],
+      "evidence": [
+        {
+          "kind": "studio-test",
+          "detail": "Report evidence rows 'Belly flop' (23.5 degrees: 269 studs, 0 skips) and 'Open-sea prediction' (first skipping pitch 25, matches a real flight).",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/docs/reports/2026-11-01-ocean-encounters.md"
+        },
+        {
+          "kind": "automated-test",
+          "detail": "FlightMathSpec 'predict calls a splash as the server does' (22 degrees: one touch, 27 degrees: three skips and the splash) in the kit's own spec.",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/tests/luau/Specs/FlightMathSpec.lua"
+        }
+      ]
+    },
     {
       "schema_version": 1,
       "id": "and-or-ternary-returns-the-other-side-for-nil",
@@ -189,6 +225,37 @@
       "rubric_checks": [
         "CL-23",
         "CL-25"
+      ]
+    },
+    {
+      "schema_version": 1,
+      "id": "billboardgui-alwaysontop-drew-nothing",
+      "title": "A client-made BillboardGui with AlwaysOnTop on drew nothing; with it off it drew",
+      "status": "observation",
+      "game": "EnrikR2002/Skip-Yourself",
+      "date": "2026-10-30",
+      "topics": [
+        "gui",
+        "billboardgui",
+        "studio-playtest",
+        "debugging"
+      ],
+      "observation": "A circle-outline BillboardGui parented to a fully transparent anchored part in workspace, created by a client script, drew nothing with AlwaysOnTop set to true. The same part, size and position drew normally with AlwaysOnTop set to false. The cause was not isolated.",
+      "recommendation": "If a billboard marker is invisible, toggle AlwaysOnTop before suspecting its position, size or parent. If it must read over other geometry, lift it clear of the surface instead of relying on AlwaysOnTop.",
+      "applies_when": [
+        "a world-space marker or reticle is built from a BillboardGui on a transparent anchor part",
+        "a flat SurfaceGui ring is nearly edge-on from a low camera and a billboard replaces it"
+      ],
+      "limits": [
+        "observed once in one Studio session; the cause is unknown and may not reproduce elsewhere",
+        "other BillboardGui setups were not compared"
+      ],
+      "evidence": [
+        {
+          "kind": "studio-test",
+          "detail": "Report problem 4: the landing ring was invisible with AlwaysOnTop on and visible with it off, floating 5 studs above the landing point.",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/b844f42cfdc77b730ab217de3b8d45101bed13da/docs/reports/2026-10-30-core-launch-skip.md"
+        }
       ]
     },
     {
@@ -523,6 +590,36 @@
     },
     {
       "schema_version": 1,
+      "id": "coarse-step-arc-prediction-lands-short",
+      "title": "A landing prediction that steps 0.2 s by the new velocity lands several percent short",
+      "status": "observation",
+      "game": "EnrikR2002/Skip-Yourself",
+      "date": "2026-10-30",
+      "topics": [
+        "physics",
+        "prediction",
+        "indicator",
+        "projectile"
+      ],
+      "observation": "The launch-flight kit predicted its landing rings by updating the velocity first and then moving by that new velocity, 0.2 s per step. Under constant gravity this came down 21 studs short of a 300-stud throw (about 7%), so the ring sat short of where the frame-by-frame flight really landed. Moving each step by the average of the old and new velocities made it 0.34 studs off.",
+      "recommendation": "When a coarse-step loop predicts a ballistic arc for an indicator, move by the average of the step's two velocities (exact for constant acceleration), and spec the prediction against an exact target before trusting the indicator.",
+      "applies_when": [
+        "a landing ring, trajectory line or aim preview is computed with a large time step",
+        "the real flight runs at frame rate with the same acceleration"
+      ],
+      "limits": [
+        "measured on one throw shape (30 degrees, 300 studs); drag or steering modes are not exact with averaging either"
+      ],
+      "evidence": [
+        {
+          "kind": "studio-test",
+          "detail": "FlightMathSpec 'solve lands a plain throw on its target' failed at (278.5, 0, -37.1) for (300, 0, -40); passed at 0.34 studs after the fix.",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/6e740b7dec624e47040d68e7e77871c16318f139/docs/reports/2026-10-30-launch-flight-kit.md"
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "id": "coloured-lights-and-terrain-colours-mislead",
       "title": "Judge colours in a screenshot: lights and terrain shading change them a lot",
       "status": "observation",
@@ -736,6 +833,43 @@
     },
     {
       "schema_version": 1,
+      "id": "fixed-boost-outputs-make-chains-all-or-nothing",
+      "title": "A boost that sets the same exit velocity from any entry makes every later hit all-or-nothing",
+      "status": "hypothesis",
+      "game": "EnrikR2002/Skip-Yourself",
+      "date": "2026-11-01",
+      "topics": [
+        "game design",
+        "chain",
+        "encounters",
+        "simulation"
+      ],
+      "observation": "In a one-button game whose only input is the launch angle, an authored course of barrels and trampolines first gave each hit a fixed exit velocity. A simulation of every launch pitch showed one angle band chaining all four far encounters in lockstep (the same four hits for every pitch from 13 to 19 degrees, and the same distances to within about 11 studs), because every entry leaves from nearly the same place at the same speed. Grading the effect by how close to the centre the hit was (a glancing hit gives half of the gain, a dead-centre one all of it, with the way up between 72 and 86 or 74 and 90 studs/s) spread the outcomes: two runs from nearly the same pitch (28.9 and 29.0 degrees) both started with the same raft at quality 0.95 and 0.96 yet went on to different second and third hits (1,999 and 1,752 studs).",
+      "recommendation": "When a boost resets a flight, do not make the exit independent of the entry: let it depend on how well the player hit it (and, if possible, on the incoming speed), and check by simulating the whole input range that no input band hits every later target, before placing the later targets.",
+      "applies_when": [
+        "targets in a course are placed along a single trajectory family and each hit launches the player again",
+        "the player has a single continuous input that picks the trajectory"
+      ],
+      "limits": [
+        "simulation and a handful of Studio flights by the AI, not human play; whether graded hits feel better than fixed ones, or whether a chain feels earned, is untested",
+        "one game's numbers",
+        "the lockstep result came from a throwaway Python model of the flight that was not kept; the graded-hit course is covered by EncounterSpec in the Luau sim"
+      ],
+      "evidence": [
+        {
+          "kind": "automated-test",
+          "detail": "EncounterSpec 'no single pitch chains through the whole course' and 'every encounter is reachable by some pitch and missed by others' run every pitch frame by frame.",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/tests/luau/Specs/EncounterSpec.lua"
+        },
+        {
+          "kind": "studio-test",
+          "detail": "Report 'Evidence' rows 'Chain': the 28.9 and 29.0 degree runs, 1,999 and 1,752 studs, and 'The course by simulation' (first draft versus graded hits).",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/docs/reports/2026-11-01-ocean-encounters.md"
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "id": "follower-rigs-can-block-a-close-camera",
       "title": "A follower rig can fill the screen when the camera pops in",
       "observation": "A hovering helper creature placed beside the player filled the whole screen with one giant ear when the camera was pushed close to the character by a nearby machine. Fading the helper's parts with LocalTransparencyModifier when they come within 7 studs of the camera fixed it in the next capture.",
@@ -766,6 +900,87 @@
       "game": "EnrikR2002/Tiny-Wins-Tycoon",
       "date": "2026-10-15",
       "status": "observation"
+    },
+    {
+      "schema_version": 1,
+      "id": "game-camera-must-bind-after-a-kits-camera",
+      "title": "A game camera that shares a render priority with a library camera fights it",
+      "status": "hypothesis",
+      "game": "EnrikR2002/Skip-Yourself",
+      "date": "2026-10-30",
+      "topics": [
+        "camera",
+        "renderstep",
+        "library",
+        "integration"
+      ],
+      "observation": "The launch-flight kit binds its chase camera and landing hold at RenderPriority.Camera + 1. Skip Yourself's own cannon camera used the same priority, so after a quick retry both would write the camera during the kit's 1.1 s landing hold, in an undefined order. Binding the game's camera at Camera + 2 makes it run last and win while the game owns the view.",
+      "recommendation": "When a game and an installed kit both script the camera, give the one that should win in each state a strictly later render priority, and only write the camera in the states it owns.",
+      "applies_when": [
+        "a Library system ships its own camera",
+        "the game keeps a scripted camera for other states (menus, aiming)"
+      ],
+      "limits": [
+        "the flicker was reasoned from the code, not seen; the playtest after the change showed no fight"
+      ],
+      "evidence": [
+        {
+          "kind": "source-review",
+          "detail": "Main.client.lua binds SkipYourselfFrame at Camera + 2; FlightClient binds SyferFlightCamera at Camera + 1.",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/6e740b7dec624e47040d68e7e77871c16318f139/docs/reports/2026-10-30-launch-flight-kit.md"
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "id": "generated-welded-models-need-cframe0-and-a-workspace-check",
+      "title": "A generated model's WeldConstraints need CFrame0, and only a clone in Workspace shows the fault",
+      "status": "observation",
+      "game": "EnrikR2002/Loot-Goblins",
+      "date": "2026-10-30",
+      "topics": [
+        "models",
+        "welds",
+        "studio",
+        "testing",
+        "tooling"
+      ],
+      "observation": "A 15-part pirate boat with 14 WeldConstraints was generated as an .rbxmx by a script that listed only Part0 and Part1 on each weld. Built through Rojo into a place and opened in Studio (Edit mode), the stored model in ReplicatedStorage looked and measured correct: every part's frame relative to the hull matched the source data and a content checksum matched the original boat. The moment a clone was parented to Workspace, every welded part read an offset of 0,0,0 from the hull, and a render showed a flat slab with a stub mast. A PivotTo drift check passed vacuously because its reference offsets were read from the already-collapsed clone. A weld's CFrame0 and CFrame1 are hidden (reading CFrame0 from a script failed with 'not a valid member'), so the cause was found by experiment. Five encodings of one welded part (hull at the origin, child at 1.5, 5, -3 turned 27 degrees) were built through Rojo and opened in Studio: CFrame0 = the child's frame in the hull's space with an identity CFrame1 kept the offset; CFrame0 = identity with CFrame1 = the inverse frame kept it; CFrame0 = the inverse frame collapsed the part; no CFrame0 or CFrame1 collapsed it; a legacy Weld with C0 = the child's frame and an identity C1 kept it. Rojo writes WeldConstraint references as Part0Internal and Part1Internal and carries CFrame0 and CFrame1 through. After the generator wrote CFrame0 (the part's frame in the hull's space) and an identity CFrame1, a clone in Workspace had the same content checksum as the boat built live by the game's own code, every part kept its offset under PivotTo and rotation (worst drift 0.000016 studs), and a render from the same camera matched the original.",
+      "recommendation": "When a model file with WeldConstraints is generated or written outside Studio's own save, store each weld's offset: CFrame0 = Part1's frame in Part0's space with an identity CFrame1 (this encoding was verified; do not guess the inverse). Then validate the model live, not as stored: clone it into Workspace, take the expected offsets from the source data and not from the clone, measure every welded part against them, move and rotate the model once, and look at it. A check that only reads the template in ReplicatedStorage or ServerStorage cannot detect this fault.",
+      "applies_when": [
+        "Generating or hand-writing .rbxmx, .model.json or similar model files that contain WeldConstraints (or other joints) instead of saving from Studio",
+        "Turning a model built by code or a build script into a stored, reusable asset, for example a Factory Library item",
+        "Validating a welded model before approving it for reuse"
+      ],
+      "limits": [
+        "One 15-part model and one five-variant test: Rojo 7.7.1 built the place and Studio (Edit mode, October 2026, Windows 10) opened it; nothing was run in Play mode or on another platform",
+        "Only WeldConstraint and a legacy Weld with C0 and C1 were tried; other constraint or joint types were not tested",
+        "Loading a Part0/Part1-only .rbxmx straight into Studio (Insert from file) was not tried, so it is not established that every loader collapses the parts; the finding is that the Rojo-built path did",
+        "The convention (CFrame0 = relative frame, CFrame1 = identity; the inverse in CFrame0 fails) was established by experiment because the properties are hidden, not from documentation, and could change with a Studio update"
+      ],
+      "evidence": [
+        {
+          "kind": "studio-test",
+          "url": "https://github.com/EnrikR2002/SYFER-Roblox-Factory/blob/a224f00e7040b5c1585822999449e39c483e6675/library/assets/pirate-boat/README.md",
+          "detail": "Factory PR #7 (merged at a224f00), the item's README sections 'Gotchas' and 'Validation': the first generated file looked right in ReplicatedStorage but every welded part snapped onto the hull's centre once a clone was in Workspace; it showed only in a visual comparison against the original; after CFrame0 was written, the installed model in a clean game matched the original's content checksum and render."
+        },
+        {
+          "kind": "source-review",
+          "url": "https://github.com/EnrikR2002/SYFER-Roblox-Factory/blob/a224f00e7040b5c1585822999449e39c483e6675/library/assets/pirate-boat/source/build_rbxmx.py",
+          "detail": "The generator after the fix: each WeldConstraint is written with CFrame0 = the part's frame in the hull's space, an identity CFrame1, and Part0Internal/Part1Internal, with a comment recording the failure when they are missing."
+        },
+        {
+          "kind": "studio-test",
+          "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/f061b9a3d9f0ce485de552e027edfe0aac350a0e/.syfer/outbox/2026-10-30-knowledge-lesson-weldconstraint-cframe0.md",
+          "detail": "Loot Goblins PR #36's outbox note, written the day of the test: the five-variant results (CFrame0 relative, CFrame0 identity with inverse CFrame1, inverse CFrame0, none, legacy Weld) as observed in Studio after a Rojo build, and the note that the first numeric check had measured the template, not a live clone."
+        },
+        {
+          "kind": "measurement",
+          "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/be501887af60859243c9ba63ef923edfe5bf351f/art/references/skiff_parts.txt",
+          "detail": "Loot Goblins' own runtime capture of its Skiff (source game, commit be50188). All 15 parts of the generated model matched it in position, size, colour, material and transparency within 0.006 studs; the five gameplay-only parts in the capture (BowSkid, Driver, Passenger1, BowGunBase, BowGunBarrel) were left out on purpose."
+        }
+      ],
+      "rubric_checks": []
     },
     {
       "schema_version": 1,
@@ -1071,6 +1286,43 @@
           "kind": "studio-test",
           "url": "https://github.com/EnrikR2002/Loot-Goblins/blob/30434146b1710cee90dd5f3c1066e182d3a1d65a/docs/reports/2026-10-13-v8-chaos-and-counterplay.md",
           "detail": "Section 15 and bug 1 in section 19: E stole the Tide Vault pearl with the camera turned away after the change."
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "id": "perfect-timing-bonus-can-make-a-run-worse",
+      "title": "A perfect-timing bonus that adds height can end a run sooner than not tapping",
+      "status": "observation",
+      "game": "EnrikR2002/Skip-Yourself",
+      "date": "2026-10-30",
+      "topics": [
+        "skill-input",
+        "tuning",
+        "skipping",
+        "automated-test"
+      ],
+      "observation": "In Skip Yourself a well-timed tap on the first water contact added extra bounce height. The longer hop let forward drag steepen the next landing past the belly-flop angle limit. At a 35 degree launch the first tuning gave 509 studs with 1 skip for a perfect first skip, against 473 studs with 4 skips for no tap at all. The skilled input was worse than doing nothing for some launch angles.",
+      "recommendation": "Test across the whole input range that the skilled input is never worse than doing nothing, as an automated spec. Prefer bonuses that keep speed (a smaller speed loss) over bonuses that add height, because height feeds back into the next impact angle.",
+      "applies_when": [
+        "a timed or skill input adds an energy, height or speed bonus to a bouncing, skipping or ricocheting projectile",
+        "the next collision outcome depends on the angle or speed carried out of the previous one"
+      ],
+      "limits": [
+        "one game's skip model with its own tuning values",
+        "the fix (smaller bounce bonus, 30 percent of the normal speed loss on a perfect) is that game's tuning, not a general number",
+        "checked with a deterministic model in Studio and a spec, not with human players"
+      ],
+      "evidence": [
+        {
+          "kind": "automated-test",
+          "detail": "Spec 'a perfect first skip never makes a run shorter' runs every launch pitch that skips and passes after the retune; the first tuning failed it at 35 degrees.",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/b844f42cfdc77b730ab217de3b8d45101bed13da/tests/luau/Specs/SkipSpec.lua"
+        },
+        {
+          "kind": "measurement",
+          "detail": "Report problem 3 records 509 studs and 1 skip for the perfect first skip against 473 studs and 4 skips with no tap, before the retune.",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/b844f42cfdc77b730ab217de3b8d45101bed13da/docs/reports/2026-10-30-core-launch-skip.md"
         }
       ]
     },
@@ -1639,6 +1891,42 @@
     },
     {
       "schema_version": 1,
+      "id": "speed-dependent-catch-plane-slips-between-frames",
+      "title": "A catch plane whose height depends on fall speed can be crossed between two frames without registering",
+      "status": "observation",
+      "game": "EnrikR2002/Skip-Yourself",
+      "date": "2026-11-01",
+      "topics": [
+        "collision",
+        "swept test",
+        "trampoline",
+        "projectile"
+      ],
+      "observation": "A trampoline raft caught a falling avatar when a swept step crossed a plane 6 studs above its skin plus 0.06 per stud/s of fall, and only if the step started above the plane. The plane rises as the fall speeds up. A real 44 degree flight (about 100 studs/s down, 60 frames a second) had its previous frame at 14.30 studs when the plane for that frame was 14.25 (not yet crossed), and the next frame started at 14.30 when the plane was 14.31 (already below), so the raft it flew straight into never fired, while 42 and 46 degrees fired. A frame-by-frame simulation of every launch pitch found it (one raft was never hit by any pitch); allowing the previous sample to be up to 2 studs below the plane fixed it.",
+      "recommendation": "When a swept 'crossed from above' test uses a threshold that moves with speed or time, do not compare the previous point with the new threshold alone: allow a small slack below it for the previous sample, and clamp the crossing fraction. Run a frame-by-frame simulation across the whole input range and assert every target is reachable.",
+      "applies_when": [
+        "a game catches or bounces a fast projectile on a plane or surface by comparing consecutive positions",
+        "the plane's height or the trigger distance depends on speed"
+      ],
+      "limits": [
+        "seen in one game with a 60 frame/s client and a server that samples the same position; with a coarser network sample the gap between frames is larger, so the slack should grow",
+        "2 studs was enough here and is not a general number"
+      ],
+      "evidence": [
+        {
+          "kind": "automated-test",
+          "detail": "EncounterSpec 'every encounter is reachable by some pitch and missed by others' failed with 'pad2 is never hit' before the fix and passes after it.",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/tests/luau/Specs/EncounterSpec.lua"
+        },
+        {
+          "kind": "studio-test",
+          "detail": "Report 'Problems found' item 2: the 44 degree flight's two frames around the plane, 14.30 against 14.25, then 14.30 against 14.31.",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/docs/reports/2026-11-01-ocean-encounters.md"
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "id": "stand-in-player-for-solo-pvp-rules",
       "title": "Test player-versus-player rules with a stand-in when only one client exists",
       "status": "observation",
@@ -1732,6 +2020,37 @@
     },
     {
       "schema_version": 1,
+      "id": "studio-mcp-keyboard-input-adds-delay",
+      "title": "Studio MCP keyboard input adds about 100 ms per action, enough to miss a short timing window",
+      "status": "observation",
+      "game": "EnrikR2002/Skip-Yourself",
+      "date": "2026-10-30",
+      "topics": [
+        "studio-mcp",
+        "input",
+        "timing",
+        "playtest"
+      ],
+      "observation": "Each user_keyboard_input action added around 100 ms of overhead. A blind-timed tap aimed at a 0.28 s perfect-timing window missed on the first attempt and succeeded after the overhead was allowed for. The tool's argument is key_code, not key.",
+      "recommendation": "For timing tests through the Studio MCP, compute the expected event time from the model and allow for the per-action delay, or drive the input from the game's own model. Do not conclude a window is too tight from a single missed simulated tap.",
+      "applies_when": [
+        "a Studio MCP playtest presses keys inside a window shorter than about half a second",
+        "a simulated tap seems to fail although the on-screen cue was right"
+      ],
+      "limits": [
+        "one Windows PC and one Studio session; the overhead may vary with machine load",
+        "the 100 ms figure is a rough observation, not a measured distribution"
+      ],
+      "evidence": [
+        {
+          "kind": "studio-test",
+          "detail": "Report 'Not tested' section: the first blind tap missed the window because of the simulated keyboard's delay and a later tap that allowed for it produced the PERFECT x1 callout.",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/b844f42cfdc77b730ab217de3b8d45101bed13da/docs/reports/2026-10-30-core-launch-skip.md"
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "id": "studio-mcp-mouse-leaves-camera-fixed",
       "title": "Studio MCP's simulated mouse leaves the camera Fixed",
       "status": "observation",
@@ -1761,6 +2080,68 @@
       ],
       "rubric_checks": [
         "CL-11"
+      ]
+    },
+    {
+      "schema_version": 1,
+      "id": "studio-mcp-scripts-cannot-press-keys-sync-to-your-own-tap",
+      "title": "From Studio MCP scripts, ContextActionService:CallFunction and VirtualInputManager are blocked, so sync a timed tap to your own first tap",
+      "status": "observation",
+      "game": "EnrikR2002/Skip-Yourself",
+      "date": "2026-11-01",
+      "topics": [
+        "studio mcp",
+        "input",
+        "playtest",
+        "timing"
+      ],
+      "observation": "In a Studio play session, execute_luau on the Client could not call ContextActionService:CallFunction or VirtualInputManager:SendKeyEvent: both failed with 'The current thread cannot call ... (lacking capability RobloxScript)'. Tapping a free-running sine sweep (a cannon barrel that swings every 2 s) with the user_keyboard_input tool landed at a random pitch. Because the game restarts the sweep at the bottom when a retry tap is made, one call with the actions retry tap, wait N ms, launch tap puts the second tap at a phase that depends only on N plus the tool's own overhead: N = 150, 370 and 750 ms gave phases 0.25, 0.47 and 0.85 s into the sweep, so pitches 16.6, 28.9 and 48.3 degrees, the repeats of N = 150 landed at 14.3, 16.0 and 16.6 degrees, and of N = 370 and N = 750 within 0.1 degree. A client-side recorder read the pitch from the HUD at the moment the aim group hid, so each run's real pitch was measured rather than assumed.",
+      "recommendation": "To test a timed input through the Studio MCP, do not try to inject it from a script. Find an event the game itself restarts (a retry tap) and put the timed tap after it in the same keyboard-tool call, with a wait computed from the model plus about 100 ms of overhead; record the value the game actually used from the client and correct the wait from it.",
+      "applies_when": [
+        "a Studio MCP playtest needs a tap at a particular moment of a periodic aim, meter or sweep",
+        "a script wants to trigger the game's own input binding"
+      ],
+      "limits": [
+        "one Windows PC and one Studio session; the 100 ms overhead is a rough observation, not a distribution (it also appears in an earlier lesson)",
+        "the phase repeatability came from a handful of runs, not a measured spread"
+      ],
+      "evidence": [
+        {
+          "kind": "studio-test",
+          "detail": "Report 'Evidence': flights at 16.6, 28.9 and 48.3 degrees from waits of 150, 370 and 750 ms; the client recorder's measured pitch and phase for each; the two capability errors.",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/bba291525fcfd696a7ca558211672a227f5b7de2/docs/reports/2026-11-01-ocean-encounters.md"
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "id": "studio-modal-dialog-stops-renderstepped",
+      "title": "A modal Studio dialog stops RenderStepped while Heartbeat keeps running",
+      "status": "observation",
+      "game": "EnrikR2002/Skip-Yourself",
+      "date": "2026-10-30",
+      "topics": [
+        "studio-mcp",
+        "playtest",
+        "renderstepped",
+        "debugging"
+      ],
+      "observation": "An information-only 'Lighting Technology Migration' dialog in front of the Studio window made RenderStepped fire 0 times per second while Heartbeat kept firing at 60. A character driven by a RenderStepped script was never controlled and flew off under physics, which looked like a gameplay bug. Dismissing the dialog restored rendering and the same code ran normally.",
+      "recommendation": "When a script-driven object misbehaves in a Studio MCP playtest, count RenderStepped over one second first and look for a modal dialog or an occluded Studio window before debugging the game code.",
+      "applies_when": [
+        "a Studio playtest is driven through the Studio MCP and some behavior depends on RenderStepped or camera updates",
+        "an avatar or camera behaves as if its per-frame script never ran"
+      ],
+      "limits": [
+        "seen once, with one Studio version and one dialog, in October 2026",
+        "the dialog opened on a freshly built place; other dialogs were not tested"
+      ],
+      "evidence": [
+        {
+          "kind": "studio-test",
+          "detail": "Report problem 7: RenderStepped counted 0 per second while Heartbeat counted 60 with the dialog showing; after dismissing it play mode ran normally.",
+          "url": "https://github.com/EnrikR2002/Skip-Yourself/blob/b844f42cfdc77b730ab217de3b8d45101bed13da/docs/reports/2026-10-30-core-launch-skip.md"
+        }
       ]
     },
     {
