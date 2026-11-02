@@ -1,11 +1,11 @@
 {
     "schemaVersion":  1,
-    "factoryVersion":  "0.1.1",
+    "factoryVersion":  "0.1.2",
     "factoryRepo":  "EnrikR2002/SYFER-Roblox-Factory",
     "knowledgeRepo":  "EnrikR2002/SYFER-Roblox-Knowledge",
-    "factoryCommit":  "ed1d60828fe927a40243b22884aa5234893b9497",
+    "factoryCommit":  "a3987c6f6f0259e8f40705fc40bd9a641fa2c0a6",
     "createdAt":  null,
-    "lastMigratedAt":  "2026-10-30T08:28:16.3775191Z",
+    "lastMigratedAt":  "2026-11-02T06:09:54.0196560Z",
     "installedItems":  {
 
                        },
